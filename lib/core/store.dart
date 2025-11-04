@@ -299,7 +299,7 @@ class Store<G extends Model> {
   void _setupSyncJobTimer() {
     // the following timer would run indefinitely,
     // checking whether there's a sync job exists or not
-    Timer.periodic(Duration(milliseconds: this.debounceMS), (timer) async {
+    Timer.periodic(Duration(milliseconds: debounceMS), (timer) async {
       if (_jobRunning) {
         return;
       }
@@ -348,7 +348,7 @@ class Store<G extends Model> {
       lastRes = res;
     };
     while (res == null && sw.elapsed.inSeconds < 10) {
-      await Future.delayed(Duration(milliseconds: this.debounceMS));
+      await Future.delayed(Duration(milliseconds: debounceMS));
     }
     return res ?? lastRes ?? [];
   }

@@ -138,7 +138,7 @@ class _ReceiptEditingState extends State<_ReceiptEditing> {
                 child: AutoSuggestBox<String>(
                   key: WK.fieldReceiptIssuer,
                   style: textFieldTextStyle(),
-                  decoration: textFieldDecoration(),
+                  decoration: WidgetStatePropertyAll(textFieldDecoration()),
                   clearButtonEnabled: false,
                   placeholder: "${txt("issuer")}...",
                   controller: issuerController,
@@ -166,7 +166,7 @@ class _ReceiptEditingState extends State<_ReceiptEditing> {
                 child: AutoSuggestBox<String>(
                   key: WK.fieldLabworkPhoneNumber,
                   style: textFieldTextStyle(),
-                  decoration: textFieldDecoration(),
+                  decoration: WidgetStatePropertyAll(textFieldDecoration()),
                   clearButtonEnabled: false,
                   placeholder: "${txt("phone")}...",
                   controller: issuerPhoneController,

@@ -16,7 +16,16 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart' as intl;
 
-enum AppointmentSections { patient, doctors, photos, preNotes, postNotes, prescriptions, pay }
+enum AppointmentSections {
+  patient,
+  doctors,
+  photos,
+  preNotes,
+  postNotes,
+  dentalNotes,
+  prescriptions,
+  pay
+}
 
 class AppointmentCard extends StatelessWidget {
   final Appointment appointment;
@@ -24,7 +33,11 @@ class AppointmentCard extends StatelessWidget {
   final String? difference;
   final int number;
   const AppointmentCard(
-      {super.key, required this.appointment, this.difference, required this.number, this.hide = const []});
+      {super.key,
+      required this.appointment,
+      this.difference,
+      required this.number,
+      this.hide = const []});
 
   @override
   Widget build(BuildContext context) {
@@ -62,14 +75,16 @@ class AppointmentCard extends StatelessWidget {
                 child: Acrylic(
                   elevation: 100,
                   blurAmount: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5)),
                   child: Container(
                     decoration: _coloredHandleDecoration(color),
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
                         _buildHeader(context, color),
-                        if (appointment.patient != null && !hide.contains(AppointmentSections.patient)) ...[
+                        if (appointment.patient != null &&
+                            !hide.contains(AppointmentSections.patient)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("patient"),
@@ -82,7 +97,8 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.operators.isNotEmpty && !hide.contains(AppointmentSections.doctors)) ...[
+                        if (appointment.operators.isNotEmpty &&
+                            !hide.contains(AppointmentSections.doctors)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("doctors"),
@@ -99,7 +115,8 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.imgs.isNotEmpty && !hide.contains(AppointmentSections.photos)) ...[
+                        if (appointment.imgs.isNotEmpty &&
+                            !hide.contains(AppointmentSections.photos)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("photos"),
@@ -116,38 +133,60 @@ class AppointmentCard extends StatelessWidget {
                             color,
                           ),
                         ],
-                        if (appointment.preOpNotes.isNotEmpty && !hide.contains(AppointmentSections.preNotes)) ...[
+                        if (appointment.preOpNotes.isNotEmpty &&
+                            !hide.contains(AppointmentSections.preNotes)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("pre-opNotes"),
                             Txt(
                               appointment.preOpNotes,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             FluentIcons.quick_note,
                             color,
                           ),
                         ],
-                        if (appointment.postOpNotes.isNotEmpty && !hide.contains(AppointmentSections.postNotes)) ...[
+                        if (appointment.postOpNotes.isNotEmpty &&
+                            !hide.contains(AppointmentSections.postNotes)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("post-opNotes"),
                             Txt(
                               appointment.postOpNotes,
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             FluentIcons.quick_note,
                             color,
                           ),
                         ],
+                        if (appointment.teeth.isNotEmpty &&
+                            !hide
+                                .contains(AppointmentSections.dentalNotes)) ...[
+                          ..._betweenSections,
+                          _buildSection(
+                            txt("dentalNotes"),
+                            Wrap(
+                              spacing: 5,
+                              children: appointment.teeth.keys
+                                  .map((iso) => toothHasNotes(color, iso, appointment.teeth[iso]!))
+                                  .toList(),
+                            ),
+                            FluentIcons.teeth,
+                            color,
+                          ),
+                        ],
                         if (appointment.prescriptions.isNotEmpty &&
-                            !hide.contains(AppointmentSections.prescriptions)) ...[
+                            !hide.contains(
+                                AppointmentSections.prescriptions)) ...[
                           ..._betweenSections,
                           _buildSection(
                             txt("prescription"),
                             Txt(
                               appointment.prescriptions.join("\n"),
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
                             ),
                             FluentIcons.pill,
                             color,
@@ -173,6 +212,53 @@ class AppointmentCard extends StatelessWidget {
           _verticalSpacing(),
           if (difference != null) _buildTimeDifference()
         ],
+      ),
+    );
+  }
+
+  Widget toothHasNotes(Color color, String iso, String note) {
+    final borderSide = BorderSide(color: color, width: 2);
+    final int isoInt = int.parse(iso);
+    String arch = iso[0];
+    String tooth = iso[1];
+
+    if (isoInt > 48) {
+      if (tooth == "1") tooth = "A";
+      if (tooth == "2") tooth = "B";
+      if (tooth == "3") tooth = "C";
+      if (tooth == "4") tooth = "D";
+      if (tooth == "5") tooth = "E";
+    }
+
+    if (arch == "5") arch = "1";
+    if (arch == "6") arch = "2";
+    if (arch == "7") arch = "3";
+    if (arch == "8") arch = "4";
+
+    final bool upper = arch == "1" || arch == "2";
+    final bool left = arch == "2" || arch == "3";
+
+    return Tooltip(
+      enableFeedback: true,
+      triggerMode: TooltipTriggerMode.tap,
+      message: note,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withAlpha(10),
+          border: Border(
+            bottom: upper ? borderSide : BorderSide.none,
+            top: upper == false ? borderSide : BorderSide.none,
+            left: left ? borderSide : BorderSide.none,
+            right: left == false ? borderSide : BorderSide.none,
+          ),
+        ),
+        width: 20,
+        height: 20,
+        padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0),
+        child: Text(
+          tooth,
+          style: TextStyle(color: color, fontWeight: FontWeight.w700),
+        ),
       ),
     );
   }
@@ -223,9 +309,11 @@ class AppointmentCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            _paymentPill(txt("price"), appointment.price.toString(), context, null, color),
+            _paymentPill(txt("price"), appointment.price.toString(), context,
+                null, color),
             _horizontalSpacing(),
-            _paymentPill(txt("paid"), appointment.paid.toString(), context, null, color),
+            _paymentPill(
+                txt("paid"), appointment.paid.toString(), context, null, color),
           ],
         ),
         _verticalSpacing(),
@@ -240,10 +328,17 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  PaymentPill _paymentPill(String title, String amount, BuildContext context, [Color? color, Color? textColor]) {
-    final Color finalTextColor =
-        textColor ?? (color == null ? (FluentTheme.of(context).iconTheme.color ?? Colors.grey) : Colors.white);
-    return PaymentPill(finalTextColor: finalTextColor, amount: amount, title: title, color: color);
+  PaymentPill _paymentPill(String title, String amount, BuildContext context,
+      [Color? color, Color? textColor]) {
+    final Color finalTextColor = textColor ??
+        (color == null
+            ? (FluentTheme.of(context).iconTheme.color ?? Colors.grey)
+            : Colors.white);
+    return PaymentPill(
+        finalTextColor: finalTextColor,
+        amount: amount,
+        title: title,
+        color: color);
   }
 
   List<Widget> get _betweenSections {
@@ -285,10 +380,12 @@ class AppointmentCard extends StatelessWidget {
               ),
             ),
             Acrylic(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50)),
               elevation: 100,
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 child: Txt(
                   title,
                   style: const TextStyle(
@@ -348,9 +445,11 @@ class AppointmentCard extends StatelessWidget {
   }
 
   Text _buildFormattedDate(Color color) {
-    final df = localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
+    final df =
+        localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
     return Txt(
-      intl.DateFormat("E $df yyyy - hh:mm a", locale.s.$code).format(appointment.date),
+      intl.DateFormat("E $df yyyy - hh:mm a", locale.s.$code)
+          .format(appointment.date),
       style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold),
     );
   }
@@ -431,7 +530,10 @@ class TimeDifference extends StatelessWidget {
   Widget build(BuildContext context) {
     return Txt(
       difference!,
-      style: TextStyle(fontSize: 12, color: Colors.grey.withValues(alpha: 0.5), fontWeight: FontWeight.bold),
+      style: TextStyle(
+          fontSize: 12,
+          color: Colors.grey.withValues(alpha: 0.5),
+          fontWeight: FontWeight.bold),
     );
   }
 }

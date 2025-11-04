@@ -132,7 +132,7 @@ class _LabworkEditingState extends State<_LabworkEditing> {
                 child: AutoSuggestBox<String>(
                   key: WK.fieldLabworkLabName,
                   style: textFieldTextStyle(),
-                  decoration: textFieldDecoration(),
+                  decoration: WidgetStatePropertyAll(textFieldDecoration()),
                   clearButtonEnabled: false,
                   placeholder: "${txt("laboratory")}...",
                   controller: labNameController,
@@ -159,7 +159,7 @@ class _LabworkEditingState extends State<_LabworkEditing> {
                 child: AutoSuggestBox<String>(
                   key: WK.fieldLabworkPhoneNumber,
                   style: textFieldTextStyle(),
-                  decoration: textFieldDecoration(),
+                  decoration: WidgetStatePropertyAll(textFieldDecoration()),
                   clearButtonEnabled: false,
                   placeholder: "${txt("phone")}...",
                   controller: labPhoneController,

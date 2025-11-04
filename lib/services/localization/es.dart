@@ -1,10 +1,14 @@
 import 'en.dart';
 
 class Es implements En {
+  @override
   Direction $direction = Direction.ltr;
+  @override
   String $name = "Español";
+  @override
   String $code = "es";
 
+  @override
   Map<String, String> dictionary = {
     // common
     "cancel": "Cancelar",
@@ -344,6 +348,7 @@ class Es implements En {
     "beenSent": "Instrucciones para restablecer la contraseña han sido enviadas, revisa tu bandeja de entrada.",
 
     // other
+    "otherNotesPerAppointment": "Hay otras notas registradas en el panel de citas que no aparecen aquí.",
     "sureArchiveSelected": "¿Estás seguro de que deseas archivar los elementos seleccionados?",
     "sureClosePanel": "¿Estás seguro de que deseas cerrar el panel? Todos los cambios no guardados se perderán.",
     "sure": "Seguro",

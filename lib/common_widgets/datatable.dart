@@ -551,16 +551,15 @@ class DataTablePill extends StatelessWidget {
         ),
         if (selected)
           Container(
-            //height: 35,
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: .15),
+              color: color.withValues(alpha: .7),
               borderRadius: const BorderRadius.only(topRight: Radius.circular(5), bottomRight: Radius.circular(5)),
             ),
-            child: Icon(
-              FluentIcons.check_mark,
+            child: const Icon(
+              FluentIcons.filter,
               size: 13,
-              color: color,
+              color: Colors.white,
             ),
           ),
       ],

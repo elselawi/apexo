@@ -123,10 +123,10 @@ class TagInputWidgetState extends State<TagInputWidget> {
                 key: key,
                 controller: _controller,
                 textInputAction: TextInputAction.none,
-                decoration: BoxDecoration(
+                decoration: WidgetStatePropertyAll(BoxDecoration(
                   border:
                       Border.all(color: const Color.fromARGB(255, 220, 220, 220), width: _tags.isEmpty ? 1.25 : 0.01),
-                ),
+                )),
                 focusNode: _focusNode, // Attach the FocusNode to preserve focus
                 items: _filteredSuggestions
                     .where((suggestion) => _tags.where((selected) => selected.value == suggestion.value).isEmpty)

@@ -345,6 +345,7 @@ class En {
     "beenSent": "Password reset instructions have been sent to you, check your inbox.",
 
     // other
+    "otherNotesPerAppointment": "There are other notes registered in the appointments panel that do not appear here.",
     "sureArchiveSelected": "Are you sure you want to archive the selected items?",
     "sureClosePanel": "Are you sure you want to close this panel? Any unsaved changes will be lost.",
     "sure": "Sure",

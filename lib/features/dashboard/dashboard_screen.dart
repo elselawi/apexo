@@ -131,7 +131,7 @@ class DashboardScreen extends StatelessWidget {
                     text: Txt(txt("appointments")),
                     icon: const Icon(FluentIcons.calendar),
                     closeIcon: null,
-                    outlineColor: Colors.grey.withValues(alpha: 0.1),
+                    outlineColor: WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)),
                     body: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.4),
@@ -154,7 +154,7 @@ class DashboardScreen extends StatelessWidget {
                     text: Txt(txt("payments")),
                     icon: const Icon(FluentIcons.money),
                     closeIcon: null,
-                    outlineColor: Colors.grey.withValues(alpha: 0.1),
+                    outlineColor: WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)),
                     body: Container(
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.4),

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -6,9 +7,11 @@ import 'package:teeth_selector/teeth_selector.dart';
 
 class DentalChart extends StatefulWidget {
   final Patient patient;
+  final Appointment? appointment;
 
   const DentalChart({
     required this.patient,
+    this.appointment,
     super.key,
   });
 
@@ -22,11 +25,22 @@ class _DentalChartState extends State<DentalChart> {
   String openTooth = "";
   final _noteController = TextEditingController();
 
+  Map<String, String> get teeth {
+    if (widget.appointment != null) {
+      return widget.appointment!.teeth;
+    } else {
+      return widget.patient.teeth;
+    }
+  }
+
   @override
   void initState() {
     showPrimary = widget.patient.age < 14 ||
-        widget.patient.teeth.keys.any((tooth) =>
-            tooth.startsWith("5") || tooth.startsWith("6") || tooth.startsWith("7") || tooth.startsWith("8"));
+        teeth.keys.any((tooth) =>
+            tooth.startsWith("5") ||
+            tooth.startsWith("6") ||
+            tooth.startsWith("7") ||
+            tooth.startsWith("8"));
     super.initState();
   }
 
@@ -34,7 +48,7 @@ class _DentalChartState extends State<DentalChart> {
   Widget build(BuildContext context) {
     return Stack(children: [
       Padding(
-        padding: const EdgeInsets.fromLTRB(8, 25, 8, 35),
+        padding: const EdgeInsets.fromLTRB(8, 35, 8, 0),
         child: Center(
           child: Builder(builder: (context) {
             // rebuild every time the widget is rebuilt
@@ -48,27 +62,27 @@ class _DentalChartState extends State<DentalChart> {
                   _noteController.text = "";
                 } else {
                   openTooth = selected.first;
-                  _noteController.text = widget.patient.teeth[openTooth] ?? "";
+                  _noteController.text = teeth[openTooth] ?? "";
                 }
               }),
               notation: (isoString) => isoToTextualNotation(isoString),
               showPrimary: showPrimary,
               showPermanent: showPermanent,
-              colorized:
-                  widget.patient.teeth.map<String, Color>((entry, _) => MapEntry(entry, Colors.warningPrimaryColor))
-                    ..addAll({openTooth: Colors.warningPrimaryColor}),
+              colorized: teeth.map<String, Color>(
+                  (entry, _) => MapEntry(entry, Colors.warningPrimaryColor))
+                ..addAll({openTooth: Colors.warningPrimaryColor}),
               selectedColor: Colors.grey,
               defaultStrokeWidth: 10,
               tooltipColor: FluentTheme.of(context).menuColor,
-              tooltipTextStyle: TextStyle(color: FluentTheme.of(context).iconTheme.color),
+              tooltipTextStyle:
+                  TextStyle(color: FluentTheme.of(context).iconTheme.color),
             );
           }),
         ),
       ),
-      Positioned(
-        bottom: 0,
+      Transform.scale(
+        scale: 0.9,
         child: SizedBox(
-          width: 330,
           child: Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -77,12 +91,14 @@ class _DentalChartState extends State<DentalChart> {
               children: [
                 Checkbox(
                   checked: showPermanent,
-                  onChanged: (checked) => setState(() => showPermanent = checked == true),
+                  onChanged: (checked) =>
+                      setState(() => showPermanent = checked == true),
                   content: Txt(txt("showPermanent")),
                 ),
                 Checkbox(
                   checked: showPrimary,
-                  onChanged: (checked) => setState(() => showPrimary = checked == true),
+                  onChanged: (checked) =>
+                      setState(() => showPrimary = checked == true),
                   content: Txt(txt("showPrimary")),
                 ),
               ],
@@ -95,26 +111,31 @@ class _DentalChartState extends State<DentalChart> {
           Positioned(
             top: 200,
             left: 120,
-            child:
-                Icon(FluentIcons.triangle_solid_down12, size: 90, color: FluentTheme.of(context).menuColor, shadows: [
-              Shadow(
-                color: Colors.grey.withAlpha(20),
-                offset: const Offset(0, 10),
-                blurRadius: 10,
-              ),
-            ]),
+            child: Icon(FluentIcons.triangle_solid_down12,
+                size: 90,
+                color: FluentTheme.of(context).menuColor,
+                shadows: [
+                  Shadow(
+                    color: Colors.grey.withAlpha(40),
+                    offset: const Offset(0, 10),
+                    blurRadius: 10,
+                  ),
+                ]),
           ),
         if (isoToTextualNotation(openTooth).contains(txt("upper")))
           Positioned(
             bottom: 200,
             left: 120,
-            child: Icon(FluentIcons.triangle_solid_up12, size: 90, color: FluentTheme.of(context).menuColor, shadows: [
-              Shadow(
-                color: Colors.grey.withAlpha(20),
-                offset: const Offset(0, -10),
-                blurRadius: 10,
-              ),
-            ]),
+            child: Icon(FluentIcons.triangle_solid_up12,
+                size: 90,
+                color: FluentTheme.of(context).menuColor,
+                shadows: [
+                  Shadow(
+                    color: Colors.grey.withAlpha(40),
+                    offset: const Offset(0, -10),
+                    blurRadius: 10,
+                  ),
+                ]),
           ),
         Builder(builder: (context) {
           final tooth = isoToTextualNotation(openTooth);
@@ -124,7 +145,8 @@ class _DentalChartState extends State<DentalChart> {
             left: (340 - 300) * 0.5,
             child: Acrylic(
               elevation: 20,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4)),
               tintAlpha: 0,
               child: Container(
                 width: 300,
@@ -136,7 +158,8 @@ class _DentalChartState extends State<DentalChart> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Txt(isoToTextualNotation(openTooth), style: const TextStyle(fontSize: 12)),
+                        Txt(isoToTextualNotation(openTooth),
+                            style: const TextStyle(fontSize: 12)),
                         IconButton(
                           icon: const Icon(FluentIcons.cancel),
                           onPressed: () => setState(() => openTooth = ""),
@@ -156,7 +179,11 @@ class _DentalChartState extends State<DentalChart> {
                         child: Txt(txt("save")),
                         onPressed: () {
                           setState(() {
-                            widget.patient.teeth[openTooth] = _noteController.text;
+                            if (_noteController.text.isEmpty) {
+                              teeth.remove(openTooth);
+                            } else {
+                              teeth[openTooth] = _noteController.text;
+                            }
                             openTooth = "";
                           });
                         })
@@ -167,6 +194,19 @@ class _DentalChartState extends State<DentalChart> {
           );
         }),
       ],
+      if (widget.appointment == null &&
+          widget.patient.allAppointments
+              .any((appointment) => appointment.teeth.isNotEmpty))
+        Positioned(
+          bottom: 0,
+          child: SizedBox(
+            width: 300,
+            child: InfoBar(
+              severity: InfoBarSeverity.warning,
+              title: Text(txt("otherNotesPerAppointment")),
+            ),
+          ),
+        ),
     ]);
   }
 

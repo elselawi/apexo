@@ -19,7 +19,7 @@ class _VersionService {
     }
 
     try {
-      latest((await getLatestVersion('alselawi', 'apexo-flutter', 'dist')).version);
+      latest((await getLatestVersion('elselawi', 'apexo', 'dist')).version);
     } catch (e, s) {
       logger("Could not get latest version: $e", s);
     }

@@ -5,7 +5,7 @@ Apexo is application intended for simple and easy management of dental clinics. 
 
 [Website](https://apexo.app) - [Demo](https://demo.apexo.app) - [Download](https://apexo.app/#getting-started) - [Documentation](https://docs.apexo.app)
 
-> The following document is technical documentation for the Apexo project. If you are a user, or would like to use the application please visit the [Apexo website](https://apexo.app), or read through the [manual.md](https://github.com/alselawi/apexo-flutter/blob/master/manual.md).
+> The following document is technical documentation for the Apexo project. If you are a user, or would like to use the application please visit the [Apexo website](https://apexo.app), or read through the [manual.md](https://github.com/elselawi/apexo/blob/master/manual.md).
 
 ## Contributing
 
@@ -19,7 +19,7 @@ The backend of this application should be [Pocketbase](https://pocketbase.io/).
 
 I'm saying _"should"_ because I leave it up to the users to host their own backend. However, a cleanly installed pocketbase with a super user credentials would be enough to run this application since the application creates all the required collections and values on first login.
 
-Check the [manual.md](https://github.com/alselawi/apexo-flutter/blob/master/manual.md) for how to install PocketBase.
+Check the [manual.md](https://github.com/elselawi/apexo/blob/master/manual.md) for how to install PocketBase.
 
 In previous versions of apexo, [in an old github account of mine that I lost access to, and abandoned since then](https://github.com/alexcorvi/apexo), the tech-stack was quite different, Typescript/React to create a single page PWA and CouchDB as backend. However, with usage I have found that the web platform, although great for other application, was limiting for this application. So in summer 2024 I started a whole re-write of apexo and published it to my new github account.
 
@@ -37,8 +37,8 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 ## Testing
 
-- [How to run ___unit testing___](https://github.com/alselawi/apexo-flutter/blob/master/test/unit_test_readme.md).
-- [How to run ___integration testing___](https://github.com/alselawi/apexo-flutter/blob/master/integration_test/readme.md).
+- [How to run ___unit testing___](https://github.com/elselawi/apexo/blob/master/test/unit_test_readme.md).
+- [How to run ___integration testing___](https://github.com/elselawi/apexo/blob/master/integration_test/readme.md).
 
 
 ## Building
@@ -53,7 +53,7 @@ flutter build web
 
 ... etc.
 
-However, to streamline distribution I've wrote the file [scripts/build_and_dist.dart](https://github.com/alselawi/apexo-flutter/blob/master/scripts/build_and_dist.dart) so that it builds for the supported platforms, then move the builds to _"dist"_ directory where the landing page would fetch and display download links for all versions.
+However, to streamline distribution I've wrote the file [scripts/build_and_dist.dart](https://github.com/elselawi/apexo/blob/master/scripts/build_and_dist.dart) so that it builds for the supported platforms, then move the builds to _"dist"_ directory where the landing page would fetch and display download links for all versions.
 
 ## Support
 

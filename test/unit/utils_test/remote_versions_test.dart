@@ -4,7 +4,7 @@ import 'package:apexo/utils/remote_versions.dart';
 void main() {
   group('Remote Versions Tests', () {
     test('getLatestVersion fetches real data from GitHub', () async {
-      final result = await getLatestVersion('alselawi', 'apexo-flutter', 'dist');
+      final result = await getLatestVersion('elselawi', 'apexo', 'dist');
 
       expect(result, isA<GithubContent>());
       expect(result.name, contains('.apk'));

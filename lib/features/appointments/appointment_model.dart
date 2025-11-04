@@ -27,7 +27,10 @@ class Appointment extends Model {
 
   Patient? get patient {
     if (patientID != null && patientID!.isNotEmpty && patients.get(patientID!) == null && patientID!.length == 15) {
-      patients.set(Patient.fromJson({"id": patientID}));
+      return Patient.fromJson({
+        id: patientID,
+        title: "${patientID}temp"
+      });
     }
     return patients.get(patientID ?? "return null when null");
   }
@@ -100,6 +103,7 @@ class Appointment extends Model {
   /* 8 */ List<String> imgs = [];
   /* 9 */ DateTime date = DateTime.now();
   /* 10 */ bool isDone = false;
+  /* 10 */ Map<String, String> teeth = {};
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ operatorsIDs = List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
@@ -112,6 +116,7 @@ class Appointment extends Model {
     /* 8 */ imgs = List<String>.from(json["imgs"] ?? imgs);
     /* 9 */ date = (json["date"] != null ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt()) : date);
     /* 10 */ isDone = (json["isDone"] ?? isDone);
+    /* 11 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
   }
 
   @override
@@ -128,6 +133,7 @@ class Appointment extends Model {
     /* 8 */ if (imgs.isNotEmpty) json['imgs'] = imgs;
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
+    /* 11 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
 
     json.remove("title"); // remove since it is a computed value in this case
 

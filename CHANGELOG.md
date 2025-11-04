@@ -1,3 +1,9 @@
+
+### ____0.5.0____
+
+-   when applying a filter made it more clear
+-   adbility to set notes on a dental chart from the appointment panel (i.e. specific to an appointment)
+
 ### ____0.4.3____
 
 -   Fixed: Admin mode being activated if its a first login into any device.

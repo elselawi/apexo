@@ -28,7 +28,10 @@ class Labwork extends Model {
 
   Patient? get patient {
     if (patientID != null && patientID!.isNotEmpty && patients.get(patientID!) == null && patientID!.length == 15) {
-      patients.set(Patient.fromJson({"id": patientID}));
+      return Patient.fromJson({
+        id: patientID,
+        title: "${patientID}temp"
+      });
     }
     return patients.get(patientID ?? "");
   }

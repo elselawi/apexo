@@ -5,9 +5,10 @@ import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
-import 'package:flutter/material.dart' show showTimePicker, TimeOfDay, Card;
+import 'package:flutter/material.dart' show Card, TimeOfDay, showTimePicker;
 import 'package:intl/intl.dart' as intl;
 import '../../utils/colors_without_yellow.dart';
 import '../../utils/round.dart';
@@ -36,13 +37,16 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   });
 
   @override
-  WeekAgendaCalendarState<Item> createState() => WeekAgendaCalendarState<Item>();
+  WeekAgendaCalendarState<Item> createState() =>
+      WeekAgendaCalendarState<Item>();
 }
 
-class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgendaCalendar<Item>> {
+class WeekAgendaCalendarState<Item extends Appointment>
+    extends State<WeekAgendaCalendar<Item>> {
   CalendarFormat calendarFormat = CalendarFormat.week;
   late DateTime selectedDate;
   final now = DateTime.now();
+  late bool showPayments = false;
 
   double get calendarHeight {
     switch (calendarFormat) {
@@ -58,7 +62,8 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   @override
   void initState() {
     super.initState();
-    selectedDate = DateTime.fromMillisecondsSinceEpoch(widget.initiallySelectedDay);
+    selectedDate =
+        DateTime.fromMillisecondsSinceEpoch(widget.initiallySelectedDay);
   }
 
   void _goToToday() {
@@ -72,11 +77,15 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   }
 
   List<Item> _getItemsForSelectedDay() {
-    return widget.items.where((item) => isSameDay(selectedDate, item.date)).toList();
+    return widget.items
+        .where((item) => isSameDay(selectedDate, item.date))
+        .toList();
   }
 
   bool isSameDay(DateTime day1, DateTime day2) {
-    return day1.day == day2.day && day1.month == day2.month && day1.year == day2.year;
+    return day1.day == day2.day &&
+        day1.month == day2.month &&
+        day1.year == day2.year;
   }
 
   @override
@@ -97,7 +106,9 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
             }),
             child: Column(children: [
               _buildCurrentDayTitleBar(itemsForSelectedDay),
-              itemsForSelectedDay.isEmpty ? _buildEmptyDayMessage() : _buildAppointmentsList(itemsForSelectedDay),
+              itemsForSelectedDay.isEmpty
+                  ? _buildEmptyDayMessage()
+                  : _buildAppointmentsList(itemsForSelectedDay),
             ]),
           ),
         ),
@@ -116,7 +127,11 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
             IconButton(
                 onPressed: () => widget.onAddNew(selectedDate),
                 icon: Row(
-                  children: [const Icon(FluentIcons.add_event, size: 17), const SizedBox(width: 10), Txt(txt("add"))],
+                  children: [
+                    const Icon(FluentIcons.add_event, size: 17),
+                    const SizedBox(width: 10),
+                    Txt(txt("add"))
+                  ],
                 )),
             Row(
               children: widget.actions ?? [],
@@ -190,13 +205,20 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
                   onPressed: _goToToday,
                   iconButtonMode: IconButtonMode.large,
                   icon: Row(
-                    children: [const Icon(FluentIcons.goto_today), const SizedBox(width: 5), Txt(txt("today"))],
+                    children: [
+                      const Icon(FluentIcons.goto_today),
+                      const SizedBox(width: 5),
+                      Txt(txt("today"))
+                    ],
                   ),
                   style: ButtonStyle(
                     padding: const WidgetStatePropertyAll(EdgeInsets.all(8)),
                     shape: WidgetStatePropertyAll(RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(5),
-                        side: BorderSide(color: colorsWithoutYellow[DateTime.now().weekday - 1].withValues(alpha: 1)))),
+                        side: BorderSide(
+                            color:
+                                colorsWithoutYellow[DateTime.now().weekday - 1]
+                                    .withValues(alpha: 1)))),
                   ),
                 ),
             ],
@@ -212,7 +234,9 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
           return DayCell(day: day, type: DayCellType.selected);
         },
         markerBuilder: (context, day, events) {
-          return events.isEmpty ? null : AppointmentsNumberIndicator(events: events, day: day);
+          return events.isEmpty
+              ? null
+              : AppointmentsNumberIndicator(events: events, day: day);
         },
       ),
       onDaySelected: (newDate, focusedDay) {
@@ -222,8 +246,8 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   }
 
   Widget _buildAppointmentsList(List<Item> itemsForSelectedDay) {
-    var sortedItems = [...itemsForSelectedDay]
-      ..sort((a, b) => a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
+    var sortedItems = [...itemsForSelectedDay]..sort((a, b) =>
+        a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
     return Expanded(
       child: ListView.builder(
         padding: const EdgeInsets.only(bottom: 80),
@@ -235,6 +259,7 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
             child: AppointmentCalendarTile<Item>(
               key: WK.calendarAppointmentTile,
               context: context,
+              showPayments: showPayments,
               item: item,
               onSelect: (item) {
                 widget.onSelect(item);
@@ -266,12 +291,17 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
   }
 
   Widget _buildCurrentDayTitleBar(List<Item> itemsForSelectedDay) {
-    final df = localSettings.dateFormat.startsWith("d") == true ? "dd MMMM" : "MMMM dd";
+    final df = localSettings.dateFormat.startsWith("d") == true
+        ? "dd MMMM"
+        : "MMMM dd";
     return Container(
       decoration: BoxDecoration(
-          border: BorderDirectional(bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
+          border: BorderDirectional(
+              bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
           gradient: LinearGradient(colors: [
-            colorsWithoutYellow[selectedDate.weekday - 1].darkest.withValues(alpha: 0.08),
+            colorsWithoutYellow[selectedDate.weekday - 1]
+                .darkest
+                .withValues(alpha: 0.08),
             colorsWithoutYellow[selectedDate.weekday - 1].withValues(alpha: 0),
           ])),
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -283,6 +313,24 @@ class WeekAgendaCalendarState<Item extends Appointment> extends State<WeekAgenda
             intl.DateFormat("$df / yyyy", locale.s.$code).format(selectedDate),
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
+          if (login.isAdmin)
+            ToggleButton(
+              checked: showPayments,
+              onChanged: (x) {
+                setState(() {
+                  showPayments = x;
+                });
+              },
+              child: Row(
+                children: [
+                  showPayments
+                      ? const Icon(FluentIcons.view)
+                      : const Icon(FluentIcons.hide2),
+                  const SizedBox(width: 5),
+                  Text(txt("payments")),
+                ],
+              ),
+            )
         ],
       ),
     );
@@ -309,13 +357,19 @@ class AppointmentsNumberIndicator extends StatelessWidget {
         color: Colors.white,
         shadows: [
           ...kElevationToShadow[1]!,
-          Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 2, offset: const Offset(0, 0)),
-          Shadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 15, offset: const Offset(0, 0)),
+          Shadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 2,
+              offset: const Offset(0, 0)),
+          Shadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 15,
+              offset: const Offset(0, 0)),
           ...List.generate(
             10,
             (index) => Shadow(
-                color: colorsWithoutYellow[day.weekday - 1]
-                    .withValues(alpha: min(roundToPrecision(events.length / 30, 2), 1)),
+                color: colorsWithoutYellow[day.weekday - 1].withValues(
+                    alpha: min(roundToPrecision(events.length / 30, 2), 1)),
                 blurRadius: 1),
           )
         ],
@@ -352,8 +406,10 @@ class DayCell extends StatelessWidget {
                 ]
               : type == DayCellType.today
                   ? [
-                      colorsWithoutYellow[day.weekday - 1].withValues(alpha: 0.1),
-                      colorsWithoutYellow[day.weekday - 1].withValues(alpha: 0.2),
+                      colorsWithoutYellow[day.weekday - 1]
+                          .withValues(alpha: 0.1),
+                      colorsWithoutYellow[day.weekday - 1]
+                          .withValues(alpha: 0.2),
                     ]
                   : [
                       colorsWithoutYellow[day.weekday - 1],
@@ -365,23 +421,27 @@ class DayCell extends StatelessWidget {
       ),
       child: Center(
         child: Txt(intl.DateFormat("d", locale.s.$code).format(day),
-            style: type == DayCellType.normal ? null : const TextStyle(color: Colors.white)),
+            style: type == DayCellType.normal
+                ? null
+                : const TextStyle(color: Colors.white)),
       ),
     );
   }
 }
 
-class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget {
+class AppointmentCalendarTile<Item extends Appointment>
+    extends StatelessWidget {
   final Item item;
   final void Function(Item item) onSetTime;
   final void Function(Item item) onSelect;
-  const AppointmentCalendarTile({
-    super.key,
-    required this.context,
-    required this.item,
-    required this.onSetTime,
-    required this.onSelect,
-  });
+  final bool showPayments;
+  const AppointmentCalendarTile(
+      {super.key,
+      required this.context,
+      required this.item,
+      required this.onSetTime,
+      required this.onSelect,
+      required this.showPayments});
 
   final BuildContext context;
 
@@ -390,18 +450,22 @@ class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget 
     return Container(
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
+          bottom:
+              BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
         ),
       ),
       child: ListTile(
         title: ItemTitle(item: item),
-        subtitle: item.subtitleLine1.isNotEmpty ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis) : null,
+        subtitle: item.subtitleLine1.isNotEmpty
+            ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
+            : null,
         leading: Row(children: [
           routes.panels().where((p) => p.item.id == item.id).isNotEmpty
               ? IconButton(
                   icon: const Icon(FluentIcons.open_in_new_tab),
                   onPressed: () {
-                    final index = routes.panels().indexWhere((p) => p.item.id == item.id);
+                    final index =
+                        routes.panels().indexWhere((p) => p.item.id == item.id);
                     if (index == -1) return;
                     routes.bringPanelToFront(index);
                   })
@@ -427,12 +491,16 @@ class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget 
               children: [
                 IconButton(
                   onPressed: () async {
-                    final index = routes.panels().indexWhere((p) => p.item.id == item.id);
+                    final index =
+                        routes.panels().indexWhere((p) => p.item.id == item.id);
                     if (index > -1) return routes.bringPanelToFront(index);
                     TimeOfDay? res = await showTimePicker(
-                        context: context, initialTime: TimeOfDay(hour: item.date.hour, minute: item.date.minute));
+                        context: context,
+                        initialTime: TimeOfDay(
+                            hour: item.date.hour, minute: item.date.minute));
                     if (res != null) {
-                      item.date = DateTime(item.date.year, item.date.month, item.date.day, res.hour, res.minute);
+                      item.date = DateTime(item.date.year, item.date.month,
+                          item.date.day, res.hour, res.minute);
                       onSetTime(item);
                     }
                   },
@@ -442,7 +510,8 @@ class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget 
                           ? const Icon(FluentIcons.clock)
                           : const Icon(FluentIcons.open_in_new_tab),
                       const SizedBox(width: 5),
-                      Txt(intl.DateFormat('hh:mm a', locale.s.$code).format(item.date)),
+                      Txt(intl.DateFormat('hh:mm a', locale.s.$code)
+                          .format(item.date)),
                     ],
                   ),
                 ),
@@ -453,7 +522,12 @@ class AppointmentCalendarTile<Item extends Appointment> extends StatelessWidget 
                         item.subtitleLine2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 12),
-                      ))
+                      )),
+                if (item.paid > 0 && login.isAdmin && this.showPayments)
+                  Txt(
+                    "💵 ${item.paid.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
+                    style: const TextStyle(fontSize: 12),
+                  )
               ],
             ),
           ],

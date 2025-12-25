@@ -368,6 +368,22 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
 
   @override
   Widget build(BuildContext context) {
+    double paymentDifference = 0;
+    Patient? patient = widget.appointment.patient;
+    if (patient != null) {
+      final paymentsMade = patient.doneAppointments
+          .where((a) => a.id != widget.appointment.id)
+          .fold(0.0, (value, element) => value + element.paid);
+
+      final pricesGiven = patient.doneAppointments
+          .where((a) => a.id != widget.appointment.id)
+          .fold(0.0, (value, element) => value + element.price);
+
+      paymentDifference = pricesGiven +
+          widget.appointment.price -
+          paymentsMade -
+          widget.appointment.paid;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -388,9 +404,12 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           ),
         ),
         Expander(
-          headerBackgroundColor: WidgetStatePropertyAll(Colors.grey.withAlpha(15)),
+          headerBackgroundColor:
+              WidgetStatePropertyAll(Colors.grey.withAlpha(15)),
           leading: const Icon(FluentIcons.teeth),
-          header: InfoLabel(label: "${txt("dentalNotes")} (${widget.appointment.teeth.length}):"),
+          header: InfoLabel(
+              label:
+                  "${txt("dentalNotes")} (${widget.appointment.teeth.length}):"),
           content: DentalChart(
             patient: widget.appointment.patient!,
             appointment: widget.appointment,
@@ -490,6 +509,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             ),
           ],
         ),
+        if (paymentDifference != 0)
+          InfoBar(
+            title: Txt(
+                "${paymentDifference > 0 ? txt("underpaid") : txt("overpaid")} ${paymentDifference.abs()} ${globalSettings.get("currency_______").value}"),
+            content: Txt(txt("includesOtherAppointments")),
+            severity: InfoBarSeverity.warning,
+            isLong: true,
+          ),
         const Divider(direction: Axis.horizontal),
         Checkbox(
           checked: widget.appointment.isDone,

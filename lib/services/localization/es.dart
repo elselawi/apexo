@@ -121,6 +121,7 @@ class Es implements En {
     "underpaid": "Insuficientemente pagado",
     "overpaid": "Excesivamente pagado",
     "fullyPaid": "Completamente pagado",
+    "includesOtherAppointments": "Este total también refleja los pagos de otras citas.",
     "paymentSummary": "Resumen de pagos",
     "editingAppointment": "Editando cita",
     "after": "Después",

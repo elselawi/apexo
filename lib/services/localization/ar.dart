@@ -51,7 +51,8 @@ class Ar implements En {
     "modeAdmin": "مسؤول",
     "modeUser": "مستخدم",
     "modeOffline": "غير متصل",
-    "onceConnectionIsStable": "عندما يصبح اتصالك مستقرًا، يمكنك استخدام الزر في الزاوية اليمنى العليا لإعادة الاتصال.",
+    "onceConnectionIsStable":
+        "عندما يصبح اتصالك مستقرًا، يمكنك استخدام الزر في الزاوية اليمنى العليا لإعادة الاتصال.",
     "unRestrictedAccess": "وصول غير مقيد في التطبيق",
     "restrictedAccess": "وصول مقيد إلى بعض الصفحات كما يحدده المسؤول",
     "youAreCurrentlyIn": "أنت حاليًا في",
@@ -80,8 +81,10 @@ class Ar implements En {
     "doctorEmail": "بريد الطبيب الإلكتروني",
     "dutyDays": "أيام العمل",
     "addAppointment": "إضافة موعد",
-    "lockToUsers": "يمكن فقط للمستخدمين التاليين الوصول لمعلومات ومواعيد الطبيب وتعديلها",
-    "noUpcomingAppointmentsForThisDoctor": "لا يوجد مواعيد قادمة مسجلة لهذا الطبيب، استخدم الزر ادناه لتسجيل موعد جديد",
+    "lockToUsers":
+        "يمكن فقط للمستخدمين التاليين الوصول لمعلومات ومواعيد الطبيب وتعديلها",
+    "noUpcomingAppointmentsForThisDoctor":
+        "لا يوجد مواعيد قادمة مسجلة لهذا الطبيب، استخدم الزر ادناه لتسجيل موعد جديد",
 
     // days and months
     "monday": "الاثنين",
@@ -117,6 +120,7 @@ class Ar implements En {
     "underpaid": "دفع ناقص",
     "overpaid": "دفع زائد",
     "fullyPaid": "كامل",
+    "includesOtherAppointments": "هذا الإجمالي يعكس أيضًا المدفوعات الخاصة بمواعيد أخرى.",
     "paymentSummary": "ملخص الدفع",
     "editingAppointment": "تعديل الموعد",
     "after": "بعد",
@@ -142,11 +146,13 @@ class Ar implements En {
     "patientTags": "سمات المريض",
     "male": "ذكر",
     "female": "أنثى",
-    "noAppointmentsFound": "لم يتم العثور على مواعيد لهذا المريض، استخدم الزر أدناه لإضافة موعد جديد.",
+    "noAppointmentsFound":
+        "لم يتم العثور على مواعيد لهذا المريض، استخدم الزر أدناه لإضافة موعد جديد.",
     "editPatient": "تعديل المريض",
     "editAppointment": "تعديل الموعد",
     "patientPage": "صفحة ويب المريض",
-    "patientCanUseTheFollowing": "يمكن للمريض استخدام الرابط التالي للوصول إلى مواعيده ومدفوعاته وصوره.",
+    "patientCanUseTheFollowing":
+        "يمكن للمريض استخدام الرابط التالي للوصول إلى مواعيده ومدفوعاته وصوره.",
     "printQR": "طباعة الرمز",
     "dentalNotes": "الملاحظات السنية",
     "showPrimary": "إظهار اللبني",
@@ -180,7 +186,8 @@ class Ar implements En {
     "changeDate": "تغيير التاريخ",
     "changeTime": "تغيير الوقت",
     "attention": "انتباه",
-    "doctorNotAvailable": "قد لا يكون أحد الأطباء المحددين متاحًا في التاريخ المحدد.",
+    "doctorNotAvailable":
+        "قد لا يكون أحد الأطباء المحددين متاحًا في التاريخ المحدد.",
     "time": "الوقت",
     "preOperativeNotes": "ملاحظات ما قبل العملية",
     "selectDoctors": "اختيار الأطباء",
@@ -259,17 +266,20 @@ class Ar implements En {
 
     // settings
     "currency": "العملة",
-    "currency_desc": "رمز العملة المستخدم في جميع أنحاء التطبيق (مثل USD، EUR، IQD).",
+    "currency_desc":
+        "رمز العملة المستخدم في جميع أنحاء التطبيق (مثل USD، EUR، IQD).",
     "phone_desc": "سيتم عرض رقم الهاتف في الطباعات وصفحة ويب المرضى.",
     "prescriptionFooter": "تذييل الوصفة الطبية",
     "prescriptionFooter_desc":
         "سيتم عرض هذا النص في اسفل الوصفة الطبية، يمكن استخدامه لوضع العنوان او رقم التسجيل النقابي.",
     "language": "اللغة",
-    "language_desc": "لغة واجهة المستخدم للقوائم والأزرار والمعلومات المستخدمة في التطبيق.",
+    "language_desc":
+        "لغة واجهة المستخدم للقوائم والأزرار والمعلومات المستخدمة في التطبيق.",
     "startingDayOfWeek": "يوم بداية الأسبوع",
     "startingDayOfWeek_desc": "اليوم الذي يبدأ فيه الأسبوع.",
     "dateFormat": "تنسيق التاريخ",
-    "dateFormat_desc": "سيتم استخدام هذا التنسيق لعرض التواريخ حيثما كان ذلك ممكنًا.",
+    "dateFormat_desc":
+        "سيتم استخدام هذا التنسيق لعرض التواريخ حيثما كان ذلك ممكنًا.",
     "cacheReset": "الغاء التخزين المحلي",
     "cacheReset_desc":
         "يمكنك من خلال الزر ادناه الغاء التخزين المحلي للتطبيق - عدا الصور - لحل بعض المشاكل التي قد تواجهك اثناء المزامنة مع الأجهزة الأخرى.",
@@ -290,10 +300,12 @@ class Ar implements En {
     "restoreBackup": "استعادة النسخة الاحتياطية",
     "restoreBackupWarning1":
         "سيتم الكتابة فوق جميع البيانات في التطبيق حاليًا عند استعادة هذا النسخ الاحتياطي. أي تغييرات قمت بها بعد تاريخ هذا النسخ الاحتياطي",
-    "restoreBackupWarning2": "ستضيع.\n\nهل أنت متأكد من أنك تريد استعادة هذا النسخ الاحتياطي؟",
+    "restoreBackupWarning2":
+        "ستضيع.\n\nهل أنت متأكد من أنك تريد استعادة هذا النسخ الاحتياطي؟",
     "sureDeleteBackup": "هل أنت متأكد من أنك تريد حذف هذا النسخ الاحتياطي",
     "backupDate": "تاريخ النسخ الاحتياطي",
-    "useTheFollowingLinkToDownloadTheBackup": "استخدم الرابط التالي لتحميل النسخة الاحتياطية",
+    "useTheFollowingLinkToDownloadTheBackup":
+        "استخدم الرابط التالي لتحميل النسخة الاحتياطية",
 
     // advanced settings: Admins
     "admins": "المسؤولين",
@@ -321,7 +333,8 @@ class Ar implements En {
     // advanced settings: prod tests
     "prodTests": "اختبارات الإنتاج",
     "fileStorageTest": "اختبار تخزين الملفات",
-    "fileStorageTestDesc": "استخدم الزر التالي لاختبار ما إذا كان تخزين S3 يعمل بشكل صحيح.",
+    "fileStorageTestDesc":
+        "استخدم الزر التالي لاختبار ما إذا كان تخزين S3 يعمل بشكل صحيح.",
     "fileStorageButton": "اختبار إعداد S3",
     "fileStorageFail": "فشل إعداد S3",
     "fileStorageSuccess": "إعداد S3 يعمل بشكل صحيح",
@@ -331,7 +344,8 @@ class Ar implements En {
     "targetEmail": "البريد الإلكتروني المستهدف",
     "emailTestButton": "إرسال بريد إلكتروني تجريبي",
     "emailTestFail": "فشل اختبار البريد الإلكتروني",
-    "emailTestSuccess": "تم إرسال البريد الإلكتروني بنجاح، يرجى التحقق من بريدك الوارد.",
+    "emailTestSuccess":
+        "تم إرسال البريد الإلكتروني بنجاح، يرجى التحقق من بريدك الوارد.",
     "fail": "فشل",
     "success": "نجاح",
 
@@ -341,12 +355,15 @@ class Ar implements En {
     "serverUrl": "رابط الخادم",
     "proceedOffline": "بدون اتصال",
     "youLLGet": "ستصلك التعليمات عبر بريدك الالكتروني",
-    "beenSent": "لقد تم ارسال رابط اعادة تعيين كلمة المرور الخاص بك عبر بريدك الالكتروني",
+    "beenSent":
+        "لقد تم ارسال رابط اعادة تعيين كلمة المرور الخاص بك عبر بريدك الالكتروني",
 
     // other
-    "otherNotesPerAppointment": "هنالك ملاحظات اخرى مسجلة ضمن مواعيد محددة، تظهر في صفحة المواعيد ولا تظهر هنا.",
+    "otherNotesPerAppointment":
+        "هنالك ملاحظات اخرى مسجلة ضمن مواعيد محددة، تظهر في صفحة المواعيد ولا تظهر هنا.",
     "sureArchiveSelected": "هل انت متأكد من حذف العناصر المحددة؟",
-    "sureClosePanel": "هل انت متأكد من اغلاق هذه النافذة؟ سيتم الغاء جميع التغييرات التي قمت بها",
+    "sureClosePanel":
+        "هل انت متأكد من اغلاق هذه النافذة؟ سيتم الغاء جميع التغييرات التي قمت بها",
     "sure": "متأكد",
     "back": "تراجع",
     "firstLaunchDialogTitle": "تم تنصيب البرنامج بنجاح",

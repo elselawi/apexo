@@ -119,6 +119,7 @@ class En {
     "underpaid": "Underpaid",
     "overpaid": "Overpaid",
     "fullyPaid": "Fully paid",
+    "includesOtherAppointments": "This total also reflects payments from other appointments.",
     "paymentSummary": "Payment summary",
     "editingAppointment": "Editing Appointment",
     "after": "After",

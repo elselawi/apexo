@@ -13,7 +13,6 @@ import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/services/permissions.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
-import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/services/users.dart';
@@ -183,7 +182,7 @@ class _Routes {
           onSelect: () async {
             await doctors.synchronize();
             await patients.synchronize();
-            labworks.synchronize();
+            await appointments.synchronize();
           },
         ),
         Route(

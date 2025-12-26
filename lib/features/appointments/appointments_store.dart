@@ -1,5 +1,6 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
@@ -31,6 +32,7 @@ class Appointments extends Store<Appointment> {
 
   Map<String, Map<String, List<Appointment>>> byPatient = {};
   Map<String, Map<String, List<Appointment>>> byDoctor = {};
+  Set<String> labs = {};
 
   @override
   init() {
@@ -46,6 +48,9 @@ class Appointments extends Store<Appointment> {
         final isUpcoming = appointment.date.isAfter(DateTime.now());
         final isPast = appointment.date.isBefore(DateTime.now());
 
+        if(appointment.labName.isNotEmpty && !labs.contains(appointment.labName)) {
+          labs.add(appointment.labName);
+        }
         // build patient caches
         if (byPatient[patientID] == null) {
           byPatient[patientID] = {
@@ -130,6 +135,24 @@ class Appointments extends Store<Appointment> {
   List<String> get allPrescriptions {
     return _allPrescriptions ??= Set<String>.from(present.values.expand((doc) => doc.prescriptions)).toList();
   }
+}
+
+class LabworkItem {
+  final String appointmentId;
+  final Patient? patient;
+  final DateTime date;
+  final String laboratory;
+  final String notes;
+  final bool status;
+
+  LabworkItem({
+    required this.appointmentId,
+    required this.patient,
+    required this.date,
+    required this.laboratory,
+    required this.notes,
+    required this.status,
+  });
 }
 
 final appointments = Appointments();

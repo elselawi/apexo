@@ -1,10 +1,13 @@
 import 'package:apexo/core/model.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/doctors/doctor_model.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
+import 'package:intl/intl.dart' as intl;
+
 
 class Appointment extends Model {
   @override
@@ -21,7 +24,7 @@ class Appointment extends Model {
     } else if (patient!.title.isEmpty) {
       return "  ";
     } else {
-      return patient!.title;
+      return "${patient!.title} - ${intl.DateFormat(localSettings.dateFormat.startsWith("d") == true ? "d/MM/yyyy" : "MM/d/yyyy").format(date)}";
     }
   }
 
@@ -103,7 +106,11 @@ class Appointment extends Model {
   /* 8 */ List<String> imgs = [];
   /* 9 */ DateTime date = DateTime.now();
   /* 10 */ bool isDone = false;
-  /* 10 */ Map<String, String> teeth = {};
+  /* 11 */ Map<String, String> teeth = {};
+  /* 12 */ bool hasLabwork = false;
+  /* 13 */ String labName = "";
+  /* 14 */ String labworkNotes = "";
+  /* 15 */ bool labworkReceived = false;
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ operatorsIDs = List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
@@ -117,6 +124,10 @@ class Appointment extends Model {
     /* 9 */ date = (json["date"] != null ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt()) : date);
     /* 10 */ isDone = (json["isDone"] ?? isDone);
     /* 11 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    /* 12 */ hasLabwork = json["hasLabwork"] ?? hasLabwork;
+    /* 13 */ labName = json["labName"] ?? labName;
+    /* 14 */ labworkNotes = json["labworkNotes"] ?? labworkNotes;
+    /* 15 */ labworkReceived = json["labworkReceived"] ?? labworkReceived;
   }
 
   @override
@@ -134,6 +145,11 @@ class Appointment extends Model {
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
     /* 11 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    /* 12 */ if (hasLabwork != d.hasLabwork) json['hasLabwork'] = hasLabwork;
+    /* 13 */ if (labName != d.labName) json['labName'] = labName;
+    /* 14 */ if (labworkNotes != d.labworkNotes) json['labworkNotes'] = labworkNotes;
+    /* 15 */ if (labworkReceived != d.labworkReceived) json['labworkReceived'] = labworkReceived;
+
 
     json.remove("title"); // remove since it is a computed value in this case
 

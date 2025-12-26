@@ -67,6 +67,7 @@ class Es implements En {
     "searchPlaceholder": "Buscar...",
     "showHideArchived": "Mostrar/Ocultar archivados",
     "showing": "Mostrando",
+    "showMore": "Ver más",
     "by": "Por",
     "byTitle": "Por título",
     "byDate": "Por fecha",
@@ -128,6 +129,8 @@ class Es implements En {
     "days": "días",
     "day": "día",
     "isDone": "La cita está completada",
+    "addLabwork": "Agregar trabajo de laboratorio para esta cita y este paciente",
+    "labworksForThisAppointment": "Trabajo de laboratorio para esta cita",
 
     // patients
     "patientDetails": "Detalles del paciente",
@@ -218,6 +221,8 @@ class Es implements En {
     "orderNotes": "Notas del pedido",
     "unpaid": "No pagado",
     "noSuggestions": "Sin sugerencias",
+    "received": "Recibido del laboratorio",
+    "showReceived": "Lab. entregados",
 
     // expenses
     "expense": "Gasto",

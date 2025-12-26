@@ -403,18 +403,19 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             placeholder: "${txt("postOperativeNotes")}...",
           ),
         ),
-        Expander(
-          headerBackgroundColor:
-              WidgetStatePropertyAll(Colors.grey.withAlpha(15)),
-          leading: const Icon(FluentIcons.teeth),
-          header: InfoLabel(
-              label:
-                  "${txt("dentalNotes")} (${widget.appointment.teeth.length}):"),
-          content: DentalChart(
-            patient: widget.appointment.patient!,
-            appointment: widget.appointment,
+        if (widget.appointment.patient != null)
+          Expander(
+            headerBackgroundColor:
+                WidgetStatePropertyAll(Colors.grey.withAlpha(15)),
+            leading: const Icon(FluentIcons.teeth),
+            header: InfoLabel(
+                label:
+                    "${txt("dentalNotes")} (${widget.appointment.teeth.length}):"),
+            content: DentalChart(
+              patient: widget.appointment.patient!,
+              appointment: widget.appointment,
+            ),
           ),
-        ),
         InfoLabel(
           label: "${txt("prescription")}:",
           child: TagInputWidget(
@@ -527,7 +528,163 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           },
           content: Txt(txt("isDone")),
         ),
+        widget.appointment.hasLabwork
+            ? _buildLabworkSection()
+            : HyperlinkButton(
+              
+                style: ButtonStyle(
+                    textStyle: WidgetStatePropertyAll(
+                        FluentTheme.of(context).typography.caption)),
+                onPressed: () {
+                  setState(() {
+                    widget.appointment.hasLabwork = true;
+                  });
+                },
+                child: Row(
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const Icon(FluentIcons.manufacturing),
+                    const SizedBox(width: 15),
+                    SizedBox(width: 200, child: Txt(txt("addLabwork"), softWrap: true))
+                  ],
+                ),
+              ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+    );
+  }
+
+  Acrylic _buildLabworkSection() {
+    final theme = FluentTheme.of(context);
+    return Acrylic(
+      elevation: 50,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadiusGeometry.circular(5),
+        side: BorderSide(
+          color: widget.appointment.labworkReceived
+              ? theme.accentColor
+              : Colors.warningPrimaryColor,
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          border: BorderDirectional(
+            top: BorderSide(
+                color: widget.appointment.labworkReceived
+                    ? theme.accentColor
+                    : Colors.warningPrimaryColor,
+                width: 4),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Txt(txt("labworksForThisAppointment"),
+                    style: theme.typography.bodyStrong),
+                Tooltip(
+                  message: txt("delete"),
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.delete),
+                    onPressed: () {
+                      setState(() {
+                        widget.appointment.hasLabwork = false;
+                      });
+                    },
+                  ),
+                )
+              ],
+            ),
+            const SizedBox(height: 5),
+            const Divider(),
+            const SizedBox(height: 5),
+            Row(
+              children: [
+                Row(
+                  children: [
+                    const Icon(FluentIcons.manufacturing, size: 20),
+                    const SizedBox(width: 5),
+                    Acrylic(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(50)),
+                      elevation: 100,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 3),
+                        child: Txt(
+                          txt("laboratory"),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 5),
+                Expanded(
+                  child: AutoSuggestBox<String>(
+                    key: WK.fieldLabworkLabName,
+                    decoration: WidgetStatePropertyAll(BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.all(color: Colors.transparent))),
+                    clearButtonEnabled: false,
+                    placeholder: "${txt("laboratory")}...",
+                    noResultsFoundBuilder: (context) => Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Txt(txt("noSuggestions")),
+                    ),
+                    onChanged: (text, reason) {
+                      widget.appointment.labName = text;
+                    },
+                    controller: TextEditingController(
+                        text: widget.appointment.labName),
+                    items: appointments.labs
+                        .map((name) => AutoSuggestBoxItem<String>(
+                            value: name, label: name))
+                        .toList(),
+                  ),
+                )
+              ],
+            ),
+            const SizedBox(height: 2),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: TextFormBox(
+                    prefix: const Icon(FluentIcons.note_forward),
+                    key: WK.fieldLabworkLabName,
+                    decoration: WidgetStatePropertyAll(BoxDecoration(
+                        color: Colors.transparent,
+                        border: Border.all(color: Colors.transparent))),
+                    placeholder: "${txt("orderNotes")}...",
+                    maxLines: null,
+                    controller: TextEditingController(
+                        text: widget.appointment.labworkNotes),
+                    onChanged: (value) {
+                      widget.appointment.labworkNotes = value;
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 5),
+            Checkbox(
+              checked: widget.appointment.labworkReceived,
+              onChanged: (v) => setState(
+                  () => widget.appointment.labworkReceived = v ?? false),
+              content: Txt(txt("received")),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

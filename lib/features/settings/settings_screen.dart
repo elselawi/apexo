@@ -4,7 +4,6 @@ import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/doctors/doctors_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
-import 'package:apexo/features/labwork/labworks_store.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -180,7 +179,6 @@ class SettingsScreen extends StatelessWidget {
                         await doctors.local!.clear();
                         await patients.local!.clear();
                         await appointments.local!.clear();
-                        await labworks.local!.clear();
                         await expenses.local!.clear();
                         await globalSettings.local!.clear();
                         cacheResetState(txt("synchronizing"));

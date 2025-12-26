@@ -53,11 +53,12 @@ class WK {
   static const fieldAppointmentTime = Key("fieldAppointmentTime");
   static const fieldAppointmentPreOpNotes = Key("fieldAppointmentPreOpNotes");
   static const fieldAppointmentPostOpNotes = Key("fieldAppointmentPostOpNotes");
+  static const fieldLabworkaddition = Key("fieldLabworkaddition");
   static const fieldAppointmentPrescriptions = Key("fieldAppointmentPrescriptions");
   static const fieldAppointmentPrice = Key("fieldAppointmentPrice");
   static const fieldAppointmentPayment = Key("fieldAppointmentPayment");
   static const fieldLabworkTitle = Key("fieldLabworkTitle");
-  static const fieldLabworkDate = Key("fieldLabworkDate");
+  static const fieldLabworkAppointment = Key("fieldLabworkAppointment");
   static const fieldLabworkOrderNotes = Key("fieldLabworkOrderNotes");
   static const fieldLabworkPrice = Key("fieldLabworkPrice");
   static const fieldLabworkPaidToggle = Key("fieldLabworkPaidToggle");

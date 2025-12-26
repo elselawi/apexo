@@ -24,6 +24,7 @@ enum AppointmentSections {
   postNotes,
   dentalNotes,
   prescriptions,
+  labworks,
   pay
 }
 
@@ -56,22 +57,23 @@ class AppointmentCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (readOnly == false) Column(
-                key: WK.acSideIcons,
-                children: [
-                  _doneCheckBox(color),
-                  if (appointment.archived == true) ...[
-                    _verticalSpacing(10),
-                    const Icon(FluentIcons.archive),
-                  ] else if (appointment.isMissed == true) ...[
-                    _verticalSpacing(10),
-                    Icon(FluentIcons.event_date_missed12, color: color),
-                  ] else if (!appointment.fullPaid) ...[
-                    _verticalSpacing(10),
-                    Icon(FluentIcons.money, color: color),
+              if (readOnly == false)
+                Column(
+                  key: WK.acSideIcons,
+                  children: [
+                    _doneCheckBox(color),
+                    if (appointment.archived == true) ...[
+                      _verticalSpacing(10),
+                      const Icon(FluentIcons.archive),
+                    ] else if (appointment.isMissed == true) ...[
+                      _verticalSpacing(10),
+                      Icon(FluentIcons.event_date_missed12, color: color),
+                    ] else if (!appointment.fullPaid) ...[
+                      _verticalSpacing(10),
+                      Icon(FluentIcons.money, color: color),
+                    ],
                   ],
-                ],
-              ),
+                ),
               if (readOnly == false) _horizontalSpacing(4),
               Expanded(
                 child: Acrylic(
@@ -177,6 +179,20 @@ class AppointmentCard extends StatelessWidget {
                                   .toList(),
                             ),
                             FluentIcons.teeth,
+                            color,
+                          ),
+                        ],
+                        if (appointment.hasLabwork &&
+                            !hide.contains(AppointmentSections.labworks)) ...[
+                          ..._betweenSections,
+                          _buildSection(
+                            txt("labwork"),
+                            Txt(
+                              "${appointment.labworkNotes}\n${appointment.labworkReceived ? ("➡️ ${txt("received")}") : ("⚠️ ${txt("due")}")}",
+                              style: const TextStyle(
+                                  fontSize: 12, fontWeight: FontWeight.w500),
+                            ),
+                            FluentIcons.pill,
                             color,
                           ),
                         ],
@@ -437,13 +453,14 @@ class AppointmentCard extends StatelessWidget {
             ),
           ],
         ),
-        if(readOnly == false) IconButton(
-          icon: const Icon(FluentIcons.edit, size: 17),
-          onPressed: () {
-            openAppointment(appointment);
-          },
-          iconButtonMode: IconButtonMode.large,
-        )
+        if (readOnly == false)
+          IconButton(
+            icon: const Icon(FluentIcons.edit, size: 17),
+            onPressed: () {
+              openAppointment(appointment);
+            },
+            iconButtonMode: IconButtonMode.large,
+          )
       ],
     );
   }

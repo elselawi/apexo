@@ -66,6 +66,7 @@ class En {
     "searchPlaceholder": "Search...",
     "showHideArchived": "Show/Hide Archived",
     "showing": "Showing",
+    "showMore": "Show more",
     "by": "By",
     "byTitle": "By Title",
     "byDate": "By Date",
@@ -126,6 +127,8 @@ class En {
     "days": "days",
     "day": "day",
     "isDone": "Appointment is done",
+    "addLabwork": "Add labwork for this appointment",
+    "labworksForThisAppointment": "Labworks for this appointment",
 
     // patients
     "patientDetails": "Patient Details",
@@ -215,6 +218,8 @@ class En {
     "orderNotes": "Order notes",
     "unpaid": "Unpaid",
     "noSuggestions": "No suggestions",
+    "received": "Labwork received",
+    "showReceived": "Show received",
 
     // expenses
     "expense": "Expense",

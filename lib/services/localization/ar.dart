@@ -65,6 +65,7 @@ class Ar implements En {
     "searchPlaceholder": "بحث...",
     "showHideArchived": "إظهار/إخفاء المؤرشفة",
     "showing": "يتم إظهار",
+    "showMore": "إظهار المزيد",
     "by": "بحسب",
     "byTitle": "بحسب العنوان",
     "byDate": "بحسب التاريخ",
@@ -120,13 +121,16 @@ class Ar implements En {
     "underpaid": "دفع ناقص",
     "overpaid": "دفع زائد",
     "fullyPaid": "كامل",
-    "includesOtherAppointments": "هذا الإجمالي يعكس أيضًا المدفوعات الخاصة بمواعيد أخرى.",
+    "includesOtherAppointments":
+        "هذا الإجمالي يعكس أيضًا المدفوعات الخاصة بمواعيد أخرى.",
     "paymentSummary": "ملخص الدفع",
     "editingAppointment": "تعديل الموعد",
     "after": "بعد",
     "days": "أيام",
     "day": "يوم",
     "isDone": "تم الانتهاء منه",
+    "addLabwork": "إضافة عمل مختبري لهذا الموعد",
+    "labworksForThisAppointment": "العمل المختبري الخاص بهذا الموعد",
 
     // patients
     "patientDetails": "تفاصيل المريض",
@@ -219,6 +223,8 @@ class Ar implements En {
     "orderNotes": "ملاحظات الطلب",
     "unpaid": "غير مدفوع",
     "noSuggestions": "لا توجد اقتراحات",
+    "received": "تم الاستلام من المختبر",
+    "showReceived": "إظهار المستلم",
 
     // expenses
     "expense": "مصروف",
@@ -229,7 +235,7 @@ class Ar implements En {
     "issuer": "البائع",
     "amount": "القيمة",
     "amountIn": "المبلغ بـ",
-    "status": "حالة الدفع",
+    "status": "الحالة",
     "due": "مستحق",
     "receiptTitle": "عنوان الوصل",
     "receiptNotes": "ملاحظات الوصل",

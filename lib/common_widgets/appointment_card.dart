@@ -32,10 +32,12 @@ class AppointmentCard extends StatelessWidget {
   final List<AppointmentSections> hide;
   final String? difference;
   final int number;
+  final bool readOnly;
   const AppointmentCard(
       {super.key,
       required this.appointment,
       this.difference,
+      this.readOnly = false,
       required this.number,
       this.hide = const []});
 
@@ -54,7 +56,7 @@ class AppointmentCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
+              if (readOnly == false) Column(
                 key: WK.acSideIcons,
                 children: [
                   _doneCheckBox(color),
@@ -70,7 +72,7 @@ class AppointmentCard extends StatelessWidget {
                   ],
                 ],
               ),
-              _horizontalSpacing(4),
+              if (readOnly == false) _horizontalSpacing(4),
               Expanded(
                 child: Acrylic(
                   elevation: 100,
@@ -170,7 +172,8 @@ class AppointmentCard extends StatelessWidget {
                             Wrap(
                               spacing: 5,
                               children: appointment.teeth.keys
-                                  .map((iso) => toothHasNotes(color, iso, appointment.teeth[iso]!))
+                                  .map((iso) => toothHasNotes(
+                                      color, iso, appointment.teeth[iso]!))
                                   .toList(),
                             ),
                             FluentIcons.teeth,
@@ -415,14 +418,15 @@ class AppointmentCard extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Txt(
-              "${txt("appointment")}: $number",
-              style: TextStyle(
-                fontSize: 10,
-                color: color.withValues(alpha: 0.5),
-                fontWeight: FontWeight.bold,
+            if (number > 0)
+              Txt(
+                "${txt("appointment")}: $number",
+                style: TextStyle(
+                  fontSize: 10,
+                  color: color.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
             _verticalSpacing(3),
             Row(
               children: [
@@ -433,7 +437,7 @@ class AppointmentCard extends StatelessWidget {
             ),
           ],
         ),
-        IconButton(
+        if(readOnly == false) IconButton(
           icon: const Icon(FluentIcons.edit, size: 17),
           onPressed: () {
             openAppointment(appointment);

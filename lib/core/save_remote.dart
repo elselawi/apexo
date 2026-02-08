@@ -95,15 +95,6 @@ class SaveRemote {
     return "${DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(DateTime.fromMillisecondsSinceEpoch(input, isUtc: true))}Z";
   }
 
-  Future<String> getData(String id) async {
-    try {
-      return (await remoteRows.getOne(id)).getStringValue("data");
-    } catch (e) {
-      await checkOnline();
-      throw Exception(e);
-    }
-  }
-
   Future<VersionedResult> getSince({int version = 0}) async {
     List<Row> result = [];
 

@@ -2,12 +2,13 @@ import 'dart:convert';
 
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/dental_chart.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
+import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/imgs.dart';
+import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
@@ -409,16 +410,34 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           ),
         ),
         if (widget.appointment.patient != null)
-          Expander(
-            headerBackgroundColor:
-                WidgetStatePropertyAll(Colors.grey.withAlpha(15)),
-            leading: const Icon(FluentIcons.teeth),
-            header: InfoLabel(
-                label:
-                    "${txt("dentalNotes")} (${widget.appointment.teeth.length}):"),
-            content: DentalChart(
-              patient: widget.appointment.patient!,
-              appointment: widget.appointment,
+          InfoLabel(
+            label: "${txt("dentalNotes")}:",
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                    color: FluentTheme.of(context).shadowColor.withAlpha(50)),
+                color: FluentTheme.of(context).menuColor,
+                borderRadius: BorderRadius.circular(8),
+            
+              ),
+              padding: const EdgeInsets.all(8),
+              child: TeethSelector(
+                onNote: (x, y) {
+                  if (y != null) {
+                    widget.appointment.teeth[x] = y;
+                  } else {
+                    widget.appointment.teeth.remove(x);
+                  }
+                },
+                notation: (isoString) => isoToTextualNotation(isoString),
+                rightString: txt("right"),
+                leftString: txt("left"),
+                currentNotes: widget.appointment.teeth,
+                oldNotes:
+                    widget.appointment.patient?.allAppointmentsDentalNotes ??
+                        {},
+                showPrimary: (widget.appointment.patient?.age ?? 18) < 14,
+              ),
             ),
           ),
         InfoLabel(

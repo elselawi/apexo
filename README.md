@@ -70,3 +70,9 @@ If you insist to help:
 
 ## License
 GNU General Public License v3.0.
+
+
+
+### Next
+-  diffing objects when conflicting
+-  patient reminders and booking through telegram

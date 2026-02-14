@@ -178,6 +178,25 @@ class Es implements En {
     "exportSelected": "Exportar seleccionados",
     "noPatientsSelected": "No se han seleccionado pacientes",
 
+    // treatments
+    "treatment": "Tratamiento",
+    "allTreatments": "Todos",
+    "extraction": "Extracción",
+    "filling": "Obturación",
+    "pulpotomy": "Pulpotomía",
+    "rCT": "Endodoncia",
+    "re-RCT": "Reendodoncia",
+    "ortho": "Ortodoncia",
+    "whitening": "Blanque",
+    "clean": "Limpieza",
+    "implant": "Implante",
+    "surgery": "Cirugía",
+    "crown": "Corona",
+    "veneer": "Carilla",
+    "bridge": "Puente",
+    "overlay": "Overlay",
+    "temporary": "Temporal",
+
     // calendar (appointments)
     "allDoctors": "Todos los doctores",
     "noAppointmentsForThisDay": "No hay citas para este día",

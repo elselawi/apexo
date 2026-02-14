@@ -175,6 +175,25 @@ class En {
     "exportSelected": "Export Selected",
     "noPatientsSelected": "No patients selected",
 
+    // treatments
+    "treatment": "Treatment",
+    "allTreatments": "All Treatments",
+    "extraction": "Extraction",
+    "filling": "Filling",
+    "pulpotomy": "Pulpotomy",
+    "rCT": "RCT",
+    "re-RCT": "Re-RCT",
+    "ortho": "Orthodontic",
+    "whitening": "Whitening",
+    "clean": "Cleaning",
+    "implant": "Implant",
+    "surgery": "Surgery",
+    "crown": "Crown",
+    "veneer": "Veneer",
+    "bridge": "Bridge",
+    "overlay": "Overlay",
+    "temporary": "Temporary",
+
     // calendar (appointments)
     "allDoctors": "All doctors",
     "noAppointmentsForThisDay": "No appointments for this day",

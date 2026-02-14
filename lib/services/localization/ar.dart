@@ -179,6 +179,25 @@ class Ar implements En {
     "exportSelected": "تصدير المحدد",
     "noPatientsSelected": "لم يتم اختيار أي مرضى",
 
+    // treatments
+    "treatment": "العلاج",
+    "allTreatments": "كل العلاجات",
+    "extraction": "قلع",
+    "filling": "حشوة",
+    "pulpotomy": "بضع لب",
+    "rCT": "جذر",
+    "re-RCT": "إعادة جذر",
+    "ortho": "تقويم",
+    "whitening": "تبييض",
+    "clean": "تنظيف",
+    "implant": "زرعة",
+    "surgery": "جراحة",
+    "crown": "تاج",
+    "veneer": "قشور",
+    "bridge": "جسر",
+    "overlay": "أوفرلاي",
+    "temporary": "مؤقت",
+
     // calendar (appointments)
     "allDoctors": "جميع الأطباء",
     "noAppointmentsForThisDay": "لا توجد مواعيد لهذا اليوم",

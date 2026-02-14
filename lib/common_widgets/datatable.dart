@@ -2,7 +2,9 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/store.dart';
+import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -66,6 +68,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   int sortBy = -1;
   int sortDirection = 1;
   int slice = 10;
+  String? byTreatment;
 
   /// labels must be cached since this computation would
   /// occur too many times on every rebuild
@@ -96,6 +99,15 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
           words.length;
       if (allTermsFound) candidates.add(item);
     }
+
+    if (byTreatment != null && widget.items is List<Patient>) {
+      return candidates
+          .where((patient) => (patient as Patient)
+              .allPredefinedTreatments
+              .contains(byTreatment))
+          .toList();
+    }
+
     return candidates;
   }
 
@@ -362,6 +374,16 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               ItemTitle(
+                labels: item is Patient
+                    ? item.allPredefinedTreatments
+                        .where((x) => txOptions.any((y) => y.label == x))
+                        .toSet()
+                        .map((x) => ItemTitleLabel(
+                            string: x,
+                            color: labelToColor(x),
+                            icon: labelToIcon(x)))
+                        .toList()
+                    : [],
                 key: Key(item.id),
                 radius: widget.compact ? 1 : 20,
                 item: item,
@@ -402,6 +424,45 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   Row _buildSorters() {
     return Row(
       children: [
+        if (widget.items is List<Patient>) ...[
+          ComboBox<String>(
+            onChanged: (treatment) => setState(() => byTreatment = treatment),
+            value: byTreatment,
+            placeholder: Txt(txt("treatment")),
+            items: [
+              ComboBoxItem<String>(
+                value: null,
+                child: Txt(txt("allTreatments")),
+              ),
+              ...List.generate(
+                txOptions.length - 1,
+                (i) => ComboBoxItem<String>(
+                  value: txOptions[i].label,
+                  child: Row(
+                    children: [
+                      Icon(
+                        txOptions[i].icon,
+                        color: txOptions[i].color,
+                      ),
+                      const SizedBox(width: 5),
+                      Container(
+                          decoration: BoxDecoration(
+                              color: txOptions[i].color,
+                              borderRadius: BorderRadius.circular(8)),
+                          padding:
+                              const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Txt(
+                            txt(txOptions[i].label),
+                            style: const TextStyle(color: Colors.white),
+                          )),
+                    ],
+                  ),
+                ),
+              )
+            ],
+          ),
+          const SizedBox(width: 10)
+        ],
         _buildSortBy(),
         const SizedBox(width: 3),
         _buildSortDirectionToggle()
@@ -435,6 +496,12 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Widget _buildItemsNumIndicator() {
+    final width = MediaQuery.of(context).size.width;
+    if (routes.panels().isNotEmpty ||
+        width < 865 ||
+        (width > 1000 && width < 1150)) {
+      return const SizedBox();
+    }
     final filtered = [...filteredItems];
     return Row(
       children: [
@@ -451,12 +518,6 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   List<Widget> _buildToggleSorters(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (routes.panels().isNotEmpty ||
-        width < 865 ||
-        (width > 1000 && width < 1150)) {
-      return [];
-    }
     return [
       const SizedBox(width: 30),
       ...([widget.defaultSortingName, ...nonNullLabels])
@@ -472,8 +533,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                   },
                   style: const ToggleButtonThemeData(
                       uncheckedButtonStyle: ButtonStyle(
-                    backgroundColor:
-                        WidgetStatePropertyAll(Colors.transparent),
+                    backgroundColor: WidgetStatePropertyAll(Colors.transparent),
                   )),
                   child: Row(
                     children: [

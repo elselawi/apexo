@@ -1,15 +1,16 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
+import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/call_button.dart';
-import 'package:apexo/common_widgets/dental_chart.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -38,16 +39,31 @@ Future<Patient> openPatient([Patient? patient]) {
       PanelTab(
         title: txt("dentalNotes"),
         icon: FluentIcons.teeth,
-        body: DentalChart(patient: editingCopy),
+        body: TeethSelector(
+          onNote: (x, y) {
+            if (y != null) {
+              editingCopy.teeth[x] = y;
+            } else {
+              editingCopy.teeth.remove(x);
+            }
+          },
+          notation: (isoString) => isoToTextualNotation(isoString),
+          rightString: txt("right"),
+          leftString: txt("left"),
+          currentNotes: editingCopy.teeth,
+          oldNotes: editingCopy.allAppointmentsDentalNotes,
+          showPrimary: editingCopy.age < 14,
+        ),
       ),
-      if(login.permissions[PInt.appointments] > 0) PanelTab(
-        title: txt("appointments"),
-        icon: FluentIcons.calendar,
-        body: _PatientAppointments(editingCopy),
-        footer: AppointmentsListFooter(forPatientID: editingCopy.id),
-        onlyIfSaved: true,
-        padding: 0,
-      ),
+      if (login.permissions[PInt.appointments] > 0)
+        PanelTab(
+          title: txt("appointments"),
+          icon: FluentIcons.calendar,
+          body: _PatientAppointments(editingCopy),
+          footer: AppointmentsListFooter(forPatientID: editingCopy.id),
+          onlyIfSaved: true,
+          padding: 0,
+        ),
       PanelTab(
         title: txt("patientPage"),
         icon: FluentIcons.q_r_code,

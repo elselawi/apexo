@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:apexo/common_widgets/palmer.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
@@ -219,8 +220,7 @@ class AppointmentCard extends StatelessWidget {
                               Wrap(
                                 spacing: 5,
                                 children: appointment.teeth.keys
-                                    .map((iso) => toothHasNotes(
-                                        color, iso, appointment.teeth[iso]!))
+                                    .map((iso) => PalmerNotation(color: color, iso: iso, note: appointment.teeth[iso]!))
                                     .toList(),
                               ),
                               FluentIcons.teeth,
@@ -285,53 +285,6 @@ class AppointmentCard extends StatelessWidget {
           const SizedBox(height: 10),
           if (difference != null) _buildTimeDifference()
         ],
-      ),
-    );
-  }
-
-  Widget toothHasNotes(Color color, String iso, String note) {
-    final borderSide = BorderSide(color: color, width: 2);
-    final int isoInt = int.parse(iso);
-    String arch = iso[0];
-    String tooth = iso[1];
-
-    if (isoInt > 48) {
-      if (tooth == "1") tooth = "A";
-      if (tooth == "2") tooth = "B";
-      if (tooth == "3") tooth = "C";
-      if (tooth == "4") tooth = "D";
-      if (tooth == "5") tooth = "E";
-    }
-
-    if (arch == "5") arch = "1";
-    if (arch == "6") arch = "2";
-    if (arch == "7") arch = "3";
-    if (arch == "8") arch = "4";
-
-    final bool upper = arch == "1" || arch == "2";
-    final bool left = arch == "2" || arch == "3";
-
-    return Tooltip(
-      enableFeedback: true,
-      triggerMode: TooltipTriggerMode.tap,
-      message: note,
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withAlpha(10),
-          border: Border(
-            bottom: upper ? borderSide : BorderSide.none,
-            top: upper == false ? borderSide : BorderSide.none,
-            left: left ? borderSide : BorderSide.none,
-            right: left == false ? borderSide : BorderSide.none,
-          ),
-        ),
-        width: 20,
-        height: 20,
-        padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0),
-        child: Text(
-          tooth,
-          style: TextStyle(color: color, fontWeight: FontWeight.w700),
-        ),
       ),
     );
   }

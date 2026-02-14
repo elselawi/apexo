@@ -30,10 +30,11 @@ dependencies:
   flutter_launcher_icons: ^0.14.1
   path: ^1.9.0
   http_parser: ^4.0.2
-  teeth_selector: ^0.2.2
   package_info_plus: ^8.1.2
   image: ^4.2.0
   sentry_flutter: ^8.12.0
+  path_drawing: ^1.0.1
+  xml: ^6.5.0
   
 dev_dependencies:
   integration_test:
@@ -46,6 +47,10 @@ dev_dependencies:
   yaml: ^3.1.2
 
 flutter:
+  fonts:
+    - family: DentalIcons
+      fonts:
+        - asset: assets/fonts/DentalIcons.ttf
   uses-material-design: true
   assets:
     - assets/app_icon.png
@@ -53,3 +58,4 @@ flutter:
     - assets/images/missing.png
     - assets/fonts/readex.ttf
     - assets/fonts/readex-bold.ttf
+    - assets/fonts/DentalIcons.ttf

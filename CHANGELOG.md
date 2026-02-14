@@ -1,4 +1,9 @@
 
+### ____0.9.0____
+
+-   predefined treatment on dental chart and the user can filter patients by them
+
+
 ### ____0.8.2____
 
 -   fixed: labworks screen overflowing

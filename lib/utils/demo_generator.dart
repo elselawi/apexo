@@ -216,14 +216,22 @@ const List<String> _teeth = [
 ];
 
 const List<String> _teethNotes = [
-  "Fractured",
-  "Needs followup",
-  "SDF applied",
-  "Needs XRay",
-  "re-endo",
-  "slight mobility",
-  "deep pocket",
-  "overlay"
+  "extraction",
+  "filling",
+  "pulpotomy",
+  "rCT",
+  "re-RCT",
+  "ortho",
+  "whitening",
+  "clean",
+  "implant",
+  "surgery",
+  "crown",
+  "veneer",
+  "bridge",
+  "overlay",
+  "temporary",
+  "other",
 ];
 
 const List<String> _prescriptions = [

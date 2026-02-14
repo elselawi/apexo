@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
@@ -9,10 +10,34 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 
 class Patient extends Model {
+  List<String>? _allPredefinedTreatments;
+  List<String> get allPredefinedTreatments {
+    return _allPredefinedTreatments ??= List.from(teeth.values)
+      ..addAll((appointments.byPatient[id]?["all"] ?? [])
+          .fold<Set<String>>({}, (set, x) => set..addAll(x.teeth.values)))
+      ..where((label) => txOptions.any((x) => x.label == label))
+      ..toSet()
+      ..toList();
+  }
+
+  Map<String, String>? _allAppointmentsDentalNotesCached;
+  Map<String, String> get allAppointmentsDentalNotes {
+    return _allAppointmentsDentalNotesCached ??= Map.from(teeth)
+      ..addAll((appointments.byPatient[id]?["all"] ?? [])
+          .fold<Map<String, String>>({}, (x, y) {
+        for (var iso in y.teeth.keys) {
+          x[iso] = y.teeth[iso]!;
+        }
+        return x;
+      }));
+  }
+
   List<Appointment>? _allAppointmentsCached;
   List<Appointment> get allAppointments {
     return _allAppointmentsCached ??= (appointments.byPatient[id]?["all"] ?? [])
-        .where((appointment) => (appointment.archived != true || showArchived()) && appointment.locked == false)
+        .where((appointment) =>
+            (appointment.archived != true || showArchived()) &&
+            appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
@@ -21,21 +46,27 @@ class Patient extends Model {
   List<Appointment> get doneAppointments {
     return _doneAppointmentsCached ??= (appointments.byPatient[id]?["done"] ??
             [])
-        .where((appointment) => (appointment.archived != true || showArchived()) && appointment.locked == false)
+        .where((appointment) =>
+            (appointment.archived != true || showArchived()) &&
+            appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   List<Appointment> get upcomingAppointments {
     return (appointments.byPatient[id]?["upcoming"] ?? [])
-        .where((appointment) => (appointment.archived != true || showArchived()) && appointment.locked == false)
+        .where((appointment) =>
+            (appointment.archived != true || showArchived()) &&
+            appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
   List<Appointment> get pastAppointments {
     return (appointments.byPatient[id]?["past"] ?? [])
-        .where((appointment) => (appointment.archived != true || showArchived()) && appointment.locked == false)
+        .where((appointment) =>
+            (appointment.archived != true || showArchived()) &&
+            appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
@@ -82,10 +113,11 @@ class Patient extends Model {
     // and the patient DO have appointments
     // but those appointments doesn't have the current user as operator
     return login.permissions[PInt.patients] != 2 &&
-        (allAppointments.isNotEmpty && allAppointments
-            .where((appointment) =>
-                appointment.operatorsIDs.contains(login.currentAccountID))
-            .isEmpty);
+        (allAppointments.isNotEmpty &&
+            allAppointments
+                .where((appointment) =>
+                    appointment.operatorsIDs.contains(login.currentAccountID))
+                .isEmpty);
   }
 
   @override

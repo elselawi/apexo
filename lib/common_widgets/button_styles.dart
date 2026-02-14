@@ -23,6 +23,7 @@ class ButtonContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: size,),
         const SizedBox(width: 5),

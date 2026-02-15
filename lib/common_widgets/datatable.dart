@@ -378,7 +378,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     ? item.allPredefinedTreatments
                         .where((x) => txOptions.any((y) => y.label == x))
                         .toSet()
-                        .map((x) => ItemTitleLabel(
+                        .map((x) => TreatmentLabel(
                             string: x,
                             color: labelToColor(x),
                             icon: labelToIcon(x)))
@@ -387,6 +387,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 key: Key(item.id),
                 radius: widget.compact ? 1 : 20,
                 item: item,
+                maxWidth: 110,
               ),
               ...nonEmptyLabels.map((labelTitle) => _buildLabelPill(
                   labelTitle,

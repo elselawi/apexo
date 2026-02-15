@@ -1,6 +1,5 @@
 import 'dart:math';
-
-import 'package:apexo/common_widgets/palmer.dart';
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
@@ -217,11 +216,16 @@ class AppointmentCard extends StatelessWidget {
                           ),
                           _buildSection(
                               txt("dentalNotes"),
-                              Wrap(
-                                spacing: 5,
-                                children: appointment.teeth.keys
-                                    .map((iso) => PalmerNotation(color: color, iso: iso, note: appointment.teeth[iso]!))
-                                    .toList(),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 5),
+                                child: TreatmentLabels(
+                                    labels: appointment.teeth.entries
+                                        .map((e) => TreatmentLabel(
+                                            string: e.value,
+                                            color: labelToColor(e.value),
+                                            icon: labelToIcon(e.value),
+                                            iso: e.key))
+                                        .toList()),
                               ),
                               FluentIcons.teeth,
                               color,

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -463,7 +464,17 @@ class AppointmentCalendarTile<Item extends Appointment>
         ),
       ),
       child: ListTile(
-        title: ItemTitle(item: item),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            SizedBox(width: 180,child: ItemTitle(item: item)),
+            TreatmentLabels(labels: item.teeth.entries
+                .toSet()
+                .map((e) => TreatmentLabel(
+                    string: e.value, color: labelToColor(e.value), icon: labelToIcon(e.value), iso: e.key))
+                .toList())
+          ],
+        ),
         subtitle: item.subtitleLine1.isNotEmpty
             ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
             : null,

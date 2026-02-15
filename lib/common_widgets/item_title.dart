@@ -1,15 +1,22 @@
+import 'package:apexo/common_widgets/palmer.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/imgs.dart';
+import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/que.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../core/model.dart';
 
-class ItemTitleLabel {
+class TreatmentLabel {
   Color color;
   String string;
   IconData icon;
-  ItemTitleLabel({required this.string, required this.color, required this.icon});
+  String? iso;
+  TreatmentLabel(
+      {required this.string,
+      required this.color,
+      required this.icon,
+      this.iso});
 }
 
 class ItemTitle extends StatefulWidget {
@@ -19,7 +26,7 @@ class ItemTitle extends StatefulWidget {
   final IconData? icon;
   final Color? predefinedColor;
   final double? fontSize;
-  final List<ItemTitleLabel> labels;
+  final List<TreatmentLabel> labels;
   const ItemTitle({
     super.key,
     required this.item,
@@ -85,59 +92,134 @@ class _ItemTitleState extends State<ItemTitle> {
                 );
               }),
         const SizedBox(width: 5),
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              constraints: BoxConstraints(
-                minWidth: widget.maxWidth < 100 ? widget.maxWidth : 100,
-                maxWidth: widget.maxWidth,
-              ),
-              child: Txt(
-                widget.item.title,
-                overflow: TextOverflow.ellipsis,
-                style: FluentTheme.of(context)
-                    .typography
-                    .bodyStrong
-                    ?.copyWith(backgroundColor: color.withAlpha(25)),
-              ),
-            ),
-            if (widget.labels.isNotEmpty)
-              SizedBox(
-                width: 130,
-                height: 24,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  children: List.generate(
-                      widget.labels.length,
-                      (i) => Container(
-                          margin: const EdgeInsetsDirectional.only(end: 2),
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 3, horizontal: 5),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(8),
-                            color: widget.labels[i].color.withAlpha(120),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(widget.labels[i].icon),
-                              const SizedBox(width: 3),
-                              Txt(
-                                txt(widget.labels[i].string),
-                                style: FluentTheme.of(context)
-                                    .typography
-                                    .caption
-                                    ,
-                              ),
-                            ],
-                          ))),
+        Expanded(
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                constraints: BoxConstraints(
+                  minWidth: widget.maxWidth < 100 ? widget.maxWidth : 100,
+                  maxWidth: widget.maxWidth,
                 ),
-              )
-          ],
+                child: Txt(
+                  widget.item.title,
+                  overflow: TextOverflow.ellipsis,
+                  style: FluentTheme.of(context)
+                      .typography
+                      .bodyStrong
+                      ?.copyWith(backgroundColor: color.withAlpha(25)),
+                ),
+              ),
+              if (widget.labels.isNotEmpty)
+                TreatmentLabels(labels: widget.labels)
+            ],
+          ),
         )
       ]),
+    );
+  }
+}
+
+class TreatmentLabels extends StatelessWidget {
+  const TreatmentLabels({
+    super.key,
+    required this.labels,
+  });
+
+  final List<TreatmentLabel> labels;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 40,
+      height: 25,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        children:
+            List.generate(labels.length, (i) => _SingleLabel(label: labels[i])),
+      ),
+    );
+  }
+}
+
+class _SingleLabel extends StatelessWidget {
+  _SingleLabel({
+    required this.label,
+  });
+
+  final ctrl = FlyoutController();
+  final TreatmentLabel label;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = label.color;
+    return FlyoutTarget(
+      controller: ctrl,
+      child: GestureDetector(
+        onTap: () {
+          showTeachingTip(
+            flyoutController: ctrl,
+            placementMode: FlyoutPlacementMode.topCenter,
+            builder: (context) {
+              return TeachingTip(
+                leading: Row(
+                  children: [
+                    Icon(label.icon),
+                    const SizedBox(width: 5),
+                    const Divider(
+                      direction: Axis.vertical,
+                      style: DividerThemeData(decoration: BoxDecoration(color: Colors.grey)),
+                    ),
+                    const SizedBox(width: 5),
+                    Column(children: [
+                      Txt(txt(label.string), style: FluentTheme.of(context).typography.bodyStrong,),
+                      if (label.iso != null)
+                        Row(
+                          children: [
+                            PalmerNotation(iso: label.iso!),
+                            const SizedBox(width: 5),
+                            Txt(
+                              txt(isoToTextualNotation(label.iso!)),
+                              style: FluentTheme.of(context).typography.caption,
+                            )
+                          ],
+                        ),
+                    ])
+                  ],
+                ),
+                title: const SizedBox(),
+                subtitle: const SizedBox(),
+              );
+            },
+          );
+        },
+        child: Container(
+            margin: const EdgeInsetsDirectional.only(end: 2),
+            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 5),
+            decoration: BoxDecoration(
+                border: Border.all(
+                    color: color.withAlpha(120),
+                    style: BorderStyle.solid,
+                    width: 1),
+                borderRadius: BorderRadius.circular(8),
+                color: color.withAlpha(120),
+                boxShadow: [
+                  BoxShadow(
+                    offset: const Offset(0.0, 0),
+                    blurRadius: 15.0,
+                    spreadRadius: 3.0,
+                    color: color.withAlpha(70),
+                  )
+                ]),
+            child: Row(
+              children: [
+                Icon(label.icon, size: 18),
+              ],
+            )),
+      ),
     );
   }
 }

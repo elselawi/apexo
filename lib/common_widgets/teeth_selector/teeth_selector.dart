@@ -201,7 +201,6 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
             "tooth-iso-${widget.toothNote.key}-${widget.tooth.selected ? "selected" : "not-selected"}"),
         onTap: () {
           wheelController.showFlyout(
-            barrierColor: Colors.black.withAlpha(190),
               placementMode: FlyoutPlacementMode.auto,
               builder: (x) => ToothStateWheel(
                   onTapClose: () {

@@ -197,6 +197,7 @@ class Ar implements En {
     "bridge": "جسر",
     "overlay": "أوفرلاي",
     "temporary": "مؤقت",
+    "tap the treatment you have performed to register it to the tooth": "إضغط على العلاج الذي تم اجراءه لتسجيله على السن",
 
     // calendar (appointments)
     "allDoctors": "جميع الأطباء",

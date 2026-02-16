@@ -104,7 +104,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                               placeholder: 'Describe state...',
                               autofocus: true,
                             )
-                          : Txt(
+                          : _selectedLabel != null
+                              ? Txt(
                               txt(_selectedLabel ?? ""),
                               style: theme.typography.bodyStrong!.copyWith(
                                   backgroundColor: (txOptions
@@ -118,6 +119,14 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                           ))
                                       .color,
                                   color: Colors.white),
+                                )
+                              : Txt(
+                                  txt("tap the treatment you have performed to register it to the tooth"),
+                                  style: FluentTheme.of(context)
+                                      .typography
+                                      .caption!
+                                      .copyWith(fontStyle: FontStyle.italic),
+                                  textAlign: TextAlign.center,
                             ),
                       const SizedBox(height: 10),
                       if (_selectedLabel != null)

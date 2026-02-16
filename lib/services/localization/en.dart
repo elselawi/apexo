@@ -193,6 +193,7 @@ class En {
     "bridge": "Bridge",
     "overlay": "Overlay",
     "temporary": "Temporary",
+    "tap the treatment you have performed to register it to the tooth": "Tap the treatment you have performed to register it to the tooth",
 
     // calendar (appointments)
     "allDoctors": "All doctors",

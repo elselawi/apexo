@@ -196,6 +196,7 @@ class Es implements En {
     "bridge": "Puente",
     "overlay": "Overlay",
     "temporary": "Temporal",
+    "tap the treatment you have performed to register it to the tooth": "Toca el tratamiento realizado para registrarlo en el diente",
 
     // calendar (appointments)
     "allDoctors": "Todos los doctores",

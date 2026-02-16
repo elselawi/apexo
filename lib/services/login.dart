@@ -39,6 +39,7 @@ class _LoginService extends ObservablePersistingObject {
   PocketBase? pb;
 
   String get currentName {
+    if(accounts.list().isEmpty) return "";
     return accounts.name(
         accounts.list().firstWhere((x) => x.id == login.currentAccountID));
   }

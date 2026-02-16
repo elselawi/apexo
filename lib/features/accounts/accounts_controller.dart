@@ -148,6 +148,7 @@ class _Accounts extends ObservablePersistingObject {
   }
 
   String nameOrEmailFromID(String id) {
+    if(list().isEmpty) return "";
     final filtered = list().where((x)=>x.id == id);
     if(filtered.isEmpty) return name(list().where((x)=>x.getStringValue("type") == "admin").first);
     return name(filtered.first);

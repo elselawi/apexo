@@ -219,6 +219,7 @@ class AppointmentCard extends StatelessWidget {
                               Padding(
                                 padding: const EdgeInsets.only(top: 5),
                                 child: TreatmentLabels(
+                                    showPalmer: true,
                                     labels: appointment.teeth.entries
                                         .map((e) => TreatmentLabel(
                                             string: e.value,

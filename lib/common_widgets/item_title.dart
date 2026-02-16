@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/palmer.dart';
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/imgs.dart';
@@ -124,22 +125,27 @@ class _ItemTitleState extends State<ItemTitle> {
 }
 
 class TreatmentLabels extends StatelessWidget {
-  const TreatmentLabels({
-    super.key,
-    required this.labels,
-  });
+  const TreatmentLabels(
+      {super.key, required this.labels, this.showPalmer = false});
 
   final List<TreatmentLabel> labels;
+  final bool showPalmer;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: 40,
-      height: 25,
+      height: showPalmer ? labels.length * 35 : 25,
       child: ListView(
-        scrollDirection: Axis.horizontal,
-        children:
-            List.generate(labels.length, (i) => _SingleLabel(label: labels[i])),
+        scrollDirection: showPalmer ? Axis.vertical : Axis.horizontal,
+        children: List.generate(
+            labels.length,
+            (i) => Padding(
+                  padding: showPalmer
+                      ? const EdgeInsets.only(bottom: 4)
+                      : const EdgeInsetsGeometry.all(0),
+                  child: _SingleLabel(label: labels[i], showPalmer: showPalmer),
+                )),
       ),
     );
   }
@@ -148,10 +154,12 @@ class TreatmentLabels extends StatelessWidget {
 class _SingleLabel extends StatelessWidget {
   _SingleLabel({
     required this.label,
+    required this.showPalmer,
   });
 
   final ctrl = FlyoutController();
   final TreatmentLabel label;
+  final bool showPalmer;
 
   @override
   Widget build(BuildContext context) {
@@ -167,15 +175,19 @@ class _SingleLabel extends StatelessWidget {
               return TeachingTip(
                 leading: Row(
                   children: [
-                    Icon(label.icon),
+                    Icon(labelToIcon(label.string)),
                     const SizedBox(width: 5),
                     const Divider(
                       direction: Axis.vertical,
-                      style: DividerThemeData(decoration: BoxDecoration(color: Colors.grey)),
+                      style: DividerThemeData(
+                          decoration: BoxDecoration(color: Colors.grey)),
                     ),
                     const SizedBox(width: 5),
                     Column(children: [
-                      Txt(txt(label.string), style: FluentTheme.of(context).typography.bodyStrong,),
+                      Txt(
+                        txt(label.string),
+                        style: FluentTheme.of(context).typography.bodyStrong,
+                      ),
                       if (label.iso != null)
                         Row(
                           children: [
@@ -217,6 +229,18 @@ class _SingleLabel extends StatelessWidget {
             child: Row(
               children: [
                 Icon(label.icon, size: 18),
+                if (showPalmer) ...[
+                  const SizedBox(width: 5),
+                  Txt(txt(label.string)),
+                  Expanded(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        PalmerNotation(iso: label.iso ?? "11"),
+                      ],
+                    ),
+                  )
+                ]
               ],
             )),
       ),

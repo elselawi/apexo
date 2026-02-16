@@ -65,8 +65,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
         children: [
           // The Wheel
           Container(
-            height: 335,
-            width: 335,
+            height: 350,
+            width: 350,
             decoration: BoxDecoration(
               color: theme.menuColor,
               borderRadius: BorderRadius.circular(1000),
@@ -88,7 +88,12 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Transform.scale(scale: 1.5,child: PalmerNotation(iso: widget.iso, color: labelToColor(_selectedLabel ?? ""),)),
+                      Transform.scale(
+                          scale: 1.5,
+                          child: PalmerNotation(
+                            iso: widget.iso,
+                            color: labelToColor(_selectedLabel ?? ""),
+                          )),
                       const SizedBox(height: 10),
                       Text(
                         softWrap: true,
@@ -106,19 +111,19 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                             )
                           : _selectedLabel != null
                               ? Txt(
-                              txt(_selectedLabel ?? ""),
-                              style: theme.typography.bodyStrong!.copyWith(
-                                  backgroundColor: (txOptions
-                                              .where((x) =>
-                                                  x.label == _selectedLabel)
-                                              .firstOrNull ??
-                                          TxOption(
-                                            "label",
-                                            FluentIcons.activity_feed,
-                                            Colors.black,
-                                          ))
-                                      .color,
-                                  color: Colors.white),
+                                  txt(_selectedLabel ?? ""),
+                                  style: theme.typography.bodyStrong!.copyWith(
+                                      backgroundColor: (txOptions
+                                                  .where((x) =>
+                                                      x.label == _selectedLabel)
+                                                  .firstOrNull ??
+                                              TxOption(
+                                                "label",
+                                                FluentIcons.activity_feed,
+                                                Colors.black,
+                                              ))
+                                          .color,
+                                      color: Colors.white),
                                 )
                               : Txt(
                                   txt("tap the treatment you have performed to register it to the tooth"),
@@ -127,7 +132,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                       .caption!
                                       .copyWith(fontStyle: FontStyle.italic),
                                   textAlign: TextAlign.center,
-                            ),
+                                ),
                       const SizedBox(height: 10),
                       if (_selectedLabel != null)
                         Row(
@@ -167,13 +172,14 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                 ...List.generate(txOptions.length, (index) {
                   final double angle =
                       (index * 2 * math.pi / txOptions.length) - (math.pi / 2);
-                  const double radius = 135.0;
+                  const double radius = 147.0;
 
                   return Transform.translate(
                     offset: Offset(
                         radius * math.cos(angle), radius * math.sin(angle)),
                     child: _RadialButton(
-                      transparent: _isOtherMode && index != txOptions.length - 1,
+                      transparent:
+                          _isOtherMode && index != txOptions.length - 1,
                       state: txOptions[index],
                       isSelected: _selectedLabel == txOptions[index].label ||
                           index == txOptions.length - 1 && _isOtherMode == true,

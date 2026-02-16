@@ -101,11 +101,16 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     }
 
     if (byTreatment != null && widget.items is List<Patient>) {
-      return candidates
-          .where((patient) => (patient as Patient)
-              .allPredefinedTreatments
-              .contains(byTreatment))
-          .toList();
+      return candidates.where((patient) {
+        final Patient p = patient as Patient;
+        if (byTreatment != "bridge") {
+          return p.allPredefinedTreatments.contains(byTreatment);
+        } else {
+          return p.allPredefinedTreatments.contains("abutment") ||
+              p.allPredefinedTreatments.contains("pontic") ||
+              p.allPredefinedTreatments.contains("bridge");
+        }
+      }).toList();
     }
 
     return candidates;
@@ -376,6 +381,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               ItemTitle(
                 labels: item is Patient
                     ? item.allPredefinedTreatments
+                        .map((x) =>
+                            x == "pontic" || x == "abutment" ? "bridge" : x)
                         .where((x) => txOptions.any((y) => y.label == x))
                         .toSet()
                         .map((x) => TreatmentLabel(
@@ -436,7 +443,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 child: Txt(txt("allTreatments")),
               ),
               ...List.generate(
-                txOptions.length - 1,
+                txOptions.length - 3,
                 (i) => ComboBoxItem<String>(
                   value: txOptions[i].label,
                   child: Row(
@@ -450,8 +457,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                           decoration: BoxDecoration(
                               color: txOptions[i].color,
                               borderRadius: BorderRadius.circular(8)),
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 2),
                           child: Txt(
                             txt(txOptions[i].label),
                             style: const TextStyle(color: Colors.white),

@@ -15,8 +15,10 @@ class ColorsDictionary {
   static const crown = Color(0xFF43A047);
   static const veneer = Color(0xFF7CB342);
   static const bridge = Color(0xFFC0CA33);
-  static const overaly = Color(0xFFFDD835);
-  static const temp = Color(0xFFFB8C00);
+  static const abutment = Color(0xFFC0CA33);
+  static const pontic = Color.fromARGB(255, 202, 139, 51);
+  static const overaly = Color.fromARGB(255, 57, 209, 93);
+  static const temp = Color.fromARGB(255, 1, 207, 131);
   static const other = Color(0xFF6D4C41);
 }
 
@@ -40,9 +42,11 @@ final List<TxOption> txOptions = [
   TxOption('surgery', DentalIcons.apiceoctomy, ColorsDictionary.surgery),
   TxOption('crown', DentalIcons.crown, ColorsDictionary.crown),
   TxOption('veneer', DentalIcons.veneer, ColorsDictionary.veneer),
-  TxOption('bridge', DentalIcons.bridge, ColorsDictionary.bridge),
   TxOption('overlay', DentalIcons.overlay, ColorsDictionary.overaly),
   TxOption('temporary', DentalIcons.temp, ColorsDictionary.temp),
+  TxOption('bridge', DentalIcons.bridge, ColorsDictionary.bridge),
+  TxOption('abutment', DentalIcons.abutment, ColorsDictionary.abutment),
+  TxOption('pontic', DentalIcons.pontic, ColorsDictionary.pontic),
   TxOption('other', DentalIcons.question, ColorsDictionary.other),
 ];
 

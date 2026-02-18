@@ -339,6 +339,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
                   Text(txt("payments")),
                 ],
               ),
+                ),
+              ],
             )
         ],
       ),

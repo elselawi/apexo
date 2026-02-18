@@ -1,5 +1,5 @@
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/palmer.dart';
+import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -101,7 +101,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                     children: [
                       Transform.scale(
                           scale: 1.5,
-                          child: PalmerNotation(
+                          child: DentalNotation(
                             iso: widget.iso,
                             color: labelToColor(_selectedLabel ?? ""),
                           )),

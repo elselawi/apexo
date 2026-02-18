@@ -335,6 +335,11 @@ class Ar implements En {
     "initialSynchronization": "مزامة أولية",
     "synchronizing": "مزامنة مع الخادم",
     "clearingLocalData": "إزالة البيانات المحلية",
+    "dentalNotation": "الترقيم السني",
+    "dentalNotation_desc": "اختر نظام الترميز المفضل لديك",
+    "palmer": "بالمر",
+    "universal": "عالمي - أميريكي",
+    "ISO": "أيزو",
 
     // advanced settings: Backups
     "backups": "النسخ الاحتياطي",

@@ -1,4 +1,4 @@
-import 'package:apexo/common_widgets/palmer.dart';
+import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/svg.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -288,7 +288,7 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
                   )
                 else
                   Center(
-                      child: PalmerNotation(
+                      child: DentalNotation(
                     iso: tKey,
                     withTooltip: false,
                     color: darkMode

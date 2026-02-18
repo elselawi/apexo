@@ -326,6 +326,11 @@ class En {
     "initialSynchronization": "Initial synchronization",
     "synchronizing": "Synchronizing",
     "clearingLocalData": "Clearing local data",
+    "dentalNotation": "Dental notation",
+    "dentalNotation_desc": "choose your preferred system of notation",
+    "palmer": "Palmer",
+    "universal": "Universal",
+    "ISO": "ISO",
 
     // advanced settings: Backups
     "backups": "Backups",

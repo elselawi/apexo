@@ -118,6 +118,33 @@ class SettingsScreen extends StatelessWidget {
                 localSettings.notifyAndPersist();
               },
             ),
+            SettingsItem(
+              title: txt("dentalNotation"),
+              identifier: "dentalNotation",
+              description: txt("dentalNotation_desc"),
+              icon: FluentIcons.teeth,
+              inputType: InputType.dropDown,
+              scope: Scope.device,
+              options: [
+                ComboBoxItem(
+                  value: "p",
+                  child: Txt(txt("palmer")),
+                ),
+                ComboBoxItem(
+                  value: "u",
+                  child: Txt(txt("universal")),
+                ),
+                ComboBoxItem(
+                  value: "i",
+                  child: Txt(txt("ISO")),
+                ),
+              ],
+              initValue: localSettings.dentalNotation,
+              apply: (newVal) {
+                localSettings.dentalNotation = newVal;
+                localSettings.notifyAndPersist();
+              },
+            ),
             if (network.isOnline())
               SettingsItem(
                 title: txt("cacheReset"),

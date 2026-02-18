@@ -1,4 +1,4 @@
-import 'package:apexo/common_widgets/palmer.dart';
+import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -214,7 +214,7 @@ class SingleTreatmentLabel extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        PalmerNotation(iso: label.iso ?? "11"),
+                        DentalNotation(iso: label.iso ?? "11"),
                       ],
                     ),
                   )
@@ -249,7 +249,7 @@ class SingleTreatmentLabel extends StatelessWidget {
                 if (label.iso != null)
                   Row(
                     children: [
-                      PalmerNotation(iso: label.iso!),
+                      DentalNotation(iso: label.iso!),
                       const SizedBox(width: 5),
                       Txt(
                         txt(isoToTextualNotation(label.iso!)),

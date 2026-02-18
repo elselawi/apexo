@@ -330,6 +330,11 @@ class Es implements En {
     "initialSynchronization": "Sincronización inicial",
     "synchronizing": "Sincronizando",
     "clearingLocalData": "Limpiando datos locales",
+    "dentalNotation": "Notación dental",
+    "dentalNotation_desc": "Elija su sistema de notación preferido",
+    "palmer": "Palmer",
+    "universal": "Universal",
+    "ISO": "ISO",
 
     // advanced settings: Backups
     "backups": "Copias de seguridad",

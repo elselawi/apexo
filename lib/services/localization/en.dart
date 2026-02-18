@@ -194,6 +194,18 @@ class En {
     "overlay": "Overlay",
     "temporary": "Temporary",
     "tap the treatment you have performed to register it to the tooth": "Tap the treatment you have performed to register it to the tooth",
+    "tap the condition or history of the tooth to register it": "Tap the condition or history of the tooth to register it",
+    "missing": "Missing",
+    "caries": "Caries",
+    "fractured": "Fractured",
+    "mobility": "Mobility",
+    "recession": "Recession",
+    "rroot": "R. Root",
+    "rprimary": "R. Primary",
+    "malposition": "Malposition",
+    "impacted": "Impacted",
+    "abutment": "Abutment",
+    "pontic": "Pontic",
 
     // calendar (appointments)
     "allDoctors": "All doctors",

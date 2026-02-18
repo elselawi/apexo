@@ -2,16 +2,17 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class PalmerNotation extends StatelessWidget {
-  const PalmerNotation({
-    super.key,
-    this.color,
-    required this.iso,
-    this.note,
-  });
+  const PalmerNotation(
+      {super.key,
+      this.color,
+      required this.iso,
+      this.note,
+      this.withTooltip = true});
 
   final Color? color;
   final String iso;
   final String? note;
+  final bool withTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -37,27 +38,34 @@ class PalmerNotation extends StatelessWidget {
     final bool upper = arch == "1" || arch == "2";
     final bool left = arch == "2" || arch == "3";
 
-    return Tooltip(
-      enableFeedback: true,
-      triggerMode: TooltipTriggerMode.tap,
-      message: txt(note ?? iso),
-      child: Container(
-        decoration: BoxDecoration(
-          color: color.withAlpha(10),
-          border: Border(
-            bottom: upper ? borderSide : BorderSide.none,
-            top: upper == false ? borderSide : BorderSide.none,
-            left: left ? borderSide : BorderSide.none,
-            right: left == false ? borderSide : BorderSide.none,
-          ),
+    return withTooltip
+        ? Tooltip(
+            enableFeedback: true,
+            triggerMode: TooltipTriggerMode.tap,
+            message: txt(note ?? iso),
+            child: _content(color, upper, borderSide, left, tooth),
+          )
+        : _content(color, upper, borderSide, left, tooth);
+  }
+
+  Container _content(
+      Color color, bool upper, BorderSide borderSide, bool left, String tooth) {
+    return Container(
+      decoration: BoxDecoration(
+        color: color.withAlpha(10),
+        border: Border(
+          bottom: upper ? borderSide : BorderSide.none,
+          top: upper == false ? borderSide : BorderSide.none,
+          left: left ? borderSide : BorderSide.none,
+          right: left == false ? borderSide : BorderSide.none,
         ),
-        width: 20,
-        height: 20,
-        padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0),
-        child: Text(
-          tooth,
-          style: TextStyle(color: color, fontWeight: FontWeight.w700),
-        ),
+      ),
+      width: 20,
+      height: 20,
+      padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0),
+      child: Text(
+        tooth,
+        style: TextStyle(color: color, fontWeight: FontWeight.w700),
       ),
     );
   }

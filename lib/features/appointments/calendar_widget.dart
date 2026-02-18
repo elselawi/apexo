@@ -323,22 +323,32 @@ class WeekAgendaCalendarState<Item extends Appointment>
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           if (login.isAdmin)
-            ToggleButton(
-              checked: showPayments,
-              onChanged: (x) {
-                setState(() {
-                  showPayments = x;
-                });
-              },
-              child: Row(
-                children: [
-                  showPayments
-                      ? const Icon(FluentIcons.view)
-                      : const Icon(FluentIcons.hide2),
-                  const SizedBox(width: 5),
-                  Text(txt("payments")),
-                ],
-              ),
+            Row(
+              children: [
+                if (showPayments)
+                  Text(
+                    "💵 ${(itemsForSelectedDay as List<Appointment>).fold<double>(0, (amount, appointment) => amount + appointment.paid)} ${globalSettings.get("currency_______").value}",
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                const SizedBox(
+                  width: 5,
+                ),
+                ToggleButton(
+                  checked: showPayments,
+                  onChanged: (x) {
+                    setState(() {
+                      showPayments = x;
+                    });
+                  },
+                  child: Row(
+                    children: [
+                      showPayments
+                          ? const Icon(FluentIcons.view)
+                          : const Icon(FluentIcons.hide2),
+                      const SizedBox(width: 5),
+                      Text(txt("payments")),
+                    ],
+                  ),
                 ),
               ],
             )
@@ -469,12 +479,16 @@ class AppointmentCalendarTile<Item extends Appointment>
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(width: 180,child: ItemTitle(item: item)),
-            TreatmentLabels(labels: item.teeth.entries
-                .toSet()
-                .map((e) => TreatmentLabel(
-                    string: e.value, color: labelToColor(e.value), icon: labelToIcon(e.value), iso: e.key))
-                .toList())
+            SizedBox(width: 180, child: ItemTitle(item: item)),
+            TreatmentLabels(
+                labels: item.teeth.entries
+                    .toSet()
+                    .map((e) => TreatmentLabel(
+                        string: e.value,
+                        color: labelToColor(e.value),
+                        icon: labelToIcon(e.value),
+                        iso: e.key))
+                    .toList())
           ],
         ),
         subtitle: item.subtitleLine1.isNotEmpty

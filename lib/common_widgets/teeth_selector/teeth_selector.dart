@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/palmer.dart';
 import 'package:apexo/common_widgets/teeth_selector/svg.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -18,6 +19,7 @@ class TeethSelector extends StatefulWidget {
   final TextStyle? textStyle;
   final TextStyle? tooltipTextStyle;
   final bool showPrimary;
+  final StateType type;
 
   const TeethSelector({
     super.key,
@@ -30,6 +32,7 @@ class TeethSelector extends StatefulWidget {
     this.showPrimary = false,
     required this.notation,
     required this.onNote,
+    required this.type,
   });
 
   @override
@@ -112,12 +115,18 @@ class _TeethSelectorState extends State<TeethSelector> {
                 Positioned(
                   left: 10,
                   top: data.size.height * 0.5 - 11,
-                  child: Text(widget.rightString, style: widget.textStyle),
+                  child: Text(widget.rightString,
+                      style: (widget.textStyle ??
+                              FluentTheme.of(context).typography.bodyStrong)!
+                          .copyWith(color: Colors.grey)),
                 ),
                 Positioned(
                   right: 10,
                   top: data.size.height * 0.5 - 11,
-                  child: Text(widget.leftString, style: widget.textStyle),
+                  child: Text(widget.leftString,
+                      style: (widget.textStyle ??
+                              FluentTheme.of(context).typography.bodyStrong)!
+                          .copyWith(color: Colors.grey)),
                 ),
                 // teeth
                 for (final MapEntry(key: tKey, value: tooth)
@@ -127,6 +136,7 @@ class _TeethSelectorState extends State<TeethSelector> {
                     Positioned.fromRect(
                       rect: tooth.rect,
                       child: _SingleToothDraw(
+                        type: widget.type,
                         key: Key(widget.currentNotes.toString()),
                         toothNote: MapEntry<String, String?>(
                             tKey, widget.currentNotes[tKey]),
@@ -149,19 +159,46 @@ class _TeethSelectorState extends State<TeethSelector> {
         Wrap(
           spacing: 10,
           runSpacing: 10,
-          children: List.generate(
+          children: [
+            ...List.generate(
               allNotes.length,
-              (i) => Container(
-                  decoration: BoxDecoration(
-                      color: labelToColor(allNotes[i]),
-                      borderRadius: BorderRadius.circular(4)),
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                  child: Txt(
-                    txt(allNotes[i]),
-                    style: const TextStyle(color: Colors.white),
-                  ))),
+              (i) => _legendItem(allNotes[i], labelToIcon(allNotes[i]),
+                  labelToColor(allNotes[i]), Colors.white, context),
+            ),
+            if (widget.oldNotes.isNotEmpty)
+              _legendItem(
+                "pastAppointments",
+                WindowsIcons.history,
+                Colors.transparent,
+                FluentTheme.of(context).inactiveColor,
+                context
+              )
+          ],
         )
       ],
+    );
+  }
+
+  Container _legendItem(
+      String note, IconData icon, Color color, Color textColor, BuildContext context) {
+    return Container(
+      decoration:
+          BoxDecoration(color: color, borderRadius: BorderRadius.circular(4), border: Border.all(color: textColor)),
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: textColor),
+          const SizedBox(width: 5),
+          Txt(
+            txt(note),
+            style: FluentTheme.of(context)
+                .typography
+                .caption!
+                .copyWith(color: textColor, fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -175,6 +212,7 @@ class _SingleToothDraw extends StatefulWidget {
     required this.oldNote,
     required this.notation,
     required this.onNote,
+    required this.type,
   });
 
   final String Function(String isoString) notation;
@@ -183,6 +221,7 @@ class _SingleToothDraw extends StatefulWidget {
   final String? currentNote;
   final String? oldNote;
   final void Function(String iso, String? note) onNote;
+  final StateType type;
 
   @override
   State<_SingleToothDraw> createState() => _SingleToothDrawState();
@@ -193,39 +232,82 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
 
   @override
   Widget build(BuildContext context) {
+    final bool darkMode = FluentTheme.of(context).brightness == Brightness.dark;
+    final String? note = widget.oldNote ?? widget.currentNote;
     final tKey = widget.toothNote.key;
-    return FlyoutTarget(
-      controller: wheelController,
-      child: GestureDetector(
-        key: Key(
-            "tooth-iso-${widget.toothNote.key}-${widget.tooth.selected ? "selected" : "not-selected"}"),
-        onTap: () {
-          wheelController.showFlyout(
-              placementMode: FlyoutPlacementMode.auto,
-              builder: (x) => ToothStateWheel(
-                  onTapClose: () {
-                    wheelController.close();
-                  },
-                  iso: tKey,
-                  toothName: widget.notation(tKey),
-                  initialValue: widget.toothNote.value,
-                  onSet: (note) {
-                    wheelController.close();
-                    widget.onNote(tKey, note);
-                  }));
-        },
-        child: Tooltip(
-          message: widget.notation(tKey),
-          child: Container(
-            decoration: ShapeDecoration(
-              color: widget.currentNote != null
-                  ? labelToColor(widget.currentNote!)
-                  : widget.oldNote != null ? labelToColor(widget.oldNote!).withAlpha(100) : FluentTheme.of(context).inactiveColor.withAlpha(140),
-              shape: _ToothBorder(
-                widget.tooth.path,
-                strokeColor: Colors.transparent,
-                strokeWidth: 1,
-              ),
+    final tColor = widget.currentNote != null
+        ? labelToColor(widget.currentNote!)
+        : widget.oldNote != null
+            ? labelToColor(widget.oldNote!)
+                .withAlpha(50)
+                .toAccentColor()
+                .darkest
+            : FluentTheme.of(context).inactiveColor.withAlpha(180);
+    return Container(
+      margin: darkMode ? const EdgeInsets.all(3) : null,
+      decoration: BoxDecoration(
+        color: darkMode ? tColor : Colors.transparent,
+        borderRadius: BorderRadius.circular(100),
+      ),
+      child: FlyoutTarget(
+        controller: wheelController,
+        child: GestureDetector(
+          key: Key(
+              "tooth-iso-${widget.toothNote.key}-${widget.tooth.selected ? "selected" : "not-selected"}"),
+          onTap: () {
+            wheelController.showFlyout(
+                placementMode: FlyoutPlacementMode.auto,
+                builder: (x) => ToothStateWheel(
+                    type: widget.type,
+                    onTapClose: () {
+                      wheelController.close();
+                    },
+                    iso: tKey,
+                    toothName: widget.notation(tKey),
+                    initialValue: widget.toothNote.value,
+                    oldNote: widget.oldNote,
+                    onSet: (note) {
+                      wheelController.close();
+                      widget.onNote(tKey, note);
+                    }));
+          },
+          child: Tooltip(
+            message: widget.notation(tKey),
+            child: Stack(
+              children: [
+                if (note != null)
+                  Center(
+                    child: Icon(
+                      widget.oldNote != null && widget.currentNote == null
+                          ? WindowsIcons.history
+                          : labelToIcon(note),
+                      color: darkMode
+                          ? Colors.white
+                          : tColor.toAccentColor().darkest,
+                    ),
+                  )
+                else
+                  Center(
+                      child: PalmerNotation(
+                    iso: tKey,
+                    withTooltip: false,
+                    color: darkMode
+                        ? FluentTheme.of(context).inactiveBackgroundColor
+                        : Colors.grey,
+                  )),
+                Container(
+                  decoration: ShapeDecoration(
+                    color: FluentTheme.of(context).brightness == Brightness.dark
+                        ? Colors.transparent
+                        : tColor,
+                    shape: _ToothBorder(
+                      widget.tooth.path,
+                      strokeColor: Colors.transparent,
+                      strokeWidth: 1,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),

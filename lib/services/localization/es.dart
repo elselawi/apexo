@@ -197,6 +197,18 @@ class Es implements En {
     "overlay": "Overlay",
     "temporary": "Temporal",
     "tap the treatment you have performed to register it to the tooth": "Toca el tratamiento realizado para registrarlo en el diente",
+    "tap the condition or history of the tooth to register it": "Toque la condición o el historial del diente para registrarlo",
+    "missing": "Ausente",
+    "caries": "Caries",
+    "fractured": "Fracturado",
+    "mobility": "Movilidad",
+    "recession": "Recesión",
+    "rroot": "R. Radicular",
+    "rprimary": "R. Primario",
+    "malposition": "Malposición",
+    "impacted": "Impactado",
+    "abutment": "Pilar",
+    "pontic": "Póntico",
 
     // calendar (appointments)
     "allDoctors": "Todos los doctores",

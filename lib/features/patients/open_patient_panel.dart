@@ -1,6 +1,7 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/login.dart';
@@ -39,20 +40,33 @@ Future<Patient> openPatient([Patient? patient]) {
       PanelTab(
         title: txt("dentalNotes"),
         icon: FluentIcons.teeth,
-        body: TeethSelector(
-          onNote: (x, y) {
-            if (y != null) {
-              editingCopy.teeth[x] = y;
-            } else {
-              editingCopy.teeth.remove(x);
-            }
-          },
-          notation: (isoString) => isoToTextualNotation(isoString),
-          rightString: txt("right"),
-          leftString: txt("left"),
-          currentNotes: editingCopy.teeth,
-          oldNotes: editingCopy.allAppointmentsDentalNotes,
-          showPrimary: editingCopy.age < 14,
+        body: MStreamBuilder(
+          streams: [appointments.observableMap.stream, showArchived.stream],
+          builder: (context, asyncSnapshot) {
+            return InfoLabel(
+              label: "${txt("dentalNotes")}:",
+              child: Container(
+                decoration: BoxDecoration(borderRadius: BorderRadius.circular(5),border: Border.all(color: Colors.grey.withAlpha(100))),
+                padding: const EdgeInsets.all(4),
+                child: TeethSelector(
+                  type: StateType.state,
+                  onNote: (x, y) {
+                    if (y != null) {
+                      editingCopy.teeth[x] = y;
+                    } else {
+                      editingCopy.teeth.remove(x);
+                    }
+                  },
+                  notation: (isoString) => isoToTextualNotation(isoString),
+                  rightString: txt("right"),
+                  leftString: txt("left"),
+                  currentNotes: editingCopy.teeth,
+                  oldNotes: editingCopy.allAppointmentsDentalNotes..removeWhere((k, v)=>editingCopy.teeth.containsKey(k)),
+                  showPrimary: editingCopy.age < 14,
+                ),
+              ),
+            );
+          }
         ),
       ),
       if (login.permissions[PInt.appointments] > 0)

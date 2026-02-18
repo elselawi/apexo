@@ -383,7 +383,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     ? item.allPredefinedTreatments
                         .map((x) =>
                             x == "pontic" || x == "abutment" ? "bridge" : x)
-                        .where((x) => txOptions.any((y) => y.label == x))
+                        .where((x) => txOptions.any((y) =>y.type != StateType.state && y.label == x))
                         .toSet()
                         .map((x) => TreatmentLabel(
                             string: x,
@@ -430,6 +430,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Row _buildSorters() {
+    final treatments = txOptions.where((x) => x.type != StateType.state).toList();
     return Row(
       children: [
         if (widget.items is List<Patient>) ...[
@@ -443,29 +444,29 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                 child: Txt(txt("allTreatments")),
               ),
               ...List.generate(
-                txOptions.length - 3,
-                (i) => ComboBoxItem<String>(
-                  value: txOptions[i].label,
-                  child: Row(
-                    children: [
-                      Icon(
-                        txOptions[i].icon,
-                        color: txOptions[i].color,
-                      ),
-                      const SizedBox(width: 5),
-                      Container(
-                          decoration: BoxDecoration(
-                              color: txOptions[i].color,
-                              borderRadius: BorderRadius.circular(8)),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 2),
-                          child: Txt(
-                            txt(txOptions[i].label),
-                            style: const TextStyle(color: Colors.white),
-                          )),
-                    ],
-                  ),
-                ),
+                treatments.length - 3,
+                (i) {
+                  final o = treatments[i];
+                  return ComboBoxItem<String>(
+                    value: o.label,
+                    child: Row(
+                      children: [
+                        Icon(o.icon, color: o.color),
+                        const SizedBox(width: 5),
+                        Container(
+                            decoration: BoxDecoration(
+                                color: o.color,
+                                borderRadius: BorderRadius.circular(8)),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            child: Txt(
+                              txt(o.label),
+                              style: const TextStyle(color: Colors.white),
+                            )),
+                      ],
+                    ),
+                  );
+                },
               )
             ],
           ),

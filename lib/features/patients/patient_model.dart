@@ -10,12 +10,16 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 
 class Patient extends Model {
-  List<String>? _allPredefinedTreatments;
+  List<String>? _allPredefinedTreatmentsCached;
   List<String> get allPredefinedTreatments {
-    return _allPredefinedTreatments ??= List.from(teeth.values)
-      ..addAll((appointments.byPatient[id]?["all"] ?? [])
-          .fold<Set<String>>({}, (set, x) => set..addAll(x.teeth.values)))
-      ..where((label) => txOptions.any((x) => x.label == label))
+    return _allPredefinedTreatmentsCached ??= List.from(teeth.values)
+      ..addAll((appointments.byPatient[id]?["all"] ?? []).fold<Set<String>>(
+          {},
+          (set, x) => set
+            ..addAll((x.archived == true && showArchived() == false)
+                ? []
+                : x.teeth.values)))
+      ..where((label) => txOptions.any((x) =>x.type != StateType.state && x.label == label))
       ..toSet()
       ..toList();
   }
@@ -25,6 +29,7 @@ class Patient extends Model {
     return _allAppointmentsDentalNotesCached ??= Map.from(teeth)
       ..addAll((appointments.byPatient[id]?["all"] ?? [])
           .fold<Map<String, String>>({}, (x, y) {
+        if ((y.archived == true && showArchived() == false)) return x;
         for (var iso in y.teeth.keys) {
           x[iso] = y.teeth[iso]!;
         }
@@ -196,7 +201,10 @@ class Patient extends Model {
     nullifyCachedAppointments(_) {
       _doneAppointmentsCached = null;
       _allAppointmentsCached = null;
+      _allPredefinedTreatmentsCached = null;
+      _allAppointmentsDentalNotesCached = null;
       _daysSinceLastAppointmentCached = null;
+
       _labelsCached = {};
     }
 

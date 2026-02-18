@@ -12,14 +12,18 @@ class ToothStateWheel extends StatefulWidget {
   final String? initialValue;
   final ValueChanged<String?> onSet;
   final VoidCallback onTapClose;
+  final String? oldNote;
+  final StateType type;
 
   const ToothStateWheel({
     super.key,
-    this.initialValue,
+    required this.initialValue,
     required this.iso,
     required this.toothName,
     required this.onSet,
     required this.onTapClose,
+    required this.oldNote,
+    required this.type,
   });
 
   @override
@@ -30,6 +34,13 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   String? _selectedLabel;
   bool _isOtherMode = false;
   final TextEditingController _otherController = TextEditingController();
+
+  final treatments = txOptions.where((x) => x.type != StateType.state).toList();
+  final states = txOptions.where((x) => x.type != StateType.treatment).toList();
+
+  List<TxOption> get options {
+    return widget.type == StateType.state ? states : treatments;
+  }
 
   @override
   void initState() {
@@ -113,20 +124,16 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                               ? Txt(
                                   txt(_selectedLabel ?? ""),
                                   style: theme.typography.bodyStrong!.copyWith(
-                                      backgroundColor: (txOptions
-                                                  .where((x) =>
-                                                      x.label == _selectedLabel)
-                                                  .firstOrNull ??
-                                              TxOption(
-                                                "label",
-                                                FluentIcons.activity_feed,
-                                                Colors.black,
-                                              ))
-                                          .color,
+                                      backgroundColor:
+                                          labelToColor(_selectedLabel ?? ""),
                                       color: Colors.white),
                                 )
                               : Txt(
-                                  txt("tap the treatment you have performed to register it to the tooth"),
+                                  widget.type == StateType.state
+                                      ? txt(
+                                          "tap the condition or history of the tooth to register it")
+                                      : txt(
+                                          "tap the treatment you have performed to register it to the tooth"),
                                   style: FluentTheme.of(context)
                                       .typography
                                       .caption!
@@ -169,28 +176,27 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                   ),
                 ),
                 // The Buttons
-                ...List.generate(txOptions.length, (index) {
+                ...List.generate(options.length, (index) {
                   final double angle =
-                      (index * 2 * math.pi / txOptions.length) - (math.pi / 2);
+                      (index * 2 * math.pi / options.length) - (math.pi / 2);
                   const double radius = 147.0;
-
+                  final o = options[index];
                   return Transform.translate(
                     offset: Offset(
                         radius * math.cos(angle), radius * math.sin(angle)),
                     child: _RadialButton(
-                      transparent:
-                          _isOtherMode && index != txOptions.length - 1,
-                      state: txOptions[index],
-                      isSelected: _selectedLabel == txOptions[index].label ||
-                          index == txOptions.length - 1 && _isOtherMode == true,
+                      transparent: _isOtherMode && index != options.length - 1,
+                      state: o,
+                      isSelected: _selectedLabel == o.label ||
+                          index == options.length - 1 && _isOtherMode == true,
                       onTap: () {
-                        if (index == txOptions.length - 1) {
+                        if (index == options.length - 1) {
                           setState(() {
                             _selectedLabel = "";
                             _isOtherMode = true;
                           });
                         } else {
-                          _select(txOptions[index].label);
+                          _select(o.label);
                         }
                       },
                     ),
@@ -221,7 +227,7 @@ class _RadialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: state.label,
+      message: txt(state.label),
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(

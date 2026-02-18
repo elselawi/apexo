@@ -4,6 +4,7 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
+import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
@@ -422,6 +423,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               ),
               padding: const EdgeInsets.all(8),
               child: TeethSelector(
+                type: StateType.treatment,
                 onNote: (x, y) {
                   if (y != null) {
                     widget.appointment.teeth[x] = y;
@@ -434,8 +436,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 leftString: txt("left"),
                 currentNotes: widget.appointment.teeth,
                 oldNotes:
-                    widget.appointment.patient?.allAppointmentsDentalNotes ??
-                        {},
+                    (widget.appointment.patient?.allAppointmentsDentalNotes ??
+                        {})..removeWhere((key, val)=>widget.appointment.teeth.containsKey(key)),
                 showPrimary: (widget.appointment.patient?.age ?? 18) < 14,
               ),
             ),

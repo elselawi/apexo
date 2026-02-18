@@ -125,9 +125,14 @@ class _ItemTitleState extends State<ItemTitle> {
 }
 
 class TreatmentLabels extends StatelessWidget {
-  const TreatmentLabels(
-      {super.key, required this.labels, this.showPalmer = false});
+  const TreatmentLabels({
+    super.key,
+    required this.labels,
+    this.showPalmer = false,
+    this.showToolTip = true,
+  });
 
+  final bool showToolTip;
   final List<TreatmentLabel> labels;
   final bool showPalmer;
 
@@ -144,22 +149,31 @@ class TreatmentLabels extends StatelessWidget {
                   padding: showPalmer
                       ? const EdgeInsets.only(bottom: 4)
                       : const EdgeInsetsGeometry.all(0),
-                  child: _SingleLabel(label: labels[i], showPalmer: showPalmer),
+                  child: SingleTreatmentLabel(
+                    label: labels[i],
+                    showPalmer: showPalmer,
+                    showToolTip: showToolTip,
+                  ),
                 )),
       ),
     );
   }
 }
 
-class _SingleLabel extends StatelessWidget {
-  _SingleLabel({
+class SingleTreatmentLabel extends StatelessWidget {
+  SingleTreatmentLabel({
+    super.key,
     required this.label,
     required this.showPalmer,
+    required this.showToolTip,
+    this.endMargin = 2,
   });
 
   final ctrl = FlyoutController();
   final TreatmentLabel label;
   final bool showPalmer;
+  final bool showToolTip;
+  final double endMargin;
 
   @override
   Widget build(BuildContext context) {
@@ -167,49 +181,13 @@ class _SingleLabel extends StatelessWidget {
     return FlyoutTarget(
       controller: ctrl,
       child: GestureDetector(
-        onTap: () {
-          showTeachingTip(
-            flyoutController: ctrl,
-            placementMode: FlyoutPlacementMode.topCenter,
-            builder: (context) {
-              return TeachingTip(
-                leading: Row(
-                  children: [
-                    Icon(labelToIcon(label.string)),
-                    const SizedBox(width: 5),
-                    const Divider(
-                      direction: Axis.vertical,
-                      style: DividerThemeData(
-                          decoration: BoxDecoration(color: Colors.grey)),
-                    ),
-                    const SizedBox(width: 5),
-                    Column(children: [
-                      Txt(
-                        txt(label.string),
-                        style: FluentTheme.of(context).typography.bodyStrong,
-                      ),
-                      if (label.iso != null)
-                        Row(
-                          children: [
-                            PalmerNotation(iso: label.iso!),
-                            const SizedBox(width: 5),
-                            Txt(
-                              txt(isoToTextualNotation(label.iso!)),
-                              style: FluentTheme.of(context).typography.caption,
-                            )
-                          ],
-                        ),
-                    ])
-                  ],
-                ),
-                title: const SizedBox(),
-                subtitle: const SizedBox(),
-              );
-            },
-          );
-        },
+        onTap: showToolTip
+            ? () {
+                _showTreatmentLabelDetails();
+              }
+            : null,
         child: Container(
-            margin: const EdgeInsetsDirectional.only(end: 2),
+            margin: EdgeInsetsDirectional.only(end: endMargin),
             padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 5),
             decoration: BoxDecoration(
                 border: Border.all(
@@ -244,6 +222,48 @@ class _SingleLabel extends StatelessWidget {
               ],
             )),
       ),
+    );
+  }
+
+  Future<Object?> _showTreatmentLabelDetails() {
+    return showTeachingTip(
+      flyoutController: ctrl,
+      placementMode: FlyoutPlacementMode.topCenter,
+      builder: (context) {
+        return TeachingTip(
+          leading: Row(
+            children: [
+              Icon(labelToIcon(label.string)),
+              const SizedBox(width: 5),
+              const Divider(
+                direction: Axis.vertical,
+                style: DividerThemeData(
+                    decoration: BoxDecoration(color: Colors.grey)),
+              ),
+              const SizedBox(width: 5),
+              Column(children: [
+                Txt(
+                  txt(label.string),
+                  style: FluentTheme.of(context).typography.bodyStrong,
+                ),
+                if (label.iso != null)
+                  Row(
+                    children: [
+                      PalmerNotation(iso: label.iso!),
+                      const SizedBox(width: 5),
+                      Txt(
+                        txt(isoToTextualNotation(label.iso!)),
+                        style: FluentTheme.of(context).typography.caption,
+                      )
+                    ],
+                  ),
+              ])
+            ],
+          ),
+          title: const SizedBox(),
+          subtitle: const SizedBox(),
+        );
+      },
     );
   }
 }

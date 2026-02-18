@@ -73,6 +73,11 @@ GNU General Public License v3.0.
 
 
 
+##  before realseasing 1
+- labels translation
+- app hangs up when resync appointments
+- bug when editing a tooth note through a text field on mobile
+
 ### Next
--  diffing objects when conflicting
 -  patient reminders and booking through telegram
+- payments total for each day in the calendar widget

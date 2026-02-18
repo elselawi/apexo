@@ -1,4 +1,12 @@
 
+### ____0.9.1____
+
+-   UI & UX improvements on the dental chart and treatment filtering system
+-   fixed some errors happening when offline
+-   dental notation can be switched from the settings
+-   viewing day total payments in the calendar widget
+
+
 ### ____0.9.0____
 
 -   predefined treatment on dental chart and the user can filter patients by them

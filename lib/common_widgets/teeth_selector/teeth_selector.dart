@@ -166,23 +166,24 @@ class _TeethSelectorState extends State<TeethSelector> {
             ),
             if (widget.oldNotes.isNotEmpty)
               _legendItem(
-                "pastAppointments",
-                WindowsIcons.history,
-                Colors.transparent,
-                FluentTheme.of(context).inactiveColor,
-                context
-              )
+                  "pastAppointments",
+                  WindowsIcons.history,
+                  Colors.transparent,
+                  FluentTheme.of(context).inactiveColor,
+                  context)
           ],
         )
       ],
     );
   }
 
-  Container _legendItem(
-      String note, IconData icon, Color color, Color textColor, BuildContext context) {
+  Container _legendItem(String note, IconData icon, Color color,
+      Color textColor, BuildContext context) {
     return Container(
-      decoration:
-          BoxDecoration(color: color, borderRadius: BorderRadius.circular(4), border: Border.all(color: textColor)),
+      decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: textColor)),
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -254,21 +255,19 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
           key: Key(
               "tooth-iso-${widget.toothNote.key}-${widget.tooth.selected ? "selected" : "not-selected"}"),
           onTap: () {
-            wheelController.showFlyout(
-                placementMode: FlyoutPlacementMode.auto,
-                builder: (x) => ToothStateWheel(
-                    type: widget.type,
-                    onTapClose: () {
-                      wheelController.close();
-                    },
-                    iso: tKey,
-                    toothName: widget.notation(tKey),
-                    initialValue: widget.toothNote.value,
-                    oldNote: widget.oldNote,
-                    onSet: (note) {
-                      wheelController.close();
-                      widget.onNote(tKey, note);
-                    }));
+            if (MediaQuery.of(context).size.width > 900) {
+              wheelController.showFlyout(
+                builder: (context) => _showStateWheel(context, tKey),
+                barrierDismissible: true,
+                dismissWithEsc: true,
+              );
+              return;
+            }
+            showDialog(
+                barrierDismissible: true,
+                dismissWithEsc: true,
+                context: context,
+                builder: (context) => _showStateWheel(context, tKey));
           },
           child: Tooltip(
             message: widget.notation(tKey),
@@ -312,6 +311,22 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
         ),
       ),
     );
+  }
+
+  Widget _showStateWheel(BuildContext context, String tKey) {
+    return ToothStateWheel(
+        type: widget.type,
+        onTapClose: () {
+          Navigator.pop(context);
+        },
+        iso: tKey,
+        toothName: widget.notation(tKey),
+        initialValue: widget.toothNote.value,
+        oldNote: widget.oldNote,
+        onSet: (note) {
+          Navigator.pop(context);
+          widget.onNote(tKey, note);
+        });
   }
 }
 

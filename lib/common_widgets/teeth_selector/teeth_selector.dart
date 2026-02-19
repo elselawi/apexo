@@ -59,7 +59,6 @@ class _TeethSelectorState extends State<TeethSelector> {
             iso.startsWith("7") ||
             iso.startsWith("8"));
     super.initState();
-    super.initState();
   }
 
   @override

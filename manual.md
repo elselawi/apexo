@@ -113,23 +113,42 @@ Once you have the information, go to the "settings" page and then "Files storage
 
 ## How to use
 
-### Doctors
+### Accounts
 
-Creating doctors is useful if the clinic has more than one doctor, this would be useful for doctors to see and filter their own patients, appointments, statistics. It would also be useful if you want to show data only to specific users of the application, as you'll see below.
+In apexo, each user can have its own account. Account can be for an operator (doctor, hygienist, etc.) or for a non-operator (accountant, administrator, secretary, etc.). An account can be either an admin (where it has access to all features) or a regular user (where it has access to specific features based on permissions).
+
 
 ### Patients
 
-Create a record for each patient in the clinic. Each patient can have their basic information like name, phone number, address, medical history etc. You can also add specific tags to each patient to make it easier to filter them.
+- Create a record for each patient in the clinic. Each patient can have their basic information like name, phone number, address, medical history etc. You can also add specific tags to each patient to make it easier to filter them.
 
-Each patient also have "Dental chart" where you can store notes specific to a tooth of this patient.
+- Each patient also have "Dental chart" where you can store notes specific to a tooth of this patient. This chart usually can be used to register dental history, **not** treatments that has been done in your clinic, for your clinic's treatments, you should use appointments.
 
-Each patient would also have a list of appointments, where you can see each appointment details, notes, payment status, photos, prescriptions and more.
+- Each patient would also have a list of appointments, where you can see each appointment details, notes, payment status, photos, prescriptions and more.
 
-Finally, for each patient, the application would generate a link that the patient can use to see their appointments and photos stores to on their appointments.
+- Finally, for each patient, the application would generate a link that the patient can use to see their appointments and photos stores to on their appointments.
 
 ### Appointment
 
-After creating a patient, you can create an appointment for them. You can set the date, time, payment, and notes. You can also add photos to the appointment.
+After creating a patient, you can create an appointment for them. The appointment is divided to three sections:
+- Pre-op
+    - Patient name
+    - Doctor
+    - Date
+    - Time
+    - Pre-operative notes
+- Post-op
+    - Post-operative notes
+    - Dental notes on a dental chart
+    - Prescriptions
+    - Price & payment status
+    - Labwork related to this appointment
+- Photos
+    - Photos of the appointment (before and after)
+
+### Labworks
+
+Labworks are used to track labwork orders, their date, and whether they are delivered or not. They can only be registered from the appointment page by clicking on "Add labwork for this appointment" at the bottom of the "operative details" page.
 
 ### Statistics
 
@@ -143,7 +162,13 @@ Each labwork can be tied to a specific patient, and specific doctor.
 
 ### Manage expenses and receipts
 
-You can also track expenses and receipts. In the expenses screen add receipts that can hold information such as the date, amount, description, items, and more.
+To begin resitering expenses and receipts, go to the "expenses" page and add "supplier" first. Then you can add expenses and receipts under this supplier. Each supplier will appear as a folder icon, and when you open it a new window would open that contains two categories:
+
+- Unpaid orders
+- Paid orders
+
+Each order can be marked as paid or unpaid, and each receipt can be attached to an order as an image.
+
 
 ### Setting
 
@@ -177,28 +202,10 @@ Set the date format to be used in the application. It can be "day/month/year" or
 
 This setting would only be saved on the device that you're using. It would not be synced with the server.
 
+#### Dental notation
+
+Set the dental notation system to be used in the application. It can be "ISO", "Palmer", or "Universal".
+
 #### Backups/Restore
 
 You can use this section to see the backups that have been made and restore them. You can also create a new backup, and upload a backup from your device.
-
-#### Administrators
-
-You can add administrators to the application. Administrators can access all the features of the application and can also add other administrators.
-
-They also have unrestricted access to the whole application and its data.
-
-#### Users
-
-Other than administrators, you can also add users to the application. Users can only access the features that are available to them.
-
-Typically doctors, secretaries, and receptionists would all be users.
-
-#### Permission
-
-You can set the permissions for each user. For example you can set that users can not see statistics (only admins would).
-
-#### Locking doctor to users
-
-After creating doctors and users, you can lock a doctor appointments to be seen only by a specific set of users. To do this, go to the "Doctors" page and click on the doctor you want to lock, then write the email addresses of the users that are allowed to see the appointments of this doctor.
-
-If this field is empty, then all users would be able to see the appointments of this doctor.

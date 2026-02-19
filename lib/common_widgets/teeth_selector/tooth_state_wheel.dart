@@ -117,8 +117,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                       _isOtherMode
                           ? CupertinoTextField(
                               controller: _otherController,
-                              placeholder: 'Describe state...',
                               autofocus: true,
+                              style: theme.typography.bodyStrong!,
                             )
                           : _selectedLabel != null
                               ? Txt(

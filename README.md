@@ -66,18 +66,17 @@ If you insist to help:
 - Pray for peace and better future in the middle east.
 
 
+## Roadmap
+
+The roadmap is not written in stone, but here are some ideas that I have in mind:
+- Patient reminders and booking through telegram
+- Voice notes in patient records
+- Google calendar integration
+- Payment and installement plan setup
+- SMS/WhatsApp reminders
+
+
 #### Built with ❤️ in Mosul, Iraq.
 
 ## License
 GNU General Public License v3.0.
-
-
-
-##  before realseasing 1
-- labels translation
-- app hangs up when resync appointments
-- bug when editing a tooth note through a text field on mobile
-
-### Next
--  patient reminders and booking through telegram
-- payments total for each day in the calendar widget

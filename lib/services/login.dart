@@ -83,7 +83,9 @@ class _LoginService extends ObservablePersistingObject {
     email = "";
     password = "";
     token = "";
-    pb!.authStore.clear();
+    if(pb != null) {
+      pb!.authStore.clear();
+    }
     notifyAndPersist();
     routes.panels([]);
     return loginCtrl.finishedLoginProcess();

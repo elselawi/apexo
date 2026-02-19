@@ -30,44 +30,54 @@ class Appointments extends Store<Appointment> {
           },
         );
 
-  Map<String, Map<String, List<Appointment>>> byPatient = {};
+  Map<String, Map<String, List<Appointment>>>? _byPatientCache;
+  Map<String, Map<String, List<Appointment>>> get byPatient {
+    if (_byPatientCache != null) {
+      return _byPatientCache!;
+    }
+    final newCache = <String, Map<String, List<Appointment>>>{};
+    final now = DateTime.now();
+    for (var appointment in observableMap.values) {
+      final patientID = appointment.patientID ?? "";
+      final isDone = appointment.isDone;
+      final isUpcoming = appointment.date.isAfter(now);
+      final isPast = appointment.date.isBefore(now);
+
+      if (appointment.hasLabwork && appointment.labName.isNotEmpty) {
+        labs.add(appointment.labName);
+      }
+      // build patient caches
+      if (newCache[patientID] == null) {
+        newCache[patientID] = {
+          "upcoming": [],
+          "done": [],
+          "past": [],
+          "all": [],
+        };
+      }
+      newCache[patientID]!["all"]!.add(appointment);
+      if (isUpcoming) {
+        newCache[patientID]!["upcoming"]!.add(appointment);
+      } else if (isDone) {
+        newCache[patientID]!["done"]!.add(appointment);
+      }
+      if (isPast) {
+        newCache[patientID]!["past"]!.add(appointment);
+      }
+    }
+    _byPatientCache = newCache;
+    return newCache;
+  }
+
   Set<String> labs = {};
 
   @override
   init() {
     super.init();
 
-    observableMap.observe((_) => _allPrescriptions = null);
     observableMap.observe((_) {
-      byPatient = {};
-      for (var appointment in observableMap.values) {
-        final patientID = appointment.patientID ?? "";
-        final isDone = appointment.isDone;
-        final isUpcoming = appointment.date.isAfter(DateTime.now());
-        final isPast = appointment.date.isBefore(DateTime.now());
-
-        if (appointment.labName.isNotEmpty) {
-          labs.add(appointment.labName);
-        }
-        // build patient caches
-        if (byPatient[patientID] == null) {
-          byPatient[patientID] = {
-            "upcoming": [],
-            "done": [],
-            "past": [],
-            "all": [],
-          };
-        }
-        byPatient[patientID]!["all"]!.add(appointment);
-        if (isUpcoming) {
-          byPatient[patientID]!["upcoming"]!.add(appointment);
-        } else if (isDone) {
-          byPatient[patientID]!["done"]!.add(appointment);
-        }
-        if (isPast) {
-          byPatient[patientID]!["past"]!.add(appointment);
-        }
-      }
+      _byPatientCache = null;
+      _allPrescriptions = null;
     });
     login.activators[_storeName] = () async {
       await loaded;
@@ -105,8 +115,8 @@ class Appointments extends Store<Appointment> {
 
   Map<String, Appointment> get filtered {
     if (filterByOperatorID().isEmpty) return present;
-    return Map<String, Appointment>.fromEntries(present.entries
-        .where((entry) => entry.value.operatorsIDs.contains(filterByOperatorID())));
+    return Map<String, Appointment>.fromEntries(present.entries.where(
+        (entry) => entry.value.operatorsIDs.contains(filterByOperatorID())));
   }
 
   List<String>? _allPrescriptions;
@@ -133,7 +143,7 @@ class LabworkItem {
     required this.laboratory,
     required this.notes,
     required this.status,
-    required this.operators
+    required this.operators,
   });
 }
 

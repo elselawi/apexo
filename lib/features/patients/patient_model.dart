@@ -152,31 +152,31 @@ class Patient extends Model {
   Map<String, String> get labels {
     if (_labelsCached.isNotEmpty) return _labelsCached;
 
-    _labelsCached["Age"] = (DateTime.now().year - birth).toString();
+    _labelsCached["age"] = (DateTime.now().year - birth).toString();
 
     if (daysSinceLastAppointment == null) {
-      _labelsCached["Last visit"] = txt("noVisits");
+      _labelsCached["lastVisit"] = txt("noVisits");
     } else {
-      _labelsCached["Last visit"] =
+      _labelsCached["lastVisit"] =
           "$daysSinceLastAppointment ${txt("daysAgo")}";
     }
 
     if (gender == 0) {
-      _labelsCached["Gender"] = "♀";
+      _labelsCached["gender"] = "♀";
     } else {
-      _labelsCached["Gender"] = "♂️";
+      _labelsCached["gender"] = "♂️";
     }
 
     if (outstandingPayments > 0) {
-      _labelsCached["Pay"] = "${txt("underpaid")}🔻";
+      _labelsCached["pay"] = "${txt("underpaid")}🔻";
     }
 
     if (outstandingPayments < 0) {
-      _labelsCached["Pay"] = "${txt("overpaid")}🔺";
+      _labelsCached["pay"] = "${txt("overpaid")}🔺";
     }
 
     if (paymentsMade != 0) {
-      _labelsCached["Total payments"] = "$paymentsMade";
+      _labelsCached["totalPayments"] = "$paymentsMade";
     }
 
     for (var i = 0; i < tags.length; i++) {

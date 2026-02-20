@@ -154,6 +154,8 @@ class En {
     "editAppointment": "Edit Appointment",
     "patientPage": "Patient Web Page",
     "patientCanUseTheFollowing": "Patient can use the following link to access his appointments, payments and photos.",
+    "web": "Web",
+    "telegram": "Telegram",
     "printQR": "Print QR Code",
     "dentalNotes": "Dental Notes",
     "showPrimary": "Show Primary",

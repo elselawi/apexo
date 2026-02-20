@@ -158,6 +158,8 @@ class Es implements En {
     "patientPage": "Página web del paciente",
     "patientCanUseTheFollowing": "El paciente puede usar el siguiente enlace para acceder a sus citas, pagos y fotos.",
     "printQR": "Imprimir código QR",
+    "web": "Web",
+    "telegram": "Telegram",
     "dentalNotes": "Notas dentales",
     "showPrimary": "Mostrar principal",
     "showPermanent": "Mostrar permanente",

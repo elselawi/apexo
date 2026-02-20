@@ -19,7 +19,8 @@ class Patient extends Model {
             ..addAll((x.archived == true && showArchived() == false)
                 ? []
                 : x.teeth.values)))
-      ..where((label) => txOptions.any((x) =>x.type != StateType.state && x.label == label))
+      ..where((label) =>
+          txOptions.any((x) => x.type != StateType.state && x.label == label))
       ..toSet()
       ..toList();
   }
@@ -142,8 +143,12 @@ class Patient extends Model {
     return appointmentsWithImages.first.id;
   }
 
-  get webPageLink {
-    return "https://patient.apexo.app/${encode("$id|$title|${login.url}")}";
+  String webPageLink(String language) {
+    return "https://patient.apexo.app/${encode("$id|$title|${login.url}|$language")}";
+  }
+
+  String telegramLink(String language) {
+    return "https://t.me/apexoappbot?start=${encode("$id|$title|${login.url}|$language")}";
   }
 
   Map<String, String> _labelsCached = {};

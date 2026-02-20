@@ -41,33 +41,35 @@ Future<Patient> openPatient([Patient? patient]) {
         title: txt("dentalNotes"),
         icon: FluentIcons.teeth,
         body: MStreamBuilder(
-          streams: [appointments.observableMap.stream, showArchived.stream],
-          builder: (context, asyncSnapshot) {
-            return InfoLabel(
-              label: "${txt("dentalNotes")}:",
-              child: Container(
-                decoration: BoxDecoration(borderRadius: BorderRadius.circular(5),border: Border.all(color: Colors.grey.withAlpha(100))),
-                padding: const EdgeInsets.all(4),
-                child: TeethSelector(
-                  type: StateType.state,
-                  onNote: (x, y) {
-                    if (y != null) {
-                      editingCopy.teeth[x] = y;
-                    } else {
-                      editingCopy.teeth.remove(x);
-                    }
-                  },
-                  notation: (isoString) => isoToTextualNotation(isoString),
-                  rightString: txt("right"),
-                  leftString: txt("left"),
-                  currentNotes: editingCopy.teeth,
-                  oldNotes: editingCopy.allAppointmentsDentalNotes..removeWhere((k, v)=>editingCopy.teeth.containsKey(k)),
-                  showPrimary: editingCopy.age < 14,
+            streams: [appointments.observableMap.stream, showArchived.stream],
+            builder: (context, asyncSnapshot) {
+              return InfoLabel(
+                label: "${txt("dentalNotes")}:",
+                child: Container(
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: Colors.grey.withAlpha(100))),
+                  padding: const EdgeInsets.all(4),
+                  child: TeethSelector(
+                    type: StateType.state,
+                    onNote: (x, y) {
+                      if (y != null) {
+                        editingCopy.teeth[x] = y;
+                      } else {
+                        editingCopy.teeth.remove(x);
+                      }
+                    },
+                    notation: (isoString) => isoToTextualNotation(isoString),
+                    rightString: txt("right"),
+                    leftString: txt("left"),
+                    currentNotes: editingCopy.teeth,
+                    oldNotes: editingCopy.allAppointmentsDentalNotes
+                      ..removeWhere((k, v) => editingCopy.teeth.containsKey(k)),
+                    showPrimary: editingCopy.age < 14,
+                  ),
                 ),
-              ),
-            );
-          }
-        ),
+              );
+            }),
       ),
       if (login.permissions[PInt.appointments] > 0)
         PanelTab(
@@ -81,9 +83,8 @@ Future<Patient> openPatient([Patient? patient]) {
       PanelTab(
         title: txt("patientPage"),
         icon: FluentIcons.q_r_code,
-        body: _PatientWebPage(editingCopy),
+        body: _PatientQrPage(editingCopy: editingCopy),
         onlyIfSaved: true,
-        footer: _PrintQRButton(editingCopy),
       ),
     ],
   );
@@ -91,9 +92,60 @@ Future<Patient> openPatient([Patient? patient]) {
   return panel.result.future;
 }
 
+class _PatientQrPage extends StatefulWidget {
+  const _PatientQrPage({
+    required this.editingCopy,
+  });
+
+  final Patient editingCopy;
+
+  @override
+  State<_PatientQrPage> createState() => _PatientQrPageState();
+}
+
+class _PatientQrPageState extends State<_PatientQrPage> {
+  String language = locale.list[localSettings.selectedLocale].$code;
+  String qrType = "telegram";
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            ComboBox(
+              items: List.generate(
+                  locale.list.length,
+                  (i) => ComboBoxItem(
+                      value: locale.list[i].$code,
+                      child: Txt(locale.list[i].$name))),
+              value: language,
+              onChanged: (v) => setState(() => language = v!),
+            ),
+            const SizedBox(width: 10),
+            ComboBox(
+              items: [
+                ComboBoxItem(value: "web", child: Txt(txt("web"))),
+                ComboBoxItem(value: "telegram", child: Txt(txt("telegram"))),
+              ],
+              value: qrType,
+              onChanged: (v) => setState(() => qrType = v!),
+            )
+          ],
+        ),
+        const SizedBox(height: 10),
+        _PatientWebPage(widget.editingCopy, language, qrType),
+        _PrintQRButton(widget.editingCopy, language, qrType)
+      ],
+    );
+  }
+}
+
 class _PrintQRButton extends StatelessWidget {
   final Patient patient;
-  const _PrintQRButton(this.patient);
+  final String language;
+  final String qrType;
+  const _PrintQRButton(this.patient, this.language, this.qrType);
 
   @override
   Widget build(BuildContext context) {
@@ -113,9 +165,11 @@ class _PrintQRButton extends StatelessWidget {
               onPressed: () {
                 printingQRCode(
                   context,
-                  patient.webPageLink,
+                  qrType == "web"
+                      ? patient.webPageLink(language)
+                      : patient.telegramLink(language),
                   "Access your information",
-                  "Scan to visit link:\n${patient.webPageLink}\nto access your appointments, payments and photos.",
+                  "Scan to visit link:\n${qrType == "web" ? patient.webPageLink(language) : patient.telegramLink(language)}\nto access your appointments, payments and photos.",
                 );
               }),
         ],
@@ -126,23 +180,31 @@ class _PrintQRButton extends StatelessWidget {
 
 class _PatientWebPage extends StatelessWidget {
   final Patient patient;
-  const _PatientWebPage(this.patient);
+  final String language;
+  final String qrType;
+  const _PatientWebPage(this.patient, this.language, this.qrType);
+
   @override
   Widget build(BuildContext context) {
     return Column(children: [
       InfoBar(
         title: Txt(txt("patientCanUseTheFollowing")),
       ),
-      const SizedBox(height: 30),
+      const SizedBox(height: 10),
       Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.grey),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: SelectableText(patient.webPageLink),
+        child: SelectableText(qrType == "web"
+            ? patient.webPageLink(language)
+            : patient.telegramLink(language)),
       ),
-      QRLink(link: patient.webPageLink)
+      QRLink(
+          link: qrType == "web"
+              ? patient.webPageLink(language)
+              : patient.telegramLink(language)),
     ]);
   }
 }

@@ -158,6 +158,8 @@ class Ar implements En {
     "patientPage": "صفحة ويب المريض",
     "patientCanUseTheFollowing":
         "يمكن للمريض استخدام الرابط التالي للوصول إلى مواعيده ومدفوعاته وصوره.",
+    "web": "الويب",
+    "telegram": "التيليجرام",
     "printQR": "طباعة الرمز",
     "dentalNotes": "الملاحظات السنية",
     "showPrimary": "إظهار اللبني",

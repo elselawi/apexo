@@ -115,7 +115,7 @@ class ApexoApp extends StatelessWidget {
           launch.layoutWidth = constraints.maxWidth;
           final hideSidePanel = routes.panels().isEmpty || !launch.open();
           return Container(
-            color: Colors.white.withValues(alpha: 0.97),
+            color: FluentTheme.of(context).menuColor,
             child: Stack(
               fit: StackFit.expand,
               children: [

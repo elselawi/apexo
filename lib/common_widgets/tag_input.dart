@@ -44,6 +44,10 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   late List<TagInputItem> _tags;
   late List<TagInputItem> _suggestions;
 
+  bool get tapable {
+    return widget.onItemTap != null;
+  }
+
   void _onSuggestionSelected(AutoSuggestBoxItem<String> suggestion) {
     setState(() {
       _tags.add(TagInputItem(value: suggestion.value, label: suggestion.label));
@@ -322,14 +326,16 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.withAlpha(100)),
         borderRadius: BorderRadius.circular(5),
-        color: FluentTheme.of(context).cardColor,
+        color: tapable ? Colors.blue : FluentTheme.of(context).cardColor,
       ),
       child: IconButton(
         onPressed: () {
           if (_hiddenTappedFlyoutController.isOpen) {
             _hiddenTappedFlyoutController.close();
           }
-          widget.onItemTap == null ? null : widget.onItemTap!(tag);
+          if (tapable) {
+            widget.onItemTap!(tag);
+          }
         },
         style: const ButtonStyle(
           padding: WidgetStatePropertyAll(
@@ -338,13 +344,21 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         icon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Txt(tag.label),
+            if (tapable) ...[const Icon(FluentIcons.contact, size: 12, color: Colors.white),
+            const SizedBox(width: 5)],
+            Txt(tag.label,
+                style: TextStyle(color: tapable ? Colors.white : null)),
             const SizedBox(width: 5),
-            if(widget.enabled) IconButton(
-              key: Key("${tag.label}_clear"),
-              icon: const Icon(FluentIcons.clear, size: 10),
-              onPressed: () => _removeTag(tag),
-            ),
+            if (widget.enabled)
+              IconButton(
+                key: Key("${tag.label}_clear"),
+                icon: Icon(
+                  FluentIcons.clear,
+                  size: 10,
+                  color: tapable ? Colors.white : null,
+                ),
+                onPressed: () => _removeTag(tag),
+              ),
           ],
         ),
       ),

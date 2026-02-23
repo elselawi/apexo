@@ -273,6 +273,11 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                         routes.closePanel(newPatientId);
                         widget.appointment.patientID = newPatient.id;
                       })
+                else
+                  FilledButton(
+                    child: ButtonContent(FluentIcons.go, txt("open")),
+                    onPressed: () {},
+                  )
               ]),
         ),
         InfoLabel(
@@ -419,7 +424,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                     color: FluentTheme.of(context).shadowColor.withAlpha(50)),
                 color: FluentTheme.of(context).menuColor,
                 borderRadius: BorderRadius.circular(8),
-            
               ),
               padding: const EdgeInsets.all(8),
               child: TeethSelector(
@@ -435,9 +439,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 rightString: txt("right"),
                 leftString: txt("left"),
                 currentNotes: widget.appointment.teeth,
-                oldNotes:
-                    (widget.appointment.patient?.allAppointmentsDentalNotes ??
-                        {})..removeWhere((key, val)=>widget.appointment.teeth.containsKey(key)),
+                oldNotes: (widget
+                        .appointment.patient?.allAppointmentsDentalNotes ??
+                    {})
+                  ..removeWhere(
+                      (key, val) => widget.appointment.teeth.containsKey(key)),
                 showPrimary: (widget.appointment.patient?.age ?? 18) < 14,
               ),
             ),

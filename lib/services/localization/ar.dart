@@ -181,6 +181,15 @@ class Ar implements En {
     "exportSelected": "تصدير المحدد",
     "noPatientsSelected": "لم يتم اختيار أي مرضى",
 
+    // communication
+    "contact": "اتصال",
+    "sendEmail": "إرسال بريد",
+    "whatsapp": "واتساب",
+    "call": "اتصال هاتفي",
+    "text": "رسالة نصية",
+    "countryCode": "الرمز الدولي",
+    "countryCode_desc": "اختر الرمز الدولي الافتراضي عند إجراء المكالمات أو إرسال الرسائل",
+
     // treatments
     "treatment": "العلاج",
     "allTreatments": "كل العلاجات",

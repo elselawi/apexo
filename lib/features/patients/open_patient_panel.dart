@@ -1,5 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
+import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -11,7 +12,6 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
-import 'package:apexo/common_widgets/call_button.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -333,6 +333,16 @@ class _PatientDetails extends StatefulWidget {
 }
 
 class _PatientDetailsState extends State<_PatientDetails> {
+  TextEditingController phoneTextController = TextEditingController();
+  TextEditingController emailTextController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    phoneTextController.text = widget.patient.phone;
+    emailTextController.text = widget.patient.email;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -399,9 +409,15 @@ class _PatientDetailsState extends State<_PatientDetails> {
               child: CupertinoTextField(
                 key: WK.fieldPatientPhone,
                 placeholder: "${txt("phone")}...",
-                controller: TextEditingController(text: widget.patient.phone),
-                onChanged: (value) => widget.patient.phone = value,
-                prefix: CallIconButton(phoneNumber: widget.patient.phone),
+                controller: phoneTextController,
+                onChanged: (value) {
+                  setState(() {
+                    widget.patient.phone = value;
+                  });
+                },
+                suffix: widget.patient.phone.isNotEmpty
+                    ? PhoneNumberButton(phoneNumber: phoneTextController.text)
+                    : null,
               ),
             ),
           ),
@@ -413,12 +429,20 @@ class _PatientDetailsState extends State<_PatientDetails> {
               child: CupertinoTextField(
                 key: WK.fieldPatientEmail,
                 placeholder: "${txt("email")}...",
-                controller: TextEditingController(text: widget.patient.email),
-                onChanged: (value) => widget.patient.email = value,
+                controller: emailTextController,
+                onChanged: (value) {
+                  setState(() {
+                    widget.patient.email = value;
+                  });
+                },
+                suffix: widget.patient.email.isNotEmpty
+                    ? EmailButton(email: widget.patient.email)
+                    : null,
               ),
             ),
           ),
         ]),
+        const SizedBox(height: 10),
         InfoLabel(
           label: "${txt("address")}:",
           isHeader: true,

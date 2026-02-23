@@ -177,6 +177,15 @@ class En {
     "exportSelected": "Export Selected",
     "noPatientsSelected": "No patients selected",
 
+    // communication
+    "contact": "Contact",
+    "sendEmail": "Send Email",
+    "whatsapp": "WhatsApp",
+    "call": "Call",
+    "text": "Text",
+    "countryCode": "Country code",
+    "countryCode_desc": "Select the default country code when making calls or sending messages",
+
     // treatments
     "treatment": "Treatment",
     "allTreatments": "All Treatments",

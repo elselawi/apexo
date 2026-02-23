@@ -74,6 +74,7 @@ The roadmap is not written in stone, but here are some ideas that I have in mind
 - Google calendar integration
 - Payment and installement plan setup
 - SMS/WhatsApp reminders
+- Lip filler and TMJ in dental treatments
 
 
 #### Built with ❤️ in Mosul, Iraq.

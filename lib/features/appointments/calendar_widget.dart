@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -479,7 +480,13 @@ class AppointmentCalendarTile<Item extends Appointment>
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(width: 180, child: ItemTitle(item: item)),
+            Column(
+              children: [
+                SizedBox(
+                    width: item.teeth.entries.isNotEmpty ? 160 : 180,
+                    child: ItemTitle(item: item)),
+              ],
+            ),
             TreatmentLabels(
                 labels: item.teeth.entries
                     .toSet()
@@ -524,6 +531,15 @@ class AppointmentCalendarTile<Item extends Appointment>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  spacing: 2,
+                  children: [
+                    if ((item.patient?.phone ?? '').isNotEmpty)
+                      PhoneNumberButton(phoneNumber: item.patient!.phone),
+                    if ((item.patient?.email ?? '').isNotEmpty)
+                      EmailButton(email: item.patient!.email),
+                  ],
+                ),
                 IconButton(
                   onPressed: () async {
                     final index =

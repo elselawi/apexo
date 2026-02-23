@@ -180,6 +180,17 @@ class Es implements En {
     "exportSelected": "Exportar seleccionados",
     "noPatientsSelected": "No se han seleccionado pacientes",
 
+
+    // communication
+    "contact": "Contact",
+    "sendEmail": "Enviar correo",
+    "whatsapp": "WhatsApp",
+    "call": "Llamar",
+    "text": "Mensaje",
+    "countryCode": "Código de país",
+    "countryCode_desc": "Selecciona el código de país predeterminado al realizar llamadas o enviar mensajes",
+
+
     // treatments
     "treatment": "Tratamiento",
     "allTreatments": "Todos",

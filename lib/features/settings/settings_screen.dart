@@ -43,6 +43,17 @@ class SettingsScreen extends StatelessWidget {
                 initValue: globalSettings.get("currency_______").value,
                 apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "currency_______", "value": newVal})),
               ),
+            if(login.isAdmin)
+              SettingsItem(
+                title: txt("countryCode"),
+                identifier: "countryCode",
+                description: txt("countryCode_desc"),
+                icon: FluentIcons.globe,
+                inputType: InputType.text,
+                scope: Scope.app,
+                initValue: globalSettings.get("country_code___").value,
+                apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "country_code___", "value": newVal})),
+              ),
             if (login.isAdmin)
               SettingsItem(
                 title: txt("prescriptionFooter"),

@@ -26,6 +26,7 @@ class GlobalSettings extends Store<Setting> {
     "prescriptionFot": "",
     "permissions____": jsonEncode([false, true, true, true, true, false]),
     "start_day_of_wk": "monday",
+    "country_code___": "+1",
   };
 
   @override

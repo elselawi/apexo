@@ -1,4 +1,14 @@
 
+### ____0.9.4____
+
+-   patient link can now link to a telegram bot, that is as functional as the patient web page
+-   contact and email buttons (hotlinks) from inside the app
+-   more apparent clickable patient
+-   show other appointments images in the appointment gallery
+-   launch URL that downloads the latest version for the specific platform on the update dialog
+-   done appointment checkbox UI improvement
+
+
 ### ____0.9.1____
 
 -   UI & UX improvements on the dental chart and treatment filtering system

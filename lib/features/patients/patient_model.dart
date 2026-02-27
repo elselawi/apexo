@@ -127,7 +127,7 @@ class Patient extends Model {
   }
 
   @override
-  get avatar {
+  String? get avatar {
     if (launch.isDemo) return "https://person.alisaleem.workers.dev/";
     final appointmentsWithImages =
         allAppointments.where((a) => a.imgs.isNotEmpty);
@@ -136,11 +136,15 @@ class Patient extends Model {
   }
 
   @override
-  get imageRowId {
+  String? get imageRowId {
     final appointmentsWithImages =
         allAppointments.where((a) => a.imgs.isNotEmpty);
     if (appointmentsWithImages.isEmpty) return null;
     return appointmentsWithImages.first.id;
+  }
+
+  List<Appointment> get appointmentsWithImages {
+    return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
   String webPageLink(String language) {

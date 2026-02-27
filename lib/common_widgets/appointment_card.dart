@@ -26,7 +26,8 @@ enum AppointmentSections {
   dentalNotes,
   prescriptions,
   labworks,
-  pay
+  pay,
+  appointmentNumber,
 }
 
 class AppointmentCard extends StatelessWidget {
@@ -34,7 +35,11 @@ class AppointmentCard extends StatelessWidget {
   final List<AppointmentSections> hide;
   final String? difference;
   final int number;
+  final int photosClipCount;
   final bool readOnly;
+  final bool showLeftBorder;
+  final bool showSectionTitle;
+  final Color openButtonColor;
   const AppointmentCard({
     super.key,
     required this.appointment,
@@ -42,6 +47,10 @@ class AppointmentCard extends StatelessWidget {
     this.readOnly = false,
     required this.number,
     this.hide = const [],
+    this.photosClipCount = 2,
+    this.showLeftBorder = true,
+    this.showSectionTitle = true,
+    this.openButtonColor = const Color(0xFF0078D4),
   });
 
   @override
@@ -53,7 +62,9 @@ class AppointmentCard extends StatelessWidget {
             : appointment.color;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(7, 15, 15, 0),
+      padding: showLeftBorder
+          ? const EdgeInsets.fromLTRB(7, 15, 15, 0)
+          : const EdgeInsetsGeometry.all(7),
       child: Column(
         children: [
           Row(
@@ -97,7 +108,8 @@ class AppointmentCard extends StatelessWidget {
                         ),
                       ]),
                   child: Container(
-                    decoration: _coloredHandleDecoration(color),
+                    decoration:
+                        showLeftBorder ? _coloredHandleDecoration(color) : null,
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
                       children: [
@@ -150,7 +162,7 @@ class AppointmentCard extends StatelessWidget {
                                 rowId: appointment.id,
                                 imgs: appointment.imgs,
                                 countPerLine: 4,
-                                clipCount: 2,
+                                clipCount: photosClipCount,
                                 rowWidth: 200,
                                 size: 43,
                                 progress: false,
@@ -374,25 +386,27 @@ class AppointmentCard extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 7),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16),
-              const SizedBox(width: 7),
-              Txt(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  fontStyle: FontStyle.italic,
+        if (showSectionTitle) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 7),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Icon(icon, size: 16),
+                const SizedBox(width: 7),
+                Txt(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        const SizedBox(width: 5),
+          const SizedBox(width: 5),
+        ],
         Expanded(child: child),
       ],
     );
@@ -405,7 +419,8 @@ class AppointmentCard extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (number > 0)
+            if (number > 0 &&
+                !hide.contains(AppointmentSections.appointmentNumber))
               Txt(
                 "${txt("appointment")}: $number",
                 style: TextStyle(
@@ -417,21 +432,22 @@ class AppointmentCard extends StatelessWidget {
             const SizedBox(height: 3),
             Row(
               children: [
-                Icon(FluentIcons.clock, color: color),
+                Icon(WindowsIcons.date_time,
+                    color: showLeftBorder ? color : null),
                 const SizedBox(width: 5),
                 _buildFormattedDate(color),
               ],
             ),
           ],
         ),
-        if (readOnly == false)
-          IconButton(
-            icon: const Icon(FluentIcons.edit, size: 17),
-            onPressed: () {
-              openAppointment(appointment);
-            },
-            iconButtonMode: IconButtonMode.large,
-          )
+        IconButton(
+          icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
+          onPressed: () => openAppointment(appointment),
+          iconButtonMode: IconButtonMode.large,
+          style: ButtonStyle(
+            backgroundColor: WidgetStatePropertyAll(openButtonColor),
+          ),
+        )
       ],
     );
   }
@@ -442,7 +458,12 @@ class AppointmentCard extends StatelessWidget {
     return Txt(
       intl.DateFormat("E $df yyyy - hh:mm a", locale.s.$code)
           .format(appointment.date),
-      style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.bold),
+      style: TextStyle(
+        color: showLeftBorder ? color : null,
+        fontSize: 13,
+        fontWeight: FontWeight.bold,
+        fontStyle: showLeftBorder ? FontStyle.normal : FontStyle.italic,
+      ),
     );
   }
 

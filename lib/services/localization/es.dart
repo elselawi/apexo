@@ -179,7 +179,7 @@ class Es implements En {
     "thirdMolar": "Tercer molar",
     "exportSelected": "Exportar seleccionados",
     "noPatientsSelected": "No se han seleccionado pacientes",
-
+    "otherPhotos": "Fotos de otras citas",
 
     // communication
     "contact": "Contact",

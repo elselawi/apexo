@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
@@ -40,7 +41,6 @@ void openAppointment([Appointment? appointment]) {
         : editingCopy.title,
     tabs: [],
   );
-
   final tabs = [
     PanelTab(
       title: txt("appointment"),
@@ -60,9 +60,6 @@ void openAppointment([Appointment? appointment]) {
       icon: FluentIcons.camera,
       body: _AppointmentGallery(panel),
       onlyIfSaved: true,
-      footer: login.permissions[PInt.photos] == 1
-          ? _AppointmentGalleryFooter(panel)
-          : null,
       padding: 0,
     ),
   ];
@@ -70,106 +67,81 @@ void openAppointment([Appointment? appointment]) {
   routes.openPanel(panel);
 }
 
-class _AppointmentGalleryFooter extends StatefulWidget {
+class _UploadButtons extends StatelessWidget {
   final Panel<Appointment> panel;
-  const _AppointmentGalleryFooter(this.panel);
+  const _UploadButtons(this.panel);
 
-  @override
-  State<_AppointmentGalleryFooter> createState() =>
-      _AppointmentGalleryFooterState();
-}
-
-class _AppointmentGalleryFooterState extends State<_AppointmentGalleryFooter> {
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           FilledButton(
-            child: Row(
-              children: [
-                const Icon(FluentIcons.link),
-                const SizedBox(width: 5),
-                Txt(txt("link")),
-              ],
-            ),
+            child: ButtonContent(WindowsIcons.link, txt("link")),
             onPressed: () {
               showDialog(
                 context: context,
                 builder: (context) {
-                  return ImportDialog(panel: widget.panel);
+                  return ImportDialog(panel: panel);
                 },
               );
             },
           ),
           if (ImagePicker().supportsImageSource(ImageSource.camera))
-            FilledButton(
-              child: Row(
-                children: [
-                  const Icon(FluentIcons.camera),
-                  const SizedBox(width: 5),
-                  Txt(txt("camera")),
-                ],
-              ),
+            ...[const SizedBox(width: 10),FilledButton(
+              child: ButtonContent(WindowsIcons.camera, txt("camera")),
               onPressed: () async {
                 final XFile? res =
                     await ImagePicker().pickImage(source: ImageSource.camera);
                 if (res == null) return;
-                widget.panel.inProgress(true);
+                panel.inProgress(true);
 
                 try {
                   final imgName = await handleNewImage(
-                    rowID: widget.panel.item.id,
+                    rowID: panel.item.id,
                     sourcePath: res.path,
                     sourceFile: res,
                   );
-                  if (widget.panel.item.imgs.contains(imgName) == false) {
-                    widget.panel.item.imgs.add(imgName);
-                    appointments.set(widget.panel.item);
-                    widget.panel.savedJson =
-                        jsonEncode(widget.panel.item.toJson());
+                  if (panel.item.imgs.contains(imgName) == false) {
+                    panel.item.imgs.add(imgName);
+                    appointments.set(panel.item);
+                    panel.savedJson = jsonEncode(panel.item.toJson());
                   }
                 } catch (e, s) {
                   logger("Error during uploading camera capture: $e", s);
                 }
-                widget.panel.selectedTab(widget.panel.selectedTab());
-                widget.panel.inProgress(false);
+                panel.selectedTab(panel.selectedTab());
+                panel.inProgress(false);
               },
-            ),
+            )],
+          const SizedBox(width: 10),
           FilledButton(
-            child: Row(
-              children: [
-                const Icon(FluentIcons.photo2_add),
-                const SizedBox(width: 5),
-                Txt(txt("upload")),
-              ],
-            ),
+            child: ButtonContent(WindowsIcons.photo_collection, txt("upload")),
             onPressed: () async {
               List<XFile> res = await ImagePicker()
-                  .pickMultiImage(limit: 50 - widget.panel.item.imgs.length);
-              widget.panel.inProgress(true);
+                  .pickMultiImage(limit: 50 - panel.item.imgs.length);
+              panel.inProgress(true);
               try {
                 for (var img in res) {
                   final imgName = await handleNewImage(
-                    rowID: widget.panel.item.id,
+                    rowID: panel.item.id,
                     sourcePath: img.path,
                     sourceFile: img,
                   );
-                  if (widget.panel.item.imgs.contains(imgName) == false) {
-                    widget.panel.item.imgs.add(imgName);
-                    appointments.set(widget.panel.item);
-                    widget.panel.savedJson =
-                        jsonEncode(widget.panel.item.toJson());
-                    widget.panel.selectedTab(widget.panel.selectedTab());
+                  if (panel.item.imgs.contains(imgName) == false) {
+                    panel.item.imgs.add(imgName);
+                    appointments.set(panel.item);
+                    panel.savedJson = jsonEncode(panel.item.toJson());
+                    panel.selectedTab(panel.selectedTab());
                   }
                 }
               } catch (e, s) {
                 logger("Error during file upload: $e", s);
               }
-              widget.panel.inProgress(false);
-              widget.panel.selectedTab(widget.panel.selectedTab());
+              panel.inProgress(false);
+              panel.selectedTab(panel.selectedTab());
             },
           ),
         ],
@@ -189,14 +161,36 @@ class _AppointmentGallery extends StatefulWidget {
 class _AppointmentGalleryState extends State<_AppointmentGallery> {
   @override
   Widget build(BuildContext context) {
+    final otherImages = (widget.panel.item.patient?.appointmentsWithImages ?? [])
+        .where((a) => a.id != widget.panel.item.id)
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          children: [
+            _buildCurrentAppointmentPhotos(),
+            if (login.permissions[PInt.photos] == 1) _UploadButtons(widget.panel),
+          ],
+        ),
+        if (otherImages.isNotEmpty) _OtherAppointmentsPhotos(otherImages: otherImages),
+      ],
+    );
+  }
+
+  StreamBuilder<int> _buildCurrentAppointmentPhotos() {
     return StreamBuilder(
         stream: widget.panel.selectedTab.stream,
         builder: (context, _) {
           return widget.panel.item.imgs.isEmpty
-              ? Center(
+              ? Padding(
+                  padding: const EdgeInsets.all(8.0),
                   child: InfoBar(
-                      title: Txt(txt("emptyGallery")),
-                      content: Txt(txt("noPhotos"))))
+                    title: Txt(txt("emptyGallery")),
+                    content: Txt(txt("noPhotos")),
+                  ),
+                )
               : StreamBuilder(
                   stream: widget.panel.inProgress.stream,
                   builder: (context, snapshot) {
@@ -224,6 +218,50 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                     );
                   });
         });
+  }
+}
+
+class _OtherAppointmentsPhotos extends StatelessWidget {
+  const _OtherAppointmentsPhotos({required this.otherImages});
+
+  final List<Appointment> otherImages;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        const Divider(),
+        const SizedBox(height: 10),
+        Txt(txt("otherPhotos"),
+            style: FluentTheme.of(context)
+                .typography
+                .bodyStrong!
+                .copyWith(fontStyle: FontStyle.italic)),
+        const SizedBox(height: 10),
+        ...List.generate(otherImages.length, (index) {
+          return AppointmentCard(
+            appointment: otherImages[index],
+            number: index + 1,
+            readOnly: true,
+            showLeftBorder: false,
+            showSectionTitle: false,
+            photosClipCount: 999,
+            openButtonColor: Colors.grey,
+            hide: const [
+              AppointmentSections.dentalNotes,
+              AppointmentSections.doctors,
+              AppointmentSections.labworks,
+              AppointmentSections.patient,
+              AppointmentSections.pay,
+              AppointmentSections.postNotes,
+              AppointmentSections.preNotes,
+              AppointmentSections.prescriptions,
+              AppointmentSections.appointmentNumber,
+            ],
+          );
+        })
+      ],
+    );
   }
 }
 

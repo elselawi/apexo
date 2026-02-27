@@ -246,6 +246,7 @@ class En {
     "camera": "Camera",
     "emptyGallery": "Empty gallery",
     "noPhotos": "No photos has been uploaded yet.",
+    "otherPhotos": "Photos from other appointments",
     "importingPhotosFromLink": "Importing photos from link",
     "useThisForm":
         "Use this form to import photos from share links, like google photos, or any accessible web page that contains photos you'd like to add to this appointment.",

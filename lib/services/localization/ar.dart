@@ -257,6 +257,7 @@ class Ar implements En {
     "error": "خطأ",
     "enterLink": "أدخل عنوان URL الذي يحتوي على صور",
     "import": "استيراد",
+    "otherPhotos": "صور من مواعيد أخرى",
 
     // labworks
     "laboratory": "مختبر",

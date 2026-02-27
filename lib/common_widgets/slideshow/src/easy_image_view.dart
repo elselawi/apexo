@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'drawing_canvas.dart';
 
 /// A full-sized view that displays the given image, supporting pinch & zoom
 class EasyImageView extends StatefulWidget {
@@ -18,6 +19,13 @@ class EasyImageView extends StatefulWidget {
   /// an interaction.
   final void Function(double)? onScaleChanged;
 
+  final String? initialDrawing;
+  final Function(String)? onSaveDrawing;
+  final bool isDrawingMode;
+  final bool showDrawings;
+  final Color selectedColor;
+  final bool isEraserMode;
+
   /// Create a new instance that accepts an [ImageProvider]
   EasyImageView({
     Key? key,
@@ -26,6 +34,12 @@ class EasyImageView extends StatefulWidget {
     double maxScale = 5.0,
     bool doubleTapZoomable = false,
     void Function(double)? onScaleChanged,
+    String? initialDrawing,
+    Function(String)? onSaveDrawing,
+    bool isDrawingMode = false,
+    bool showDrawings = true,
+    Color selectedColor = Colors.red,
+    bool isEraserMode = false,
   }) : this.imageWidget(
           Image(image: imageProvider),
           key: key,
@@ -33,6 +47,12 @@ class EasyImageView extends StatefulWidget {
           maxScale: maxScale,
           doubleTapZoomable: doubleTapZoomable,
           onScaleChanged: onScaleChanged,
+          initialDrawing: initialDrawing,
+          onSaveDrawing: onSaveDrawing,
+          isDrawingMode: isDrawingMode,
+          showDrawings: showDrawings,
+          selectedColor: selectedColor,
+          isEraserMode: isEraserMode,
         );
 
   /// Create a new instance
@@ -44,14 +64,22 @@ class EasyImageView extends StatefulWidget {
     this.maxScale = 5.0,
     this.doubleTapZoomable = false,
     this.onScaleChanged,
+    this.initialDrawing,
+    this.onSaveDrawing,
+    this.isDrawingMode = false,
+    this.showDrawings = true,
+    this.selectedColor = Colors.red,
+    this.isEraserMode = false,
   });
 
   @override
   State<EasyImageView> createState() => _EasyImageViewState();
 }
 
-class _EasyImageViewState extends State<EasyImageView> with SingleTickerProviderStateMixin {
-  final TransformationController _transformationController = TransformationController();
+class _EasyImageViewState extends State<EasyImageView>
+    with SingleTickerProviderStateMixin {
+  final TransformationController _transformationController =
+      TransformationController();
 
   TapDownDetails _doubleTapDetails = TapDownDetails();
   late AnimationController _animationController;
@@ -59,24 +87,50 @@ class _EasyImageViewState extends State<EasyImageView> with SingleTickerProvider
 
   @override
   void initState() {
-    _animationController = AnimationController(duration: const Duration(milliseconds: 200), vsync: this);
+    _animationController = AnimationController(
+        duration: const Duration(milliseconds: 200), vsync: this);
 
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
+    Widget content = widget.imageWidget;
+
+    if (widget.onSaveDrawing != null) {
+      content = Stack(
+        fit: StackFit.loose,
+        children: [
+          widget.imageWidget,
+          Positioned.fill(
+              child: DrawingCanvas(
+            initialDrawing: widget.initialDrawing,
+            onSave: widget.onSaveDrawing!,
+            isDrawingMode: widget.isDrawingMode,
+            showDrawings: widget.showDrawings,
+            selectedColor: widget.selectedColor,
+            isEraserMode: widget.isEraserMode,
+          )),
+        ],
+      );
+    }
+
+    return Center(
+      child: SizedBox(
         key: const Key('easy_image_sized_box'),
         child: InteractiveViewer(
           key: const Key('easy_image_interactive_viewer'),
           transformationController: _transformationController,
           minScale: widget.minScale,
           maxScale: widget.maxScale,
-          child: widget.doubleTapZoomable
+          panEnabled: true,
+          scaleEnabled: true,
+          child: widget.doubleTapZoomable && !widget.isDrawingMode
               ? GestureDetector(
-                  onDoubleTapDown: _handleDoubleTapDown, onDoubleTap: _handleDoubleTap, child: widget.imageWidget)
-              : widget.imageWidget,
+                  onDoubleTapDown: _handleDoubleTapDown,
+                  onDoubleTap: _handleDoubleTap,
+                  child: content)
+              : content,
           onInteractionEnd: (scaleEndDetails) {
             double scale = _transformationController.value.getMaxScaleOnAxis();
 
@@ -84,7 +138,9 @@ class _EasyImageViewState extends State<EasyImageView> with SingleTickerProvider
               widget.onScaleChanged!(scale);
             }
           },
-        ));
+        ),
+      ),
+    );
   }
 
   void _handleDoubleTapDown(TapDownDetails details) {
@@ -119,18 +175,20 @@ class _EasyImageViewState extends State<EasyImageView> with SingleTickerProvider
   }
 
   void _updateDoubleTapAnimation(Matrix4 begin, Matrix4 end) {
-    _doubleTapAnimation =
-        Matrix4Tween(begin: begin, end: end).animate(CurveTween(curve: Curves.easeInOut).animate(_animationController));
+    _doubleTapAnimation = Matrix4Tween(begin: begin, end: end).animate(
+        CurveTween(curve: Curves.easeInOut).animate(_animationController));
     _doubleTapAnimation?.addListener(_animationListener);
     _doubleTapAnimation?.addStatusListener(_animationStatusListener);
   }
 
   void _animationListener() {
-    _transformationController.value = _doubleTapAnimation?.value ?? Matrix4.identity();
+    _transformationController.value =
+        _doubleTapAnimation?.value ?? Matrix4.identity();
   }
 
   void _animationStatusListener(AnimationStatus status) {
-    if (status == AnimationStatus.completed || status == AnimationStatus.dismissed) {
+    if (status == AnimationStatus.completed ||
+        status == AnimationStatus.dismissed) {
       double scale = _transformationController.value.getMaxScaleOnAxis();
 
       if (widget.onScaleChanged != null) {

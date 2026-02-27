@@ -90,6 +90,7 @@ class Appointment extends Model {
   /* 13 */ String labName = "";
   /* 14 */ String labworkNotes = "";
   /* 15 */ bool labworkReceived = false;
+  /* 16 */ Map<String, String> drawings = {};
 
   Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     /* 1 */ operatorsIDs =
@@ -111,6 +112,7 @@ class Appointment extends Model {
     /* 13 */ labName = json["labName"] ?? labName;
     /* 14 */ labworkNotes = json["labworkNotes"] ?? labworkNotes;
     /* 15 */ labworkReceived = json["labworkReceived"] ?? labworkReceived;
+    /* 16 */ drawings = Map<String, String>.from(json['drawings'] ?? drawings);
   }
 
   @override
@@ -130,8 +132,11 @@ class Appointment extends Model {
     /* 11 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
     /* 12 */ if (hasLabwork != d.hasLabwork) json['hasLabwork'] = hasLabwork;
     /* 13 */ if (labName != d.labName) json['labName'] = labName;
-    /* 14 */ if (labworkNotes != d.labworkNotes) json['labworkNotes'] = labworkNotes;
-    /* 15 */ if (labworkReceived != d.labworkReceived) json['labworkReceived'] = labworkReceived;
+    /* 14 */ if (labworkNotes != d.labworkNotes)
+      json['labworkNotes'] = labworkNotes;
+    /* 15 */ if (labworkReceived != d.labworkReceived)
+      json['labworkReceived'] = labworkReceived;
+    /* 16 */ if (drawings.isNotEmpty) json['drawings'] = drawings;
 
     json.remove("title"); // remove since it is a computed value in this case
 

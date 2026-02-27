@@ -27,16 +27,31 @@ class EasyImageViewPager extends StatefulWidget {
   /// an interaction.
   final void Function(double)? onScaleChanged;
 
+  final Map<String, String>? drawings;
+  final List<String>? imageIds;
+  final void Function(String, String)? onSaveDrawing;
+  final bool isDrawingMode;
+  final bool showDrawings;
+  final Color selectedColor;
+  final bool isEraserMode;
+
   /// Create new instance, using the [easyImageProvider] to populate the [PageView],
   /// and the [pageController] to control the initial image index to display.
   /// The optional [doubleTapZoomable] boolean defaults to false and allows double tap to zoom.
-  const EasyImageViewPager({
+  EasyImageViewPager({
     super.key,
     required this.easyImageProvider,
     required this.pageController,
     this.doubleTapZoomable = false,
     this.onScaleChanged,
     this.infinitelyScrollable = false,
+    this.drawings,
+    this.imageIds,
+    this.onSaveDrawing,
+    this.isDrawingMode = false,
+    this.showDrawings = true,
+    this.selectedColor = const Color(0xFF000000),
+    this.isEraserMode = false,
   });
 
   @override
@@ -107,6 +122,14 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
             scrollBehavior: MouseEnabledScrollBehavior(),
             itemBuilder: (context, index) {
               final pageIndex = _getPageIndex(index);
+              final imgId = (widget.imageIds != null &&
+                      pageIndex < widget.imageIds!.length)
+                  ? widget.imageIds![pageIndex]
+                  : null;
+              final drawingStr = imgId != null && widget.drawings != null
+                  ? widget.drawings![imgId]
+                  : null;
+
               return EasyImageView.imageWidget(
                 GestureDetector(
                   onTap: () {
@@ -117,6 +140,16 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
                 ),
                 key: Key('easy_image_view_$pageIndex'),
                 doubleTapZoomable: widget.doubleTapZoomable,
+                initialDrawing: drawingStr,
+                onSaveDrawing: (widget.onSaveDrawing != null && imgId != null)
+                    ? (newDrawing) {
+                        widget.onSaveDrawing!(imgId, newDrawing);
+                      }
+                    : null,
+                isDrawingMode: widget.isDrawingMode,
+                showDrawings: widget.showDrawings,
+                selectedColor: widget.selectedColor,
+                isEraserMode: widget.isEraserMode,
                 onScaleChanged: (scale) {
                   if (widget.onScaleChanged != null) {
                     widget.onScaleChanged!(scale);

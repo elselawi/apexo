@@ -42,6 +42,9 @@ showImageViewer(
   Color? barrierColor,
   String closeButtonTooltip = _defaultCloseButtonTooltip,
   Color closeButtonColor = _defaultCloseButtonColor,
+  Map<String, String>? drawings,
+  List<String>? imageIds,
+  void Function(String, String)? onSaveDrawing,
 }) {
   return showImageViewerPager(
     context,
@@ -58,6 +61,9 @@ showImageViewer(
     barrierColor: barrierColor,
     closeButtonTooltip: closeButtonTooltip,
     closeButtonColor: closeButtonColor,
+    drawings: drawings,
+    imageIds: imageIds,
+    onSaveDrawing: onSaveDrawing,
   );
 }
 
@@ -89,7 +95,10 @@ showImageViewerPager(BuildContext context, EasyImageProvider imageProvider,
     Color backgroundColor = _defaultBackgroundColor,
     Color? barrierColor,
     String closeButtonTooltip = _defaultCloseButtonTooltip,
-    Color closeButtonColor = _defaultCloseButtonColor}) {
+    Color closeButtonColor = _defaultCloseButtonColor,
+    Map<String, String>? drawings,
+    List<String>? imageIds,
+    void Function(String, String)? onSaveDrawing}) {
   if (immersive) {
     // Hide top and bottom bars
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
@@ -111,8 +120,10 @@ showImageViewerPager(BuildContext context, EasyImageProvider imageProvider,
           doubleTapZoomable: doubleTapZoomable,
           infinitelyScrollable: infinitelyScrollable,
           backgroundColor: backgroundColor,
-          closeButtonColor: closeButtonColor,
           closeButtonTooltip: closeButtonTooltip,
+          drawings: drawings,
+          imageIds: imageIds,
+          onSaveDrawing: onSaveDrawing,
         );
       });
 }

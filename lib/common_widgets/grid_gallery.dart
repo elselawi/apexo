@@ -19,6 +19,9 @@ class GridGallery extends StatefulWidget {
   final bool showPlayIcon;
   final bool showDeleteMiniButton;
   final bool canDelete;
+  final Map<String, String>? drawings;
+  final void Function(String, String)? onSaveDrawing;
+
   const GridGallery({
     super.key,
     required this.rowId,
@@ -32,6 +35,8 @@ class GridGallery extends StatefulWidget {
     this.size,
     this.clipCount = 0,
     this.showPlayIcon = true,
+    this.drawings,
+    this.onSaveDrawing,
   });
 
   @override
@@ -130,7 +135,9 @@ class _GridGalleryState extends State<GridGallery> {
             }
           },
         ),
-        if (widget.showDeleteMiniButton && login.permissions[PInt.photos] == 1 && widget.progress == false)
+        if (widget.showDeleteMiniButton &&
+            login.permissions[PInt.photos] == 1 &&
+            widget.progress == false)
           Positioned(
             top: 4,
             right: 4,
@@ -182,7 +189,9 @@ class _GridGalleryState extends State<GridGallery> {
         doubleTapZoomable: true,
         immersive: false,
         swipeDismissible: true,
-        closeButtonColor: Colors.white,
+        drawings: widget.drawings,
+        imageIds: [img],
+        onSaveDrawing: widget.onSaveDrawing,
         onPressDelete: (_) {
           widget.onPressDelete(img);
         },
@@ -213,9 +222,11 @@ class _GridGalleryState extends State<GridGallery> {
         doubleTapZoomable: true,
         immersive: false,
         swipeDismissible: true,
-        closeButtonColor: Colors.white,
         infinitelyScrollable: true,
         canDelete: widget.canDelete,
+        drawings: widget.drawings,
+        imageIds: widget.imgs,
+        onSaveDrawing: widget.onSaveDrawing,
         onPressDelete: (int index) {
           widget.onPressDelete(widget.imgs[index]);
         },
@@ -240,7 +251,9 @@ class ImageDeleteButton extends StatelessWidget {
     return FlyoutTarget(
       controller: deleteConfirmationFlyout,
       child: IconButton(
-        style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(FluentTheme.of(context).menuColor)),
+        style: ButtonStyle(
+            backgroundColor:
+                WidgetStatePropertyAll(FluentTheme.of(context).menuColor)),
         icon: const Icon(FluentIcons.delete),
         onPressed: () {
           deleteConfirmationFlyout.showFlyout(builder: (context) {

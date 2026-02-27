@@ -89,8 +89,9 @@ class _UploadButtons extends StatelessWidget {
               );
             },
           ),
-          if (ImagePicker().supportsImageSource(ImageSource.camera))
-            ...[const SizedBox(width: 10),FilledButton(
+          if (ImagePicker().supportsImageSource(ImageSource.camera)) ...[
+            const SizedBox(width: 10),
+            FilledButton(
               child: ButtonContent(WindowsIcons.camera, txt("camera")),
               onPressed: () async {
                 final XFile? res =
@@ -115,7 +116,8 @@ class _UploadButtons extends StatelessWidget {
                 panel.selectedTab(panel.selectedTab());
                 panel.inProgress(false);
               },
-            )],
+            )
+          ],
           const SizedBox(width: 10),
           FilledButton(
             child: ButtonContent(WindowsIcons.photo_collection, txt("upload")),
@@ -161,9 +163,10 @@ class _AppointmentGallery extends StatefulWidget {
 class _AppointmentGalleryState extends State<_AppointmentGallery> {
   @override
   Widget build(BuildContext context) {
-    final otherImages = (widget.panel.item.patient?.appointmentsWithImages ?? [])
-        .where((a) => a.id != widget.panel.item.id)
-        .toList();
+    final otherImages =
+        (widget.panel.item.patient?.appointmentsWithImages ?? [])
+            .where((a) => a.id != widget.panel.item.id)
+            .toList();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -171,10 +174,12 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
         Column(
           children: [
             _buildCurrentAppointmentPhotos(),
-            if (login.permissions[PInt.photos] == 1) _UploadButtons(widget.panel),
+            if (login.permissions[PInt.photos] == 1)
+              _UploadButtons(widget.panel),
           ],
         ),
-        if (otherImages.isNotEmpty) _OtherAppointmentsPhotos(otherImages: otherImages),
+        if (otherImages.isNotEmpty)
+          _OtherAppointmentsPhotos(otherImages: otherImages),
       ],
     );
   }
@@ -199,12 +204,20 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                       rowId: widget.panel.item.id,
                       imgs: widget.panel.item.imgs,
                       progress: widget.panel.inProgress(),
+                      drawings: widget.panel.item.drawings,
+                      onSaveDrawing: (img, drawing) {
+                        widget.panel.item.drawings[img] = drawing;
+                        appointments.set(widget.panel.item);
+                        widget.panel.savedJson =
+                            jsonEncode(widget.panel.item.toJson());
+                      },
                       onPressDelete: (img) async {
                         widget.panel.inProgress(true);
                         try {
                           await appointments.deleteImg(
                               widget.panel.item.id, img);
                           widget.panel.item.imgs.remove(img);
+                          widget.panel.item.drawings.remove(img);
                           appointments.set(widget.panel.item);
                           widget.panel.savedJson =
                               jsonEncode(widget.panel.item.toJson());

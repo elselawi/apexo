@@ -1,4 +1,3 @@
-import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -21,9 +20,12 @@ class EasyImageViewerDismissibleDialog extends StatefulWidget {
   final bool doubleTapZoomable;
   final Color backgroundColor;
   final String closeButtonTooltip;
-  final Color closeButtonColor;
   final bool infinitelyScrollable;
   final FlyoutController confirmDeleteFlyoutCtrl = FlyoutController();
+
+  final Map<String, String>? drawings;
+  final List<String>? imageIds;
+  final void Function(String, String)? onSaveDrawing;
 
   /// Refer to [showImageViewerPager] for the arguments
   EasyImageViewerDismissibleDialog(this.imageProvider,
@@ -38,7 +40,9 @@ class EasyImageViewerDismissibleDialog extends StatefulWidget {
       required this.onPressDelete,
       required this.backgroundColor,
       required this.closeButtonTooltip,
-      required this.closeButtonColor});
+      this.drawings,
+      this.imageIds,
+      this.onSaveDrawing});
 
   @override
   State<EasyImageViewerDismissibleDialog> createState() =>
@@ -52,6 +56,11 @@ class _EasyImageViewerDismissibleDialogState
   DismissDirection _dismissDirection = DismissDirection.down;
   void Function()? _internalPageChangeListener;
   late final PageController _pageController;
+
+  bool _isDrawingMode = false;
+  bool _showDrawings = true;
+  Color _selectedColor = Colors.red;
+  bool _isEraserMode = false;
 
   /// This is needed because of https://github.com/thesmythgroup/easy_image_viewer/issues/27
   /// When no global key was used, the state was re-created on the initial zoom, which
@@ -95,13 +104,22 @@ class _EasyImageViewerDismissibleDialogState
             children: <Widget>[
               GestureDetector(
                 onTap: () {
-                  Navigator.pop(context);
+                  if (!_isDrawingMode) {
+                    Navigator.pop(context);
+                  }
                 },
                 child: EasyImageViewPager(
                     easyImageProvider: widget.imageProvider,
                     pageController: _pageController,
                     doubleTapZoomable: widget.doubleTapZoomable,
                     infinitelyScrollable: widget.infinitelyScrollable,
+                    drawings: widget.drawings,
+                    imageIds: widget.imageIds,
+                    onSaveDrawing: widget.onSaveDrawing,
+                    isDrawingMode: _isDrawingMode,
+                    showDrawings: _showDrawings,
+                    selectedColor: _selectedColor,
+                    isEraserMode: _isEraserMode,
                     onScaleChanged: (scale) {
                       setState(() {
                         _dismissDirection = scale <= 1.0
@@ -110,54 +128,277 @@ class _EasyImageViewerDismissibleDialogState
                       });
                     }),
               ),
-              if(widget.canDelete) Positioned(
-                bottom: 5,
-                right: 5,
-                child: FlyoutTarget(
-                  controller: widget.confirmDeleteFlyoutCtrl,
-                  child: Button(
-                    child: ButtonContent(FluentIcons.delete, txt("delete"), size: 17),
-                    onPressed: () {
-                      widget.confirmDeleteFlyoutCtrl.showFlyout(
-                        builder: (context) => ConfirmDeleteFlyout(
-                          onConfirm: () {
-                            if (_pageController.page != null) {
-                              final currentIndex =
-                                  _pageController.page!.toInt();
-                              widget.onPressDelete(currentIndex %
-                                  widget.imageProvider.imageCount);
-                              WidgetsBinding.instance.addPostFrameCallback((_) {
-                                Navigator.of(context).pop();
-                                _handleDismissal();
+              if (widget.onSaveDrawing != null)
+                Positioned(
+                  bottom: 20,
+                  left: 20,
+                  right: 20,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.5),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Row(
+                              children: [
+                                Icon(
+                                  _isDrawingMode
+                                      ? FluentIcons.edit_solid12
+                                      : FluentIcons.edit,
+                                  color: _isDrawingMode
+                                      ? Colors.blue
+                                      : Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 4),
+                                Txt(
+                                  txt("draw"),
+                                  style: FluentTheme.of(context)
+                                      .typography
+                                      .bodyStrong!
+                                      .copyWith(
+                                        color: _isDrawingMode
+                                            ? Colors.blue
+                                            : Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isDrawingMode = !_isDrawingMode;
+                                if (_isDrawingMode) {
+                                  _showDrawings = true;
+                                }
                               });
-                            }
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          if (_isDrawingMode) ...[
+                            _buildColorButton(Colors.red),
+                            _buildColorButton(Colors.blue),
+                            _buildColorButton(Colors.green),
+                            _buildColorButton(Colors.yellow),
+                            _buildColorButton(Colors.white),
+                            _buildColorButton(Colors.black),
+                            const SizedBox(width: 8),
+                            Container(
+                                width: 1,
+                                height: 24,
+                                color: Colors.white.withOpacity(0.54)),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: Row(
+                                children: [
+                                  Icon(
+                                    FluentIcons.erase_tool,
+                                    color: _isEraserMode
+                                        ? Colors.blue
+                                        : Colors.white,
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Txt(
+                                    txt("erase"),
+                                    style: FluentTheme.of(context)
+                                        .typography
+                                        .bodyStrong!
+                                        .copyWith(
+                                          color: _isEraserMode
+                                              ? Colors.blue
+                                              : Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _isEraserMode = !_isEraserMode;
+                                });
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                                width: 1,
+                                height: 24,
+                                color: Colors.white.withOpacity(0.54)),
+                            const SizedBox(width: 8),
+                          ],
+                          if (_hasDrawings() || _isDrawingMode) ...[
+                            if (!_isDrawingMode) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                  width: 1,
+                                  height: 24,
+                                  color: Colors.white.withOpacity(0.54)),
+                              const SizedBox(width: 8),
+                            ],
+                            IconButton(
+                              icon: Row(
+                                children: [
+                                  Icon(
+                                    _showDrawings
+                                        ? FluentIcons.red_eye
+                                        : FluentIcons.hide,
+                                    color: _showDrawings
+                                        ? Colors.white
+                                        : Colors.white.withOpacity(0.54),
+                                    size: 18,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Txt(
+                                    txt("showDrawings"),
+                                    style: FluentTheme.of(context)
+                                        .typography
+                                        .bodyStrong!
+                                        .copyWith(
+                                          color: _showDrawings
+                                              ? Colors.white
+                                              : Colors.white.withOpacity(0.54),
+                                          fontSize: 16,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              onPressed: () {
+                                setState(() {
+                                  _showDrawings = !_showDrawings;
+                                  if (!_showDrawings) {
+                                    _isDrawingMode = false;
+                                  }
+                                });
+                              },
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              Positioned(
+                top: 20,
+                left: 20,
+                right: 20,
+                child: Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.7),
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        )
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (widget.canDelete) ...[
+                          FlyoutTarget(
+                            controller: widget.confirmDeleteFlyoutCtrl,
+                            child: IconButton(
+                              icon: Row(
+                                children: [
+                                  const Icon(FluentIcons.delete,
+                                      color: Colors.white, size: 18),
+                                  const SizedBox(width: 4),
+                                  Txt(
+                                    txt("delete"),
+                                    style: FluentTheme.of(context)
+                                        .typography
+                                        .bodyStrong!
+                                        .copyWith(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                              onPressed: () {
+                                widget.confirmDeleteFlyoutCtrl.showFlyout(
+                                  builder: (context) => ConfirmDeleteFlyout(
+                                    onConfirm: () {
+                                      if (_pageController.page != null) {
+                                        final currentIndex =
+                                            _pageController.page!.toInt();
+                                        widget.onPressDelete(currentIndex %
+                                            widget.imageProvider.imageCount);
+                                        WidgetsBinding.instance
+                                            .addPostFrameCallback((_) {
+                                          Navigator.of(context).pop();
+                                          _handleDismissal();
+                                        });
+                                      }
+                                    },
+                                    controller: widget.confirmDeleteFlyoutCtrl,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 1,
+                            height: 24,
+                            color: Colors.white.withOpacity(0.54),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        IconButton(
+                          icon: Row(
+                            children: [
+                              const Icon(
+                                FluentIcons.clear,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 4),
+                              Txt(
+                                txt("close"),
+                                style: FluentTheme.of(context)
+                                    .typography
+                                    .bodyStrong!
+                                    .copyWith(
+                                      color: Colors.white,
+                                      fontSize: 16,
+                                    ),
+                              ),
+                            ],
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                            _handleDismissal();
                           },
-                          controller: widget.confirmDeleteFlyoutCtrl,
                         ),
-                      );
-                    },
+                      ],
+                    ),
                   ),
                 ),
               ),
-              Positioned(
-                  top: 5,
-                  right: 5,
-                  child: IconButton(
-                    icon: const Icon(
-                      FluentIcons.clear,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      _handleDismissal();
-                    },
-                  ))
             ]));
 
     if (widget.swipeDismissible) {
       return Dismissible(
-          direction: _dismissDirection,
+          direction: _isDrawingMode ? DismissDirection.none : _dismissDirection,
           resizeDuration: null,
           confirmDismiss: (dir) async {
             return true;
@@ -199,5 +440,54 @@ class _EasyImageViewerDismissibleDialogState
       currentPage = currentPage % widget.imageProvider.imageCount;
     }
     return currentPage;
+  }
+
+  Widget _buildColorButton(Color color) {
+    bool isSelected = _selectedColor == color && !_isEraserMode;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedColor = color;
+          _isEraserMode = false;
+        });
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        width: 24,
+        height: 24,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: isSelected ? Colors.blue : Colors.white.withOpacity(0.54),
+            width: isSelected ? 3 : 1,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.blue.withOpacity(0.5),
+                    blurRadius: 6,
+                    spreadRadius: 2,
+                  )
+                ]
+              : null,
+        ),
+      ),
+    );
+  }
+
+  bool _hasDrawings() {
+    if (widget.drawings == null || widget.imageIds == null) {
+      return false;
+    }
+    int currentIndex = widget.imageProvider.initialIndex;
+    if (_pageController.hasClients && _pageController.page != null) {
+      currentIndex = _pageController.page!.round();
+    }
+    currentIndex = currentIndex % widget.imageProvider.imageCount;
+    if (currentIndex >= widget.imageIds!.length) return false;
+    final imgId = widget.imageIds![currentIndex];
+    final drawingStr = widget.drawings![imgId];
+    return drawingStr != null && drawingStr.isNotEmpty && drawingStr != "[]";
   }
 }

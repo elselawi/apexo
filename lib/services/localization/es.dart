@@ -57,7 +57,8 @@ class Es implements En {
     "onceConnectionIsStable":
         "Una vez que tu conexión sea estable, puedes usar el botón en la esquina superior derecha para reconectar.",
     "unRestrictedAccess": "acceso sin restricciones en la aplicación",
-    "restrictedAccess": "acceso restringido a algunas pantallas según lo dictado por el administrador",
+    "restrictedAccess":
+        "acceso restringido a algunas pantallas según lo dictado por el administrador",
     "youAreCurrentlyIn": "Actualmente estás en",
     "mode": "modo",
     "youHave": "Tienes",
@@ -85,7 +86,8 @@ class Es implements En {
     "doctorEmail": "Correo del doctor",
     "dutyDays": "Días de servicio",
     "addAppointment": "Añadir cita",
-    "lockToUsers": "Solo los siguientes usuarios pueden ver/editar los datos y citas de este doctor",
+    "lockToUsers":
+        "Solo los siguientes usuarios pueden ver/editar los datos y citas de este doctor",
     "noUpcomingAppointmentsForThisDoctor":
         "No se econtraron citas próximas. Use el botón abajo para añadir una nueva cita.",
 
@@ -123,14 +125,16 @@ class Es implements En {
     "underpaid": "Insuficientemente pagado",
     "overpaid": "Excesivamente pagado",
     "fullyPaid": "Completamente pagado",
-    "includesOtherAppointments": "Este total también refleja los pagos de otras citas.",
+    "includesOtherAppointments":
+        "Este total también refleja los pagos de otras citas.",
     "paymentSummary": "Resumen de pagos",
     "editingAppointment": "Editando cita",
     "after": "Después",
     "days": "días",
     "day": "día",
     "isDone": "La cita está completada",
-    "addLabwork": "Agregar trabajo de laboratorio para esta cita y este paciente",
+    "addLabwork":
+        "Agregar trabajo de laboratorio para esta cita y este paciente",
     "labworksForThisAppointment": "Trabajo de laboratorio para esta cita",
 
     // patients
@@ -156,7 +160,8 @@ class Es implements En {
     "editPatient": "Editar paciente",
     "editAppointment": "Editar cita",
     "patientPage": "Página web del paciente",
-    "patientCanUseTheFollowing": "El paciente puede usar el siguiente enlace para acceder a sus citas, pagos y fotos.",
+    "patientCanUseTheFollowing":
+        "El paciente puede usar el siguiente enlace para acceder a sus citas, pagos y fotos.",
     "printQR": "Imprimir código QR",
     "web": "Web",
     "telegram": "Telegram",
@@ -180,6 +185,9 @@ class Es implements En {
     "exportSelected": "Exportar seleccionados",
     "noPatientsSelected": "No se han seleccionado pacientes",
     "otherPhotos": "Fotos de otras citas",
+    "draw": "Dibujar",
+    "erase": "Borrar",
+    "showDrawings": "Mostrar dibujos",
 
     // communication
     "contact": "Contact",
@@ -188,8 +196,8 @@ class Es implements En {
     "call": "Llamar",
     "text": "Mensaje",
     "countryCode": "Código de país",
-    "countryCode_desc": "Selecciona el código de país predeterminado al realizar llamadas o enviar mensajes",
-
+    "countryCode_desc":
+        "Selecciona el código de país predeterminado al realizar llamadas o enviar mensajes",
 
     // treatments
     "treatment": "Tratamiento",
@@ -209,8 +217,10 @@ class Es implements En {
     "bridge": "Puente",
     "overlay": "Overlay",
     "temporary": "Temporal",
-    "tap the treatment you have performed to register it to the tooth": "Toca el tratamiento realizado para registrarlo en el diente",
-    "tap the condition or history of the tooth to register it": "Toque la condición o el historial del diente para registrarlo",
+    "tap the treatment you have performed to register it to the tooth":
+        "Toca el tratamiento realizado para registrarlo en el diente",
+    "tap the condition or history of the tooth to register it":
+        "Toque la condición o el historial del diente para registrarlo",
     "missing": "Ausente",
     "caries": "Caries",
     "fractured": "Fracturado",
@@ -235,7 +245,8 @@ class Es implements En {
     "changeDate": "Cambiar fecha",
     "changeTime": "Cambiar hora",
     "attention": "Atención",
-    "doctorNotAvailable": "Uno de los doctores seleccionados podría no estar disponible en la fecha seleccionada.",
+    "doctorNotAvailable":
+        "Uno de los doctores seleccionados podría no estar disponible en la fecha seleccionada.",
     "time": "Hora",
     "preOperativeNotes": "Notas preoperatorias",
     "selectDoctors": "Seleccionar doctores",
@@ -293,7 +304,6 @@ class Es implements En {
     "addOrder": "Agregar pedido",
     "filterByItems": "Filtrar por artículos",
 
-
     // stats
     "pickRange": "Seleccionar rango",
     "start": "Inicio",
@@ -322,16 +332,20 @@ class Es implements En {
 
     // settings
     "currency": "Moneda",
-    "currency_desc": "Código de moneda a usar en toda la aplicación (p. ej., USD, EUR, IQD).",
-    "phone_desc": "El número de teléfono se mostrará en impresiones y en la página web del paciente.",
+    "currency_desc":
+        "Código de moneda a usar en toda la aplicación (p. ej., USD, EUR, IQD).",
+    "phone_desc":
+        "El número de teléfono se mostrará en impresiones y en la página web del paciente.",
     "prescriptionFooter": "Pie de página de la receta",
     "prescriptionFooter_desc": "Este texto se mostrará al final de la receta.",
     "language": "Idioma",
-    "language_desc": "El idioma de la interfaz para los menús, botones e información usada en toda la aplicación.",
+    "language_desc":
+        "El idioma de la interfaz para los menús, botones e información usada en toda la aplicación.",
     "startingDayOfWeek": "Primer día de la semana",
     "startingDayOfWeek_desc": "El día de la semana en que comienza la semana.",
     "dateFormat": "Formato de fecha",
-    "dateFormat_desc": "Este formato se usará para mostrar fechas cuando aplique.",
+    "dateFormat_desc":
+        "Este formato se usará para mostrar fechas cuando aplique.",
     "cacheReset": "Reiniciar caché",
     "cacheReset_desc":
         "Puedes usar el siguiente botón para reiniciar el caché de la aplicación, excepto las imágenes. Esto puede ayudar a resolver algunos problemas que podrías estar teniendo al sincronizar con otros dispositivos.",
@@ -357,16 +371,20 @@ class Es implements En {
     "restoreBackup": "Restaurar copia de seguridad",
     "restoreBackupWarning1":
         "Restaurar esta copia de seguridad sobrescribirá todos los datos actuales en la aplicación. Cualquier cambio que hayas hecho después de la fecha de esta copia de seguridad",
-    "restoreBackupWarning2": "se perderá.\n\n¿Estás seguro de que deseas restaurar esta copia de seguridad?",
-    "sureDeleteBackup": "¿Estás seguro de que deseas eliminar esta copia de seguridad?",
+    "restoreBackupWarning2":
+        "se perderá.\n\n¿Estás seguro de que deseas restaurar esta copia de seguridad?",
+    "sureDeleteBackup":
+        "¿Estás seguro de que deseas eliminar esta copia de seguridad?",
     "backupDate": "Fecha de la copia de seguridad",
-    "useTheFollowingLinkToDownloadTheBackup": "Usa el siguiente enlace para descargar la copia de seguridad",
+    "useTheFollowingLinkToDownloadTheBackup":
+        "Usa el siguiente enlace para descargar la copia de seguridad",
 
     // advanced settings: Admins
     "admins": "Administradores",
     "accountCreated": "Cuenta creada",
     "editAdmin": "Editar administrador",
-    "validEmailMustBeProvided": "Debe proporcionarse un correo electrónico válido",
+    "validEmailMustBeProvided":
+        "Debe proporcionarse un correo electrónico válido",
     "password": "Contraseña",
     "leaveBlankToKeepUnchanged": "Deja en blanco para mantener sin cambios",
     "updatingPassword": "Actualizando contraseña",
@@ -398,17 +416,20 @@ class Es implements En {
     // advanced settings: prod tests
     "prodTests": "Pruebas de producción",
     "fileStorageTest": "Prueba de almacenamiento de archivos",
-    "fileStorageTestDesc": "Usa el siguiente botón para probar si el almacenamiento S3 está funcionando correctamente.",
+    "fileStorageTestDesc":
+        "Usa el siguiente botón para probar si el almacenamiento S3 está funcionando correctamente.",
     "fileStorageButton": "Probar configuración S3",
     "fileStorageFail": "La configuración de S3 falló",
-    "fileStorageSuccess": "La configuración de S3 está funcionando correctamente",
+    "fileStorageSuccess":
+        "La configuración de S3 está funcionando correctamente",
     "emailTest": "Prueba de correo",
     "emailTestDesc":
         "Usa el siguiente botón para probar si tu servidor puede enviar correos electrónicos correctamente. Un correo parecido a una reestablecimiento de contraseña debería ser entregado a la dirección de correo objetivo.",
     "targetEmail": "Correo objetivo",
     "emailTestButton": "Enviar correo de prueba",
     "emailTestFail": "La prueba de correo falló",
-    "emailTestSuccess": "Correo enviado exitosamente, por favor revisa tu bandeja de entrada.",
+    "emailTestSuccess":
+        "Correo enviado exitosamente, por favor revisa tu bandeja de entrada.",
     "fail": "Fallar",
     "success": "Éxito",
 
@@ -418,12 +439,16 @@ class Es implements En {
     "serverUrl": "URL del servidor",
     "proceedOffline": "Proceder fuera de línea",
     "youLLGet": "Obtendrás el enlace de restablecimiento por correo",
-    "beenSent": "Instrucciones para restablecer la contraseña han sido enviadas, revisa tu bandeja de entrada.",
+    "beenSent":
+        "Instrucciones para restablecer la contraseña han sido enviadas, revisa tu bandeja de entrada.",
 
     // other
-    "otherNotesPerAppointment": "Hay otras notas registradas en el panel de citas que no aparecen aquí.",
-    "sureArchiveSelected": "¿Estás seguro de que deseas archivar los elementos seleccionados?",
-    "sureClosePanel": "¿Estás seguro de que deseas cerrar el panel? Todos los cambios no guardados se perderán.",
+    "otherNotesPerAppointment":
+        "Hay otras notas registradas en el panel de citas que no aparecen aquí.",
+    "sureArchiveSelected":
+        "¿Estás seguro de que deseas archivar los elementos seleccionados?",
+    "sureClosePanel":
+        "¿Estás seguro de que deseas cerrar el panel? Todos los cambios no guardados se perderán.",
     "sure": "Seguro",
     "back": "Regresar",
     "firstLaunchDialogTitle": "Bienvenido a Apexo",

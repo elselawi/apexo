@@ -188,7 +188,8 @@ class Ar implements En {
     "call": "اتصال هاتفي",
     "text": "رسالة نصية",
     "countryCode": "الرمز الدولي",
-    "countryCode_desc": "اختر الرمز الدولي الافتراضي عند إجراء المكالمات أو إرسال الرسائل",
+    "countryCode_desc":
+        "اختر الرمز الدولي الافتراضي عند إجراء المكالمات أو إرسال الرسائل",
 
     // treatments
     "treatment": "العلاج",
@@ -208,8 +209,10 @@ class Ar implements En {
     "bridge": "جسر",
     "overlay": "أوفرلاي",
     "temporary": "مؤقت",
-    "tap the treatment you have performed to register it to the tooth": "إضغط على العلاج الذي تم اجراءه لتسجيله على السن",
-    "tap the condition or history of the tooth to register it": "إضغط على الحالة او التاريخ المرضي للسن لتسجيله",
+    "tap the treatment you have performed to register it to the tooth":
+        "إضغط على العلاج الذي تم اجراءه لتسجيله على السن",
+    "tap the condition or history of the tooth to register it":
+        "إضغط على الحالة او التاريخ المرضي للسن لتسجيله",
     "missing": "مفقود",
     "caries": "تسوس",
     "fractured": "كسر",
@@ -258,6 +261,9 @@ class Ar implements En {
     "enterLink": "أدخل عنوان URL الذي يحتوي على صور",
     "import": "استيراد",
     "otherPhotos": "صور من مواعيد أخرى",
+    "draw": "رسم",
+    "erase": "مسح",
+    "showDrawings": "إظهار الرسومات",
 
     // labworks
     "laboratory": "مختبر",

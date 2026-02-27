@@ -166,12 +166,18 @@ class AppointmentCard extends StatelessWidget {
                                 rowWidth: 200,
                                 size: 43,
                                 progress: false,
+                                drawings: appointment.drawings,
+                                onSaveDrawing: (img, drawing) {
+                                  appointment.drawings[img] = drawing;
+                                  appointments.set(appointment);
+                                },
                                 onPressDelete: (img) async {
                                   try {
                                     await appointments.deleteImg(
                                       appointment.id,
                                       img,
                                     );
+                                    appointment.drawings.remove(img);
                                     appointments
                                         .set(appointment..imgs.remove(img));
                                   } catch (e, s) {

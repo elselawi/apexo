@@ -514,6 +514,13 @@ class AppointmentCalendarTile<Item extends Appointment>
               : Transform.scale(
                   scale: 1.25,
                   child: Checkbox(
+                      style: CheckboxThemeData(
+                        icon: item.isDone
+                            ? WindowsIcons.completed
+                            : FluentIcons.hour_glass,
+                        uncheckedIconColor: WidgetStatePropertyAll(
+                            FluentTheme.of(context).inactiveColor),
+                      ),
                       checked: item.isDone,
                       onChanged: (checked) {
                         item.isDone = checked == true;

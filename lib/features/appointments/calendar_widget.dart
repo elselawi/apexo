@@ -487,15 +487,23 @@ class AppointmentCalendarTile<Item extends Appointment>
                     child: ItemTitle(item: item)),
               ],
             ),
-            TreatmentLabels(
-                labels: item.teeth.entries
-                    .toSet()
-                    .map((e) => TreatmentLabel(
-                        string: e.value,
-                        color: labelToColor(e.value),
-                        icon: labelToIcon(e.value),
-                        iso: e.key))
-                    .toList())
+            Column(
+              children: [
+                if (item.hasLabwork) ...[
+                  const Icon(FluentIcons.manufacturing, size: 17),
+                  const SizedBox(height: 5),
+                ],
+                TreatmentLabels(
+                    labels: item.teeth.entries
+                        .toSet()
+                        .map((e) => TreatmentLabel(
+                            string: e.value,
+                            color: labelToColor(e.value),
+                            icon: labelToIcon(e.value),
+                            iso: e.key))
+                        .toList()),
+              ],
+            )
           ],
         ),
         subtitle: item.subtitleLine1.isNotEmpty

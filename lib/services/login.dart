@@ -24,7 +24,7 @@ class _LoginService extends ObservablePersistingObject {
   String adminCollectionId = "__UNDEFINED__";
 
   String get currentAccountID {
-    if(launch.isDemo) return accounts.list().first.id;
+    if (launch.isDemo) return accounts.list().first.id;
     final findByEmail =
         accounts.list().where((x) => x.getStringValue("email") == email);
     if ((token.isEmpty || pb == null || pb!.authStore.record == null) &&
@@ -39,12 +39,12 @@ class _LoginService extends ObservablePersistingObject {
   PocketBase? pb;
 
   String get currentName {
-    if(accounts.list().isEmpty) return "";
+    if (accounts.list().isEmpty) return "";
     return accounts.name(
         accounts.list().firstWhere((x) => x.id == login.currentAccountID));
   }
 
-  List<int> get permissions {
+  List<int> get _permissions {
     if (launch.isDemo) return fullPermissions;
     if (isAdmin) return fullPermissions;
     if (network.isOnline()) {
@@ -55,6 +55,11 @@ class _LoginService extends ObservablePersistingObject {
     } else {
       return savedPermissions;
     }
+  }
+
+  List<int> get permissions {
+    // this is to avoid errors when adding new features that would add new slots in the permissions array
+    return [..._permissions, 0, 0, 0, 0, 0];
   }
 
   bool get currentLoginIsOperator {
@@ -83,7 +88,7 @@ class _LoginService extends ObservablePersistingObject {
     email = "";
     password = "";
     token = "";
-    if(pb != null) {
+    if (pb != null) {
       pb!.authStore.clear();
     }
     notifyAndPersist();

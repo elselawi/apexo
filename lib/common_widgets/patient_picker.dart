@@ -9,7 +9,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 class PatientPicker extends StatelessWidget {
   final void Function(String? id) onChanged;
   final String? value;
-  const PatientPicker({super.key, required this.onChanged, required this.value});
+  final bool enabled;
+  const PatientPicker({super.key, required this.onChanged, required this.value, this.enabled = true});
 
   @override
   Widget build(BuildContext context) {
@@ -24,6 +25,7 @@ class PatientPicker extends StatelessWidget {
         if (s.isEmpty) return onChanged(null);
         onChanged(s.first.value ?? "");
       },
+      enabled: enabled,
       initialValue: value != null ? [TagInputItem(value: value!, label: patients.get(value!)?.title ?? "null")] : [],
       strict: true,
       limit: 1,

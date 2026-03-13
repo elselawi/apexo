@@ -75,7 +75,8 @@ The roadmap is not written in stone, but here are some ideas that I have in mind
 - Payment and installement plan setup
 - SMS/WhatsApp reminders
 - Lip filler and TMJ in dental treatments
-
+- look for SizedBox and replace with spacing when applicable
+- some icons might be better with windows icons instead of fluent icons
 
 #### Built with ❤️ in Mosul, Iraq.
 

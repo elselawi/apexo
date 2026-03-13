@@ -1,6 +1,6 @@
 import 'package:apexo/utils/constants.dart';
 
-String simpleHash(String input) {
+String simpleHash(String input, {int length = 17}) {
   const int prime = 31; // A prime multiplier for hashing
   int hash1 = 0;
   int hash2 = 0;
@@ -13,7 +13,7 @@ String simpleHash(String input) {
 
   // Combine the two hashes to extend the output
   StringBuffer result = StringBuffer();
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < length - 1; i++) {
     // Extend to a fixed-length output
     int combinedHash = (hash1 ^ hash2) & 0xFFFFFFFF;
     int index = combinedHash % alphabet.length;

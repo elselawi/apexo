@@ -17,7 +17,7 @@ class _Accounts extends ObservablePersistingObject {
   final updating = ObservableState(Map<String, bool>.from({}));
   final deleting = ObservableState(Map<String, bool>.from({}));
 
-  _collName(bool isAdmin) {
+  String _collName(bool isAdmin) {
     return isAdmin ? "_superusers" : "users";
   }
 
@@ -134,8 +134,8 @@ class _Accounts extends ObservablePersistingObject {
   }
 
   List<int> parsePermissions(String str) {
-    if (str.isEmpty) str = "[0,0,0,0,0,0,0]";
-    return List<int>.from(jsonDecode(str));
+    if (str.isEmpty) str = "[0,0,0,0,0,0,0,0]";
+    return List<int>.from(jsonDecode(str))..addAll([0,0,0,0]);
   }
 
   String name(RecordModel account) {

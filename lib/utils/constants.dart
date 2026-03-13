@@ -61,7 +61,7 @@ final dataCollectionImport = CollectionModel(
     CollectionField({
       "hidden": false,
       "maxSelect": 99,
-      "maxSize": 15728640,
+      "maxSize": 157286400,
       "mimeTypes": null,
       "name": "imgs",
       "presentable": false,

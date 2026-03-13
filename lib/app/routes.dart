@@ -6,6 +6,8 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/dashboard/dashboard_screen.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
+import 'package:apexo/features/notes/notes_screen.dart';
+import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/stats/screen_stats.dart';
 import 'package:apexo/features/accounts/accounts_screen.dart';
@@ -85,7 +87,6 @@ class Route {
 
   /// callback to be called when the route is selected
   void Function() onSelect;
-
 
   Route({
     required this.title,
@@ -189,6 +190,19 @@ class _Routes {
               await appointments.synchronize();
             },
           ),
+        Route(
+          title: txt("notes"),
+          identifier: "notes",
+          navbarTitle: txt("notes"),
+          icon: WindowsIcons.quick_note,
+          screen: NotesScreen.new,
+          onSelect: () async {
+            await accounts.reloadFromRemote();
+            await patients.synchronize();
+            await appointments.synchronize();
+            await notes.synchronize();
+          },
+        ),
         if (login.permissions[PInt.expenses] > 0 || login.isAdmin)
           Route(
             title: txt("expenses"),

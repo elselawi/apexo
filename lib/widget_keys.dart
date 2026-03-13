@@ -11,6 +11,7 @@ class WK {
   static const labworksScreen = Key("labworksScreen");
   static const settingsScreen = Key("settingsScreen");
   static const expensesScreen = Key("expensesScreen");
+  static const notesScreen = Key("notesScreen");
   static const serverField = Key("serverField");
   static const emailField = Key("emailField");
   static const passwordField = Key("passwordField");
@@ -53,7 +54,8 @@ class WK {
   static const fieldAppointmentPreOpNotes = Key("fieldAppointmentPreOpNotes");
   static const fieldAppointmentPostOpNotes = Key("fieldAppointmentPostOpNotes");
   static const fieldLabworkaddition = Key("fieldLabworkaddition");
-  static const fieldAppointmentPrescriptions = Key("fieldAppointmentPrescriptions");
+  static const fieldAppointmentPrescriptions =
+      Key("fieldAppointmentPrescriptions");
   static const fieldAppointmentPrice = Key("fieldAppointmentPrice");
   static const fieldAppointmentPayment = Key("fieldAppointmentPayment");
   static const fieldLabworkTitle = Key("fieldLabworkTitle");

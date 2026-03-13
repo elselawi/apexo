@@ -6,10 +6,14 @@ class ConfirmDeleteFlyout extends StatelessWidget {
     super.key,
     required this.onConfirm,
     required this.controller,
+    this.actionText = "delete",
+    this.actionIcon = FluentIcons.delete,
   });
 
   final VoidCallback onConfirm;
   final FlyoutController controller;
+  final String actionText;
+  final IconData actionIcon;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +26,7 @@ class ConfirmDeleteFlyout extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Txt("${txt("delete")}?"),
+          Txt("${txt(actionText)}?", style: FluentTheme.of(context).typography.bodyStrong?.copyWith(color: Colors.grey)),
           const SizedBox(width: 10),
           FilledButton(
             onPressed: () {
@@ -35,9 +39,9 @@ class ConfirmDeleteFlyout extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(FluentIcons.delete),
+                Icon(actionIcon),
                 const SizedBox(width: 5),
-                Txt(txt("delete")),
+                Txt(txt(actionText)),
               ],
             ),
           ),

@@ -4,6 +4,7 @@ import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
+import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/settings/services_settings/backups_settings.dart';
@@ -41,9 +42,10 @@ class SettingsScreen extends StatelessWidget {
                 inputType: InputType.text,
                 scope: Scope.app,
                 initValue: globalSettings.get("currency_______").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "currency_______", "value": newVal})),
+                apply: (newVal) => globalSettings.set(Setting.fromJson(
+                    {"id": "currency_______", "value": newVal})),
               ),
-            if(login.isAdmin)
+            if (login.isAdmin)
               SettingsItem(
                 title: txt("countryCode"),
                 identifier: "countryCode",
@@ -52,7 +54,8 @@ class SettingsScreen extends StatelessWidget {
                 inputType: InputType.text,
                 scope: Scope.app,
                 initValue: globalSettings.get("country_code___").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "country_code___", "value": newVal})),
+                apply: (newVal) => globalSettings.set(Setting.fromJson(
+                    {"id": "country_code___", "value": newVal})),
               ),
             if (login.isAdmin)
               SettingsItem(
@@ -63,7 +66,8 @@ class SettingsScreen extends StatelessWidget {
                 inputType: InputType.text,
                 scope: Scope.app,
                 initValue: globalSettings.get("prescriptionFot").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "prescriptionFot", "value": newVal})),
+                apply: (newVal) => globalSettings.set(Setting.fromJson(
+                    {"id": "prescriptionFot", "value": newVal})),
               ),
             if (login.isAdmin)
               SettingsItem(
@@ -74,7 +78,8 @@ class SettingsScreen extends StatelessWidget {
                 inputType: InputType.multiline,
                 scope: Scope.app,
                 initValue: globalSettings.get("phone__________").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "phone__________", "value": newVal})),
+                apply: (newVal) => globalSettings.set(Setting.fromJson(
+                    {"id": "phone__________", "value": newVal})),
               ),
             SettingsItem(
               title: txt("language"),
@@ -84,7 +89,9 @@ class SettingsScreen extends StatelessWidget {
               inputType: InputType.dropDown,
               scope: Scope.device,
               options: locale.list
-                  .map((e) => ComboBoxItem(value: locale.list.indexOf(e).toString(), child: Txt(e.$name)))
+                  .map((e) => ComboBoxItem(
+                      value: locale.list.indexOf(e).toString(),
+                      child: Txt(e.$name)))
                   .toList(),
               initValue: localSettings.selectedLocale.toString(),
               apply: (newVal) {
@@ -101,10 +108,13 @@ class SettingsScreen extends StatelessWidget {
                 icon: FluentIcons.hazy_day,
                 inputType: InputType.dropDown,
                 scope: Scope.app,
-                options:
-                    StartingDayOfWeek.values.map((e) => ComboBoxItem(value: e.name, child: Txt(txt(e.name)))).toList(),
+                options: StartingDayOfWeek.values
+                    .map((e) =>
+                        ComboBoxItem(value: e.name, child: Txt(txt(e.name))))
+                    .toList(),
                 initValue: globalSettings.get("start_day_of_wk").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson({"id": "start_day_of_wk", "value": newVal})),
+                apply: (newVal) => globalSettings.set(Setting.fromJson(
+                    {"id": "start_day_of_wk", "value": newVal})),
               ),
             SettingsItem(
               title: txt("dateFormat"),
@@ -182,23 +192,30 @@ class SettingsScreen extends StatelessWidget {
                           dismissWithEsc: false,
                           builder: (context) {
                             return ContentDialog(
-                              title:
-                                  Row(mainAxisAlignment: MainAxisAlignment.center, children: [Txt(txt("cacheReset"))]),
+                              title: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [Txt(txt("cacheReset"))]),
                               content: StreamBuilder(
                                   stream: cacheResetState.stream,
                                   builder: (context, _) {
                                     return Column(
                                       mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
                                       children: [
                                         const SizedBox(height: 10),
-                                        if (!cacheResetState().startsWith("Error")) const Center(child: ProgressRing()),
+                                        if (!cacheResetState()
+                                            .startsWith("Error"))
+                                          const Center(child: ProgressRing()),
                                         const SizedBox(height: 10),
                                         Center(child: Txt(cacheResetState())),
                                         const SizedBox(height: 10),
-                                        if (cacheResetState().startsWith("Error"))
+                                        if (cacheResetState()
+                                            .startsWith("Error"))
                                           FilledButton(
-                                              child: Txt(txt("close")), onPressed: () => Navigator.pop(context)),
+                                              child: Txt(txt("close")),
+                                              onPressed: () =>
+                                                  Navigator.pop(context)),
                                       ],
                                     );
                                   }),
@@ -213,6 +230,7 @@ class SettingsScreen extends StatelessWidget {
                         await patients.local!.clear();
                         await appointments.local!.clear();
                         await expenses.local!.clear();
+                        await notes.local!.clear();
                         await globalSettings.local!.clear();
                         cacheResetState(txt("synchronizing"));
                         await networkActions.resync();
@@ -285,12 +303,16 @@ class SettingsItemState extends State<SettingsItem> {
         content: SizedBox(
           width: 400,
           child: MStreamBuilder(
-              streams: [globalSettings.observableMap.stream, localSettings.stream],
+              streams: [
+                globalSettings.observableMap.stream,
+                localSettings.stream
+              ],
               builder: (context, _) {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (widget.inputType == InputType.text || widget.inputType == InputType.multiline)
+                    if (widget.inputType == InputType.text ||
+                        widget.inputType == InputType.multiline)
                       CupertinoTextField(
                         key: Key("${widget.identifier}_text_field"),
                         controller: _controller,
@@ -299,18 +321,22 @@ class SettingsItemState extends State<SettingsItem> {
                           setState(() => _controller.text = value);
                           _controller.selection = currentPosition;
                         },
-                        maxLines: widget.inputType == InputType.multiline ? 1 : null,
+                        maxLines:
+                            widget.inputType == InputType.multiline ? 1 : null,
                         placeholder: txt(widget.title),
                       )
                     else if (widget.inputType == InputType.dropDown)
                       ComboBox<String>(
                         key: Key("${widget.identifier}_combo"),
                         items: widget.options,
-                        onChanged: (value) => setState(() => value != null ? _controller.text = value : null),
+                        onChanged: (value) => setState(() =>
+                            value != null ? _controller.text = value : null),
                         value: _controller.text,
                       ),
                     const SizedBox(height: 5),
-                    Txt(widget.description, style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
+                    Txt(widget.description,
+                        style: const TextStyle(
+                            fontSize: 12, fontStyle: FontStyle.italic)),
                     const SizedBox(height: 10),
                     if (_controller.text != value) buildSaveCancelButtons(),
                     if (widget.footer != null) widget.footer!,
@@ -333,8 +359,12 @@ class SettingsItemState extends State<SettingsItem> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            widget.scope == Scope.app ? Colors.blue.withValues(alpha: 0.05) : Colors.teal.withValues(alpha: 0.05),
-            widget.scope == Scope.app ? Colors.blue.withValues(alpha: 0.14) : Colors.teal.withValues(alpha: 0.14),
+            widget.scope == Scope.app
+                ? Colors.blue.withValues(alpha: 0.05)
+                : Colors.teal.withValues(alpha: 0.05),
+            widget.scope == Scope.app
+                ? Colors.blue.withValues(alpha: 0.14)
+                : Colors.teal.withValues(alpha: 0.14),
           ],
         ),
       ),
@@ -363,7 +393,8 @@ class SettingsItemState extends State<SettingsItem> {
         ),
         const SizedBox(width: 10),
         FilledButton(
-          style: const ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey)),
+          style: const ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(Colors.grey)),
           onPressed: () {
             setState(() {
               _controller.text = widget.initValue;

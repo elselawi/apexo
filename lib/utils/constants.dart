@@ -10,6 +10,7 @@ class PInt {
   static const int expenses = 4;
   static const int setting = 5;
   static const int photos = 6;
+  static const int notes = 7;
 }
 
 const String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";

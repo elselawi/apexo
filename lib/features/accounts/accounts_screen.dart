@@ -12,8 +12,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-const zeroPermissions = [0, 0, 0, 0, 0, 0, 0];
-const fullPermissions = [2, 2, 2, 2, 2, 1, 1];
+const zeroPermissions = [0, 0, 0, 0, 0, 0, 0, 0];
+const fullPermissions = [2, 2, 2, 2, 2, 1, 1, 1];
 
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
@@ -435,6 +435,15 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           PermissionLevel(value: 2, label: txt("full"))
                         ],
                         onChanged: (level) => permissions[PInt.expenses] = level,
+                      ),
+                      PermissionSelector(
+                        title: txt("notes"),
+                        initialSelected: permissions[PInt.notes],
+                        levels: [
+                          PermissionLevel(value: 0, label: txt("personal")),
+                          PermissionLevel(value: 1, label: txt("all")),
+                        ],
+                        onChanged: (level) => permissions[PInt.notes] = level,
                       ),
                       PermissionSelector(
                         title: txt("settings"),

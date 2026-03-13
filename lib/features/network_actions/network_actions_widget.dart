@@ -49,15 +49,13 @@ class NetworkActions extends StatelessWidget {
         child: Tooltip(
           message: action.tooltip,
           child: IconButton(
-            icon: Icon(
-              action.iconData,
-              color: action.processing ?? false ? Colors.white : null,
-            ),
+            icon: action.icon,
             onPressed: action.onPressed,
             iconButtonMode: IconButtonMode.large,
             style: ButtonStyle(
                 shape: WidgetStatePropertyAll(RoundedRectangleBorder(borderRadius: BorderRadius.circular(50))),
                 iconSize: WidgetStateProperty.all(18),
+                foregroundColor: WidgetStatePropertyAll(action.processing ?? false ? Colors.white : null),
                 backgroundColor:
                     WidgetStatePropertyAll(action.processing ?? false ? action.activeColor : Colors.transparent)),
           ),

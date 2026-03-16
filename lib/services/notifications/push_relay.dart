@@ -94,8 +94,7 @@ class PushRelay {
       ),
     );
 
-    print((await Future.wait(requests)).map((e) => e.body));
-    // TODO: remove the above print after we make sure everything is working
+    await Future.wait(requests);
     // TODO: exclude sending notifications to the same account id after we make sure everything is working
   }
 }

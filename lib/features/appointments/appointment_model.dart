@@ -142,4 +142,27 @@ class Appointment extends Model {
 
     return json;
   }
+
+  @override
+  Map<String, dynamic> get jsonCopyForPush {
+    return {
+      "date": (date.millisecondsSinceEpoch / 60000).round(),
+      "isDone": isDone,
+      "archived": archived,
+      "operatorsIDs": operatorsIDs,
+    };
+  }
+
+  @override
+  List<String> get pushIfChanged =>
+      ["date", "isDone", "archived", "operatorsIDs"];
+
+  @override
+  bool get pushOnCreation => true;
+
+  @override
+  List<String> get targetsToPushTo => [
+        if (patientID != null && patientID!.isNotEmpty) patientID!,
+        ...operatorsIDs
+      ];
 }

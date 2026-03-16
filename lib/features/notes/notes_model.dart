@@ -161,4 +161,29 @@ class Note extends Model {
 
     return json;
   }
+
+  @override
+  Map<String, dynamic> get jsonCopyForPush {
+    return {
+      "comments": comments,
+      "done": done,
+      "attachments": attachments,
+      "assignedTo": assignedTo,
+      "dueDate": (dueDate.millisecondsSinceEpoch / (60 * 60 * 1000)).round(),
+      "archived": archived,
+    };
+  }
+
+  @override
+  List<String> get pushIfChanged =>
+      ["comments", "done", "attachments", "assignedTo", "dueDate", "archived"];
+
+  @override
+  bool get pushOnCreation => true;
+
+  @override
+  List<String> get targetsToPushTo => [
+        if (assignedTo.isNotEmpty) assignedTo,
+        if (createdBy.isNotEmpty) createdBy,
+      ];
 }

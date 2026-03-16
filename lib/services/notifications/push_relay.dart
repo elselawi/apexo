@@ -82,19 +82,24 @@ class PushRelay {
 
     final relayKey = await _getRelayKey();
 
-    final requests = bulkData.map(
-      (data) => http.post(
-        Uri.parse('$relayServer/push'),
-        body: jsonEncode({
-          "clinicServer": login.url,
-          "clinicKey": relayKey,
-          "accountIds": data.targetIDs,
-          "data": {"payload": jsonEncode(data.toJson())},
-        }),
-      ),
-    );
+    final requests = bulkData
+        .map((p) {
+          p.targetIDs.remove(login.currentAccountID);
+          return p;
+        })
+        .where((p) => p.targetIDs.isNotEmpty)
+        .map(
+          (data) => http.post(
+            Uri.parse('$relayServer/push'),
+            body: jsonEncode({
+              "clinicServer": login.url,
+              "clinicKey": relayKey,
+              "accountIds": data.targetIDs,
+              "data": {"payload": jsonEncode(data.toJson())},
+            }),
+          ),
+        );
 
     await Future.wait(requests);
-    // TODO: exclude sending notifications to the same account id after we make sure everything is working
   }
 }

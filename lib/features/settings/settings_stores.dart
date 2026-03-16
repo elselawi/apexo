@@ -5,10 +5,13 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/services/backups.dart';
+import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
@@ -53,7 +56,8 @@ class GlobalSettings extends Store<Setting> {
     login.activators[_storeNameGlobal] = () async {
       await loaded;
 
-      local = SaveLocal(name: _storeNameGlobal, uniqueId: simpleHash(login.url));
+      local =
+          SaveLocal(name: _storeNameGlobal, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
 
       remote = SaveRemote(
@@ -82,7 +86,8 @@ class GlobalSettings extends Store<Setting> {
             backups.reloadFromRemote(),
           ]);
         };
-        networkActions.reconnectCallbacks[_storeNameGlobal] = remote!.checkOnline;
+        networkActions.reconnectCallbacks[_storeNameGlobal] =
+            remote!.checkOnline;
 
         network.onOnline[_storeNameGlobal] = synchronize;
         network.onOffline[_storeNameGlobal] = cancelRealtimeSub;
@@ -98,7 +103,15 @@ class GlobalSettings extends Store<Setting> {
 }
 
 class LocalSettings extends ObservablePersistingObject {
-  LocalSettings() : super(_storeNameLocal);
+  LocalSettings() : super(_storeNameLocal) {
+    if (kIsWeb) {
+      observe((_) {
+        // We need to set the language in the JS bridge for the web
+        // this is to localize the permission requst & push notifications
+        JSBridge.setGlobalVariable("lang", locale.s.$code);
+      });
+    }
+  }
 
   String dateFormat = "dd/MM/yyyy";
   ThemeMode selectedTheme = ThemeMode.light;
@@ -110,7 +123,8 @@ class LocalSettings extends ObservablePersistingObject {
     selectedLocale = json["selectedLocale"] ?? selectedLocale;
     dateFormat = json["dateFormat"] ?? dateFormat;
     dentalNotation = json["dentalNotation"] ?? dentalNotation;
-    selectedTheme = json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
+    selectedTheme =
+        json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
   }
 
   @override

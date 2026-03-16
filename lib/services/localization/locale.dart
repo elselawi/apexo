@@ -7,7 +7,7 @@ import "package:fluent_ui/fluent_ui.dart";
 class _Localization {
   List<En> list = [En(), Ar(), Es()];
   En get s => list[localSettings.selectedLocale];
-  bool get isRtl => localSettings.selectedLocale == 1; // Arabic is RTL
+  bool get isRtl => s.$direction == Direction.rtl; // Arabic is RTL
 }
 
 final locale = _Localization();

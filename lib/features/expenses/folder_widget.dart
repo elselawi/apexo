@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class Folder extends StatefulWidget {
@@ -64,7 +65,8 @@ class _FolderState extends State<Folder> {
           controller: ctxMenuCtrl,
           child: IconButton(
             icon: const Icon(FluentIcons.more_vertical, color: Colors.grey),
-            onPressed: () {
+            onPressed: () async {
+              await flyoutFocusFix();
               ctxMenuCtrl.showFlyout(builder: (context) {
                 return MenuFlyout(
                   items: [

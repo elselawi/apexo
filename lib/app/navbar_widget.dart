@@ -1,5 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -47,21 +48,23 @@ class BottomNavBar extends StatelessWidget {
                       controller: routes.bottomNavFlyoutController,
                       child: IconButton(
                         icon: const Icon(FluentIcons.more),
-                        onPressed: () =>
-                            routes.bottomNavFlyoutController.showFlyout(
-                          dismissWithEsc: true,
-                          builder: (context) => MenuFlyout(items: [
-                            for (var route in routes.allRoutes
-                                .where((r) => r.navbarTitle.isEmpty))
-                              MenuFlyoutItem(
-                                leading: Icon(route.icon),
-                                text: Txt(route.title),
-                                onPressed: () =>
-                                    routes.navigate(route.identifier),
-                                closeAfterClick: true,
-                              )
-                          ]),
-                        ),
+                        onPressed: () async {
+                          await flyoutFocusFix();
+                          routes.bottomNavFlyoutController.showFlyout(
+                            dismissWithEsc: true,
+                            builder: (context) => MenuFlyout(items: [
+                              for (var route in routes.allRoutes
+                                  .where((r) => r.navbarTitle.isEmpty))
+                                MenuFlyoutItem(
+                                  leading: Icon(route.icon),
+                                  text: Txt(route.title),
+                                  onPressed: () =>
+                                      routes.navigate(route.identifier),
+                                  closeAfterClick: true,
+                                )
+                            ]),
+                          );
+                        },
                       ),
                     )
                   ],

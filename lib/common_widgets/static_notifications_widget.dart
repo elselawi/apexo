@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
@@ -21,7 +22,8 @@ class StaticNotificationsIcon extends StatelessWidget {
   }
 }
 
-showStaticNotifications() {
+showStaticNotifications() async {
+  await flyoutFocusFix();
   _notificationsFlyoutController.showFlyout(
     barrierColor: Colors.transparent,
     barrierDismissible: true,

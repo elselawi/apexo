@@ -12,6 +12,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show showDatePicker;
@@ -398,12 +399,13 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
                 ),
               )
           ]),
-          if(target.isRecurring) Button(
-            child: Txt(txt("save")),
-            onPressed: () {
-              _saveRecurringInterval(target);
-            },
-          )
+          if (target.isRecurring)
+            Button(
+              child: Txt(txt("save")),
+              onPressed: () {
+                _saveRecurringInterval(target);
+              },
+            )
         ]);
   }
 
@@ -536,7 +538,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         style: _iconButtonStyle(theme,
             color: isArchived ? Colors.grey : Colors.errorPrimaryColor),
         icon: Icon(isArchived ? FluentIcons.archive_undo : FluentIcons.archive),
-        onPressed: () {
+        onPressed: () async {
+          await flyoutFocusFix();
           _confirmArchiveFlyoutCtrl.showFlyout(builder: (ctx) {
             return ConfirmDeleteFlyout(
               actionText: isArchived ? txt("restore") : txt("archive"),
@@ -861,7 +864,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       child: IconButton(
         style: _iconButtonStyle(theme),
         icon: const Icon(FluentIcons.edit_contact),
-        onPressed: () {
+        onPressed: () async {
+          await flyoutFocusFix();
           _assigningFlyoutCtrl.showFlyout(builder: (context) {
             return MenuFlyout(
                 items: List.generate(accounts.list().length, (i) {

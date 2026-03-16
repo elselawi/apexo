@@ -4,6 +4,7 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -21,7 +22,7 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
       title: Row(
         spacing: 8,
         children: [
-          Icon(column == null ? FluentIcons.add :  FluentIcons.rename),
+          Icon(column == null ? FluentIcons.add : FluentIcons.rename),
           Txt(column == null ? txt("addColumn") : txt("editColumn")),
         ],
       ),
@@ -85,7 +86,8 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
                       : FluentIcons.archive,
                   column.archived == true ? txt("restore") : txt("archive"),
                 ),
-                onPressed: () {
+                onPressed: () async {
+                  await flyoutFocusFix();
                   _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
                     return ConfirmDeleteFlyout(
                       controller: _archiveFlyoutCtrl,

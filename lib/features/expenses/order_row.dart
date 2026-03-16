@@ -7,6 +7,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -130,7 +131,8 @@ class OrderRowState extends State<OrderRow> {
       controller: photoAddMenu,
       child: IconButton(
         icon: const Icon(FluentIcons.photo2_add, size: 20),
-        onPressed: () {
+        onPressed: () async {
+          await flyoutFocusFix();
           final bool suppGallery =
               ImagePicker().supportsImageSource(ImageSource.gallery);
           final bool suppCamera =

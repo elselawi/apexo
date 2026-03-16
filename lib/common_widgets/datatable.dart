@@ -6,6 +6,7 @@ import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -315,7 +316,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               padding: const EdgeInsets.all(5),
               child: const Icon(FluentIcons.more),
             ),
-            onPressed: () {
+            onPressed: () async {
+              await flyoutFocusFix();
               contextMenuControllers[item.id]!.showFlyout(
                 barrierDismissible: true,
                 dismissOnPointerMoveAway: false,
@@ -383,7 +385,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
                     ? item.allPredefinedTreatments
                         .map((x) =>
                             x == "pontic" || x == "abutment" ? "bridge" : x)
-                        .where((x) => txOptions.any((y) =>y.type != StateType.state && y.label == x))
+                        .where((x) => txOptions.any(
+                            (y) => y.type != StateType.state && y.label == x))
                         .toSet()
                         .map((x) => TreatmentLabel(
                             string: x,
@@ -430,7 +433,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Row _buildSorters() {
-    final treatments = txOptions.where((x) => x.type != StateType.state).toList();
+    final treatments =
+        txOptions.where((x) => x.type != StateType.state).toList();
     return Row(
       children: [
         if (widget.items is List<Patient>) ...[

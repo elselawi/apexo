@@ -3,13 +3,15 @@ import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/datatable.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 final flyoutController = FlyoutController();
 DataTableAction archiveSelected(Store store) {
   return DataTableAction(
-    callback: (ids) {
+    callback: (ids) async {
       if (ids.isEmpty) return;
+      await flyoutFocusFix();
       flyoutController.showFlyout(builder: (context) {
         return FlyoutContent(
           child: Column(
@@ -47,6 +49,7 @@ DataTableAction archiveSelected(Store store) {
       });
     },
     icon: FluentIcons.archive,
-    child: FlyoutTarget(controller: flyoutController, child: Txt(txt("archiveSelected"))),
+    child: FlyoutTarget(
+        controller: flyoutController, child: Txt(txt("archiveSelected"))),
   );
 }

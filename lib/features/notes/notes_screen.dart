@@ -147,7 +147,8 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
               columnNotes: _filteredNotes.where((e) => e.unCategorized).toList()
                 ..addAll(
                     notes.ghostCreatorsInColumn("").map((n) => n.createChild()))
-                ..sort((a, b) => a.date.compareTo(b.date) * notes.sortDirection())
+                ..sort(
+                    (a, b) => a.date.compareTo(b.date) * notes.sortDirection())
                 ..reversed,
             ),
             _buildAddColumnButton(),
@@ -238,3 +239,5 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
     );
   }
 }
+
+// TODO: use notes screen in web & andnroid to see if it works fine

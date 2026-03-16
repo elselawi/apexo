@@ -10,6 +10,7 @@ import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -49,7 +50,6 @@ class _SuppliersAndOrdersState extends State<SuppliersAndOrders> {
 
   @override
   Widget build(BuildContext context) {
-
     final due = expenses.amountDue;
 
     return Column(
@@ -62,8 +62,8 @@ class _SuppliersAndOrdersState extends State<SuppliersAndOrders> {
           _buildSuppliersFolders(context, expenses.suppliers),
           InfoBar(
             title: Txt("${txt("due")}:"),
-            content: Text(
-                "$due ${globalSettings.get("currency_______").value}"),
+            content:
+                Text("$due ${globalSettings.get("currency_______").value}"),
             severity: due == 0 ? InfoBarSeverity.info : InfoBarSeverity.warning,
           ),
         ]
@@ -168,7 +168,8 @@ class _SuppliersAndOrdersState extends State<SuppliersAndOrders> {
     return FlyoutTarget(
       controller: addOrderFlyout,
       child: IconButton(
-        onPressed: () {
+        onPressed: () async {
+          await flyoutFocusFix();
           addOrderFlyout.showFlyout(builder: (context) {
             return MenuFlyout(
               items: [

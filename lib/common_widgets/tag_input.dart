@@ -1,4 +1,5 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
@@ -121,8 +122,9 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     widget.onChanged(_tags);
   }
 
-  void showAllTags() {
+  void showAllTags() async {
     if (_tags.isEmpty) return;
+    await flyoutFocusFix();
     _hiddenTappedFlyoutController.showFlyout(
         builder: (context) {
           return FlyoutContent(
@@ -344,8 +346,10 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         icon: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (tapable) ...[const Icon(FluentIcons.contact, size: 12, color: Colors.white),
-            const SizedBox(width: 5)],
+            if (tapable) ...[
+              const Icon(FluentIcons.contact, size: 12, color: Colors.white),
+              const SizedBox(width: 5)
+            ],
             Txt(tag.label,
                 style: TextStyle(color: tapable ? Colors.white : null)),
             const SizedBox(width: 5),

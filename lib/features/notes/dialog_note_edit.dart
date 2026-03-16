@@ -10,6 +10,7 @@ import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -207,7 +208,8 @@ void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
                         : FluentIcons.archive,
                     note.archived == true ? txt("restore") : txt("archive"),
                   ),
-                  onPressed: () {
+                  onPressed: () async {
+                    await flyoutFocusFix();
                     _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
                       return ConfirmDeleteFlyout(
                         controller: _archiveFlyoutCtrl,

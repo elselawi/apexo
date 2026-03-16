@@ -12,6 +12,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
@@ -499,10 +500,11 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  void closeOrConfirmCancel() {
+  void closeOrConfirmCancel() async {
     if (widget.panel.hasUnsavedChanges() == false) {
       routes.closePanel(widget.panel.item.id);
     } else {
+      await flyoutFocusFix();
       confirmCancelController.showFlyout(builder: (context) {
         return FlyoutContent(
           child: Column(

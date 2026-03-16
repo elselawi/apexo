@@ -94,7 +94,7 @@ abstract class PushListeners {
 
   static void _addStaticNotification(PushData pushData) {
     final tuple = pushData.displayTuple();
-    notifications.addNotification(
+    staticNotifications.addNotification(
       StaticNotification(
         icon: FluentIcons.a_a_d_logo,
         title: tuple[0],

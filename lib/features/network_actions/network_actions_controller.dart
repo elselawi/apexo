@@ -1,17 +1,12 @@
-import 'package:apexo/app/routes.dart';
-import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/no_items_found.dart';
+import 'package:apexo/common_widgets/static_notifications_widget.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
-import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart';
 import '../../services/login.dart';
 import '../../core/observable.dart';
-import 'package:apexo/utils/js/js_bridge.dart';
 
 class NetworkAction {
   String tooltip;
@@ -52,8 +47,6 @@ class _NetworkActions {
     }
   }
 
-  final FlyoutController _notificationsFlyoutController = FlyoutController();
-
   List<NetworkAction> get actions {
     return [
       // coming soon: chat with staff feature
@@ -67,135 +60,12 @@ class _NetworkActions {
       NetworkAction(
         tooltip: "Notifications",
         activeColor: Colors.blue,
-        badge: notifications.notifications.isNotEmpty
-            ? notifications.notifications.length.toString()
+        badge: staticNotifications.notifications.isNotEmpty
+            ? staticNotifications.notifications.length.toString()
             : null,
-        processing: notifications.notifications.isNotEmpty,
-        // TODO: find more logical place to place this widgets
-        // shouldn't be inside a controller!
-        icon: FlyoutTarget(
-          controller: _notificationsFlyoutController,
-          child: const Icon(FluentIcons.ringer),
-        ),
-        onPressed: () {
-          _notificationsFlyoutController.showFlyout(
-            barrierColor: Colors.transparent,
-            barrierDismissible: true,
-            dismissWithEsc: true,
-            builder: (ctx) {
-              return FlyoutContent(
-                useAcrylic: false,
-                constraints:
-                    const BoxConstraints(maxWidth: 300, maxHeight: 360),
-                child: notifications.notifications.isEmpty
-                    ? const NoItemsFound()
-                    : ListView(
-                        children: notifications.notifications
-                            .map((notification) {
-                              return Container(
-                                decoration: BoxDecoration(
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: notifications
-                                                  .notifications.last.title ==
-                                              notification.title
-                                          ? Colors.transparent
-                                          : FluentTheme.of(ctx)
-                                              .inactiveColor
-                                              .withValues(alpha: 0.2),
-                                    ),
-                                  ),
-                                ),
-                                width: 280,
-                                padding: const EdgeInsets.all(8),
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  mainAxisSize: MainAxisSize.min,
-                                  spacing: 5,
-                                  children: [
-                                    Row(
-                                      spacing: 5,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey,
-                                            borderRadius:
-                                                BorderRadius.circular(40),
-                                          ),
-                                          child: Icon(notification.icon,
-                                              color: Colors.white),
-                                        ),
-                                        SizedBox(
-                                          width: 165,
-                                          child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                notification.title,
-                                                style: FluentTheme.of(ctx)
-                                                    .typography
-                                                    .bodyStrong,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                              Text(
-                                                notification.body,
-                                                style: FluentTheme.of(ctx)
-                                                    .typography
-                                                    .caption,
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    ...notification.actions
-                                        .where((a) =>
-                                            a.hideOnRoute !=
-                                            routes.currentRoute.identifier)
-                                        .map((action) {
-                                      return HyperlinkButton(
-                                        onPressed: () {
-                                          action.action();
-                                          _notificationsFlyoutController
-                                              .close();
-                                        },
-                                        child: Text(action.label),
-                                      );
-                                    }),
-                                  ],
-                                ),
-                              );
-                            })
-                            .cast<Widget>()
-                            .toList()
-                          ..addAll([
-                            if (kIsWeb) ...[
-                              const Divider(),
-                              HyperlinkButton(
-                                onPressed: () {
-                                  JSBridge.setGlobalVariable(
-                                    "shouldShowPrompt",
-                                    "yes",
-                                  );
-                                  _notificationsFlyoutController.close();
-                                },
-                                child: ButtonContent(
-                                  FluentIcons.ringer_active,
-                                  txt("enableNotifications"),
-                                ),
-                              )
-                            ],
-                          ]),
-                      ),
-              );
-            },
-          );
-        },
+        processing: staticNotifications.notifications.isNotEmpty,
+        icon: const StaticNotificationsIcon(),
+        onPressed: showStaticNotifications,
       ),
       NetworkAction(
         tooltip: "Theme",

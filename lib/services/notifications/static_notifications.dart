@@ -151,4 +151,4 @@ class _NotificationsService {
   }
 }
 
-final notifications = _NotificationsService();
+final staticNotifications = _NotificationsService();

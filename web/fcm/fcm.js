@@ -78,6 +78,16 @@ class FCMManager {
                     this.config.accountId = window.accountId;
                     this.config.lang = window.lang;
 
+                    // set current account id (push_data access from window)
+                    window.currentAccountID = window.accountId;
+
+                    // send current account id to service worker (push_data access from sw)
+                    this.registration.active.postMessage({
+                        type: "SAVE_CURRENT_ACCOUNT_ID",
+                        currentAccountID: window.accountId,
+                    });
+
+
                     if (Notification.permission !== "granted") {
                         this.showPrompt();
                     } else {

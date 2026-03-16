@@ -148,19 +148,17 @@ class Store<G extends Model> {
       if (e.type == DictEventType.modify &&
           !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) continue;
       final pushTargets = doc.targetsToPushTo;
-      for (final target in pushTargets) {
-        toPush.add(PushData(
-          store: remote!.storeName,
-          id: e.id,
-          readableIdentifier: doc.title,
-          isCreation: e.type == DictEventType.add,
-          isUpdate: e.type == DictEventType.modify,
-          updatedFields: e.modifiedKeys,
-          oldVals: e.oldVals,
-          newVals: e.newVals,
-          targetID: target,
-        ));
-      }
+      toPush.add(PushData(
+        store: remote!.storeName,
+        id: e.id,
+        readableIdentifier: doc.title,
+        isCreation: e.type == DictEventType.add,
+        isUpdate: e.type == DictEventType.modify,
+        updatedFields: e.modifiedKeys,
+        oldVals: e.oldVals,
+        newVals: e.newVals,
+        targetIDs: pushTargets,
+      ));
     }
 
     await local!.put(toWrite);

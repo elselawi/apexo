@@ -35,7 +35,7 @@ export class PushData {
         updatedFields,
         oldVals,
         newVals,
-        targetID,
+        targetIDs,
     }) {
         this.store = store;
         this.id = id;
@@ -45,7 +45,7 @@ export class PushData {
         this.updatedFields = updatedFields;
         this.oldVals = oldVals;
         this.newVals = newVals;
-        this.targetID = targetID;
+        this.targetIDs = targetIDs;
     }
 
     displayTuple() {
@@ -54,7 +54,7 @@ export class PushData {
 
         const lang = code === "en" ? Langs.en : code === "ar" ? Langs.ar : Langs.es;
 
-        // Get a shallow copy of the translation array so we don't mutate the original map
+        // Shallow copy to prevent mutating the shared translation map
         const tuple = [...translations[lang][interpretation]];
         tuple[1] = `${tuple[1]}: ${this.readableIdentifier}`;
         return tuple;
@@ -79,26 +79,26 @@ export class PushData {
 
         if (this.isUpdate && this.store === "appointments") {
             if (this.updatedFields.includes("date")) {
-                const vals = this._valsTuple("date");
-                return vals[0] > vals[1]
+                const [oldV, newV] = this._valsTuple("date");
+                return oldV > newV
                     ? PushInterpetation.appointmentDateHasBeenMovedEarlier
                     : PushInterpetation.appointmentDateHasBeenMovedLater;
             }
             if (this.updatedFields.includes("isDone")) {
-                const vals = this._valsTuple("isDone");
-                return vals[1] === true
+                const [, newV] = this._valsTuple("isDone");
+                return newV === true
                     ? PushInterpetation.appointmentIsNowDone
                     : PushInterpetation.appointmentStatusBeenChanged;
             }
             if (this.updatedFields.includes("archived")) {
-                const vals = this._valsTuple("archived");
-                return vals[1] === true
+                const [, newV] = this._valsTuple("archived");
+                return newV === true
                     ? PushInterpetation.appointmentHasBeenCancelled
                     : PushInterpetation.appointmentStatusBeenChanged;
             }
             if (this.updatedFields.includes("operatorsIDs")) {
                 const newOperators = this.newVals[this.updatedFields.indexOf("operatorsIDs")];
-                return newOperators.includes(this.targetID)
+                return newOperators.includes(self.currentAccountID)
                     ? PushInterpetation.appointmentHasBeenAssignedToYou
                     : PushInterpetation.appointmentStatusBeenChanged;
             }
@@ -112,25 +112,25 @@ export class PushData {
                 return PushInterpetation.newAttachmentsAddedToYourNote;
             }
             if (this.updatedFields.includes("done")) {
-                const vals = this._valsTuple("done");
-                return vals[1] === true
+                const [, newV] = this._valsTuple("done");
+                return newV === true
                     ? PushInterpetation.noteHasBeenMarkedAsDone
                     : PushInterpetation.noteHasBeenMarkedAsPending;
             }
             if (this.updatedFields.includes("assignedTo")) {
                 const val = this.newVals[this.updatedFields.indexOf("assignedTo")];
-                return val === this.targetID
+                return val === self.currentAccountID
                     ? PushInterpetation.aNewNoteHasBeenAssignedToYou
                     : PushInterpetation.assigneeOnYourNoteHasChanged;
             }
             if (this.updatedFields.includes("dueDate")) {
-                const vals = this._valsTuple("dueDate");
-                if (vals[0] > vals[1]) return PushInterpetation.dueDateOnYourNoteHasBeenMovedEarlier;
-                if (vals[0] < vals[1]) return PushInterpetation.dueDateOnYourNoteHasBeenMovedLater;
+                const [oldV, newV] = this._valsTuple("dueDate");
+                if (oldV > newV) return PushInterpetation.dueDateOnYourNoteHasBeenMovedEarlier;
+                if (oldV < newV) return PushInterpetation.dueDateOnYourNoteHasBeenMovedLater;
             }
             if (this.updatedFields.includes("archived")) {
-                const vals = this._valsTuple("archived");
-                return vals[1] === true
+                const [, newV] = this._valsTuple("archived");
+                return newV === true
                     ? PushInterpetation.yourNoteHasBeenArchived
                     : PushInterpetation.yourNoteHasBeenUnarchived;
             }
@@ -149,7 +149,7 @@ export class PushData {
             updatedFields: this.updatedFields,
             oldVals: this.oldVals,
             newVals: this.newVals,
-            targetID: this.targetID,
+            targetIDs: this.targetIDs,
         };
     }
 
@@ -163,11 +163,10 @@ export class PushData {
             updatedFields: Array.from(json.updatedFields),
             oldVals: Array.from(json.oldVals),
             newVals: Array.from(json.newVals),
-            targetID: json.targetID,
+            targetIDs: Array.from(json.targetIDs),
         });
     }
 }
-
 /**
  * Translations Map
  */

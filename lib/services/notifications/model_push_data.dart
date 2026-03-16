@@ -1,9 +1,11 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/login.dart';
 
 /// ---------------------------------------------------------------------------
 ///  !!!! IMPORTANT !!!!
 /// when editing this file you must also edit the fcm/push_data.js file
 /// since data can be generated here and consumed there by the web app
+/// can be automated using https://gemini.google.com/app/54137113304cc381
 /// ---------------------------------------------------------------------------
 ///
 
@@ -11,15 +13,15 @@ import 'package:apexo/services/localization/locale.dart';
 /// It is used to display the notification to the user in a human-readable format
 /// It is also used to navigate to the correct screen when the user clicks on the notification
 class PushData {
-  String store;
-  String id;
-  String readableIdentifier;
-  String targetID;
-  bool isCreation;
-  bool isUpdate;
-  List<String> updatedFields;
-  List<dynamic> oldVals;
-  List<dynamic> newVals;
+  final String store;
+  final String id;
+  final String readableIdentifier;
+  final List<String> targetIDs;
+  final bool isCreation;
+  final bool isUpdate;
+  final List<String> updatedFields;
+  final List<dynamic> oldVals;
+  final List<dynamic> newVals;
 
   PushData({
     required this.store,
@@ -30,7 +32,7 @@ class PushData {
     required this.updatedFields,
     required this.oldVals,
     required this.newVals,
-    required this.targetID,
+    required this.targetIDs,
   });
 
   List<String> displayTuple() {
@@ -87,7 +89,7 @@ class PushData {
       }
       if (updatedFields.contains("operatorsIDs")) {
         final newOperators = newVals[updatedFields.indexOf("operatorsIDs")];
-        if (newOperators.contains(targetID)) {
+        if (newOperators.contains(login.currentAccountID)) {
           return PushInterpetation.appointmentHasBeenAssignedToYou;
         } else {
           return PushInterpetation.appointmentStatusBeenChanged;
@@ -112,7 +114,7 @@ class PushData {
       }
       if (updatedFields.contains("assignedTo")) {
         final val = newVals[updatedFields.indexOf("assignedTo")];
-        if (val == targetID) {
+        if (val == login.currentAccountID) {
           return PushInterpetation.aNewNoteHasBeenAssignedToYou;
         } else {
           return PushInterpetation.assigneeOnYourNoteHasChanged;
@@ -149,7 +151,7 @@ class PushData {
       "updatedFields": updatedFields,
       "oldVals": oldVals,
       "newVals": newVals,
-      "targetID": targetID
+      "targetIDs": targetIDs
     };
   }
 
@@ -163,7 +165,7 @@ class PushData {
       updatedFields: List<String>.from(json["updatedFields"]),
       oldVals: List<dynamic>.from(json["oldVals"]),
       newVals: List<dynamic>.from(json["newVals"]),
-      targetID: json["targetID"],
+      targetIDs: List<String>.from(json["targetIDs"]),
     );
   }
 }

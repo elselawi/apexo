@@ -88,16 +88,14 @@ class PushRelay {
         body: jsonEncode({
           "clinicServer": login.url,
           "clinicKey": relayKey,
-          "accountId": data.targetID,
+          "accountIds": data.targetIDs,
           "data": {"payload": jsonEncode(data.toJson())},
         }),
       ),
     );
 
     print((await Future.wait(requests)).map((e) => e.body));
+    // TODO: remove the above print after we make sure everything is working
+    // TODO: exclude sending notifications to the same account id after we make sure everything is working
   }
-
-  // TODO: modify the relay to accept bulk data
-  // TODO: modify so that we don't send notifications to the same device (after we make sure everything is working)
-  // TODO: modify so that we don't send notifications to patient IDs unless we've actually implemented this feature
 }

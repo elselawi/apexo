@@ -16,6 +16,11 @@ self.addEventListener('message', (event) => {
         console.log("Language changed to:", event.data.lang);
         self.lang = event.data.lang;
     }
+
+    if (event.data.type === "SAVE_CURRENT_ACCOUNT_ID") {
+        console.log("Current account ID saved:", event.data.currentAccountID);
+        self.currentAccountID = event.data.currentAccountID;
+    }
 });
 
 // intercept background messages

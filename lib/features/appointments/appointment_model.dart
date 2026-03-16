@@ -162,7 +162,8 @@ class Appointment extends Model {
 
   @override
   List<String> get targetsToPushTo => [
-        if (patientID != null && patientID!.isNotEmpty) patientID!,
+        // once we've implemented the patient side, we should uncomment the following line
+        // if (patientID != null && patientID!.isNotEmpty) patientID!,
         ...operatorsIDs
       ];
 }

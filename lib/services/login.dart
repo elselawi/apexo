@@ -8,6 +8,7 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/encode.dart';
+import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import '../core/observable.dart';
@@ -209,6 +210,14 @@ class _LoginService extends ObservablePersistingObject {
           }
         } catch (e) {
           throw Exception("Error while creating the profile collections: $e");
+        }
+
+        // notifications relay
+        loginCtrl.loadingIndicator("Initializing notifications");
+        try {
+          await Messaging.identifyDevice();
+        } catch (e) {
+          throw Exception("Error while initializing notifications: $e");
         }
       } catch (e, s) {
         if (e.runtimeType != ClientException) {

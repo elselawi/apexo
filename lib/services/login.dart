@@ -22,6 +22,7 @@ class _LoginService extends ObservablePersistingObject {
   String password = "";
   String token = "";
   String adminCollectionId = "__UNDEFINED__";
+  String pushNotificationsToken = "";
 
   String get currentAccountID {
     if (launch.isDemo) return accounts.list().first.id;
@@ -260,6 +261,8 @@ class _LoginService extends ObservablePersistingObject {
         ? List<int>.from(jsonDecode(json["savedPermission"]))
         : savedPermissions;
     adminCollectionId = json["adminCollectionId"] ?? adminCollectionId;
+    pushNotificationsToken =
+        json["pushNotificationsToken"] ?? pushNotificationsToken;
     loginCtrl.urlField.text = url;
     loginCtrl.emailField.text = email;
     if (token.isNotEmpty) {
@@ -277,6 +280,7 @@ class _LoginService extends ObservablePersistingObject {
     json["token"] = token;
     json["savedPermission"] = jsonEncode(savedPermissions);
     json["adminCollectionId"] = adminCollectionId;
+    json["pushNotificationsToken"] = pushNotificationsToken;
     return json;
   }
 }

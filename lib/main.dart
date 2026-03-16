@@ -1,6 +1,8 @@
 import 'package:apexo/app/app.dart';
+import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/utils/init_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 
@@ -11,6 +13,11 @@ void main() async {
     print('>>> ${record.level.name}: ${record.time}: ${record.message}');
   });
 
+  // initialize receiving notifications
+  // on Android and iOS
+  if (kIsWeb == false) await Messaging.initializeReceiving();
+
+  // initialize stores
   initializeStores();
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

@@ -204,7 +204,9 @@ class Store<G extends Model> {
       ..addAll(lastDeferred)
       ..addAll(toDefer));
 
-    await deferredPush.putBulk(toPush);
+    if (toPush.isNotEmpty) {
+      await deferredPush.putBulk(toPush);
+    }
     deferredPresent = true;
     changes.clear();
     onSyncEnd?.call();

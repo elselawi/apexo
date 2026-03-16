@@ -21,13 +21,13 @@ class NotificationAction {
   });
 }
 
-class Notification {
+class StaticNotification {
   final IconData icon;
   final String title;
   final String body;
   final List<NotificationAction> actions;
 
-  Notification({
+  StaticNotification({
     required this.icon,
     required this.title,
     required this.body,
@@ -67,12 +67,16 @@ class _NotificationsService {
         .toList();
   }
 
-  final List<Notification> _notifications = [];
+  final List<StaticNotification> _notifications = [];
 
-  List<Notification> get notifications {
+  void addNotification(StaticNotification notification) {
+    _notifications.add(notification);
+  }
+
+  List<StaticNotification> get notifications {
     return [
       if (todayAppointmentsForYou.isNotEmpty)
-        Notification(
+        StaticNotification(
           icon: FluentIcons.goto_today,
           title: 'Today\'s Appointments',
           body: 'You have ${todayAppointmentsForYou.length} appointments today',
@@ -85,7 +89,7 @@ class _NotificationsService {
           ],
         ),
       if (dueLabworks.isNotEmpty)
-        Notification(
+        StaticNotification(
           icon: FluentIcons.manufacturing,
           title: 'Due Labworks',
           body: 'You have ${dueLabworks.length} labworks due',
@@ -98,7 +102,7 @@ class _NotificationsService {
           ],
         ),
       if (notDeliveredLabworks.isNotEmpty)
-        Notification(
+        StaticNotification(
           icon: FluentIcons.manufacturing,
           title: 'Not Delivered Labworks',
           body:
@@ -112,7 +116,7 @@ class _NotificationsService {
           ],
         ),
       if (incomingPendingNotes.isNotEmpty)
-        Notification(
+        StaticNotification(
           icon: WindowsIcons.reply,
           title: 'Incoming Pending Notes',
           body:
@@ -126,7 +130,7 @@ class _NotificationsService {
           ],
         ),
       if (outgoingPendingNotes.isNotEmpty)
-        Notification(
+        StaticNotification(
           icon: WindowsIcons.reply_mirrored,
           title: 'Outgoing Pending Notes',
           body:

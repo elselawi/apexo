@@ -73,5 +73,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'apexo-14f90.firebasestorage.app',
     measurementId: 'G-W74EZWCJR4',
   );
-
 }

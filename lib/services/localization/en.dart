@@ -486,6 +486,19 @@ class En {
     "beenSent":
         "Password reset instructions have been sent to you, check your inbox.",
 
+    // static notifications flyout
+    "notifications": "Notifications",
+    "enableNotifications": "Enable notifications",
+    "dueLabworks": "Due labworks",
+    "undeliveredLabworks": "Undelivered labworks",
+    "outgoingNotes": "Outgoing notes",
+    "incomingNotes": "Incoming notes",
+    "appointmentsSetToday": "appointments set today",
+    "labworksDue": "labworks due",
+    "labworksNotDelivered": "labworks not delivered",
+    "outgoingPendingNotes": "outgoing pending notes",
+    "incomingPendingNotes": "incoming pending notes",
+
     // other
     "otherNotesPerAppointment":
         "There are other notes registered in the appointments panel that do not appear here.",

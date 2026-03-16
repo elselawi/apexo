@@ -5,6 +5,7 @@ import 'package:apexo/features/labwork/labworks_ctrl.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -78,25 +79,27 @@ class _NotificationsService {
       if (todayAppointmentsForYou.isNotEmpty)
         StaticNotification(
           icon: FluentIcons.goto_today,
-          title: 'Today\'s Appointments',
-          body: 'You have ${todayAppointmentsForYou.length} appointments today',
+          title: txt("appointmentsToday"),
+          body:
+              '${txt("youHave")} ${todayAppointmentsForYou.length} ${txt("appointmentsSetToday")}',
           actions: [
             NotificationAction(
-                color: Colors.blue,
-                label: 'View',
-                action: () => routes.navigate("appointments"),
-                hideOnRoute: "appointments")
+              color: Colors.blue,
+              label: txt("view"),
+              action: () => routes.navigate("appointments"),
+              hideOnRoute: "appointments",
+            )
           ],
         ),
       if (dueLabworks.isNotEmpty)
         StaticNotification(
           icon: FluentIcons.manufacturing,
-          title: 'Due Labworks',
-          body: 'You have ${dueLabworks.length} labworks due',
+          title: txt("dueLabworks"),
+          body: '${txt("youHave")} ${dueLabworks.length} ${txt("labworksDue")}',
           actions: [
             NotificationAction(
                 color: Colors.blue,
-                label: 'View',
+                label: txt("view"),
                 action: () => routes.navigate("labworks"),
                 hideOnRoute: "labworks")
           ],
@@ -104,13 +107,13 @@ class _NotificationsService {
       if (notDeliveredLabworks.isNotEmpty)
         StaticNotification(
           icon: FluentIcons.manufacturing,
-          title: 'Not Delivered Labworks',
+          title: txt("undeliveredLabworks"),
           body:
-              'You have ${notDeliveredLabworks.length} labworks not delivered',
+              '${txt("youHave")} ${notDeliveredLabworks.length} ${txt("labworksNotDelivered")}',
           actions: [
             NotificationAction(
                 color: Colors.blue,
-                label: 'View',
+                label: txt("view"),
                 action: () => routes.navigate("labworks"),
                 hideOnRoute: "labworks")
           ],
@@ -118,13 +121,13 @@ class _NotificationsService {
       if (incomingPendingNotes.isNotEmpty)
         StaticNotification(
           icon: WindowsIcons.reply,
-          title: 'Incoming Pending Notes',
+          title: txt("incomingNotes"),
           body:
-              'You have ${incomingPendingNotes.length} incoming pending notes',
+              '${txt("youHave")} ${incomingPendingNotes.length} ${txt("incomingPendingNotes")}',
           actions: [
             NotificationAction(
                 color: Colors.blue,
-                label: 'View',
+                label: txt("view"),
                 action: () => routes.navigate("notes"),
                 hideOnRoute: "notes")
           ],
@@ -132,13 +135,13 @@ class _NotificationsService {
       if (outgoingPendingNotes.isNotEmpty)
         StaticNotification(
           icon: WindowsIcons.reply_mirrored,
-          title: 'Outgoing Pending Notes',
+          title: txt("outgoingNotes"),
           body:
-              'You have ${outgoingPendingNotes.length} outgoing pending notes',
+              '${txt("youHave")} ${outgoingPendingNotes.length} ${txt("outgoingPendingNotes")}',
           actions: [
             NotificationAction(
                 color: Colors.blue,
-                label: 'View',
+                label: txt("view"),
                 action: () => routes.navigate("notes"),
                 hideOnRoute: "notes")
           ],

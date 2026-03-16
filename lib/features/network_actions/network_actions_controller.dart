@@ -54,7 +54,6 @@ class _NetworkActions {
 
   final FlyoutController _notificationsFlyoutController = FlyoutController();
 
-  // TODO: the following list needs translation
   List<NetworkAction> get actions {
     return [
       // coming soon: chat with staff feature

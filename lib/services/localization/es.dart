@@ -490,6 +490,19 @@ class Es implements En {
     "beenSent":
         "Instrucciones para restablecer la contraseña han sido enviadas, revisa tu bandeja de entrada.",
 
+    // static notifications flyout
+    "notifications": "Notificaciones",
+    "enableNotifications": "Habilitar notificaciones",
+    "dueLabworks": "Análisis pendientes",
+    "undeliveredLabworks": "Análisis no entregados",
+    "outgoingNotes": "Notas salientes",
+    "incomingNotes": "Notas entrantes",
+    "appointmentsSetToday": "citas de hoy",
+    "labworksDue": "análisis pendientes",
+    "labworksNotDelivered": "análisis no entregados",
+    "outgoingPendingNotes": "notas salientes pendientes",
+    "incomingPendingNotes": "notas entrantes pendientes",
+
     // other
     "otherNotesPerAppointment":
         "Hay otras notas registradas en el panel de citas que no aparecen aquí.",

@@ -348,7 +348,6 @@ class Ar implements En {
     "showOnlyMine": "عرض ما يخصني فقط",
     "allAccounts": "جميع الحسابات",
 
-
     // stats
     "pickRange": "اختيار النطاق",
     "start": "بداية",
@@ -483,6 +482,19 @@ class Ar implements En {
     "youLLGet": "ستصلك التعليمات عبر بريدك الالكتروني",
     "beenSent":
         "لقد تم ارسال رابط اعادة تعيين كلمة المرور الخاص بك عبر بريدك الالكتروني",
+
+    // static notifications flyout
+    "notifications": "الإشعارات",
+    "enableNotifications": "تفعيل الإشعارات",
+    "dueLabworks": "اعمال مختبر مستحقة",
+    "undeliveredLabworks": "اعمال مختبر غير مسلمة",
+    "outgoingNotes": "ملاحظات صادرة",
+    "incomingNotes": "ملاحظات واردة",
+    "appointmentsSetToday": "مواعيد اليوم",
+    "labworksDue": "اعمال مختبر مستحقة",
+    "labworksNotDelivered": "اعمال مختبر غير مسلمة",
+    "outgoingPendingNotes": "ملاحظات صادرة مستحقة",
+    "incomingPendingNotes": "ملاحظات واردة مستحقة",
 
     // other
     "otherNotesPerAppointment":

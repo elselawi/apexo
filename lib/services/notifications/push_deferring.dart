@@ -29,7 +29,7 @@ class _DeferredPush {
     try {
       final box = await hiveBox;
       await box.putAll(
-        Map.fromIterable(toPush.map((n) => MapEntry(n.id, n.toJson()))),
+        {for (var n in toPush) n.id: jsonEncode(n.toJson())},
       );
     } catch (e, s) {
       throw StorageException('Failed to put entries: $e', s);

@@ -92,7 +92,8 @@ class ObservableState<T> extends ObservableBase<T> {
 
 /// Persists its data to a hive box
 /// however only data that are defined in toJson and fromJson will be persisted
-abstract class ObservablePersistingObject extends ObservableBase<ObservablePersistingObject> {
+abstract class ObservablePersistingObject
+    extends ObservableBase<ObservablePersistingObject> {
   ObservablePersistingObject(this.identifier) {
     box = () async {
       await safeHiveInit();
@@ -110,7 +111,8 @@ abstract class ObservablePersistingObject extends ObservableBase<ObservablePersi
       return;
     }
     fromJson(jsonDecode(value));
-    super.notifyObservers(this); // calling it from super so we don't have to reload from box,
+    super.notifyObservers(
+        this); // calling it from super so we don't have to reload from box,
     // yet we're notifying the view
   }
 
@@ -133,6 +135,7 @@ abstract class ObservablePersistingObject extends ObservableBase<ObservablePersi
 /// values of this dictionary should extend Model
 /// this is typically used by stores (dictionaries of models)
 class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
+  final Map<String, Map<String, dynamic>> _jsonCopies = {};
   final Map<String, G> _dictionary = {};
 
   G? get(String id) {
@@ -141,23 +144,48 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
 
   void set(G item) {
     bool isNew = !_dictionary.containsKey(item.id);
+    final newJson = item.jsonCopyForPush;
+    final oldJson = _jsonCopies[item.id] ?? {};
+
+    final List<String> diff;
+    if (!isNew) {
+      diff = diffJson(oldJson, newJson).toList();
+    } else {
+      diff = [];
+    }
     _dictionary[item.id] = item;
+
+    final List<dynamic> newVals = diff.map((key) => newJson[key]).toList();
+    final List<dynamic> oldVals = diff.map((key) => oldJson[key]).toList();
     notifyObservers([
-      if (isNew) DictEvent.add(item.id) else DictEvent.modify(item.id),
+      if (isNew)
+        DictEvent.add(item.id, document: item)
+      else
+        DictEvent.modify(
+          item.id,
+          modifiedKeys: diff,
+          document: item,
+          newVals: newVals,
+          oldVals: oldVals,
+        ),
     ]);
+    _copyDictionary([item.id]);
   }
 
   void setAll(List<G> items) {
     for (var item in items) {
       _dictionary[item.id] = item;
+      _copyDictionary([item.id]);
     }
-    notifyObservers(items.map((item) => DictEvent.add(item.id)).toList());
+    notifyObservers(
+        items.map((item) => DictEvent.add(item.id, document: null)).toList());
   }
 
   void remove(String id) {
     if (_dictionary.containsKey(id)) {
       _dictionary.remove(id);
       notifyObservers([DictEvent.remove(id)]);
+      _copyDictionary([id]);
     }
   }
 
@@ -167,7 +195,15 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   }
 
   void notifyView() {
-    notifyObservers([DictEvent.modify('__ignore_view__')]);
+    notifyObservers([
+      DictEvent.modify(
+        '__ignore_view__',
+        modifiedKeys: const [],
+        document: null,
+        newVals: [],
+        oldVals: [],
+      )
+    ]);
   }
 
   List<G> get values => _dictionary.values.toList();
@@ -175,6 +211,13 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   List<String> get keys => _dictionary.keys.toList();
 
   Map<String, G> get docs => Map<String, G>.unmodifiable(_dictionary);
+
+  /// Creates a deep copy of the entire dictionary
+  void _copyDictionary(List<String> ids) {
+    for (final id in ids) {
+      _jsonCopies[id] = _dictionary[id]!.jsonCopyForPush;
+    }
+  }
 }
 
 enum DictEventType {
@@ -186,7 +229,73 @@ enum DictEventType {
 class DictEvent {
   final DictEventType type;
   final String id;
-  DictEvent.add(this.id) : type = DictEventType.add;
-  DictEvent.modify(this.id) : type = DictEventType.modify;
-  DictEvent.remove(this.id) : type = DictEventType.remove;
+  final List<String> modifiedKeys;
+  final Model? document;
+  final List<dynamic> newVals;
+  final List<dynamic> oldVals;
+
+  DictEvent.add(this.id, {required this.document})
+      : type = DictEventType.add,
+        modifiedKeys = const [],
+        newVals = const [],
+        oldVals = const [];
+  DictEvent.modify(
+    this.id, {
+    required this.modifiedKeys,
+    required this.document,
+    required this.newVals,
+    required this.oldVals,
+  }) : type = DictEventType.modify;
+  DictEvent.remove(this.id)
+      : type = DictEventType.remove,
+        modifiedKeys = const [],
+        document = null,
+        newVals = const [],
+        oldVals = const [];
+}
+
+/// Checks if two objects (including Lists and Maps) are deeply equal.
+/// Required because Dart's `==` on Collections only checks reference.
+bool _areEqual(dynamic a, dynamic b) {
+  if (identical(a, b)) return true;
+  if (a is List && b is List) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (!_areEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  if (a is Map && b is Map) {
+    if (a.length != b.length) return false;
+    for (final key in a.keys) {
+      if (!b.containsKey(key) || !_areEqual(a[key], b[key])) return false;
+    }
+    return true;
+  }
+  return a == b;
+}
+
+/// Performs a 1-level diff and returns a Set of keys that were
+/// added, removed, or modified.
+Set<String> diffJson(
+  Map<String, dynamic> oldJson,
+  Map<String, dynamic> newJson,
+) {
+  final changedKeys = <String>{};
+
+  // Check for additions and modifications
+  newJson.forEach((key, newValue) {
+    if (!oldJson.containsKey(key) || !_areEqual(oldJson[key], newValue)) {
+      changedKeys.add(key);
+    }
+  });
+
+  // Check for removals
+  oldJson.forEach((key, _) {
+    if (!newJson.containsKey(key)) {
+      changedKeys.add(key);
+    }
+  });
+
+  return changedKeys;
 }

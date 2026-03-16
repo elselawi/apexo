@@ -41,6 +41,22 @@ class Model {
     if (title != "") json["title"] = title;
     return json;
   }
+
+  Map<String, dynamic> get jsonCopyForPush {
+    return {};
+  }
+
+  List<String> get targetsToPushTo {
+    return [];
+  }
+
+  List<String> get pushIfChanged {
+    return [];
+  }
+
+  bool get pushOnCreation {
+    return false;
+  }
 }
 
 

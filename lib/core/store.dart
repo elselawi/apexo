@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:apexo/services/notifications/model_push_data.dart';
+import 'package:apexo/services/notifications/push_relay.dart';
+import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -35,7 +38,7 @@ class Store<G extends Model> {
   final Function? onSyncStart;
   final Function? onSyncEnd;
   final ObservableDict<G> observableMap;
-  final Set<String> changes = {};
+  final Set<DictEvent> changes = {};
   SaveLocal? local;
   SaveRemote? remote;
   Future<void> Function()? realtimeSub;
@@ -74,8 +77,7 @@ class Store<G extends Model> {
         // this is a view change not a storage change
         return;
       }
-      List<String> ids = events.map((e) => e.id).toList();
-      changes.addAll(ids);
+      changes.addAll(events.where((c) => c.id != "__ignore_view__"));
       _processChanges();
     });
   }
@@ -116,26 +118,52 @@ class Store<G extends Model> {
 
     if (changes.isEmpty) return;
     if (observableMap.docs.isEmpty) return;
+
     onSyncStart?.call();
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
 
     Map<String, String> toWrite = {};
     Map<String, int> toDefer = {};
-    List<String> changesToProcess = [...changes];
+    List<PushData> toPush = [];
 
-    for (String element in changesToProcess) {
-      G? item = observableMap.get(element);
+    List<DictEvent> changesToProcess = [...changes];
+
+    for (DictEvent e in changesToProcess) {
+      G? item = observableMap.get(e.id);
       if (item == null) {
-        changes.remove(element);
+        changes.remove(e);
         continue;
       }
       String serialized = _serialize(item);
-      toWrite[element] = serialized;
-      toDefer[element] = lastProcessChanges;
+      toWrite[e.id] = serialized;
+      toDefer[e.id] = lastProcessChanges;
+
+      // push notifications processing
+      final doc = e.document;
+
+      if (remote == null) continue;
+      if (doc == null) continue;
+      if (e.type == DictEventType.remove) continue;
+      if (e.type == DictEventType.add && doc.pushOnCreation == false) continue;
+      if (e.type == DictEventType.modify &&
+          !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) continue;
+      final pushTargets = doc.targetsToPushTo;
+      for (final target in pushTargets) {
+        toPush.add(PushData(
+          store: remote!.storeName,
+          id: e.id,
+          readableIdentifier: doc.title,
+          isCreation: e.type == DictEventType.add,
+          isUpdate: e.type == DictEventType.modify,
+          updatedFields: e.modifiedKeys,
+          oldVals: e.oldVals,
+          newVals: e.newVals,
+          targetID: target,
+        ));
+      }
     }
 
     await local!.put(toWrite);
-    Map<String, int> lastDeferred = await local!.getDeferred();
 
     if (remote == null) {
       changes.clear();
@@ -143,12 +171,16 @@ class Store<G extends Model> {
       return;
     }
 
+    Map<String, int> lastDeferred = await local!.getDeferred();
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
         await remote!.put(toWrite.entries
             .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
             .toList());
         changes.clear();
+
+        await PushRelay.sendPush(toPush);
+
         onSyncEnd?.call();
         // while we have the connection lets synchronize
         // don't put "await" before synchronize() since we don't want catch the error
@@ -173,6 +205,8 @@ class Store<G extends Model> {
     await local!.putDeferred({}
       ..addAll(lastDeferred)
       ..addAll(toDefer));
+
+    await deferredPush.putBulk(toPush);
     deferredPresent = true;
     changes.clear();
     onSyncEnd?.call();
@@ -289,6 +323,16 @@ class Store<G extends Model> {
         await remote!.put(toRemoteWrite.entries
             .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
             .toList());
+
+        final winningPushes = (await Future.wait(toRemoteWrite.keys.map(
+          (k) async => await deferredPush.getByID(k),
+        )))
+            .where((x) => x != null)
+            .cast<PushData>()
+            .toList();
+
+        await PushRelay.sendPush(winningPushes);
+        await deferredPush.clearByStore(remote!.storeName);
       }
 
       // when all json related updates are done, we can handle files

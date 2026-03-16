@@ -539,7 +539,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
             color: isArchived ? Colors.grey : Colors.errorPrimaryColor),
         icon: Icon(isArchived ? FluentIcons.archive_undo : FluentIcons.archive),
         onPressed: () async {
-          await flyoutFocusFix();
+          await flyoutFocusFix(context);
           _confirmArchiveFlyoutCtrl.showFlyout(builder: (ctx) {
             return ConfirmDeleteFlyout(
               actionText: isArchived ? txt("restore") : txt("archive"),
@@ -865,7 +865,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         style: _iconButtonStyle(theme),
         icon: const Icon(FluentIcons.edit_contact),
         onPressed: () async {
-          await flyoutFocusFix();
+          await flyoutFocusFix(context);
           _assigningFlyoutCtrl.showFlyout(builder: (context) {
             return MenuFlyout(
                 items: List.generate(accounts.list().length, (i) {

@@ -66,7 +66,7 @@ class _FolderState extends State<Folder> {
           child: IconButton(
             icon: const Icon(FluentIcons.more_vertical, color: Colors.grey),
             onPressed: () async {
-              await flyoutFocusFix();
+              await flyoutFocusFix(context);
               ctxMenuCtrl.showFlyout(builder: (context) {
                 return MenuFlyout(
                   items: [

@@ -169,7 +169,7 @@ class _SuppliersAndOrdersState extends State<SuppliersAndOrders> {
       controller: addOrderFlyout,
       child: IconButton(
         onPressed: () async {
-          await flyoutFocusFix();
+          await flyoutFocusFix(context);
           addOrderFlyout.showFlyout(builder: (context) {
             return MenuFlyout(
               items: [

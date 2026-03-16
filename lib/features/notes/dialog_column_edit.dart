@@ -87,7 +87,7 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
                   column.archived == true ? txt("restore") : txt("archive"),
                 ),
                 onPressed: () async {
-                  await flyoutFocusFix();
+                  await flyoutFocusFix(context);
                   _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
                     return ConfirmDeleteFlyout(
                       controller: _archiveFlyoutCtrl,

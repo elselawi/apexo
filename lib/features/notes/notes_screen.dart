@@ -239,5 +239,3 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
     );
   }
 }
-
-// TODO: use notes screen in web & andnroid to see if it works fine

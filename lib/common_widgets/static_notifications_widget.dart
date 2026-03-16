@@ -23,7 +23,7 @@ class StaticNotificationsIcon extends StatelessWidget {
 }
 
 showStaticNotifications() async {
-  await flyoutFocusFix();
+  await flyoutFocusFix(null);
   _notificationsFlyoutController.showFlyout(
     barrierColor: Colors.transparent,
     barrierDismissible: true,

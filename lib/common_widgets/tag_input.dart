@@ -124,7 +124,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
 
   void showAllTags() async {
     if (_tags.isEmpty) return;
-    await flyoutFocusFix();
+    await flyoutFocusFix(context);
     _hiddenTappedFlyoutController.showFlyout(
         builder: (context) {
           return FlyoutContent(

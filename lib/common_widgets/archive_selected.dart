@@ -11,7 +11,7 @@ DataTableAction archiveSelected(Store store) {
   return DataTableAction(
     callback: (ids) async {
       if (ids.isEmpty) return;
-      await flyoutFocusFix();
+      await flyoutFocusFix(null);
       flyoutController.showFlyout(builder: (context) {
         return FlyoutContent(
           child: Column(

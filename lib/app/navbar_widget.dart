@@ -49,7 +49,7 @@ class BottomNavBar extends StatelessWidget {
                       child: IconButton(
                         icon: const Icon(FluentIcons.more),
                         onPressed: () async {
-                          await flyoutFocusFix();
+                          await flyoutFocusFix(context);
                           routes.bottomNavFlyoutController.showFlyout(
                             dismissWithEsc: true,
                             builder: (context) => MenuFlyout(items: [

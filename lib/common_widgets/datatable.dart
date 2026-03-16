@@ -317,7 +317,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
               child: const Icon(FluentIcons.more),
             ),
             onPressed: () async {
-              await flyoutFocusFix();
+              await flyoutFocusFix(context);
               contextMenuControllers[item.id]!.showFlyout(
                 barrierDismissible: true,
                 dismissOnPointerMoveAway: false,

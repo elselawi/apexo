@@ -504,7 +504,7 @@ class _PanelScreenState extends State<PanelScreen> {
     if (widget.panel.hasUnsavedChanges() == false) {
       routes.closePanel(widget.panel.item.id);
     } else {
-      await flyoutFocusFix();
+      await flyoutFocusFix(context);
       confirmCancelController.showFlyout(builder: (context) {
         return FlyoutContent(
           child: Column(

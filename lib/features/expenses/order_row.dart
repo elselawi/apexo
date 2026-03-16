@@ -132,7 +132,7 @@ class OrderRowState extends State<OrderRow> {
       child: IconButton(
         icon: const Icon(FluentIcons.photo2_add, size: 20),
         onPressed: () async {
-          await flyoutFocusFix();
+          await flyoutFocusFix(context);
           final bool suppGallery =
               ImagePicker().supportsImageSource(ImageSource.gallery);
           final bool suppCamera =

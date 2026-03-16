@@ -209,7 +209,7 @@ void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
                     note.archived == true ? txt("restore") : txt("archive"),
                   ),
                   onPressed: () async {
-                    await flyoutFocusFix();
+                    await flyoutFocusFix(context);
                     _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
                       return ConfirmDeleteFlyout(
                         controller: _archiveFlyoutCtrl,

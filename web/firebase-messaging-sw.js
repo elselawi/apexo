@@ -5,32 +5,38 @@ import { firebaseConfig } from "./fcm/constants.js";
 
 const app = initializeApp(firebaseConfig);
 const messaging = getMessaging(app);
-onBackgroundMessage(messaging, (payload) => {
-    let notificationTitle = "New Message";
-    let notificationOptions = {
-        body: "You have a new message.",
-        icon: '/icons/Icon-192.png',
-        badge: '/icons/Icon-192.png',
-        data: payload.data?.payload || null,
-    };
 
+// default language
+self.lang = "en";
+
+// intercept messages from the main thread to update the language
+self.addEventListener('message', (event) => {
+    console.log("Message received in SW:", event.data);
+    if (event.data.type === "LANG_CHANGED") {
+        console.log("Language changed to:", event.data.lang);
+        self.lang = event.data.lang;
+    }
+});
+
+// intercept background messages
+onBackgroundMessage(messaging, (payload) => {
     try {
-        if (payload?.data?.payload) {
-            const pushData = PushData.fromJson(JSON.parse(payload.data.payload));
-            const displayTuple = pushData.displayTuple();
-            notificationTitle = displayTuple[0];
-            notificationOptions.body = displayTuple[1];
+        const pushData = PushData.fromJson(JSON.parse(payload.data.payload));
+        const displayTuple = pushData.displayTuple();
+        if (self.registration) {
+            self.registration.showNotification(displayTuple[0], {
+                body: displayTuple[1],
+                icon: '/icons/Icon-192.png',
+                badge: '/icons/Icon-192.png',
+            });
         }
     } catch (err) {
-        console.error("Error parsing background message payload:", err);
+        console.error("Error processing background message:", err);
     }
-
-    return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
             if (clientList.length > 0) {

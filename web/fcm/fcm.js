@@ -37,8 +37,8 @@ class FCMManager {
             }
         };
 
-        this.setupGlobalsForDart();
         this.registerServiceWorker();
+        this.setupGlobalsForDart();
         this.bindEvents();
     }
 
@@ -48,6 +48,20 @@ class FCMManager {
         window.clinicKey = "";
         window.accountId = "";
         window.lang = "en";
+
+        // intercept changes to lang
+        Object.defineProperty(window, 'lang', {
+            get: () => this.config.lang,
+            set: (value) => {
+                this.config.lang = value;
+                if (this.registration) {
+                    this.registration.active.postMessage({
+                        type: "LANG_CHANGED",
+                        lang: value,
+                    });
+                }
+            }
+        });
 
         // Intercept changes to shouldShowPrompt
         let _shouldShowPrompt = "no";
@@ -78,6 +92,7 @@ class FCMManager {
         try {
             this.registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
                 type: "module",
+                scope: "/firebase-cloud-messaging-push-scope",
             });
             console.log("Service Worker registered");
         } catch (err) {

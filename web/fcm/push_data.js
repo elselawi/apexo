@@ -50,7 +50,7 @@ export class PushData {
 
     displayTuple() {
         const interpretation = this._interpret();
-        const code = window.lang || "en";
+        const code = self.lang || "en";
 
         const lang = code === "en" ? Langs.en : code === "ar" ? Langs.ar : Langs.es;
 

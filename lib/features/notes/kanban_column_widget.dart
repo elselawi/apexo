@@ -79,14 +79,12 @@ class KanbanColumn extends StatelessWidget {
           style: filledButtonStyle(Colors.errorPrimaryColor),
           child: ButtonContent(
               FluentIcons.archive, txt("archiveAllCompletedNotes")),
-          onPressed: () {
-            final List<Note> toSet = [];
+          onPressed: () {            
             for (var note in columnNotes) {
               if (note.done && note.archived != true) {
-                toSet.add(note..archived = true);
+                notes.set(note..archived = true);
               }
             }
-            notes.setAll(toSet);
           },
         ),
       );

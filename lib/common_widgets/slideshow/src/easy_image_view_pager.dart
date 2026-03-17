@@ -38,7 +38,7 @@ class EasyImageViewPager extends StatefulWidget {
   /// Create new instance, using the [easyImageProvider] to populate the [PageView],
   /// and the [pageController] to control the initial image index to display.
   /// The optional [doubleTapZoomable] boolean defaults to false and allows double tap to zoom.
-  EasyImageViewPager({
+  const EasyImageViewPager({
     super.key,
     required this.easyImageProvider,
     required this.pageController,

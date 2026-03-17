@@ -69,8 +69,9 @@ class Login extends StatelessWidget {
                     return TabView(
                         currentIndex: loginCtrl.selectedTab(),
                         onChanged: (input) {
-                          if (loginCtrl.loadingIndicator().isEmpty)
+                          if (loginCtrl.loadingIndicator().isEmpty) {
                             loginCtrl.selectedTab(input);
+                          }
                         },
                         closeButtonVisibility: CloseButtonVisibilityMode.never,
                         tabs: [

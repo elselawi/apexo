@@ -146,7 +146,9 @@ class Store<G extends Model> {
       if (e.type == DictEventType.remove) continue;
       if (e.type == DictEventType.add && doc.pushOnCreation == false) continue;
       if (e.type == DictEventType.modify &&
-          !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) continue;
+          !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) {
+        continue;
+      }
       final pushTargets = doc.targetsToPushTo;
       toPush.add(PushData(
         store: remote!.storeName,

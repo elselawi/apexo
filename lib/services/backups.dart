@@ -5,7 +5,6 @@ import 'package:apexo/services/login.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:http_parser/http_parser.dart';
 
 class BackupFile {
   late String key;

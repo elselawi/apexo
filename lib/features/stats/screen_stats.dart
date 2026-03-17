@@ -57,7 +57,7 @@ class StatsScreen extends StatelessWidget {
                   itemCount: 9,
                   padding: const EdgeInsets.all(15),
                   itemBuilder: (context, index) {
-                    if (index == 0)
+                    if (index == 0) {
                       return _buildSingleChart(
                         "${txt("appointmentsPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
                         "${txt("total")}: ${chartsCtrl.filteredAppointments.length} ${txt("appointments")} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
@@ -72,7 +72,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.date_time,
                       );
-                    if (index == 1)
+                    }
+                    if (index == 1) {
                       return _buildSingleChart(
                         "${txt("paymentsAndExpensesPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
                         "${txt("total")}: ${txt("payments")} ${chartsCtrl.groupedPayments.reduce((v, e) => v += e)} ${globalSettings.get("currency_______").value} / ${txt("expenses")} ${chartsCtrl.groupedExpenses.reduce((v, e) => v += e)} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
@@ -92,7 +93,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.currency,
                       );
-                    if (index == 2)
+                    }
+                    if (index == 2) {
                       return _buildSingleChart(
                         "${txt("newPatientsPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
                         "${txt("acquiredPatientsIn")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
@@ -106,7 +108,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.people,
                       );
-                    if (index == 3)
+                    }
+                    if (index == 3) {
                       return _buildSingleChart(
                         "${txt("doneMissedPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
                         "${txt("doneAndMissedAppointmentsIn")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
@@ -120,7 +123,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.check_list,
                       );
-                    if (index == 4)
+                    }
+                    if (index == 4) {
                       return _buildSingleChart(
                         txt("timeOfDay"),
                         txt("distributionOfAppointments"),
@@ -135,7 +139,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.clock,
                       );
-                    if (index == 5)
+                    }
+                    if (index == 5) {
                       return _buildSingleChart(
                         txt("dayOfWeek"),
                         txt("distributionOfAppointments"),
@@ -155,7 +160,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.calendar_day,
                       );
-                    if (index == 6)
+                    }
+                    if (index == 6) {
                       return _buildSingleChart(
                         txt("dayOfMonth"),
                         txt("distributionOfAppointments"),
@@ -167,7 +173,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.calendar_day,
                       );
-                    if (index == 7)
+                    }
+                    if (index == 7) {
                       return _buildSingleChart(
                         txt("monthOfYear"),
                         txt("distributionOfAppointments"),
@@ -192,7 +199,8 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.calendar_year,
                       );
-                    if (index == 8)
+                    }
+                    if (index == 8) {
                       return _buildSingleChart(
                         txt("patientsGender"),
                         txt("maleAndFemalePatients"),
@@ -204,6 +212,9 @@ class StatsScreen extends StatelessWidget {
                         context,
                         FluentIcons.people_external_share,
                       );
+                    }
+
+                    return const SizedBox();
                   },
                 );
               });

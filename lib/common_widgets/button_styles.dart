@@ -11,7 +11,6 @@ filledButtonStyle(Color color) => ButtonStyle(
       foregroundColor: const WidgetStatePropertyAll(Colors.white),
     );
 
-
 class ButtonContent extends StatelessWidget {
   // ignore: use_key_in_widget_constructors
   const ButtonContent(this.icon, this.txt, {this.size, super.key});
@@ -23,10 +22,10 @@ class ButtonContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      spacing: 5,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: size,),
-        const SizedBox(width: 5),
+        Icon(icon, size: size),
         Txt(txt, style: TextStyle(fontSize: size))
       ],
     );

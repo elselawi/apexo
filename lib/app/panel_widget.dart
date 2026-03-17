@@ -270,13 +270,7 @@ class _PanelScreenState extends State<PanelScreen> {
                       ? Colors.blue
                       : Colors.grey.withValues(alpha: 0.25)),
             ),
-            child: Row(
-              children: [
-                const Icon(FluentIcons.save),
-                const SizedBox(width: 5),
-                Txt(txt("save"))
-              ],
-            ),
+            child: ButtonContent(FluentIcons.save, txt("save")),
           );
         });
   }
@@ -293,13 +287,8 @@ class _PanelScreenState extends State<PanelScreen> {
         backgroundColor: const WidgetStatePropertyAll(Colors.grey),
         textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
       ),
-      child: Row(
-        children: [
-          const Icon(FluentIcons.archive),
-          const SizedBox(width: 5),
-          Txt("${txt("archive")} ${txt(widget.panel.storeSingularName)}"),
-        ],
-      ),
+      child: ButtonContent(FluentIcons.archive,
+          "${txt("archive")} ${txt(widget.panel.storeSingularName)}"),
     );
   }
 
@@ -315,12 +304,9 @@ class _PanelScreenState extends State<PanelScreen> {
         textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
         backgroundColor: WidgetStatePropertyAll(Colors.teal),
       ),
-      child: Row(
-        children: [
-          const Icon(FluentIcons.archive_undo),
-          const SizedBox(width: 5),
-          Txt("${txt("Restore")} ${txt(widget.panel.storeSingularName)}")
-        ],
+      child: ButtonContent(
+        FluentIcons.archive_undo,
+        "${txt("Restore")} ${txt(widget.panel.storeSingularName)}",
       ),
     );
   }
@@ -384,9 +370,8 @@ class _PanelScreenState extends State<PanelScreen> {
               return Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(children: [
+                  Row(spacing: 2, children: [
                     _buildPanelHeaderStoreName(),
-                    const SizedBox(width: 2),
                     _buildPanelHeaderItemName(),
                   ]),
                   Row(children: [
@@ -429,9 +414,9 @@ class _PanelScreenState extends State<PanelScreen> {
       controller: panelSwitchController,
       child: IconButton(
         icon: Row(
+          spacing: 2,
           children: [
             const Icon(FluentIcons.reopen_pages),
-            const SizedBox(width: 2),
             Text(
               routes.panels().length.toString(),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
@@ -508,11 +493,11 @@ class _PanelScreenState extends State<PanelScreen> {
       confirmCancelController.showFlyout(builder: (context) {
         return FlyoutContent(
           child: Column(
+            spacing: 12,
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Txt(txt("sureClosePanel")),
-              const SizedBox(height: 12.0),
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

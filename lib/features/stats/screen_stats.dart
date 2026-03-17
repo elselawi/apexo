@@ -229,11 +229,10 @@ class StatsScreen extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(15, 10, 10, 7),
             child: Row(
+              spacing: 5,
               children: [
                 Icon(icon),
-                const SizedBox(width: 10),
                 const Divider(size: 20, direction: Axis.vertical),
-                const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

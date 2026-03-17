@@ -202,14 +202,12 @@ class SettingsScreen extends StatelessWidget {
                                       mainAxisSize: MainAxisSize.min,
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
+                                      spacing: 10,
                                       children: [
-                                        const SizedBox(height: 10),
                                         if (!cacheResetState()
                                             .startsWith("Error"))
                                           const Center(child: ProgressRing()),
-                                        const SizedBox(height: 10),
                                         Center(child: Txt(cacheResetState())),
-                                        const SizedBox(height: 10),
                                         if (cacheResetState()
                                             .startsWith("Error"))
                                           FilledButton(

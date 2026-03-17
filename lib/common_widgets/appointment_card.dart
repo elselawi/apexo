@@ -66,6 +66,7 @@ class AppointmentCard extends StatelessWidget {
           ? const EdgeInsets.fromLTRB(7, 15, 15, 0)
           : const EdgeInsetsGeometry.all(7),
       child: Column(
+        spacing: 10,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,18 +74,15 @@ class AppointmentCard extends StatelessWidget {
               if (readOnly == false)
                 Column(
                   key: WK.acSideIcons,
+                  spacing: 10,
                   children: [
                     _doneCheckBox(color),
-                    if (appointment.archived == true) ...[
-                      const SizedBox(height: 10),
-                      const Icon(FluentIcons.archive),
-                    ] else if (appointment.isMissed == true) ...[
-                      const SizedBox(height: 10),
-                      Icon(FluentIcons.event_date_missed12, color: color),
-                    ] else if (!appointment.fullPaid) ...[
-                      const SizedBox(height: 10),
+                    if (appointment.archived == true)
+                      const Icon(FluentIcons.archive)
+                    else if (appointment.isMissed == true)
+                      Icon(FluentIcons.event_date_missed12, color: color)
+                    else if (!appointment.fullPaid)
                       Icon(FluentIcons.money, color: color),
-                    ],
                   ],
                 ),
               if (readOnly == false) const SizedBox(width: 4),
@@ -112,11 +110,11 @@ class AppointmentCard extends StatelessWidget {
                         showLeftBorder ? _coloredHandleDecoration(color) : null,
                     padding: const EdgeInsets.all(8.0),
                     child: Column(
+                      spacing: 5,
                       children: [
                         _buildHeader(context, color),
                         if (appointment.patient != null &&
                             !hide.contains(AppointmentSections.patient)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -129,7 +127,6 @@ class AppointmentCard extends StatelessWidget {
                         ],
                         if (appointment.operatorsIDs.isNotEmpty &&
                             !hide.contains(AppointmentSections.doctors)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -151,7 +148,6 @@ class AppointmentCard extends StatelessWidget {
                         ],
                         if (appointment.imgs.isNotEmpty &&
                             !hide.contains(AppointmentSections.photos)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -193,7 +189,6 @@ class AppointmentCard extends StatelessWidget {
                         ],
                         if (appointment.preOpNotes.isNotEmpty &&
                             !hide.contains(AppointmentSections.preNotes)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -210,7 +205,6 @@ class AppointmentCard extends StatelessWidget {
                         ],
                         if (appointment.postOpNotes.isNotEmpty &&
                             !hide.contains(AppointmentSections.postNotes)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -228,7 +222,6 @@ class AppointmentCard extends StatelessWidget {
                         if (appointment.teeth.isNotEmpty &&
                             !hide
                                 .contains(AppointmentSections.dentalNotes)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -252,7 +245,6 @@ class AppointmentCard extends StatelessWidget {
                         ],
                         if (appointment.hasLabwork &&
                             !hide.contains(AppointmentSections.labworks)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -270,7 +262,6 @@ class AppointmentCard extends StatelessWidget {
                         if (appointment.prescriptions.isNotEmpty &&
                             !hide.contains(
                                 AppointmentSections.prescriptions)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -287,7 +278,6 @@ class AppointmentCard extends StatelessWidget {
                         ],
                         if ((appointment.price != 0 || appointment.paid != 0) &&
                             !hide.contains(AppointmentSections.pay)) ...[
-                          const SizedBox(height: 12.5),
                           const Divider(
                             direction: Axis.horizontal,
                           ),
@@ -305,7 +295,6 @@ class AppointmentCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 10),
           if (difference != null) _buildTimeDifference()
         ],
       ),
@@ -334,13 +323,12 @@ class AppointmentCard extends StatelessWidget {
   Center _buildTimeDifference() {
     return Center(
         child: Row(
+      spacing: 5,
       mainAxisAlignment: MainAxisAlignment.center,
       textDirection: TextDirection.ltr,
       children: [
         const SpacerIcon(flip: 1),
-        const SizedBox(width: 5),
         TimeDifference(difference: difference),
-        const SizedBox(width: 5),
         const SpacerIcon(flip: -1),
       ],
     ));
@@ -351,9 +339,11 @@ class AppointmentCard extends StatelessWidget {
     final txtColor =
         bgColor ?? FluentTheme.of(context).iconTheme.color ?? Colors.grey;
     return Column(
+      spacing: 5,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Row(
+          spacing: 5,
           crossAxisAlignment: CrossAxisAlignment.end,
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
@@ -362,7 +352,6 @@ class AppointmentCard extends StatelessWidget {
               amount: appointment.price.toString(),
               finalTextColor: txtColor,
             ),
-            const SizedBox(width: 5),
             PaymentPill(
               title: txt("paid"),
               amount: appointment.paid.toString(),
@@ -370,7 +359,6 @@ class AppointmentCard extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 10),
         if (appointment.paid != appointment.price)
           PaymentPill(
             title: appointment.overPaid ? txt("overpaid") : txt("underpaid"),
@@ -507,6 +495,7 @@ class PaymentPill extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
       height: 35,
       child: Wrap(
+        spacing: 10,
         children: [
           Txt(
             title,
@@ -517,8 +506,6 @@ class PaymentPill extends StatelessWidget {
               color: finalTextColor,
             ),
           ),
-          const SizedBox(width: 5),
-          const SizedBox(width: 5),
           Txt(
             amount,
             style: TextStyle(color: finalTextColor, fontSize: 12),

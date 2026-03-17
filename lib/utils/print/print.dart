@@ -4,7 +4,8 @@ import 'package:printing/printing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-Future<void> printing(BuildContext context, String header, pw.Widget content, String footer) async {
+Future<void> printing(BuildContext context, String header, pw.Widget content,
+    String footer) async {
   var myTheme = pw.ThemeData.withFont(
     base: pw.Font.ttf(await rootBundle.load("assets/fonts/readex.ttf")),
     bold: pw.Font.ttf(await rootBundle.load("assets/fonts/readex-bold.ttf")),

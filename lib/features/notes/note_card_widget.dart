@@ -623,9 +623,9 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
 
   Row _buildForPatientRow() {
     return Row(
+      spacing: 5,
       children: [
         const Icon(WindowsIcons.contact2, size: 30),
-        const SizedBox(width: 5),
         Flexible(
           child: Transform.scale(
             scale: 0.85,

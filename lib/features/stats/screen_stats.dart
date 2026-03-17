@@ -38,169 +38,176 @@ class StatsScreen extends StatelessWidget {
           icons: _icons),
       const Divider(size: 1500),
       Expanded(
-        child: ListView(
-          scrollDirection: Axis.vertical,
-          children: [
-            const SizedBox(height: 10),
-            MStreamBuilder(
-                streams: [
-                  chartsCtrl.start.stream,
-                  chartsCtrl.end.stream,
-                  chartsCtrl.interval.stream,
-                  chartsCtrl.filterByOperatorID.stream
-                ],
-                builder: (context, snapshot) {
-                  return LayoutBuilder(builder: (context, constraints) {
-                    return Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: [
-                        _buildSingleChart(
-                          "${txt("appointmentsPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          "${txt("total")}: ${chartsCtrl.filteredAppointments.length} ${txt("appointments")} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          StyledBarChart(
-                            labels:
-                                chartsCtrl.periods.map((p) => p.label).toList(),
-                            yAxis: chartsCtrl.groupedAppointments
-                                .map((g) => g.length.toDouble())
-                                .toList(),
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.date_time,
+        child: MStreamBuilder(
+            streams: [
+              chartsCtrl.start.stream,
+              chartsCtrl.end.stream,
+              chartsCtrl.interval.stream,
+              chartsCtrl.filterByOperatorID.stream
+            ],
+            builder: (context, snapshot) {
+              return LayoutBuilder(builder: (context, constraints) {
+                return GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 750,
+                    childAspectRatio: 1.5,
+                    crossAxisSpacing: 15,
+                    mainAxisSpacing: 15,
+                  ),
+                  itemCount: 9,
+                  padding: const EdgeInsets.all(15),
+                  itemBuilder: (context, index) {
+                    if (index == 0)
+                      return _buildSingleChart(
+                        "${txt("appointmentsPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        "${txt("total")}: ${chartsCtrl.filteredAppointments.length} ${txt("appointments")} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        StyledBarChart(
+                          labels:
+                              chartsCtrl.periods.map((p) => p.label).toList(),
+                          yAxis: chartsCtrl.groupedAppointments
+                              .map((g) => g.length.toDouble())
+                              .toList(),
                         ),
-                        _buildSingleChart(
-                          "${txt("paymentsAndExpensesPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          "${txt("total")}: ${txt("payments")} ${chartsCtrl.groupedPayments.reduce((v, e) => v += e)} ${globalSettings.get("currency_______").value} / ${txt("expenses")} ${chartsCtrl.groupedExpenses.reduce((v, e) => v += e)} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          StyledLineChart(
-                            labels:
-                                chartsCtrl.periods.map((p) => p.label).toList(),
-                            datasets: [
-                              chartsCtrl.groupedPayments.toList(),
-                              chartsCtrl.groupedExpenses.toList()
-                            ],
-                            datasetLabels: [
-                              "${txt("payments")} ${globalSettings.get("currency_______").value}",
-                              "${txt("expenses")} ${globalSettings.get("currency_______").value}"
-                            ],
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.currency,
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.date_time,
+                      );
+                    if (index == 1)
+                      return _buildSingleChart(
+                        "${txt("paymentsAndExpensesPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        "${txt("total")}: ${txt("payments")} ${chartsCtrl.groupedPayments.reduce((v, e) => v += e)} ${globalSettings.get("currency_______").value} / ${txt("expenses")} ${chartsCtrl.groupedExpenses.reduce((v, e) => v += e)} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        StyledLineChart(
+                          labels:
+                              chartsCtrl.periods.map((p) => p.label).toList(),
+                          datasets: [
+                            chartsCtrl.groupedPayments.toList(),
+                            chartsCtrl.groupedExpenses.toList()
+                          ],
+                          datasetLabels: [
+                            "${txt("payments")} ${globalSettings.get("currency_______").value}",
+                            "${txt("expenses")} ${globalSettings.get("currency_______").value}"
+                          ],
                         ),
-                        _buildSingleChart(
-                          "${txt("newPatientsPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          "${txt("acquiredPatientsIn")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          StyledLineChart(
-                            labels:
-                                chartsCtrl.periods.map((p) => p.label).toList(),
-                            datasets: [chartsCtrl.newPatients.toList()],
-                            datasetLabels: [txt("patients")],
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.people,
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.currency,
+                      );
+                    if (index == 2)
+                      return _buildSingleChart(
+                        "${txt("newPatientsPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        "${txt("acquiredPatientsIn")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        StyledLineChart(
+                          labels:
+                              chartsCtrl.periods.map((p) => p.label).toList(),
+                          datasets: [chartsCtrl.newPatients.toList()],
+                          datasetLabels: [txt("patients")],
                         ),
-                        _buildSingleChart(
-                          "${txt("doneMissedPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          "${txt("doneAndMissedAppointmentsIn")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                          StyledStackedChart(
-                            labels:
-                                chartsCtrl.periods.map((p) => p.label).toList(),
-                            datasets: chartsCtrl.doneAndMissedAppointments,
-                            datasetLabels: [txt("done"), txt("all")],
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.check_list,
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.people,
+                      );
+                    if (index == 3)
+                      return _buildSingleChart(
+                        "${txt("doneMissedPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        "${txt("doneAndMissedAppointmentsIn")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        StyledStackedChart(
+                          labels:
+                              chartsCtrl.periods.map((p) => p.label).toList(),
+                          datasets: chartsCtrl.doneAndMissedAppointments,
+                          datasetLabels: [txt("done"), txt("all")],
                         ),
-                        _buildSingleChart(
-                          txt("timeOfDay"),
-                          txt("distributionOfAppointments"),
-                          StyledRadarChart(
-                            data: [chartsCtrl.timeOfDayDistribution],
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.check_list,
+                      );
+                    if (index == 4)
+                      return _buildSingleChart(
+                        txt("timeOfDay"),
+                        txt("distributionOfAppointments"),
+                        StyledRadarChart(
+                          data: [chartsCtrl.timeOfDayDistribution],
+                          labels: List.generate(
+                              24,
+                              (index) => DateFormat("hh a", locale.s.$code)
+                                  .format(DateTime(0, 0, 0, index))),
+                        ),
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.clock,
+                      );
+                    if (index == 5)
+                      return _buildSingleChart(
+                        txt("dayOfWeek"),
+                        txt("distributionOfAppointments"),
+                        StyledRadarChart(
+                          data: [chartsCtrl.dayOfWeekDistribution],
+                          labels: [
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                            "Sunday"
+                          ].map((e) => txt(e)).toList(),
+                        ),
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.calendar_day,
+                      );
+                    if (index == 6)
+                      return _buildSingleChart(
+                        txt("dayOfMonth"),
+                        txt("distributionOfAppointments"),
+                        StyledRadarChart(
+                            data: [chartsCtrl.dayOfMonthDistribution],
                             labels: List.generate(
-                                24,
-                                (index) => DateFormat("hh a", locale.s.$code)
-                                    .format(DateTime(0, 0, 0, index))),
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.clock,
+                                31, (index) => (index + 1).toString())),
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.calendar_day,
+                      );
+                    if (index == 7)
+                      return _buildSingleChart(
+                        txt("monthOfYear"),
+                        txt("distributionOfAppointments"),
+                        StyledRadarChart(
+                          data: [chartsCtrl.monthOfYearDistribution],
+                          labels: const [
+                            "January",
+                            "February",
+                            "March",
+                            "April",
+                            "May",
+                            "June",
+                            "July",
+                            "August",
+                            "September",
+                            "October",
+                            "November",
+                            "December"
+                          ].map((e) => txt(e)).toList(),
                         ),
-                        _buildSingleChart(
-                          txt("dayOfWeek"),
-                          txt("distributionOfAppointments"),
-                          StyledRadarChart(
-                            data: [chartsCtrl.dayOfWeekDistribution],
-                            labels: [
-                              "Monday",
-                              "Tuesday",
-                              "Wednesday",
-                              "Thursday",
-                              "Friday",
-                              "Saturday",
-                              "Sunday"
-                            ].map((e) => txt(e)).toList(),
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.calendar_day,
-                        ),
-                        _buildSingleChart(
-                          txt("dayOfMonth"),
-                          txt("distributionOfAppointments"),
-                          StyledRadarChart(
-                              data: [chartsCtrl.dayOfMonthDistribution],
-                              labels: List.generate(
-                                  31, (index) => (index + 1).toString())),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.calendar_day,
-                        ),
-                        _buildSingleChart(
-                          txt("monthOfYear"),
-                          txt("distributionOfAppointments"),
-                          StyledRadarChart(
-                            data: [chartsCtrl.monthOfYearDistribution],
-                            labels: const [
-                              "January",
-                              "February",
-                              "March",
-                              "April",
-                              "May",
-                              "June",
-                              "July",
-                              "August",
-                              "September",
-                              "October",
-                              "November",
-                              "December"
-                            ].map((e) => txt(e)).toList(),
-                          ),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.calendar_year,
-                        ),
-                        _buildSingleChart(
-                          txt("patientsGender"),
-                          txt("maleAndFemalePatients"),
-                          StyledPie(data: {
-                            txt("female"): chartsCtrl.femaleMale[0].toDouble(),
-                            txt("male"): chartsCtrl.femaleMale[1].toDouble(),
-                          }),
-                          constraints.maxWidth,
-                          context,
-                          FluentIcons.people_external_share,
-                        ),
-                      ],
-                    );
-                  });
-                }),
-            const SizedBox(height: 10),
-          ],
-        ),
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.calendar_year,
+                      );
+                    if (index == 8)
+                      return _buildSingleChart(
+                        txt("patientsGender"),
+                        txt("maleAndFemalePatients"),
+                        StyledPie(data: {
+                          txt("female"): chartsCtrl.femaleMale[0].toDouble(),
+                          txt("male"): chartsCtrl.femaleMale[1].toDouble(),
+                        }),
+                        constraints.maxWidth,
+                        context,
+                        FluentIcons.people_external_share,
+                      );
+                  },
+                );
+              });
+            }),
       ),
     ]);
   }
@@ -250,13 +257,13 @@ class StatsScreen extends StatelessWidget {
             ),
           ),
           const Divider(size: 600),
-          SizedBox(
-            height: 300,
+          Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: chart,
             ),
           ),
+          const SizedBox(height: 20),
         ],
       ),
     );

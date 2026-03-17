@@ -154,13 +154,15 @@ class _SupplierWindowState extends State<SupplierWindow> {
       children: [
         _selectedList.isEmpty ? const NoItemsFound() : _buildTableHeader(),
         Expanded(
-          child: ListView(
-            children: _pageItems
-                .map((order) => OrderRow(
-                      key: Key(order.id),
-                      order: order,
-                    ))
-                .toList(),
+          child: ListView.builder(
+            itemCount: _pageItems.length,
+            itemBuilder: (context, index) {
+              final order = _pageItems[index];
+              return OrderRow(
+                key: Key(order.id),
+                order: order,
+              );
+            },
           ),
         ),
       ],

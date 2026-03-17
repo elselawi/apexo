@@ -206,7 +206,16 @@ class Patient extends Model {
   /* 8 */ Map<String, String> teeth = {};
 
   @override
-  Patient.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
+  Patient.fromJson(super.json) : super.fromJson();
+
+  @override
+  Patient copy(bool blank) {
+    return Patient.fromJson(blank ? {} : toJson());
+  }
+
+  @override
+  void fromJson(Map<String, dynamic> json) {
+    super.fromJson(json);
     nullifyCachedAppointments(_) {
       _doneAppointmentsCached = null;
       _allAppointmentsCached = null;
@@ -229,6 +238,7 @@ class Patient extends Model {
     /* 7 */ notes = json['notes'] ?? notes;
     /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
   }
+
   @override
   Map<String, dynamic> toJson() {
     final json = super.toJson();

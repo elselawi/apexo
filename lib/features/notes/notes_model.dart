@@ -100,7 +100,16 @@ class Note extends Model {
   /* 15 */ int? recurringInterval;
   /* 16 */ String? parentID;
 
-  Note.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
+  Note.fromJson(super.json) : super.fromJson();
+
+  @override
+  Note copy(bool blank) {
+    return Note.fromJson(blank ? {} : toJson());
+  }
+
+  @override
+  void fromJson(Map<String, dynamic> json) {
+    super.fromJson(json);
     /* 1 */ isColumn = json['isColumn'] ?? isColumn;
     /* 2 */ columnName = json['columnName'] ?? columnName;
     /* 3 */ tint = json['tint'] != null ? Color(json['tint']) : tint;

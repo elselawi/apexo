@@ -25,13 +25,21 @@ class Model {
   Model.fromJson(Map<String, dynamic> json)
       : id = uuid(),
         title = "" {
-    if (json["id"] != null) id = json["id"];
-    if (json["archived"] != null) archived = json["archived"];
-    if (json["title"] != null) title = json["title"];
+    fromJson(json);
   }
 
   Map<String, String> get labels {
     return {};
+  }
+
+  Model copy(bool blank) {
+    return Model.fromJson(blank ? {} : toJson());
+  }
+
+  void fromJson(Map<String, dynamic> json) {
+    if (json["id"] != null) id = json["id"];
+    if (json["archived"] != null) archived = json["archived"];
+    if (json["title"] != null) title = json["title"];
   }
 
   Map<String, dynamic> toJson() {

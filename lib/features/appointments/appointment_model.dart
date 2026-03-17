@@ -70,6 +70,7 @@ class Appointment extends Model {
 
   bool get firstAppointmentForThisPatient {
     if (patient == null) return false;
+    if (patient!.allAppointments.isEmpty) return false;
     return patient!.allAppointments.first == this;
   }
 
@@ -92,7 +93,16 @@ class Appointment extends Model {
   /* 15 */ bool labworkReceived = false;
   /* 16 */ Map<String, String> drawings = {};
 
-  Appointment.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
+  Appointment.fromJson(super.json) : super.fromJson();
+
+  @override
+  Appointment copy(bool blank) {
+    return Appointment.fromJson(blank ? {} : toJson());
+  }
+
+  @override
+  void fromJson(Map<String, dynamic> json) {
+    super.fromJson(json);
     /* 1 */ operatorsIDs =
         List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
     /* 2 */ prescriptions =

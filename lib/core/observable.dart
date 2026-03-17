@@ -148,7 +148,7 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
     final oldJson = _jsonCopies[item.id] ?? {};
 
     final List<String> diff;
-    if (!isNew) {
+    if (!isNew && item.pushIfChanged.isNotEmpty) {
       diff = diffJson(oldJson, newJson).toList();
     } else {
       diff = [];

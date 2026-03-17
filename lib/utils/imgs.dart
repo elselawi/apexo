@@ -66,7 +66,6 @@ Future<String> handleNewImage({
     extension = path.extension(sourcePath);
   }
 
-
   // hashing the path to get a filename
   final imgName = simpleHash(sourcePath) + extension;
 
@@ -86,14 +85,10 @@ Future<String> handleNewImage({
       ..writeToFile(_nameToThumbName(savedFile.path));
     await cmd.executeThread();
   }
-  
+
   // uploading
   await appointments.uploadImg(
-    rowID: rowID,
-    filename: imgName,
-    path: savedFile?.path,
-    file: sourceFile
-  );
+      rowID: rowID, filename: imgName, path: savedFile?.path, file: sourceFile);
 
   // returning the imgName which is the hashed name + extension
   // to be saved in the row
@@ -120,7 +115,7 @@ Future<ImageProvider?> getImage(String rowID, String name,
   } else {
     final img = await _getImage(rowID, name, thumb);
     if (thumb) imgMemoryCache[name] = img;
-    if (imgMemoryCache.length > 20) {
+    if (imgMemoryCache.length > 30) {
       imgMemoryCache.remove(imgMemoryCache.keys.first);
     }
     return img;

@@ -53,10 +53,10 @@ class SaveLocal {
   }
 
   // Get all values from the main box
-  Future<Iterable<String>> getAll() async {
+  Future<Map<String, String>> getAll() async {
     try {
       final box = await mainHiveBox;
-      return box.values;
+      return box.toMap().cast<String, String>();
     } catch (e, s) {
       throw StorageException('Failed to get all values: $e', s);
     }

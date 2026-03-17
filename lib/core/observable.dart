@@ -144,31 +144,52 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
 
   void set(G item) {
     bool isNew = !_dictionary.containsKey(item.id);
-    final newJson = item.jsonCopyForPush;
-    final oldJson = _jsonCopies[item.id] ?? {};
-
-    final List<String> diff;
-    if (!isNew && item.pushIfChanged.isNotEmpty) {
-      diff = diffJson(oldJson, newJson).toList();
-    } else {
-      diff = [];
-    }
     _dictionary[item.id] = item;
 
-    final List<dynamic> newVals = diff.map((key) => newJson[key]).toList();
-    final List<dynamic> oldVals = diff.map((key) => oldJson[key]).toList();
-    notifyObservers([
-      if (isNew)
-        DictEvent.add(item.id, document: item)
-      else
-        DictEvent.modify(
-          item.id,
-          modifiedKeys: diff,
-          document: item,
-          newVals: newVals,
-          oldVals: oldVals,
-        ),
-    ]);
+    if (item.targetsToPushTo.isNotEmpty) {
+      // the following gymnastics would only
+      // be done when the item is meant to be pushed
+      // otherwise it's just a waste of time and resources
+      final newJson = item.jsonCopyForPush;
+      final oldJson = (item.copy(true)..fromJson(_jsonCopies[item.id] ?? {}))
+          .jsonCopyForPush;
+
+      final List<String> diff;
+      if (!isNew && item.pushIfChanged.isNotEmpty) {
+        diff = diffJson(oldJson, newJson).toList();
+      } else {
+        diff = [];
+      }
+
+      final List<dynamic> newVals = diff.map((key) => newJson[key]).toList();
+      final List<dynamic> oldVals = diff.map((key) => oldJson[key]).toList();
+
+      notifyObservers([
+        if (isNew)
+          DictEvent.add(item.id, document: item)
+        else
+          DictEvent.modify(
+            item.id,
+            modifiedKeys: diff,
+            document: item,
+            newVals: newVals,
+            oldVals: oldVals,
+          ),
+      ]);
+    } else {
+      notifyObservers([
+        if (isNew)
+          DictEvent.add(item.id, document: item)
+        else
+          DictEvent.modify(
+            item.id,
+            modifiedKeys: [],
+            document: item,
+            newVals: [],
+            oldVals: [],
+          ),
+      ]);
+    }
     _copyDictionary([item.id]);
   }
 
@@ -179,6 +200,23 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
     }
     notifyObservers(
         items.map((item) => DictEvent.add(item.id, document: null)).toList());
+  }
+
+  /// Like setAll but more optimized
+  /// accepts map as arguments
+  /// & accepts the pre-decoded JSON maps so that _jsonCopies
+  /// can be populated directly, avoiding a redundant re-serialization of every
+  /// Use this when loading from persistence.
+  void setAllWithJson(
+      Map<String, G> items, Map<String, Map<String, dynamic>> jsonMaps) {
+    assert(items.length == jsonMaps.length);
+
+    _dictionary.addAll(items);
+    _jsonCopies.addAll(jsonMaps);
+
+    notifyObservers(items.entries
+        .map((item) => DictEvent.add(item.key, document: item.value))
+        .toList());
   }
 
   void remove(String id) {

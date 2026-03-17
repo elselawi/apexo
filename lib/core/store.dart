@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:apexo/services/notifications/model_push_data.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
-import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
@@ -89,12 +89,17 @@ class Store<G extends Model> {
     if (local == null) {
       return;
     }
-    Iterable<String> all = await local!.getAll();
-    Iterable<G> modeled = all.map((x) => modeling(_deSerialize(x)));
-    // silent for persistence
+    final Map<String, String> all = (await local!.getAll());
+    // Decode JSON strings in a background isolate
+    final Map<String, Map<String, dynamic>> decoded =
+        await compute(_decodeAllDocs, all);
+    // model json maps to document in a background isolate
+    final Map<String, G> modeled = await compute(_modelAllDocs<G>,
+        _ModelAllDocsParams(modeling: modeling, decoded: decoded));
+    // silent for persistence; use the optimized setAllWithJson
     observableMap.silently(() {
       observableMap.clear();
-      observableMap.setAll(modeled.toList());
+      observableMap.setAllWithJson(modeled, decoded);
     });
     // but loud for view
     observableMap.notifyView();
@@ -103,10 +108,6 @@ class Store<G extends Model> {
 
   String _serialize(G input) {
     return jsonEncode(input);
-  }
-
-  Map<String, dynamic> _deSerialize(String input) {
-    return jsonDecode(input);
   }
 
   _processChanges() async {
@@ -648,4 +649,26 @@ class Store<G extends Model> {
       await Future.delayed(const Duration(milliseconds: 30));
     }
   }
+}
+
+// The following two functions
+// are meant to be running on an isolate
+// that's why they are top-level
+// they are meant to to run jsonDecode
+// and modelling on large batches of data
+Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
+  return Map<String, Map<String, dynamic>>.fromEntries(encoded.entries.map(
+      (entry) => MapEntry(
+          entry.key, jsonDecode(entry.value) as Map<String, dynamic>)));
+}
+
+class _ModelAllDocsParams<G extends Model> {
+  final ModellingFunc<G> modeling;
+  final Map<String, Map<String, dynamic>> decoded;
+  _ModelAllDocsParams({required this.modeling, required this.decoded});
+}
+
+Map<String, G> _modelAllDocs<G extends Model>(_ModelAllDocsParams<G> params) {
+  return Map<String, G>.fromEntries(params.decoded.entries
+      .map((entry) => MapEntry(entry.key, params.modeling(entry.value))));
 }

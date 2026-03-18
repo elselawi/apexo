@@ -32,8 +32,10 @@ class _LoginService extends ObservablePersistingObject {
     if ((token.isEmpty || pb == null || pb!.authStore.record == null) &&
         findByEmail.isNotEmpty) {
       return findByEmail.first.id;
-    } else {
+    } else if (pb != null && pb!.authStore.record != null) {
       return pb!.authStore.record!.id;
+    } else {
+      return "";
     }
   }
 

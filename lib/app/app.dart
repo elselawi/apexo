@@ -19,6 +19,7 @@ import 'package:apexo/services/version.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 late BuildContext bContext;
 
@@ -86,11 +87,17 @@ class ApexoApp extends StatelessWidget {
     await version.init();
 
     // Show new version dialog if app is outdated
-    if (version.isOutdated() && !launch.dialogShown() && bContext.mounted) {
+    if ((!kIsWeb) &&
+        version.isOutdated() &&
+        !launch.dialogShown() &&
+        bContext.mounted) {
       launch.dialogShown(true);
       showDialog(
         context: bContext,
-        builder: (context) => NewVersionDialog(downloadLink: Platform.isWindows ? version.latestAPKLink : version.latestZipLink),
+        builder: (context) => NewVersionDialog(
+            downloadLink: Platform.isWindows
+                ? version.latestAPKLink
+                : version.latestZipLink),
       );
     }
 
@@ -181,7 +188,7 @@ class ApexoApp extends StatelessWidget {
               routes.showBottomNav(false);
             }
           },
-          content: launch.open() ? null : const Login(key: WK.loginScreen),
+          content: launch.open() ? null : Login(key: WK.loginScreen),
           pane: !launch.open()
               ? null
               : NavigationPane(

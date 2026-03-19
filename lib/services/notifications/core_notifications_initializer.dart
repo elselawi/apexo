@@ -7,6 +7,7 @@ import 'package:apexo/services/notifications/core_firebase_messaging.dart';
 import 'package:apexo/services/notifications/core_local_notification.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
+import 'package:apexo/services/patient_side.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -27,12 +28,13 @@ class Messaging {
     }
   }
 
-  static Future<void> identifyDevice() async {
+  static Future<void> identifyDevice({bool isPatient = false}) async {
     // initialize deferred push
-    deferredPush.init(login.url);
+    deferredPush.init(isPatient ? patientSide.server : login.url);
 
     // ensure clinic key.. which is a key needed to communicate with the relay server
-    final relayKey = await PushRelay.ensureKey();
+    final relayKey =
+        isPatient ? patientSide.relayKey : await PushRelay.ensureKey();
 
     if (kIsWeb) {
       // check(/fcm/fcm.js)
@@ -41,9 +43,13 @@ class Messaging {
       // once those global variables are set
       // the javascript code will get the token
       // and use it to identify itself to the relay server
+
+      final server = isPatient ? patientSide.server : login.url;
+      final id = isPatient ? patientSide.patientID : login.currentAccountID;
+
       JSBridge.setGlobalVariable("clinicKey", relayKey);
-      JSBridge.setGlobalVariable("clinicServer", login.url);
-      JSBridge.setGlobalVariable("accountId", login.currentAccountID);
+      JSBridge.setGlobalVariable("clinicServer", server);
+      JSBridge.setGlobalVariable("accountId", id);
       JSBridge.setGlobalVariable("lang", locale.s.$code);
       JSBridge.setGlobalVariable("shouldShowPrompt", "yes");
     } else {
@@ -51,7 +57,7 @@ class Messaging {
       // this identifies this device to the relay server
       if (firebase != null &&
           firebase!.authStatus == AuthorizationStatus.authorized) {
-        await PushRelay.putDevice();
+        await PushRelay.putDevice(isPatient: isPatient);
       }
     }
 

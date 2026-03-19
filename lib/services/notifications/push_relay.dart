@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/model_push_data.dart';
+import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:http/http.dart' as http;
@@ -44,16 +45,16 @@ class PushRelay {
 
   /// This function puts a new device into the relay database
   /// The server would add the token only if it doesn't exist
-  static Future<void> putDevice() async {
-    final relayKey = await _getRelayKey();
+  static Future<void> putDevice({bool isPatient = false}) async {
+    final relayKey = isPatient ? patientSide.relayKey : await _getRelayKey();
 
     final res = await http.post(
       Uri.parse('$relayServer/put-device'),
       body: jsonEncode({
-        "clinicServer": login.url,
+        "clinicServer": isPatient ? patientSide.server : login.url,
         "clinicKey": relayKey,
         "deviceToken": login.pushNotificationsToken,
-        "accountId": login.currentAccountID
+        "accountId": isPatient ? patientSide.patientID : login.currentAccountID
       }),
     );
     if (res.body == "ok") {

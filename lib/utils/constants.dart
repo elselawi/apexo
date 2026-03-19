@@ -2,6 +2,8 @@ import 'package:pocketbase/pocketbase.dart';
 
 /// shared constants
 
+const shorteningServer = "https://p.apexo.app";
+
 class PInt {
   static const int patients = 0;
   static const int appointments = 1;

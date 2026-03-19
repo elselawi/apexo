@@ -5,5 +5,3 @@ abstract class SaveFilePlatform {
     return SaveFileImpl.saveFileWeb(bytes, fileName);
   }
 }
-
-// TODO: test saving file on the 3 supported platforms

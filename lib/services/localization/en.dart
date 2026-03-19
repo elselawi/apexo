@@ -140,6 +140,7 @@ class En {
     "age": "Age",
     "gender": "Gender",
     "lastVisit": "Last visit",
+    "nextVisit": "Next visit",
     "totalPayments": "Total payments",
     "daysAgo": "days ago",
     "noVisits": "No visits",
@@ -498,6 +499,10 @@ class En {
     "labworksNotDelivered": "labworks not delivered",
     "outgoingPendingNotes": "outgoing pending notes",
     "incomingPendingNotes": "incoming pending notes",
+
+    // patientSide
+    "generateQRLink": "Generate QR Code",
+    "patientSide": "Patient Side",
 
     // other
     "otherNotesPerAppointment":

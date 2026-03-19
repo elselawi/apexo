@@ -142,6 +142,7 @@ class Es implements En {
     "age": "Edad",
     "gender": "Género",
     "lastVisit": "Última visita",
+    "nextVisit": "Próxima visita",
     "totalPayments": "Pagos totales",
     "daysAgo": "días atrás",
     "noVisits": "Sin visitas",
@@ -502,6 +503,10 @@ class Es implements En {
     "labworksNotDelivered": "análisis no entregados",
     "outgoingPendingNotes": "notas salientes pendientes",
     "incomingPendingNotes": "notas entrantes pendientes",
+
+    // patientSide
+    "generateQRLink": "Generar enlace QR",
+    "patientSide": "Panel del paciente",
 
     // other
     "otherNotesPerAppointment":

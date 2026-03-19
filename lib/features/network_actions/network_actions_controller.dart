@@ -4,6 +4,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
+import 'package:apexo/services/patient_side.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../services/login.dart';
 import '../../core/observable.dart';
@@ -38,6 +39,13 @@ class _NetworkActions {
   Map<String, void Function()> reconnectCallbacks = {};
 
   Future<void> resync() async {
+    if (launch.open() == Open.patient) {
+      isSyncing(isSyncing() + 1);
+      await patientSide.activate();
+      isSyncing(isSyncing() - 1);
+      return;
+    }
+
     isSyncing(isSyncing() + 1);
     await login.activate(login.url, [login.token], true);
     isSyncing(isSyncing() - 1);
@@ -57,16 +65,17 @@ class _NetworkActions {
       //   activeColor: Colors.transparent,
       //   badge: "12",
       // ),
-      NetworkAction(
-        tooltip: "Notifications",
-        activeColor: Colors.blue,
-        badge: staticNotifications.notifications.isNotEmpty
-            ? staticNotifications.notifications.length.toString()
-            : null,
-        processing: staticNotifications.notifications.isNotEmpty,
-        icon: const StaticNotificationsIcon(),
-        onPressed: showStaticNotifications,
-      ),
+      if (launch.open() != Open.login)
+        NetworkAction(
+          tooltip: "Notifications",
+          activeColor: Colors.blue,
+          badge: staticNotifications.notifications.isNotEmpty
+              ? staticNotifications.notifications.length.toString()
+              : null,
+          processing: staticNotifications.notifications.isNotEmpty,
+          icon: const StaticNotificationsIcon(),
+          onPressed: showStaticNotifications,
+        ),
       NetworkAction(
         tooltip: "Theme",
         icon: Icon((localSettings.selectedTheme == ThemeMode.light)
@@ -89,9 +98,11 @@ class _NetworkActions {
           if (launch.isDemo) return;
           await resync();
         },
-        badge: isSyncing() > 0
-            ? "${isSyncing()}"
-            : syncCallbacks.length.toString(),
+        badge: (launch.open() == Open.patient)
+            ? null
+            : isSyncing() > 0
+                ? "${isSyncing()}"
+                : syncCallbacks.length.toString(),
         disabled: (network.isOnline() == false ||
             isSyncing() > 0 ||
             loginCtrl.proceededOffline()),
@@ -106,6 +117,10 @@ class _NetworkActions {
             : FluentIcons.streaming_off),
         onPressed: () async {
           if (launch.isDemo) return;
+          if (launch.open() == Open.patient) {
+            await patientSide.activate();
+            return;
+          }
           await login.activate(login.url, [login.token], true);
           for (var callback in reconnectCallbacks.values) {
             callback();

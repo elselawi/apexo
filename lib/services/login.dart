@@ -87,7 +87,7 @@ class _LoginService extends ObservablePersistingObject {
   }
 
   void logout() {
-    launch.open(false);
+    launch.open(Open.login);
     url = "";
     email = "";
     password = "";
@@ -130,8 +130,10 @@ class _LoginService extends ObservablePersistingObject {
   }
 
   /// run a series of callbacks that would require the login credentials to be active
-  activate(String inputURL, List<String> credentials, bool online) async {
-    if ((pb == null || pb?.baseURL.isEmpty == true) || !launch.open()) {
+  Future<void> activate(
+      String inputURL, List<String> credentials, bool online) async {
+    if ((pb == null || pb?.baseURL.isEmpty == true) ||
+        launch.open() == Open.login) {
       pb = PocketBase(inputURL);
     }
 
@@ -253,7 +255,7 @@ class _LoginService extends ObservablePersistingObject {
       }
     }
 
-    launch.open(true);
+    launch.open(Open.staff);
     return loginCtrl.finishedLoginProcess();
   }
 
@@ -279,7 +281,7 @@ class _LoginService extends ObservablePersistingObject {
     if (token.isNotEmpty) {
       await activate(url, [token], true);
     } else {
-      launch.open(false);
+      launch.open(Open.login);
     }
   }
 

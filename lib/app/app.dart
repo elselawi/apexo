@@ -8,6 +8,7 @@ import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
+import 'package:apexo/features/patient_side/patient_side_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/en.dart';
@@ -15,6 +16,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/login/login_screen.dart';
 import 'package:apexo/common_widgets/current_account.dart';
 import 'package:apexo/common_widgets/logo.dart';
+import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/services/version.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -28,6 +30,7 @@ class ApexoApp extends StatelessWidget {
 
   @override
   StatelessElement createElement() {
+    PatientSide.fromHref();
     Future.delayed(const Duration(milliseconds: 1000), () {
       showDialogsIfNeeded();
     });
@@ -71,7 +74,7 @@ class ApexoApp extends StatelessWidget {
                         buildAppLayout(),
                         if (routes.showBottomNav() &&
                             routes.panels().isEmpty &&
-                            launch.open())
+                            launch.open() == Open.staff)
                           const BottomNavBar()
                       ],
                     );
@@ -132,7 +135,8 @@ class ApexoApp extends StatelessWidget {
         },
         child: LayoutBuilder(builder: (context, constraints) {
           launch.layoutWidth = constraints.maxWidth;
-          final hideSidePanel = routes.panels().isEmpty || !launch.open();
+          final hideSidePanel =
+              routes.panels().isEmpty || launch.open() != Open.staff;
           return Container(
             color: FluentTheme.of(context).menuColor,
             child: Stack(
@@ -173,9 +177,11 @@ class ApexoApp extends StatelessWidget {
         child: NavigationView(
           appBar: NavigationAppBar(
             automaticallyImplyLeading: false,
-            title: launch.open()
+            title: launch.open() == Open.staff
                 ? Txt(routes.currentRoute.title)
-                : Txt(txt("login")),
+                : launch.open() == Open.patient
+                    ? Txt(txt("patientSide"))
+                    : Txt(txt("login")),
             leading: routes.history.isEmpty
                 ? null
                 : const BackButton(key: WK.backButton),
@@ -188,10 +194,13 @@ class ApexoApp extends StatelessWidget {
               routes.showBottomNav(false);
             }
           },
-          content: launch.open() ? null : Login(key: WK.loginScreen),
-          pane: !launch.open()
-              ? null
-              : NavigationPane(
+          content: launch.open() == Open.login
+              ? Login()
+              : launch.open() == Open.patient
+                  ? const PatientSideScreen()
+                  : null,
+          pane: launch.open() == Open.staff
+              ? NavigationPane(
                   header: const Column(
                     children: [
                       AppLogo(),
@@ -233,7 +242,8 @@ class ApexoApp extends StatelessWidget {
                           ),
                         ),
                   ],
-                ),
+                )
+              : null,
         ),
       ),
     );

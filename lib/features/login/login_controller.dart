@@ -16,6 +16,7 @@ class _LoginScreenState {
   final resetInstructionsSent = ObservableState(false);
   final obscureText = ObservableState(true);
   final proceededOffline = ObservableState(true);
+  final loadingPatientSide = ObservableState(false);
 
   void finishedLoginProcess([String error = ""]) {
     loadingIndicator("");

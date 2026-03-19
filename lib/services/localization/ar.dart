@@ -138,6 +138,7 @@ class Ar implements En {
     "age": "العمر",
     "gender": "الجنس",
     "lastVisit": "آخر زيارة",
+    "nextVisit": "الزيارة القادمة",
     "totalPayments": "إجمالي المدفوعات",
     "daysAgo": "أيام مضت",
     "noVisits": "لا توجد زيارات",
@@ -495,6 +496,10 @@ class Ar implements En {
     "labworksNotDelivered": "اعمال مختبر غير مسلمة",
     "outgoingPendingNotes": "ملاحظات صادرة مستحقة",
     "incomingPendingNotes": "ملاحظات واردة مستحقة",
+
+    // patientSide
+    "generateQRLink": "عمل صفحة للمراجع",
+    "patientSide": "صفحة المراجع",
 
     // other
     "otherNotesPerAppointment":

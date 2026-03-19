@@ -541,7 +541,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   widget.appointment.prescriptions,
                   widget.appointment.patient?.title ?? "",
                   widget.appointment.patient?.age.toString() ?? "",
-                  widget.appointment.patient?.webPageLink.toString() ?? "",
+                  widget.appointment.patient?.link ?? "",
                 );
               }),
         const Divider(direction: Axis.horizontal),

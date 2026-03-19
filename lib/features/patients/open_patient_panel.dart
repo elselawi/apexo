@@ -1,5 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -10,6 +11,7 @@ import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
@@ -104,38 +106,37 @@ class _PatientQrPage extends StatefulWidget {
 }
 
 class _PatientQrPageState extends State<_PatientQrPage> {
-  String language = locale.list[localSettings.selectedLocale].$code;
-  String qrType = "telegram";
-
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Row(
-          children: [
-            ComboBox(
-              items: List.generate(
-                  locale.list.length,
-                  (i) => ComboBoxItem(
-                      value: locale.list[i].$code,
-                      child: Txt(locale.list[i].$name))),
-              value: language,
-              onChanged: (v) => setState(() => language = v!),
-            ),
-            const SizedBox(width: 10),
-            ComboBox(
-              items: [
-                ComboBoxItem(value: "web", child: Txt(txt("web"))),
-                ComboBoxItem(value: "telegram", child: Txt(txt("telegram"))),
-              ],
-              value: qrType,
-              onChanged: (v) => setState(() => qrType = v!),
-            )
-          ],
+        const SizedBox(height: 25),
+        Center(
+          child: FilledButton(
+            child: ButtonContent(FluentIcons.q_r_code, txt("generateQRLink")),
+            onPressed: () async {
+              final pID = widget.editingCopy.id;
+              final p = patients.get(pID);
+              if (p == null) {
+                return;
+              } else {
+                try {
+                  p.link = await p.generatePatientLink();
+                } catch (e, stacktrace) {
+                  logger("error while generating patient link $e", stacktrace);
+                }
+                patients.set(p);
+                widget.editingCopy.link = p.link;
+              }
+              setState(() {});
+            },
+          ),
         ),
-        const SizedBox(height: 10),
-        _PatientWebPage(widget.editingCopy, language, qrType),
-        _PrintQRButton(widget.editingCopy, language, qrType)
+        if (widget.editingCopy.shortLink.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _PatientWebPage(widget.editingCopy),
+          _PrintQRButton(widget.editingCopy)
+        ]
       ],
     );
   }
@@ -143,9 +144,7 @@ class _PatientQrPageState extends State<_PatientQrPage> {
 
 class _PrintQRButton extends StatelessWidget {
   final Patient patient;
-  final String language;
-  final String qrType;
-  const _PrintQRButton(this.patient, this.language, this.qrType);
+  const _PrintQRButton(this.patient);
 
   @override
   Widget build(BuildContext context) {
@@ -165,11 +164,9 @@ class _PrintQRButton extends StatelessWidget {
               onPressed: () {
                 printingQRCode(
                   context,
-                  qrType == "web"
-                      ? patient.webPageLink(language)
-                      : patient.telegramLink(language),
+                  patient.shortLink,
                   "Access your information",
-                  "Scan to visit link:\n${qrType == "web" ? patient.webPageLink(language) : patient.telegramLink(language)}\nto access your appointments, payments and photos.",
+                  "Scan to visit link:\n${patient.shortLink}\nto access your appointments, payments and photos.",
                 );
               }),
         ],
@@ -180,9 +177,7 @@ class _PrintQRButton extends StatelessWidget {
 
 class _PatientWebPage extends StatelessWidget {
   final Patient patient;
-  final String language;
-  final String qrType;
-  const _PatientWebPage(this.patient, this.language, this.qrType);
+  const _PatientWebPage(this.patient);
 
   @override
   Widget build(BuildContext context) {
@@ -197,14 +192,9 @@ class _PatientWebPage extends StatelessWidget {
           border: Border.all(color: Colors.grey),
           borderRadius: BorderRadius.circular(5),
         ),
-        child: SelectableText(qrType == "web"
-            ? patient.webPageLink(language)
-            : patient.telegramLink(language)),
+        child: SelectableText(patient.shortLink),
       ),
-      QRLink(
-          link: qrType == "web"
-              ? patient.webPageLink(language)
-              : patient.telegramLink(language)),
+      QRLink(link: patient.shortLink),
     ]);
   }
 }

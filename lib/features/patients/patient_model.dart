@@ -1,13 +1,17 @@
+import 'dart:convert';
+
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
+import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/encode.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/utils/encode.dart';
+import 'package:http/http.dart' as http;
 
 class Patient extends Model {
   List<String>? _allPredefinedTreatmentsCached;
@@ -147,14 +151,6 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
-  String webPageLink(String language) {
-    return "https://patient.apexo.app/${encode("$id|$title|${login.url}|$language")}";
-  }
-
-  String telegramLink(String language) {
-    return "https://t.me/apexoappbot?start=${encode("$id|$title|${login.url}|$language")}";
-  }
-
   Map<String, String> _labelsCached = {};
 
   @override
@@ -194,6 +190,20 @@ class Patient extends Model {
     return _labelsCached;
   }
 
+  Future<String> generatePatientLink() async {
+    final longLink =
+        "https://web.apexo.app/${encode("$id|$title|${login.url}|${await PushRelay.ensureKey()}")}";
+
+    final shortLink = await http.put(Uri.parse(shorteningServer),
+        body: jsonEncode({"long": longLink}));
+    return shortLink.body;
+  }
+
+  get shortLink {
+    if (link == null) return "";
+    return "$shorteningServer/$link";
+  }
+
   // id: id of the patient (inherited from Model)
   // title: name of the patient (inherited from Model)
   /* 1 */ int birth = DateTime.now().year - 18;
@@ -204,6 +214,7 @@ class Patient extends Model {
   /* 6 */ List<String> tags = [];
   /* 7 */ String notes = "";
   /* 8 */ Map<String, String> teeth = {};
+  /* 9 */ String? link;
 
   @override
   Patient.fromJson(super.json) : super.fromJson();
@@ -237,6 +248,7 @@ class Patient extends Model {
     /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
     /* 7 */ notes = json['notes'] ?? notes;
     /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    /* 9 */ link = json["link"] ?? link;
   }
 
   @override
@@ -252,6 +264,7 @@ class Patient extends Model {
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (notes != d.notes) json['notes'] = notes;
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    /* 9 */ if (link != d.link) json['link'] = link;
     return json;
   }
 }

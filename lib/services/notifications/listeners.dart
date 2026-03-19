@@ -9,6 +9,8 @@ import 'package:apexo/services/notifications/core_local_notification.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/services/notifications/model_push_data.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/patient_side.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -20,6 +22,13 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 /// It should stay top-level to avoid isolate issues.
 @pragma('vm:entry-point')
 Future<void> backgroundMsg(RemoteMessage message) async {
+  await login.box;
+  await patientSide.box;
+
+  if (login.token.isEmpty && patientSide.patientID.isEmpty) {
+    return;
+  }
+
   final payload = jsonDecode(message.data["payload"]);
   final pushData = PushData.fromJson(payload);
   final tuple = pushData.displayTuple();
@@ -43,6 +52,9 @@ Future<void> backgroundMsg(RemoteMessage message) async {
 
 abstract class PushListeners {
   static Future<void> foregroundMsg(RemoteMessage message) async {
+    if (login.token.isEmpty && patientSide.patientID.isEmpty) {
+      return;
+    }
     final payload = jsonDecode(message.data["payload"]);
     final pushData = PushData.fromJson(payload);
     final tuple = pushData.displayTuple();
@@ -55,6 +67,9 @@ abstract class PushListeners {
   }
 
   static void foregroudRes(NotificationResponse res) {
+    if (login.token.isEmpty && patientSide.patientID.isEmpty) {
+      return;
+    }
     final payload = jsonDecode(res.payload!);
     final pushData = PushData.fromJson(payload);
     if (pushData.store == "notes") {
@@ -68,6 +83,9 @@ abstract class PushListeners {
   }
 
   static void causedTheAppToOpen(RemoteMessage message) {
+    if (login.token.isEmpty && patientSide.patientID.isEmpty) {
+      return;
+    }
     // not completely implemented yet
     // the following code is just a placeholder
     // and it's not even working!
@@ -80,6 +98,9 @@ abstract class PushListeners {
   }
 
   static void backgroundRes(NotificationResponse res) {
+    if (login.token.isEmpty && patientSide.patientID.isEmpty) {
+      return;
+    }
     final payload = jsonDecode(res.payload!);
     final pushData = PushData.fromJson(payload);
     if (pushData.store == "notes") {

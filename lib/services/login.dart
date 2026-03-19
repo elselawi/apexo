@@ -11,6 +11,8 @@ import 'package:apexo/utils/encode.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
+import 'package:apexo/utils/js/js_bridge.dart';
+import 'package:flutter/foundation.dart';
 import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -94,6 +96,10 @@ class _LoginService extends ObservablePersistingObject {
     token = "";
     if (pb != null) {
       pb!.authStore.clear();
+    }
+    if (kIsWeb) {
+      JSBridge.setGlobalVariable("accountId", "");
+      JSBridge.setGlobalVariable("shouldShowPrompt", "no");
     }
     notifyAndPersist();
     routes.panels([]);

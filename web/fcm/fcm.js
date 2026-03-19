@@ -218,6 +218,7 @@ class FCMManager {
 
     listenForMessages() {
         onMessage(this.messaging, async (payload) => {
+            if (!this.config.accountId) return;
             try {
                 const pushData = PushData.fromJson(JSON.parse(payload.data.payload));
                 const displayTuple = pushData.displayTuple();

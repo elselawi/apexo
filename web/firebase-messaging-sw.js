@@ -25,6 +25,7 @@ self.addEventListener('message', (event) => {
 
 // intercept background messages
 onBackgroundMessage(messaging, (payload) => {
+    if (!self.currentAccountID) return;
     try {
         const pushData = PushData.fromJson(JSON.parse(payload.data.payload));
         const displayTuple = pushData.displayTuple();

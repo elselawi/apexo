@@ -3,6 +3,7 @@ import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/utils/href/href_service.dart';
+import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -121,6 +122,10 @@ class PatientSide extends ObservablePersistingObject {
     name = "";
     patientID = "";
     relayKey = "";
+    if (kIsWeb) {
+      JSBridge.setGlobalVariable("accountId", "");
+      JSBridge.setGlobalVariable("shouldShowPrompt", "no");
+    }
     notifyAndPersist();
     loginCtrl.finishedLoginProcess();
   }

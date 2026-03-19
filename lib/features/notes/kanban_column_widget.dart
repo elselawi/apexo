@@ -5,12 +5,14 @@ import 'package:apexo/features/notes/note_card_widget.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class KanbanColumn extends StatelessWidget {
   final Note? column;
   final List<Note> columnNotes;
   final FlyoutController archiveConfirmation = FlyoutController();
+  final FlyoutController moreMenuFlyout = FlyoutController();
 
   Color get color {
     if (column == null) {
@@ -39,26 +41,36 @@ class KanbanColumn extends StatelessWidget {
         notes.set(note);
       },
       builder: (context, candidateData, rejectedData) {
+        final borderSide = BorderSide(
+          color: theme.inactiveColor.withValues(alpha: 0.2),
+          width: 1,
+        );
         return Container(
-          width: 320,
-          margin: const EdgeInsets.only(left: 10, top: 10, bottom: 10),
-          decoration: BoxDecoration(
-            color: column?.archived == true
-                ? Colors.white.withValues(alpha: 0.5)
-                : theme.menuColor,
-            borderRadius: BorderRadius.circular(5),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: .2),
-                blurRadius: 5,
-                offset: const Offset(0, 0),
-              ),
-            ],
-            border: Border.all(
-              color: theme.inactiveColor.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
+          width: 350,
+          margin: const EdgeInsets.only(top: 13),
+          decoration: locale.isRtl
+              ? BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border(
+                    top: borderSide,
+                    right: (column == notes.columns.firstOrNull)
+                        ? BorderSide.none
+                        : borderSide,
+                    left: (column == null) ? borderSide : BorderSide.none,
+                    bottom: borderSide,
+                  ),
+                )
+              : BoxDecoration(
+                  color: Colors.transparent,
+                  border: Border(
+                    top: borderSide,
+                    left: (column == notes.columns.firstOrNull)
+                        ? BorderSide.none
+                        : borderSide,
+                    right: (column == null) ? borderSide : BorderSide.none,
+                    bottom: borderSide,
+                  ),
+                ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -79,7 +91,7 @@ class KanbanColumn extends StatelessWidget {
           style: filledButtonStyle(Colors.errorPrimaryColor),
           child: ButtonContent(
               FluentIcons.archive, txt("archiveAllCompletedNotes")),
-          onPressed: () {            
+          onPressed: () {
             for (var note in columnNotes) {
               if (note.done && note.archived != true) {
                 notes.set(note..archived = true);
@@ -94,69 +106,59 @@ class KanbanColumn extends StatelessWidget {
   }
 
   Widget _buildColumnBody(BuildContext context) {
-    if (columnNotes.isEmpty) {
-      return _buildAddNoteFullButton(context);
-    } else {
-      return Expanded(
-        child: ListView.builder(
-          padding: const EdgeInsetsDirectional.fromSTEB(20, 20, 20, 12),
-          itemCount: columnNotes.length + 1,
-          itemBuilder: (context, index) {
-            if (index == columnNotes.length) {
-              return _buildArchiveCompletedButton(FluentTheme.of(context));
-            }
-            return NoteCard(
-              note: columnNotes[index],
-              key: Key(columnNotes[index].id),
-            );
-          },
-        ),
-      );
-    }
-  }
-
-  Widget _buildAddNoteFullButton(BuildContext context) {
-    return Center(
-      child: Transform.scale(
-        scale: 1.2,
-        alignment: Alignment.topCenter,
-        child: Padding(
-          padding: const EdgeInsets.only(top: 20),
-          child: Button(
-            style: _addNoteButtonStyle(),
-            child: ButtonContent(
-              FluentIcons.add_field,
-              txt("addNote"),
+    return Expanded(
+      child: columnNotes.isEmpty
+          ? Center(
+              child: Column(
+                spacing: 10,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    WindowsIcons.quick_note,
+                    size: 40,
+                    color: FluentTheme.of(context)
+                        .inactiveColor
+                        .withValues(alpha: 0.3),
+                  ),
+                  Text(
+                    txt("noItemsFound"),
+                    style:
+                        FluentTheme.of(context).typography.bodyStrong?.copyWith(
+                              color: FluentTheme.of(context)
+                                  .inactiveColor
+                                  .withValues(alpha: 0.5),
+                              fontStyle: FontStyle.italic,
+                            ),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsetsDirectional.fromSTEB(15, 20, 5, 12),
+              itemCount: columnNotes.length + 1,
+              itemBuilder: (context, index) {
+                if (index == columnNotes.length) {
+                  return _buildArchiveCompletedButton(FluentTheme.of(context));
+                }
+                return NoteCard(
+                  note: columnNotes[index],
+                  key: Key(columnNotes[index].id),
+                );
+              },
             ),
-            onPressed: () {
-              showNoteEditDialog(context, columnID: column?.id);
-            },
-          ),
-        ),
-      ),
     );
   }
 
   Widget _buildColumnTitle(BuildContext context, FluentThemeData theme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: .07),
-        border: Border(
-          bottom: BorderSide(color: color.withValues(alpha: 0.8), width: 2),
-        ),
-      ),
+    return Padding(
       padding: const EdgeInsets.all(10),
       child: Column(
-        spacing: 5,
+        spacing: 2,
         children: [
           Row(
             spacing: 5,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              if (column != null &&
-                  notes.columns.first != column &&
-                  notes.columns.length > 1)
-                _buildReorderToBeginingButton(theme),
               _buildStylishColor(context),
               Expanded(
                 child: Tooltip(
@@ -175,113 +177,109 @@ class KanbanColumn extends StatelessWidget {
                 message: txt("addNote"),
                 child: _buildAddNoteButton(theme, context),
               ),
-              if (column != null &&
-                  notes.columns.last != column &&
-                  notes.columns.length > 1)
-                _buildReordertoEndButton(theme),
+              if (column != null)
+                FlyoutTarget(
+                  controller: moreMenuFlyout,
+                  child: IconButton(
+                      icon: const Icon(FluentIcons.more),
+                      onPressed: () async {
+                        await flyoutFocusFix(context);
+                        moreMenuFlyout.showFlyout(builder: (context) {
+                          return MenuFlyout(
+                            items: [
+                              MenuFlyoutItem(
+                                text: Text(txt("edit")),
+                                leading: const Icon(FluentIcons.edit),
+                                onPressed: () {
+                                  moreMenuFlyout.close();
+                                  showColumnEditDialog(context, column: column);
+                                },
+                              ),
+                              const MenuFlyoutSeparator(),
+                              if (notes.columns.firstOrNull != column)
+                                MenuFlyoutItem(
+                                  text: Text(txt("moveTowardsStart")),
+                                  leading: Icon(locale.isRtl
+                                      ? FluentIcons.chevron_right
+                                      : FluentIcons.chevron_left),
+                                  onPressed: () {
+                                    final index =
+                                        notes.columns.indexOf(column!);
+                                    final prev = notes.columns[index - 1];
+                                    final thisOrder =
+                                        double.parse(column!.order.toString());
+                                    final prevOrder =
+                                        double.parse(prev.order.toString());
+                                    notes.set(column!..order = prevOrder);
+                                    notes.set(prev..order = thisOrder);
+                                  },
+                                ),
+                              if (notes.columns.lastOrNull != column)
+                                MenuFlyoutItem(
+                                  text: Text(txt("moveTowardsEnd")),
+                                  leading: Icon(locale.isRtl
+                                      ? FluentIcons.chevron_left
+                                      : FluentIcons.chevron_right),
+                                  onPressed: () {
+                                    final index =
+                                        notes.columns.indexOf(column!);
+                                    final next = notes.columns[index + 1];
+                                    final thisOrder =
+                                        double.parse(column!.order.toString());
+                                    final nextOrder =
+                                        double.parse(next.order.toString());
+                                    notes.set(column!..order = nextOrder);
+                                    notes.set(next..order = thisOrder);
+                                  },
+                                )
+                            ],
+                          );
+                        });
+                      }),
+                ),
             ],
           ),
-          _buildCountAndArchivedStatus(theme),
         ],
-      ),
-    );
-  }
-
-  Widget _buildReordertoEndButton(FluentThemeData theme) {
-    return Tooltip(
-      message: txt("moveTowardsEnd"),
-      child: IconButton(
-        style: _orderSwitchingButtonStyle(theme),
-        icon: Icon(locale.isRtl ? FluentIcons.chevron_left : FluentIcons.chevron_right),
-        onPressed: () {
-          final index = notes.columns.indexOf(column!);
-          final next = notes.columns[index + 1];
-          final thisOrder = double.parse(column!.order.toString());
-          final nextOrder = double.parse(next.order.toString());
-          notes.set(column!..order = nextOrder);
-          notes.set(next..order = thisOrder);
-        },
-      ),
-    );
-  }
-
-  Widget _buildReorderToBeginingButton(FluentThemeData theme) {
-    return Tooltip(
-      message: txt("moveTowardsStart"),
-      child: IconButton(
-        style: _orderSwitchingButtonStyle(theme),
-        icon: Icon(locale.isRtl ? FluentIcons.chevron_right : FluentIcons.chevron_left),
-        onPressed: () {
-          final index = notes.columns.indexOf(column!);
-          final prev = notes.columns[index - 1];
-          final thisOrder = double.parse(column!.order.toString());
-          final prevOrder = double.parse(prev.order.toString());
-          notes.set(column!..order = prevOrder);
-          notes.set(prev..order = thisOrder);
-        },
-      ),
-    );
-  }
-
-  ButtonStyle _orderSwitchingButtonStyle(FluentThemeData theme) {
-    return ButtonStyle(
-      iconSize: const WidgetStatePropertyAll(10),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(40),
-          side: BorderSide(color: theme.inactiveColor.withValues(alpha: 0.4)),
-        ),
       ),
     );
   }
 
   Container _buildStylishColor(BuildContext context) {
     return Container(
-      width: 3,
-      height: 30,
+      width: 20,
+      height: 20,
       decoration: BoxDecoration(
         color: column != null ? color : FluentTheme.of(context).inactiveColor,
-        borderRadius: BorderRadius.circular(2),
+        borderRadius: BorderRadius.circular(20),
       ),
-    );
-  }
-
-  IconButton _buildRenameButton(BuildContext context) {
-    return IconButton(
-      icon: Icon(
-        FluentIcons.rename,
-        size: 16,
-        color: column == null ? Colors.transparent : null,
+      child: Center(
+        child: Txt(
+          columnNotes.length.toString(),
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+        ),
       ),
-      onPressed: () {
-        showColumnEditDialog(context, column: column);
-      },
     );
   }
 
   IconButton _buildAddNoteButton(FluentThemeData theme, BuildContext context) {
     return IconButton(
-      style: _addNoteButtonStyle(),
-      icon: const Icon(FluentIcons.add_field, size: 20),
+      style: _addNoteButtonStyle(context),
+      icon: const Icon(FluentIcons.add),
       onPressed: () {
         showNoteEditDialog(context, columnID: column?.id);
       },
     );
   }
 
-  ButtonStyle _addNoteButtonStyle() {
+  ButtonStyle _addNoteButtonStyle(BuildContext context) {
     return ButtonStyle(
-      backgroundColor: WidgetStatePropertyAll(
-        color.toAccentColor(),
-      ),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(4),
-          side: BorderSide(color: color.toAccentColor().darkest),
-        ),
-      ),
-      foregroundColor: const WidgetStatePropertyAll(Colors.white),
-      elevation: const WidgetStatePropertyAll(8),
+      shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(3),
+        side: BorderSide(
+            color: FluentTheme.of(context).inactiveColor.withValues(alpha: 0.4),
+            width: 1),
+      )),
     );
   }
 
@@ -289,13 +287,6 @@ class KanbanColumn extends StatelessWidget {
     return Container(
       height: 34,
       padding: const EdgeInsets.all(2),
-      decoration: column != null
-          ? BoxDecoration(
-              border: Border.all(
-                  color: theme.inactiveColor.withValues(alpha: 0.35), width: 1),
-              borderRadius: BorderRadius.circular(5),
-            )
-          : null,
       child: Row(
         children: [
           if (column != null) const SizedBox(width: 5),
@@ -304,36 +295,13 @@ class KanbanColumn extends StatelessWidget {
               column?.columnName ?? txt("uncategorized"),
               style: theme.typography.bodyStrong?.copyWith(
                 fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          if (column != null) _buildRenameButton(context),
         ],
       ),
-    );
-  }
-
-  Row _buildCountAndArchivedStatus(FluentThemeData theme) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Txt(
-          "${columnNotes.length} ${txt("item")}",
-          style: theme.typography.caption?.copyWith(
-            color: theme.inactiveColor.withValues(alpha: 0.6),
-          ),
-        ),
-        if (column?.archived == true)
-          Txt(
-            txt("archived"),
-            style: theme.typography.caption?.copyWith(
-              color: theme.inactiveColor.withValues(alpha: 0.6),
-              fontStyle: FontStyle.italic,
-              fontWeight: FontWeight.w500,
-            ),
-          )
-      ],
     );
   }
 }

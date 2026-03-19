@@ -264,8 +264,6 @@ void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
                     ..assignedTo = assignedTo
                     ..forPatient = forPatient;
 
-                  notes.set(note);
-
                   if (note.parent != null) {
                     if (isRecurringChecked == false) {
                       note.parent!.recurringInterval = null;
@@ -274,7 +272,15 @@ void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
                           int.tryParse(recurrenceIntervalController.text);
                     }
                     notes.set(note.parent!);
+                  } else {
+                    if (isRecurringChecked) {
+                      note.recurringInterval =
+                          int.tryParse(recurrenceIntervalController.text);
+                    } else {
+                      note.recurringInterval = null;
+                    }
                   }
+                  notes.set(note);
                 }
                 Navigator.pop(context);
               }

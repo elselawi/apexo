@@ -81,7 +81,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
       children: [
         _buildCommandBar(),
         Padding(
-          padding: const EdgeInsets.only(top: 8, left: 8, right: 8),
+          padding: const EdgeInsets.only(top: 14, left: 8, right: 8),
           child: Row(
             spacing: 5,
             children: [
@@ -160,9 +160,14 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
 
   Widget _buildAddColumnButton() {
     return Container(
-      padding: const EdgeInsets.all(8.0),
-      margin: const EdgeInsets.all(2.0),
+      margin: const EdgeInsets.only(top: 25),
+      width: 220,
       child: Button(
+        style: ButtonStyle(
+            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+            shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(0),
+                side: const BorderSide(color: Colors.transparent)))),
         onPressed: () => showColumnEditDialog(context),
         child: Padding(
           padding: const EdgeInsets.all(10),

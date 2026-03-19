@@ -1,8 +1,6 @@
-import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/small_label.dart';
-import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/notes/dialog_note_edit.dart';
 import 'package:apexo/features/notes/note_attachments_widget.dart';
@@ -89,7 +87,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     ));
 
     _elevationAnimation = Tween<double>(
-      begin: 2,
+      begin: 0,
       end: 20.0,
     ).animate(CurvedAnimation(
       parent: _animationController,
@@ -287,10 +285,44 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
           foregroundColor:
               WidgetStatePropertyAll(expanded ? Colors.white : null),
           iconSize: const WidgetStatePropertyAll(20),
+          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(100),
+          )),
         ),
-        icon: ButtonContent(
-            expanded ? WindowsIcons.cancel : WindowsIcons.explore_content,
-            expanded ? txt("close") : txt("open")),
+        icon: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              spacing: 5,
+              children: [
+                const SizedBox.shrink(),
+                Icon(expanded
+                    ? WindowsIcons.cancel
+                    : WindowsIcons.explore_content),
+                Txt(expanded ? txt("close") : txt("open")),
+              ],
+            ),
+            Row(
+              spacing: 5,
+              children: [
+                if (expanded == false) ...[
+                  if (widget.note.hasAttachments)
+                    const Icon(WindowsIcons.attach, size: 16),
+                  if (widget.note.hasComments)
+                    const Icon(WindowsIcons.comment, size: 16),
+                  const SizedBox.shrink(),
+                  if (widget.note.unAssigned)
+                    SmallLabel(
+                      label: txt("unassigned"),
+                      textColor: theme.inactiveColor,
+                      bgColor: Colors.grey.withValues(alpha: 0.2),
+                      icon: WindowsIcons.block_contact,
+                    )
+                ]
+              ],
+            )
+          ],
+        ),
         onPressed: () {
           setState(() {
             expanded = !expanded;
@@ -312,12 +344,34 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         mainAxisSize: MainAxisSize.max,
+        spacing: 5,
         children: [
           _buildNoteTitle(theme),
-          ..._dividerWithPadding(5),
+          ..._dividerWithPadding(0),
           Text(widget.note.note),
-          const SizedBox(height: 5),
           _buildNoteLabels(isArchived, theme),
+          if (widget.note.isRecurringInstance)
+            Row(
+              spacing: 5,
+              children: [
+                const Icon(WindowsIcons.repeat_all, size: 13),
+                Txt(txt("isARecurrenceOfOlderNote"),
+                    style: theme.typography.caption?.copyWith(
+                      fontStyle: FontStyle.italic,
+                    ))
+              ],
+            )
+          else if (widget.note.isRecurring)
+            Row(
+              spacing: 5,
+              children: [
+                const Icon(WindowsIcons.repeat_all, size: 13),
+                Txt(txt("recurring"),
+                    style: theme.typography.caption?.copyWith(
+                      fontStyle: FontStyle.italic,
+                    ))
+              ],
+            ),
           if (expanded) ...[
             _buildRecurrenceSection(theme),
             ..._dividerWithPadding(10),
@@ -425,22 +479,13 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     return BoxDecoration(
       color: theme.menuColor,
       borderRadius: BorderRadius.circular(_borderRadiusAnimation.value),
-      border: Border.all(
-          color: borderColor.withValues(alpha: 0.7), width: expanded ? 2 : 1),
       boxShadow: [
         BoxShadow(
           offset: Offset(0.0, _elevationAnimation.value),
-          blurRadius: expanded ? 40.0 : 15,
-          spreadRadius: expanded ? 8.0 : 5,
+          blurRadius: expanded ? 40.0 : 5,
+          spreadRadius: expanded ? 8.0 : 1,
           color: Colors.grey.withAlpha(expanded ? 80 : 30),
         ),
-        if (expanded)
-          BoxShadow(
-            offset: Offset(0.0, _elevationAnimation.value * 0.5),
-            blurRadius: 15.0,
-            spreadRadius: 3.0,
-            color: borderColor.withValues(alpha: 0.3),
-          ),
       ],
     );
   }
@@ -653,29 +698,15 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       children: [
         if (isArchived)
           SmallLabel(
-            bgColor: theme.inactiveColor.withValues(alpha: 0.7),
-            textColor: theme.activeColor,
+            bgColor: theme.inactiveColor.withValues(alpha: 0.1),
+            textColor: theme.inactiveColor,
             icon: FluentIcons.archive,
             label: txt("archived"),
           ),
-        if (widget.note.isRecurring || widget.note.isRecurringInstance) ...[
-          SmallLabel(
-            bgColor: ColorsDictionary.c08,
-            textColor: theme.activeColor,
-            icon: WindowsIcons.repeat_all,
-            label: txt("recurring"),
-          ),
-          SmallLabel(
-            bgColor: ColorsDictionary.c07,
-            textColor: theme.activeColor,
-            icon: WindowsIcons.calendar,
-            label: intl.DateFormat(df, locale.s.$code).format(widget.note.date),
-          ),
-        ],
         if (widget.note.overdue)
           SmallLabel(
-            bgColor: Colors.errorPrimaryColor,
-            textColor: theme.activeColor,
+            bgColor: Colors.errorPrimaryColor.withValues(alpha: 0.1),
+            textColor: theme.inactiveColor,
             icon: WindowsIcons.warning,
             label: txt("overdue"),
           ),
@@ -688,66 +719,30 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
           ),
         if (widget.note.outgoing)
           SmallLabel(
-            bgColor: Colors.blue,
-            textColor: theme.activeColor,
+            bgColor: Colors.blue.withValues(alpha: 0.1),
+            textColor: theme.inactiveColor,
             icon: WindowsIcons.reply_mirrored,
             label: txt("outgoing"),
           ),
         if (widget.note.pending)
           SmallLabel(
-            bgColor: Colors.warningPrimaryColor,
-            textColor: theme.activeColor,
+            bgColor: Colors.warningPrimaryColor.withValues(alpha: 0.1),
+            textColor: theme.inactiveColor,
             icon: WindowsIcons.error,
             label: txt("pending"),
-          ),
-        if (widget.note.completed)
-          SmallLabel(
-            bgColor: Colors.successPrimaryColor,
-            textColor: theme.activeColor,
-            icon: WindowsIcons.accept,
-            label: txt("completed"),
-          ),
-        if (widget.note.unAssigned)
-          SmallLabel(
-            bgColor: Colors.magenta,
-            textColor: theme.activeColor,
-            icon: FluentIcons.block_contact,
-            label: txt("unassigned"),
-          ),
-        if (widget.note.hasAttachments)
-          SmallLabel(
-            bgColor: Colors.teal,
-            textColor: theme.activeColor,
-            icon: WindowsIcons.attach,
-            label: txt("attachments"),
-          ),
-        if (widget.note.hasComments)
-          SmallLabel(
-            bgColor: Colors.purple,
-            textColor: theme.activeColor,
-            icon: WindowsIcons.comment,
-            label: txt("comments"),
           ),
       ],
     );
   }
 
-  Row _buildNoteTitle(FluentThemeData theme) {
-    return Row(
-      children: [
-        Icon(widget.note.hasAttachments
-            ? WindowsIcons.attach
-            : WindowsIcons.quick_note),
-        const SizedBox(width: 5),
-        SizedBox(
-          width: expanded ? 175 : 179,
-          child: Text(
-            overflow: TextOverflow.ellipsis,
-            widget.note.title.isEmpty ? txt("note") : widget.note.title,
-            style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
-          ),
-        ),
-      ],
+  SizedBox _buildNoteTitle(FluentThemeData theme) {
+    return SizedBox(
+      width: expanded ? 175 : 179,
+      child: Text(
+        overflow: TextOverflow.ellipsis,
+        widget.note.title.isEmpty ? txt("note") : widget.note.title,
+        style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
+      ),
     );
   }
 

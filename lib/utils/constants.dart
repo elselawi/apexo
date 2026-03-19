@@ -112,7 +112,7 @@ final publicCollectionImport = CollectionModel(
   updateRule: null,
   deleteRule: null,
   viewQuery:
-      "SELECT\n    data.id,\n    imgs,\n    json_extract(data.data, '\$.patientID') AS pid,\n    json_extract(data.data, '\$.date') AS date,\n    json_extract(data.data, '\$.prescriptions') AS prescriptions,\n    json_extract(data.data, '\$.price') AS price,\n    json_extract(data.data, '\$.paid') AS paid\nFROM data\nWHERE data.store = 'appointments';",
+      "SELECT\n    data.id,\n    imgs,\n    json_extract(data.data, '\$.patientID') AS pid,\n    json_extract(data.data, '\$.date') AS date,\n    json_extract(data.data, '\$.prescriptions') AS prescriptions,\n    json_extract(data.data, '\$.price') AS price,\n    json_extract(data.data, '\$.paid') AS paid,\n    json_extract(data.data, '\$.isDone') AS isDone,\n    json_extract(data.data, '\$.archived') AS archived\nFROM data\nWHERE data.store = 'appointments';",
 );
 
 final profilesViewCollectionImport = CollectionModel(

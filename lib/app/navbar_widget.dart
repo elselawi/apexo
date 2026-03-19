@@ -92,10 +92,21 @@ class BottomNavBarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
+      style: active
+          ? ButtonStyle(
+              shape: WidgetStatePropertyAll(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(0),
+                  side: BorderSide(color: Colors.blue.withAlpha(25)),
+                ),
+              ),
+              backgroundColor:
+                  WidgetStatePropertyAll(Colors.blue.withAlpha(25)))
+          : null,
       icon: Column(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
             decoration: BoxDecoration(
               color: active ? Colors.blue : null,
               borderRadius: BorderRadius.circular(10),
@@ -103,13 +114,13 @@ class BottomNavBarButton extends StatelessWidget {
             child: Icon(
               icon,
               color: active ? Colors.white : null,
-              size: 18,
+              size: 16,
             ),
           ),
           Txt(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 11.5,
               fontWeight: FontWeight.w500,
               color: active ? Colors.blue : null,
             ),

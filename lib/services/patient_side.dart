@@ -64,7 +64,8 @@ class PatientSide extends ObservablePersistingObject {
   static fromHref() async {
     await patientSide.box;
     try {
-      final code = Uri.parse(((getUrl()))).path.substring(1);
+      String code = Uri.parse(((getUrl()))).path;
+      if (code.length > 1) code = code.substring(1);
       if (code.isNotEmpty) {
         final decodedList = decode(code).split("|");
         if (decodedList.length == 4) {

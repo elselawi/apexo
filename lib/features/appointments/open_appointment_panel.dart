@@ -450,22 +450,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        InfoLabel(
-          label: "${txt("postOperativeNotes")}:",
-          child: CupertinoTextField(
-            key: WK.fieldAppointmentPostOpNotes,
-            expands: true,
-            maxLines: null,
-            controller: postOpNotesController,
-            onChanged: (v) {
-              setState(() {
-                widget.appointment.postOpNotes = v;
-                widget.appointment.isDone = true;
-              });
-            },
-            placeholder: "${txt("postOperativeNotes")}...",
-          ),
-        ),
         if (widget.appointment.patient != null)
           InfoLabel(
             label: "${txt("dentalNotes")}:",
@@ -499,6 +483,22 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               ),
             ),
           ),
+        InfoLabel(
+          label: "${txt("postOperativeNotes")}:",
+          child: CupertinoTextField(
+            key: WK.fieldAppointmentPostOpNotes,
+            expands: true,
+            maxLines: null,
+            controller: postOpNotesController,
+            onChanged: (v) {
+              setState(() {
+                widget.appointment.postOpNotes = v;
+                widget.appointment.isDone = true;
+              });
+            },
+            placeholder: "${txt("postOperativeNotes")}...",
+          ),
+        ),
         InfoLabel(
           label: "${txt("prescription")}:",
           child: TagInputWidget(

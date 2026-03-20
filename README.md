@@ -69,13 +69,10 @@ If you insist to help:
 ## Roadmap
 
 The roadmap is not written in stone, but here are some ideas that I have in mind:
-- Patient reminders and booking through telegram
+- Patient side application
+   - booking requests
 - Voice notes in patient records
-- Google calendar integration
-- Payment and installement plan setup
-- SMS/WhatsApp reminders
 - Lip filler and TMJ in dental treatments
-- look for SizedBox and replace with spacing when applicable
 - some icons might be better with windows icons instead of fluent icons
 
 #### Built with ❤️ in Mosul, Iraq.

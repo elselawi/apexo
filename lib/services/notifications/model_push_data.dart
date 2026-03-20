@@ -43,7 +43,7 @@ class PushData {
         : code == "ar"
             ? _Langs.ar
             : _Langs.es;
-    final tuple = _translations[lang]![interpetation]!;
+    final tuple = [..._translations[lang]![interpetation]!];
     tuple[1] = "${tuple[1]}: $readableIdentifier";
     return tuple;
   }

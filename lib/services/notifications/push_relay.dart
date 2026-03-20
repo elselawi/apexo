@@ -85,7 +85,7 @@ class PushRelay {
 
     final requests = bulkData
         .map((p) {
-          p.targetIDs.remove(login.currentAccountID);
+          p.targetIDs.removeWhere((id) => id == login.currentAccountID);
           return p;
         })
         .where((p) => p.targetIDs.isNotEmpty)

@@ -18,12 +18,11 @@ class LocalNotificationsService {
   final _androidInitializationSettings =
       const AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  //iOS-specific initialization settings with permission requests
-  // final _iosInitializationSettings = const DarwinInitializationSettings(
-  //   requestAlertPermission: true,
-  //   requestBadgePermission: true,
-  //   requestSoundPermission: true,
-  // );
+  final _iosInitializationSettings = const DarwinInitializationSettings(
+    requestAlertPermission: true,
+    requestBadgePermission: true,
+    requestSoundPermission: true,
+  );
 
   //Android notification channel configuration
   final _androidChannel = const AndroidNotificationChannel(
@@ -51,7 +50,7 @@ class LocalNotificationsService {
     // Combine platform-specific settings
     final initializationSettings = InitializationSettings(
       android: _androidInitializationSettings,
-      // iOS: _iosInitializationSettings,
+      iOS: _iosInitializationSettings,
     );
 
     // Initialize plugin with settings and callback for notification taps

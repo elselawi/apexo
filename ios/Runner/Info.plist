@@ -58,15 +58,24 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>To enable access to the photo library for uploading images</string>
 
-	<key>NSCameraUsageDescription</key>
-	<string>To enable capturing images related to your patients and appointments</string>
-
-	<ke>NSMicrophoneUsageDescription</key>
-	<string>To enable microphone access when recording video</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>tel</string>
+		<string>mailto</string>
+		<string>https</string>
+		<string>http</string>
 	</array>
+
+	<key>FirebaseMessagingAutoInitEnabled</key>
+	<false/>
+
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>

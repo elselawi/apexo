@@ -22,8 +22,11 @@ class Period {
 
 class _ChartsController {
   final filterByOperatorID = ObservableState("");
-  final start = ObservableState(DateTime(DateTime.now().year, DateTime.now().month, 1));
-  final end = ObservableState(DateTime(DateTime.now().year, DateTime.now().month, 1).add(const Duration(days: 31)));
+  final start =
+      ObservableState(DateTime(DateTime.now().year, DateTime.now().month, 1));
+  final end = ObservableState(
+      DateTime(DateTime.now().year, DateTime.now().month, 1)
+          .add(const Duration(days: 31)));
   final interval = ObservableState(StatsInterval.days);
   String get intervalString {
     return "${chartsCtrl.interval().name[0].toUpperCase()}${chartsCtrl.interval().name.substring(1).toLowerCase()}";
@@ -41,7 +44,8 @@ class _ChartsController {
     for (var appointment in appointments.present.values) {
       if (appointment.date.isAfter(end())) continue;
       if (appointment.date.isBefore(start())) continue;
-      if (filterByOperatorID().isNotEmpty && !appointment.operatorsIDs.contains(filterByOperatorID())) continue;
+      if (filterByOperatorID().isNotEmpty &&
+          !appointment.operatorsIDs.contains(filterByOperatorID())) continue;
       res.add(appointment);
     }
     _filteredAppointments = res..sort((a, b) => a.date.compareTo(b.date));
@@ -126,7 +130,8 @@ class _ChartsController {
         if (appointment.date.isAfter(period.end)) continue;
         if (appointment.date.isBefore(period.start)) continue;
         if (appointment.patient == null) continue;
-        if (appointment.patient!.allAppointments.first == appointment) n++;
+        if (appointment.patient!.allAppointments.firstOrNull == appointment)
+          n++;
       }
       res.add(n);
     }
@@ -182,16 +187,21 @@ class _ChartsController {
   List<Period> get periods {
     List<Period> periods = [];
 
-    DateTime currentStart = _normalizeStart(DateTime(start().year, start().month, start().day));
-    DateTime nextPeriod = _addInterval(currentStart).subtract(const Duration(seconds: 1));
+    DateTime currentStart =
+        _normalizeStart(DateTime(start().year, start().month, start().day));
+    DateTime nextPeriod =
+        _addInterval(currentStart).subtract(const Duration(seconds: 1));
 
-    while (currentStart.isBefore(end()) || currentStart.isAtSameMomentAs(end())) {
+    while (
+        currentStart.isBefore(end()) || currentStart.isAtSameMomentAs(end())) {
       periods.add(Period(currentStart, nextPeriod, _getLabel(currentStart)));
       currentStart = nextPeriod.add(const Duration(days: 1));
       nextPeriod = _addInterval(nextPeriod);
 
-      currentStart = DateTime(currentStart.year, currentStart.month, currentStart.day);
-      nextPeriod = DateTime(nextPeriod.year, nextPeriod.month, nextPeriod.day, 23, 59, 59, 999);
+      currentStart =
+          DateTime(currentStart.year, currentStart.month, currentStart.day);
+      nextPeriod = DateTime(
+          nextPeriod.year, nextPeriod.month, nextPeriod.day, 23, 59, 59, 999);
     }
 
     return periods;
@@ -206,7 +216,8 @@ class _ChartsController {
 
   int _daysSinceWeekStart(DateTime date) {
     int adjustedWeekday = (date.weekday -
-            StartingDayOfWeek.values.indexWhere((e) => e.name == globalSettings.get("start_day_of_wk").value) -
+            StartingDayOfWeek.values.indexWhere(
+                (e) => e.name == globalSettings.get("start_day_of_wk").value) -
             1) %
         7;
     return adjustedWeekday;
@@ -259,7 +270,8 @@ class _ChartsController {
   }
 
   String _getLabel(DateTime start) {
-    final df = localSettings.dateFormat.startsWith("d") == true ? "dd/MM" : "MM/dd";
+    final df =
+        localSettings.dateFormat.startsWith("d") == true ? "dd/MM" : "MM/dd";
     switch (interval()) {
       case StatsInterval.days:
         return DateFormat("$df/yy", locale.s.$code).format(start);
@@ -307,7 +319,8 @@ class _ChartsController {
 
     // If the input day is greater than the last day of the target month,
     // or if it's the last day of the input month, use the last day of the target month
-    int targetDay = (input.day > lastDayOfTargetMonth || input.day == _daysInMonth(input.year, input.month))
+    int targetDay = (input.day > lastDayOfTargetMonth ||
+            input.day == _daysInMonth(input.year, input.month))
         ? lastDayOfTargetMonth
         : input.day;
 
@@ -328,8 +341,8 @@ class _ChartsController {
     int maxDayInNewMonth = _daysInMonth(newYear, input.month);
     int newDay = input.day > maxDayInNewMonth ? maxDayInNewMonth : input.day;
 
-    return DateTime(
-        newYear, input.month, newDay, input.hour, input.minute, input.second, input.millisecond, input.microsecond);
+    return DateTime(newYear, input.month, newDay, input.hour, input.minute,
+        input.second, input.millisecond, input.microsecond);
   }
 
   int _daysInMonth(int year, int month) {

@@ -46,7 +46,7 @@ class KanbanColumn extends StatelessWidget {
           width: 1,
         );
         return Container(
-          width: 350,
+          width: 325,
           margin: const EdgeInsets.only(top: 13),
           decoration: locale.isRtl
               ? BoxDecoration(

@@ -300,6 +300,16 @@ class Ar implements En {
     "paymentHistory": "طلبات مدفوعة",
     "addOrder": "إضافة طلبية",
     "filterByItems": "تصفية حسب العناصر",
+    "new": "جديد",
+    "thisMonth": "هذا الشهر",
+    "addPhoto": "إضافة صورة",
+    "change": "تغيير",
+    "empty": "فارغ",
+    "totalDue": "المجموع المستحق",
+    "notSet": "غير محدد",
+    "photo": "صورة",
+    "pickASupplier": "اختر مزود",
+    "allByDate": "الكل حسب التاريخ",
 
     // notes
     "addColumn": "إضافة عمود",

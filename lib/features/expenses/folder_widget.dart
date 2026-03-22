@@ -1,206 +1,189 @@
-import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
+import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/services/login.dart';
-import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-class Folder extends StatefulWidget {
-  final String title;
-  final String subtitle;
-  final AccentColor color;
-  final IconData icon;
-  final VoidCallback? onOpen;
-  final void Function(String newName)? onRename;
-  final VoidCallback? onArchive;
-  final bool? isArchived;
+class SupplierFolder extends StatelessWidget {
+  final Expense supplier;
+  final String currency;
+  final VoidCallback onTap;
+  final VoidCallback onRename;
+  final VoidCallback onArchive;
 
-  const Folder({
+  const SupplierFolder({
     super.key,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.icon,
-    required this.isArchived,
-    this.onOpen,
-    this.onRename,
-    this.onArchive,
+    required this.supplier,
+    required this.currency,
+    required this.onTap,
+    required this.onRename,
+    required this.onArchive,
   });
 
   @override
-  State<Folder> createState() => _FolderState();
-}
-
-class _FolderState extends State<Folder> {
-  bool _isHovered = false;
-  FlyoutController ctxMenuCtrl = FlyoutController();
-  FlyoutController renameFlyoutCtrl = FlyoutController();
-
-  @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      child: GestureDetector(
-        onTap: widget.onOpen,
-        child: Stack(
-          children: [
-            _buildFolderGraphicTop(),
-            _buildFolderBody(),
-            _buildMoreIcon(),
-          ],
-        ),
-      ),
-    );
-  }
+    final theme = FluentTheme.of(context);
+    final due = supplier.duePayments;
+    final hasDue = due > 0.01;
+    final flyoutCtrl = FlyoutController();
 
-  Widget _buildMoreIcon() {
-    return Positioned.directional(
-      textDirection: Directionality.of(context),
-      end: 0,
-      top: 20,
-      child: FlyoutTarget(
-        controller: renameFlyoutCtrl,
-        child: FlyoutTarget(
-          controller: ctxMenuCtrl,
-          child: IconButton(
-            icon: const Icon(FluentIcons.more_vertical, color: Colors.grey),
-            onPressed: () async {
-              await flyoutFocusFix(context);
-              ctxMenuCtrl.showFlyout(builder: (context) {
-                return MenuFlyout(
-                  items: [
-                    MenuFlyoutItem(
-                      text: Txt(txt("open")),
-                      leading: const Icon(FluentIcons.open_folder_horizontal),
-                      onPressed: widget.onOpen,
-                    ),
-                    if (login.permissions[PInt.expenses] == 2) ...[
-                      MenuFlyoutItem(
-                        text: Txt(txt("rename")),
-                        leading: const Icon(FluentIcons.rename),
-                        onPressed: () async {
-                          Navigator.of(context).pop();
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            showDialog(
-                              context: context,
-                              barrierDismissible: true,
-                              dismissWithEsc: true,
-                              useRootNavigator: true,
-                              builder: (context) {
-                                return DialogWithTextBox(
-                                  title: txt("rename"),
-                                  onSave: (newName) {
-                                    if (widget.onRename != null) {
-                                      widget.onRename!(newName);
-                                    }
-                                  },
-                                  icon: FluentIcons.rename,
-                                  initialValue: widget.title,
-                                );
-                              },
-                            );
-                          });
-                        },
+    return GestureDetector(
+      onTap: onTap,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: CustomPaint(
+          painter: FolderPainter(
+            color:
+                hasDue ? Colors.warningSecondaryColor : Colors.yellow.lightest,
+            borderColor: theme.resources.dividerStrokeColorDefault,
+          ),
+          child: Stack(
+            children: [
+              Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: hasDue ? 10 : 32,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      supplier.supplierName,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.grey,
                       ),
-                      MenuFlyoutItem(
-                        text: widget.isArchived == true
-                            ? Txt(txt("restore"))
-                            : Txt(txt("archive")),
-                        leading: widget.isArchived == true
-                            ? const Icon(FluentIcons.archive_undo)
-                            : const Icon(FluentIcons.archive),
-                        onPressed: widget.onArchive,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (hasDue) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        hasDue ? "${due.toStringAsFixed(2)} $currency" : "",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontFamily: 'monospace',
+                          color: hasDue
+                              ? Colors.orange
+                              : theme.typography.caption?.color,
+                          fontWeight:
+                              hasDue ? FontWeight.bold : FontWeight.normal,
+                        ),
                       ),
                     ]
                   ],
-                );
-              });
-            },
-          ),
-        ),
-      ),
-    );
-  }
-
-  Positioned _buildFolderBody() {
-    return Positioned(
-      top: 10,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      child: Container(
-        decoration: BoxDecoration(
-          color: widget.color.normal,
-          borderRadius: BorderRadius.circular(8),
-          border: Border(top: BorderSide(color: Colors.grey.withAlpha(25))),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withAlpha(_isHovered ? 50 : 25),
-              blurRadius: _isHovered ? 12 : 8,
-              offset: Offset(0, _isHovered ? 4 : 2),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Icon(
-              widget.icon,
-              size: 18,
-              color: Colors.grey.withAlpha(220),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              widget.title,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey,
+                ),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-            Text(
-              widget.subtitle,
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey.withAlpha(200),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Positioned _buildFolderGraphicTop() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      child: Container(
-        width: 40,
-        height: 15,
-        decoration: BoxDecoration(
-          color: widget.color.light,
-          border: Border.all(color: Colors.grey.withAlpha(20), width: 1.5),
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(8),
-            topRight: Radius.circular(8),
-          ),
-          boxShadow: _isHovered
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(25),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+              Positioned(
+                top: 5,
+                left: 2,
+                child: FlyoutTarget(
+                  controller: flyoutCtrl,
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.more_vertical, size: 12),
+                    onPressed: () {
+                      flyoutCtrl.showFlyout(builder: (context) {
+                        return MenuFlyout(
+                          items: [
+                            MenuFlyoutItem(
+                              text: Txt(txt("rename")),
+                              leading: const Icon(FluentIcons.edit),
+                              onPressed: () {
+                                flyoutCtrl.close();
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  onRename();
+                                });
+                              },
+                            ),
+                            MenuFlyoutItem(
+                              text: Txt(txt(supplier.archived == true
+                                  ? "restore"
+                                  : "archive")),
+                              leading: Icon(supplier.archived == true
+                                  ? FluentIcons.archive_undo
+                                  : FluentIcons.archive),
+                              onPressed: () {
+                                flyoutCtrl.close();
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  onArchive();
+                                });
+                              },
+                            ),
+                          ],
+                        );
+                      });
+                    },
                   ),
-                ]
-              : [],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class FolderPainter extends CustomPainter {
+  final Color color;
+  final Color? borderColor;
+  final bool isDashed;
+
+  FolderPainter({required this.color, this.borderColor, this.isDashed = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = isDashed ? PaintingStyle.stroke : PaintingStyle.fill;
+
+    if (isDashed) {
+      paint.strokeWidth = 1.5;
+    }
+
+    final path = Path();
+    const radius = 8.0;
+    const tabWidth = 0.45;
+    const tabHeight = 12.0;
+
+    path.moveTo(0, radius + tabHeight);
+    // Tab
+    path.lineTo(0, radius);
+    path.quadraticBezierTo(0, 0, radius, 0);
+    path.lineTo(size.width * tabWidth - radius, 0);
+    path.quadraticBezierTo(
+        size.width * tabWidth, 0, size.width * tabWidth, radius);
+    path.lineTo(size.width * tabWidth + 10, radius + tabHeight);
+    // Top right
+    path.lineTo(size.width - radius, radius + tabHeight);
+    path.quadraticBezierTo(
+        size.width, radius + tabHeight, size.width, radius * 2 + tabHeight);
+    // Bottom right
+    path.lineTo(size.width, size.height - radius);
+    path.quadraticBezierTo(
+        size.width, size.height, size.width - radius, size.height);
+    // Bottom left
+    path.lineTo(radius, size.height);
+    path.quadraticBezierTo(0, size.height, 0, size.height - radius);
+    path.close();
+
+    if (!isDashed) {
+      canvas.drawPath(path, paint);
+      if (borderColor != null) {
+        canvas.drawPath(
+            path,
+            Paint()
+              ..color = borderColor!
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1);
+      }
+    } else {
+      // Draw dashed path (simplified)
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

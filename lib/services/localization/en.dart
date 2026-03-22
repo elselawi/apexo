@@ -302,6 +302,16 @@ class En {
     "paymentHistory": "Payment history",
     "addOrder": "Add order",
     "filterByItems": "Filter by items",
+    "new": "New",
+    "thisMonth": "This month",
+    "addPhoto": "Add photo",
+    "change": "Change",
+    "empty": "Empty",
+    "totalDue": "Total due",
+    "notSet": "Not set",
+    "photo": "Photo",
+    "pickASupplier": "Pick a supplier",
+    "allByDate": "All by date",
 
     // notes
     "addColumn": "Add column",

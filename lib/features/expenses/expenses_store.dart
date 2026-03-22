@@ -60,6 +60,27 @@ class Expenses extends Store<Expense> {
     };
   }
 
+  List<String>? _cachedAllItems;
+  List<Expense>? _cachedSuppliers;
+
+  @override
+  void set(Expense doc) {
+    super.set(doc);
+    _clearCache();
+  }
+
+  @override
+  void setAll(List<Expense> docs) {
+    super.setAll(docs);
+    _clearCache();
+  }
+
+  void _clearCache() {
+    _cachedAllItems = null;
+    _cachedSuppliers = null;
+    _cachedSupplierMap = null;
+  }
+
   double get amountDue {
     double total = 0;
     for (var doc in present.values) {
@@ -71,17 +92,34 @@ class Expenses extends Store<Expense> {
   }
 
   List<String> get allItems {
+    if (_cachedAllItems != null) return _cachedAllItems!;
     Set<String> items = {};
     for (var doc in docs.values) {
       for (var item in doc.items) {
         items.add(item);
       }
     }
-    return items.toList();
+    _cachedAllItems = items.toList();
+    return _cachedAllItems!;
   }
 
-  List<Expense> get suppliers =>
-      expenses.present.values.where((e) => e.isSupplier).toList();
+  List<Expense> get suppliers {
+    if (_cachedSuppliers != null) return _cachedSuppliers!;
+    _cachedSuppliers = expenses.present.values
+        .where((e) => e.isSupplier)
+        .toList()
+      ..sort((x, y) => y.duePayments.compareTo(x.duePayments));
+    return _cachedSuppliers!;
+  }
+
+  Map<String, Expense>? _cachedSupplierMap;
+  Map<String, Expense> get supplierMap {
+    if (_cachedSupplierMap != null) return _cachedSupplierMap!;
+    _cachedSupplierMap = {
+      for (var s in suppliers) s.id: s,
+    };
+    return _cachedSupplierMap!;
+  }
 }
 
 final expenses = Expenses();

@@ -304,6 +304,16 @@ class Es implements En {
     "paymentHistory": "Historial de pagos",
     "addOrder": "Agregar pedido",
     "filterByItems": "Filtrar por artículos",
+    "new": "Nuevo",
+    "thisMonth": "Este mes",
+    "addPhoto": "Agregar foto",
+    "change": "Cambiar",
+    "empty": "Vacío",
+    "totalDue": "Total pendiente",
+    "notSet": "No establecido",
+    "photo": "Foto",
+    "pickASupplier": "Seleccionar proveedor",
+    "allByDate": "Todo por fecha",
 
     // notes
     "addColumn": "Agregar columna",

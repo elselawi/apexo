@@ -13,17 +13,20 @@ class DateTimePicker extends StatefulWidget {
   final String buttonText;
   final IconData buttonIcon;
   final void Function(DateTime value) onChange;
+  final TextStyle? textStyle;
   final bool enabled;
-  const DateTimePicker(
-      {super.key,
-      required this.initValue,
-      required this.onChange,
-      this.pickTime = false,
-      this.format = "dd/MM/yyyy",
-      this.buttonIcon = FluentIcons.time_entry,
-      this.buttonText = "Change date",
-      this.showButton = true,
-      this.enabled = true});
+  const DateTimePicker({
+    super.key,
+    required this.initValue,
+    required this.onChange,
+    this.pickTime = false,
+    this.format = "dd/MM/yyyy",
+    this.buttonIcon = FluentIcons.time_entry,
+    this.buttonText = "Change date",
+    this.showButton = true,
+    this.enabled = true,
+    this.textStyle,
+  });
 
   @override
   State<DateTimePicker> createState() => DateTimePickerState();
@@ -55,8 +58,10 @@ class DateTimePickerState extends State<DateTimePicker> {
             SizedBox(
                 height: 34,
                 child: Center(
-                    child: Txt(DateFormat(widget.format, locale.s.$code)
-                        .format(value)))),
+                    child: Txt(
+                  DateFormat(widget.format, locale.s.$code).format(value),
+                  style: widget.textStyle,
+                ))),
             if (widget.showButton)
               Button(
                 onPressed: pick,

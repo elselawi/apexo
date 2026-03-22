@@ -44,6 +44,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   late FocusNode _focusNode;
   late List<TagInputItem> _tags;
   late List<TagInputItem> _suggestions;
+  bool _isFocused = false;
 
   bool get tapable {
     return widget.onItemTap != null;
@@ -87,6 +88,20 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       }
       return KeyEventResult.ignored;
     });
+
+    _focusNode.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    setState(() {
+      _isFocused = _focusNode.hasFocus;
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.removeListener(_onFocusChanged);
+    super.dispose();
   }
 
   List<TagInputItem> get _filteredSuggestions {
@@ -156,9 +171,10 @@ class _TagInputWidgetState extends State<TagInputWidget> {
           final tokenWidth = textPainter.width + tokenPadding.horizontal + 24;
 
           if (widget.multiline == false &&
-              visibleTags.isNotEmpty &&
-              (usedWidth + tokenWidth + collapseWidth >
-                  constraints.maxWidth - 80)) {
+              ((visibleTags.isNotEmpty &&
+                      usedWidth + tokenWidth + collapseWidth >
+                          constraints.maxWidth - 80) ||
+                  tag.label.length > 20)) {
             hiddenTags.add(tag);
           } else {
             usedWidth += tokenWidth + tokenSpacing;
@@ -181,17 +197,40 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                        if (_tags.isNotEmpty)
-                          _buildVisibleTags(visibleTags, tokenSpacing),
+                        AnimatedSize(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOut,
+                          child: _tags.isEmpty
+                              ? const SizedBox.shrink()
+                              : (_isFocused
+                                  ? _buildHiddenTagsIndicator(
+                                      tokenSpacing, _tags)
+                                  : _buildVisibleTags(
+                                      visibleTags, tokenSpacing)),
+                        ),
                         if (_tags.length < widget.limit)
                           _buildAutoSuggestInputTextBox(),
                       ])
                 : Row(
                     children: [
-                      if (_tags.isNotEmpty)
-                        _buildVisibleTags(visibleTags, tokenSpacing),
-                      if (hiddenTags.isNotEmpty)
-                        _buildHiddenTagsIndicator(tokenSpacing, hiddenTags),
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        child: _tags.isEmpty
+                            ? const SizedBox.shrink()
+                            : (_isFocused
+                                ? _buildHiddenTagsIndicator(tokenSpacing, _tags)
+                                : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      _buildVisibleTags(
+                                          visibleTags, tokenSpacing),
+                                      if (hiddenTags.isNotEmpty)
+                                        _buildHiddenTagsIndicator(
+                                            tokenSpacing, hiddenTags),
+                                    ],
+                                  )),
+                      ),
                       if (_tags.length < widget.limit)
                         _buildAutoSuggestInputTextBox(),
                     ],

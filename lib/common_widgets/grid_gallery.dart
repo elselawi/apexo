@@ -171,13 +171,14 @@ class _GridGalleryState extends State<GridGallery> {
   }
 
   void openSingleImage(BuildContext context, String img) async {
-    showLoadingBlockingDialog(context, txt("gettingImages"));
+    final closeDialog =
+        showLoadingBlockingDialog(context, txt("gettingImages"));
     final ImageProvider provider;
     try {
       provider = await getImage(widget.rowId, img, false) ??
           const AssetImage("assets/images/missing.png");
     } finally {
-      if (context.mounted) Navigator.of(context).pop();
+      closeDialog();
     }
     if (context.mounted) {
       _imageProviders.add(provider);
@@ -200,7 +201,8 @@ class _GridGalleryState extends State<GridGallery> {
   }
 
   void openSlideShow(BuildContext context, int initialIndex) async {
-    showLoadingBlockingDialog(context, txt("gettingImages"));
+    final closeDialog =
+        showLoadingBlockingDialog(context, txt("gettingImages"));
     MultiImageProvider multiImageProvider;
     try {
       final List<ImageProvider<Object>> list = (await Future.wait(widget.imgs
@@ -210,7 +212,7 @@ class _GridGalleryState extends State<GridGallery> {
           .toList();
       multiImageProvider = MultiImageProvider(list, initialIndex: initialIndex);
     } finally {
-      if (context.mounted) Navigator.of(context).pop();
+      closeDialog();
     }
 
     if (context.mounted && multiImageProvider.imageCount > 0) {

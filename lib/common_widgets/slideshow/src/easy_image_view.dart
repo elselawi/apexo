@@ -115,32 +115,35 @@ class _EasyImageViewState extends State<EasyImageView>
       );
     }
 
-    return Center(
-      child: SizedBox(
-        key: const Key('easy_image_sized_box'),
-        child: InteractiveViewer(
-          key: const Key('easy_image_interactive_viewer'),
-          transformationController: _transformationController,
-          minScale: widget.minScale,
-          maxScale: widget.maxScale,
-          panEnabled: true,
-          scaleEnabled: true,
-          child: widget.doubleTapZoomable && !widget.isDrawingMode
-              ? GestureDetector(
-                  onDoubleTapDown: _handleDoubleTapDown,
-                  onDoubleTap: _handleDoubleTap,
-                  child: content)
-              : content,
-          onInteractionEnd: (scaleEndDetails) {
-            double scale = _transformationController.value.getMaxScaleOnAxis();
+    Widget result = SizedBox.expand(
+      key: const Key('easy_image_sized_box'),
+      child: InteractiveViewer(
+        key: const Key('easy_image_interactive_viewer'),
+        transformationController: _transformationController,
+        minScale: widget.minScale,
+        maxScale: widget.maxScale,
+        panEnabled: !widget.isDrawingMode,
+        scaleEnabled: !widget.isDrawingMode,
+        child: Center(child: content),
+        onInteractionEnd: (scaleEndDetails) {
+          double scale = _transformationController.value.getMaxScaleOnAxis();
 
-            if (widget.onScaleChanged != null) {
-              widget.onScaleChanged!(scale);
-            }
-          },
-        ),
+          if (widget.onScaleChanged != null) {
+            widget.onScaleChanged!(scale);
+          }
+        },
       ),
     );
+
+    if (widget.doubleTapZoomable && !widget.isDrawingMode) {
+      return GestureDetector(
+        onDoubleTapDown: _handleDoubleTapDown,
+        onDoubleTap: _handleDoubleTap,
+        child: result,
+      );
+    }
+
+    return result;
   }
 
   void _handleDoubleTapDown(TapDownDetails details) {

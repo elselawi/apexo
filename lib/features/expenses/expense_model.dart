@@ -20,7 +20,7 @@ class Expense extends Model {
       final item = items[i];
       if (item.supplierId != id) continue;
       if (item.processed) continue;
-      amount = amount + item.cost;
+      amount = amount + (item.cost - item.paidAmount);
     }
     return amount;
   }
@@ -55,7 +55,9 @@ class Expense extends Model {
 
     /* 3 */ supplierId = json['supplierId'] ?? supplierId;
     /* 4 */ date = json["date"] != null
-        ? DateTime.fromMillisecondsSinceEpoch(json["date"] * 60 * 60 * 1000)
+        ? DateTime.fromMillisecondsSinceEpoch(json["date"] > 99999999
+            ? json["date"]
+            : json["date"] * 60 * 60 * 1000)
         : date;
     /* 5 */ items = List<String>.from(json["items"] ?? items);
     /* 6 */ cost = double.parse((json["cost"] ?? cost).toString());
@@ -70,12 +72,12 @@ class Expense extends Model {
     final json = super.toJson();
     final d = Expense.fromJson({});
     /* 1 */ if (isSupplier != d.isSupplier) json['isSupplier'] = isSupplier;
-    /* 2 */ if (supplierName != d.supplierName)
+    /* 2 */ if (supplierName != d.supplierName) {
       json['supplierName'] = supplierName;
+    }
 
     /* 3 */ if (supplierId != d.supplierId) json['supplierId'] = supplierId;
-    /* 4 */ json['date'] =
-        (date.millisecondsSinceEpoch / (60 * 60 * 1000)).round();
+    /* 4 */ json['date'] = date.millisecondsSinceEpoch;
     /* 5 */ if (items.isNotEmpty) json['items'] = items;
     /* 6 */ if (cost != d.cost) json['cost'] = cost;
     /* 7 */ if (paidAmount != d.paidAmount) json['paidAmount'] = paidAmount;

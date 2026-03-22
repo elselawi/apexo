@@ -1,4 +1,17 @@
 
+### ____0.10.0____
+
+This is one of the most feature-rich updates yet!
+
+-   Full redesign of the expenses system
+-   New Feature: Notes & Tasks
+-   New Feature: Push notifications
+-   New Feature: integrated patient page, with push notifications support
+-   New Feature: annotate and draw on images
+-   Performance improvements through delegating JSON-Store computations to a seperate thread so that it doesn't block the UI or cause any jank
+-   Various other bug fixes and improvements
+
+
 ### ____0.9.4____
 
 -   patient link can now link to a telegram bot, that is as functional as the patient web page

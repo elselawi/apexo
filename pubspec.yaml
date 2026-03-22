@@ -2,7 +2,7 @@ name: apexo
 description: "Dental Clinic Management System"
 publish_to: "none"
 
-version: 0.9.4
+version: 0.10.0
 
 environment:
   sdk: ">=3.4.4 <4.0.0"
@@ -32,7 +32,7 @@ dependencies:
   http_parser: ^4.0.2
   package_info_plus: ^8.1.2
   image: ^4.2.0
-  sentry_flutter: ^8.12.0
+  sentry_flutter: ^9.15.0
   path_drawing: ^1.0.1
   xml: ^6.5.0
   firebase_core: ^4.5.0

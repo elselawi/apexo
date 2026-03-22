@@ -45,38 +45,40 @@ class KanbanColumn extends StatelessWidget {
           color: theme.inactiveColor.withValues(alpha: 0.2),
           width: 1,
         );
-        return Container(
-          width: 325,
-          margin: const EdgeInsets.only(top: 13),
-          decoration: locale.isRtl
-              ? BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border(
-                    top: borderSide,
-                    right: (column == notes.columns.firstOrNull)
-                        ? BorderSide.none
-                        : borderSide,
-                    left: (column == null) ? borderSide : BorderSide.none,
-                    bottom: borderSide,
+        return RepaintBoundary(
+          child: Container(
+            width: 325,
+            margin: const EdgeInsets.only(top: 13),
+            decoration: locale.isRtl
+                ? BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border(
+                      top: borderSide,
+                      right: (column == notes.columns.firstOrNull)
+                          ? BorderSide.none
+                          : borderSide,
+                      left: (column == null) ? borderSide : BorderSide.none,
+                      bottom: borderSide,
+                    ),
+                  )
+                : BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border(
+                      top: borderSide,
+                      left: (column == notes.columns.firstOrNull)
+                          ? BorderSide.none
+                          : borderSide,
+                      right: (column == null) ? borderSide : BorderSide.none,
+                      bottom: borderSide,
+                    ),
                   ),
-                )
-              : BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border(
-                    top: borderSide,
-                    left: (column == notes.columns.firstOrNull)
-                        ? BorderSide.none
-                        : borderSide,
-                    right: (column == null) ? borderSide : BorderSide.none,
-                    bottom: borderSide,
-                  ),
-                ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildColumnTitle(context, theme),
-              _buildColumnBody(context),
-            ],
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildColumnTitle(context, theme),
+                _buildColumnBody(context),
+              ],
+            ),
           ),
         );
       },

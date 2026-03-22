@@ -74,6 +74,16 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
     return allNotes;
   }
 
+  Map<String, List<Note>> get _groupedNotes {
+    final grouped = <String, List<Note>>{};
+    final filtered = _filteredNotes;
+
+    for (final note in filtered) {
+      grouped.putIfAbsent(note.columnID, () => []).add(note);
+    }
+    return grouped;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -122,6 +132,9 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
   }
 
   Expanded _buildKanabanBoard() {
+    final grouped = _groupedNotes;
+    final sortDir = notes.sortDirection();
+
     return Expanded(
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -129,62 +142,29 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ...notes.columns.map((column) {
-              List<Note> tNotes = [
-                ..._filteredNotes.where((e) => e.columnID == column.id),
-                ...notes
-                    .ghostCreatorsInColumn(column.id)
-                    .map((n) => n.createChild())
-              ]..sort((a, b) => a.date.compareTo(b.date));
+              final columnNotes = grouped[column.id] ?? [];
+              final ghosts = notes
+                  .ghostCreatorsInColumn(column.id)
+                  .map((n) => n.createChild());
 
-              if (notes.sortDirection() == -1) {
-                tNotes = tNotes.reversed.toList();
-              }
+              final tNotes = [...columnNotes, ...ghosts]
+                ..sort((a, b) => a.date.compareTo(b.date) * sortDir);
+
               return KanbanColumn(
-                  key: Key(column.id), column: column, columnNotes: tNotes);
+                key: Key(column.id),
+                column: column,
+                columnNotes: tNotes,
+              );
             }),
             KanbanColumn(
               column: null,
-              columnNotes: _filteredNotes.where((e) => e.unCategorized).toList()
+              columnNotes: (grouped[""] ?? [])
                 ..addAll(
                     notes.ghostCreatorsInColumn("").map((n) => n.createChild()))
-                ..sort(
-                    (a, b) => a.date.compareTo(b.date) * notes.sortDirection())
-                ..reversed,
+                ..sort((a, b) => a.date.compareTo(b.date) * sortDir),
             ),
-            _buildAddColumnButton(),
+            const _AddColumnButton(),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAddColumnButton() {
-    return Container(
-      margin: const EdgeInsets.only(top: 25),
-      width: 220,
-      child: Button(
-        style: ButtonStyle(
-            backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
-            shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(0),
-                side: const BorderSide(color: Colors.transparent)))),
-        onPressed: () => showColumnEditDialog(context),
-        child: Padding(
-          padding: const EdgeInsets.all(10),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(FluentIcons.add, size: 25),
-              const SizedBox(height: 8),
-              Txt(
-                txt("addColumn"),
-                style: FluentTheme.of(context)
-                    .typography
-                    .bodyStrong
-                    ?.copyWith(fontStyle: FontStyle.italic),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -240,6 +220,47 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
           const SizedBox(width: 5),
           const ArchiveToggle(),
         ],
+      ),
+    );
+  }
+}
+
+class _AddColumnButton extends StatelessWidget {
+  const _AddColumnButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(top: 25),
+      width: 220,
+      child: Button(
+        style: ButtonStyle(
+          backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(0),
+              side: const BorderSide(color: Colors.transparent),
+            ),
+          ),
+        ),
+        onPressed: () => showColumnEditDialog(context),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(FluentIcons.add, size: 25),
+              const SizedBox(height: 8),
+              Txt(
+                txt("addColumn"),
+                style: FluentTheme.of(context)
+                    .typography
+                    .bodyStrong
+                    ?.copyWith(fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -176,6 +176,7 @@ void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
                     onChange: (value) => setState(() => dueDate = value),
                     pickTime: false,
                     showButton: true,
+                    format: "d MMMM yyyy",
                   ),
                 ),
                 if (note != null && !note.isGhost)

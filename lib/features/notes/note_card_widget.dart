@@ -2,7 +2,6 @@ import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/features/notes/dialog_note_edit.dart';
 import 'package:apexo/features/notes/note_attachments_widget.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
@@ -32,6 +31,10 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _recurringIntervalController =
       TextEditingController();
+  late final TextEditingController _titleController;
+  late final TextEditingController _noteController;
+  bool _showTitleSaveButton = false;
+  bool _showNoteSaveButton = false;
   bool _commentButtonVisible = false;
   bool expanded = false;
   late AnimationController _animationController;
@@ -74,6 +77,9 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
+    _titleController = TextEditingController(text: widget.note.title);
+    _noteController = TextEditingController(text: widget.note.note);
 
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 350),
@@ -121,6 +127,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   void dispose() {
     _animationController.dispose();
     _checkBoxScaleAnimationController.dispose();
+    _titleController.dispose();
+    _noteController.dispose();
     super.dispose();
   }
 
@@ -134,23 +142,23 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    return LongPressDraggable<Note>(
-      data: widget.note,
-      feedback: SizedBox(
-        width: 280,
+    return RepaintBoundary(
+      child: LongPressDraggable<Note>(
+        data: widget.note,
+        feedback: SizedBox(
+          width: 280,
+          child: _buildCard(theme, context),
+        ),
+        childWhenDragging: Opacity(
+          opacity: 0.5,
+          child: _buildCard(theme, context),
+        ),
         child: _buildCard(theme, context),
       ),
-      childWhenDragging: Opacity(
-        opacity: 0.5,
-        child: _buildCard(theme, context),
-      ),
-      child: _buildCard(theme, context),
     );
   }
 
   Widget _buildCard(FluentThemeData theme, BuildContext context) {
-    final isArchived = widget.note.archived == true;
-
     final Color borderColor;
     if (widget.note.archived == true) {
       borderColor = theme.inactiveColor;
@@ -165,15 +173,14 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     }
 
     return GestureDetector(
-      onDoubleTap: () {
-        if (canEdit) {
-          showNoteEditDialog(context, note: widget.note);
-        }
-      },
       onTap: () {
         if (!expanded) {
           setState(() {
             expanded = true;
+            _titleController.text = widget.note.title;
+            _noteController.text = widget.note.note;
+            _showTitleSaveButton = false;
+            _showNoteSaveButton = false;
           });
           _animationController.forward();
         }
@@ -188,65 +195,62 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
               margin: EdgeInsetsDirectional.only(
                   end: 12, bottom: expanded ? 20 : 6, top: expanded ? 20 : 6),
               decoration: _mainContainerDecoration(theme, borderColor),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildNoteMainBody(theme, isArchived),
-                      const SizedBox(width: 8),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _buildDoneCheckMarkButton(context),
-                          if (expanded) ...[
-                            const SizedBox(height: 10),
-                            Tooltip(
-                                message: txt("close"),
-                                child: _buildCloseSideButton(theme)),
-                            const SizedBox(height: 5),
-                            if (canEdit)
-                              Tooltip(
-                                  message: txt("edit"),
-                                  child: _buildEditButton(theme, context)),
-                          ],
-                          if (expanded ||
-                              widget.note.done ||
-                              widget.note.archived == true) ...[
-                            SizedBox(height: expanded ? 5 : 10),
-                            if (canEdit && !widget.note.isGhost)
-                              Tooltip(
-                                message: widget.note.archived == true
-                                    ? txt("restore")
-                                    : txt("archive"),
-                                child: _buildArchiveButton(theme, isArchived),
-                              ),
-                            if (widget.note.isGhost)
-                              Tooltip(
-                                message: txt("save"),
-                                child: _saveGhostButton(theme),
-                              )
-                          ]
-                        ],
-                      )
-                    ],
-                  ),
-                  if (expanded) ...[
-                    ..._dividerWithPadding(10),
-                    _buildAssignation(theme),
-                    ..._dividerWithPadding(10),
-                    _buildDateRelatedRow(theme, context),
-                    ..._dividerWithPadding(10),
-                    ..._buildCommentSection(theme),
-                  ],
-                  const SizedBox(height: 10),
-                  _buildExpandCollapseButton(theme),
-                ],
-              ),
+              child: child,
             ),
           );
         },
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildNoteMainBody(theme),
+                const SizedBox(width: 8),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildDoneCheckMarkButton(context),
+                    if (expanded) ...[
+                      const SizedBox(height: 10),
+                      Tooltip(
+                          message: txt("close"),
+                          child: _buildCloseSideButton(theme)),
+                      const SizedBox(height: 5),
+                    ],
+                    if (expanded ||
+                        widget.note.done ||
+                        widget.note.archived == true) ...[
+                      SizedBox(height: expanded ? 0 : 10),
+                      if (canEdit && !widget.note.isGhost)
+                        Tooltip(
+                          message: widget.note.archived == true
+                              ? txt("restore")
+                              : txt("archive"),
+                          child: _buildArchiveButton(theme),
+                        ),
+                      if (widget.note.isGhost)
+                        Tooltip(
+                          message: txt("save"),
+                          child: _saveGhostButton(theme),
+                        )
+                    ]
+                  ],
+                )
+              ],
+            ),
+            if (expanded) ...[
+              ..._dividerWithPadding(10),
+              _buildAssignation(theme),
+              ..._dividerWithPadding(10),
+              _buildDateRelatedRow(theme, context),
+              ..._dividerWithPadding(10),
+              ..._buildCommentSection(theme),
+            ],
+            const SizedBox(height: 10),
+            _buildExpandCollapseButton(theme),
+          ],
+        ),
       ),
     );
   }
@@ -274,7 +278,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     );
   }
 
-  SizedBox _buildExpandCollapseButton(FluentThemeData theme) {
+  Widget _buildExpandCollapseButton(FluentThemeData theme) {
     return SizedBox(
       width: double.infinity,
       child: IconButton(
@@ -326,6 +330,10 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         onPressed: () {
           setState(() {
             expanded = !expanded;
+            _titleController.text = widget.note.title;
+            _noteController.text = widget.note.note;
+            _showTitleSaveButton = false;
+            _showNoteSaveButton = false;
           });
           if (expanded) {
             _animationController.forward();
@@ -337,7 +345,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     );
   }
 
-  Flexible _buildNoteMainBody(FluentThemeData theme, bool isArchived) {
+  Flexible _buildNoteMainBody(FluentThemeData theme) {
+    final isArchived = widget.note.archived == true;
     return Flexible(
       flex: 1,
       child: Column(
@@ -348,7 +357,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         children: [
           _buildNoteTitle(theme),
           ..._dividerWithPadding(0),
-          Text(widget.note.note),
+          expanded ? _noteEditingTextField(theme) : Text(widget.note.note),
           _buildNoteLabels(isArchived, theme),
           if (widget.note.isRecurringInstance)
             Row(
@@ -388,6 +397,33 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
           ]
         ],
       ),
+    );
+  }
+
+  CupertinoTextField _noteEditingTextField(FluentThemeData theme) {
+    return CupertinoTextField(
+      readOnly: !canEdit,
+      controller: _noteController,
+      onChanged: (value) {
+        setState(() {
+          if (value != widget.note.note) {
+            _showNoteSaveButton = true;
+          } else {
+            _showNoteSaveButton = false;
+          }
+        });
+      },
+      style: theme.typography.body,
+      maxLines: null,
+      suffix: _showNoteSaveButton
+          ? IconButton(
+              icon: const Icon(FluentIcons.save),
+              onPressed: () {
+                notes.set(widget.note..note = _noteController.text);
+                _showNoteSaveButton = false;
+                setState(() {});
+              })
+          : null,
     );
   }
 
@@ -433,6 +469,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
             if (target.isRecurring)
               Expanded(
                 child: CupertinoTextField(
+                  readOnly: !canEdit,
                   suffix: Padding(
                     padding: const EdgeInsetsDirectional.only(end: 2),
                     child: Row(
@@ -576,7 +613,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     ];
   }
 
-  Widget _buildArchiveButton(FluentThemeData theme, bool isArchived) {
+  Widget _buildArchiveButton(FluentThemeData theme) {
+    final isArchived = widget.note.archived == true;
     return FlyoutTarget(
       controller: _confirmArchiveFlyoutCtrl,
       child: IconButton(
@@ -602,18 +640,6 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
           });
         },
       ),
-    );
-  }
-
-  IconButton _buildEditButton(FluentThemeData theme, BuildContext context) {
-    return IconButton(
-      style: _iconButtonStyle(theme),
-      icon: const Icon(WindowsIcons.edit),
-      onPressed: () {
-        if (canEdit) {
-          showNoteEditDialog(context, note: widget.note);
-        }
-      },
     );
   }
 
@@ -738,11 +764,38 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   SizedBox _buildNoteTitle(FluentThemeData theme) {
     return SizedBox(
       width: expanded ? 175 : 179,
-      child: Text(
-        overflow: TextOverflow.ellipsis,
-        widget.note.title.isEmpty ? txt("note") : widget.note.title,
-        style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
-      ),
+      child: expanded
+          ? _titleEditingTextField(theme)
+          : Text(
+              overflow: TextOverflow.ellipsis,
+              widget.note.title.isEmpty ? txt("note") : widget.note.title,
+              style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
+            ),
+    );
+  }
+
+  CupertinoTextField _titleEditingTextField(FluentThemeData theme) {
+    return CupertinoTextField(
+      controller: _titleController,
+      onChanged: (value) {
+        setState(() {
+          if (value != widget.note.title) {
+            _showTitleSaveButton = true;
+          } else {
+            _showTitleSaveButton = false;
+          }
+        });
+      },
+      suffix: _showTitleSaveButton
+          ? IconButton(
+              icon: const Icon(FluentIcons.save),
+              onPressed: () {
+                notes.set(widget.note..title = _titleController.text);
+                _showTitleSaveButton = false;
+                setState(() {});
+              })
+          : null,
+      style: theme.typography.bodyStrong?.copyWith(fontSize: 16),
     );
   }
 

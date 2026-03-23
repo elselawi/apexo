@@ -98,9 +98,10 @@ class ApexoApp extends StatelessWidget {
       showDialog(
         context: bContext,
         builder: (context) => NewVersionDialog(
-            downloadLink: Platform.isWindows
-                ? version.latestAPKLink
-                : version.latestZipLink),
+          downloadLink: ((kIsWeb == false) && Platform.isWindows)
+              ? version.latestZipLink
+              : version.latestAPKLink,
+        ),
       );
     }
 

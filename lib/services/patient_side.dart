@@ -63,9 +63,11 @@ class PatientSide extends ObservablePersistingObject {
 
   static fromHref() async {
     await patientSide.box;
+    final url = getUrl();
     try {
-      String code = Uri.parse(((getUrl()))).path;
-      if (code.length > 1) code = code.substring(1);
+      String code = Uri.parse(url).path;
+      if (code.isEmpty) return;
+      if (code.startsWith("/")) code = code.substring(1);
       if (code.isNotEmpty) {
         final decodedList = decode(code).split("|");
         if (decodedList.length == 4) {
@@ -81,7 +83,7 @@ class PatientSide extends ObservablePersistingObject {
         }
       }
     } catch (e, t) {
-      logger("Error while reading href $e", t);
+      logger("Error while reading href ($url) $e", t);
     }
   }
 

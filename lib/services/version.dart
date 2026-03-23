@@ -4,87 +4,46 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/utils/logger.dart';
 
-class GithubFile implements Comparable<GithubFile> {
-  final String name;
-  final String? downloadUrl;
-  final String version;
-  final int major, minor, patch;
+// --- Models ---
 
-  GithubFile({
-    required this.name,
-    required this.downloadUrl,
-    required this.version,
-    required this.major,
-    required this.minor,
-    required this.patch,
+class ReleaseMetadata {
+  final String latestVersion;
+  final List<String> changelog;
+  final String androidUrl;
+  final String windowsUrl;
+
+  ReleaseMetadata({
+    required this.latestVersion,
+    required this.changelog,
+    required this.androidUrl,
+    required this.windowsUrl,
   });
 
-  factory GithubFile.fromJson(Map<String, dynamic> json) {
-    final name = json['name'] as String;
-    final versionMatch = RegExp(r'(\d+)\.(\d+)\.(\d+)').firstMatch(name);
-
-    final maj = int.tryParse(versionMatch?.group(1) ?? '0') ?? 0;
-    final min = int.tryParse(versionMatch?.group(2) ?? '0') ?? 0;
-    final pat = int.tryParse(versionMatch?.group(3) ?? '0') ?? 0;
-
-    return GithubFile(
-      name: name,
-      downloadUrl: json['download_url'],
-      version: '$maj.$min.$pat',
-      major: maj,
-      minor: min,
-      patch: pat,
+  factory ReleaseMetadata.fromJson(Map<String, dynamic> json) {
+    final downloads = json['downloads'] as Map<String, dynamic>;
+    return ReleaseMetadata(
+      latestVersion: json['latest_version'] ?? "0.0.0",
+      changelog: List<String>.from(json['changelog'] ?? []),
+      androidUrl: downloads['android'] ?? "",
+      windowsUrl: downloads['windows'] ?? "",
     );
   }
-
-  /// Returns true if this file's version is strictly greater than the provided string
-  bool isNewerThan(String currentVersion) {
-    final parts =
-        currentVersion.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    if (parts.length < 3) return true;
-
-    if (major != parts[0]) return major > parts[0];
-    if (minor != parts[1]) return minor > parts[1];
-    return patch > parts[2];
-  }
-
-  @override
-  int compareTo(GithubFile other) {
-    if (major != other.major) return other.major.compareTo(major);
-    if (minor != other.minor) return other.minor.compareTo(minor);
-    return other.patch.compareTo(patch);
-  }
 }
 
-class _GithubReleaseClient {
-  final String owner;
-  final String repo;
-
-  _GithubReleaseClient({required this.owner, required this.repo});
-
-  Future<List<GithubFile>> fetchFiles(String path) async {
-    final url =
-        Uri.parse('https://api.github.com/repos/$owner/$repo/contents/$path');
-    final response = await http
-        .get(url, headers: {'Accept': 'application/vnd.github.v3+json'});
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch repo: ${response.statusCode}');
-    }
-
-    final List<dynamic> data = json.decode(response.body);
-    return data.map((json) => GithubFile.fromJson(json)).toList();
-  }
-}
+// --- Service ---
 
 class _VersionService {
   // Observables
   final current = ObservableState("0.0.0");
   final isOutdated = ObservableState(false);
+  final latestVersion = ObservableState("0.0.0");
+
   String latestAPKLink = "";
   String latestZipLink = "";
+  List<String> changelog = [];
 
-  final _client = _GithubReleaseClient(owner: 'elselawi', repo: 'apexo');
+  // Your new Cloudflare R2 URL
+  final String metadataUrl = "https://download.apexo.app/metadata.json";
 
   _VersionService() {
     init();
@@ -106,24 +65,43 @@ class _VersionService {
 
   Future<void> checkForUpdates() async {
     try {
-      final all = await _client.fetchFiles('dist');
-      if (all.isEmpty) return;
+      final response = await http.get(Uri.parse(metadataUrl));
 
-      // Sort newest first
-      all.sort();
-
-      final latestApk = all.where((f) => f.name.endsWith('.apk')).firstOrNull;
-      final latestZip = all.where((f) => f.name.endsWith('.zip')).firstOrNull;
-
-      if (latestApk != null) {
-        latestAPKLink = latestApk.downloadUrl ?? "";
-        isOutdated(latestApk.isNewerThan(current()));
+      if (response.statusCode != 200) {
+        throw Exception('Failed to fetch metadata: ${response.statusCode}');
       }
 
-      latestZipLink = latestZip?.downloadUrl ?? "";
+      final data = ReleaseMetadata.fromJson(json.decode(response.body));
+
+      // Store data
+      latestVersion(data.latestVersion);
+      latestAPKLink = data.androidUrl;
+      latestZipLink = data.windowsUrl;
+      changelog = data.changelog;
+
+      // Compare versions
+      isOutdated(_isVersionNewer(data.latestVersion, current()));
     } catch (e, s) {
       logger("Version update check failed: $e", s);
     }
+  }
+
+  /// Simple semantic version comparison
+  bool _isVersionNewer(String latest, String current) {
+    List<int> latestParts =
+        latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+    List<int> currentParts =
+        current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+
+    // Ensure we have at least 3 parts (major.minor.patch)
+    while (latestParts.length < 3) latestParts.add(0);
+    while (currentParts.length < 3) currentParts.add(0);
+
+    for (var i = 0; i < 3; i++) {
+      if (latestParts[i] > currentParts[i]) return true;
+      if (latestParts[i] < currentParts[i]) return false;
+    }
+    return false;
   }
 }
 

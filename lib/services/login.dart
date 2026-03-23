@@ -226,8 +226,8 @@ class _LoginService extends ObservablePersistingObject {
         loginCtrl.loadingIndicator("Initializing notifications");
         try {
           await Messaging.identifyDevice();
-        } catch (e) {
-          throw Exception("Error while initializing notifications: $e");
+        } catch (e, s) {
+          logger("Could not initialize notifications: $e", s, 2);
         }
       } catch (e, s) {
         if (e.runtimeType != ClientException) {

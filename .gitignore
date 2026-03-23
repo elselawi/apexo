@@ -11,6 +11,7 @@
 migrate_working_dir/
 stest.dart
 apexo-files/
+.wrangler/
 test/secret.dart
 test.jpg
 lib/sentry_dsn.dart

@@ -10,6 +10,7 @@ import 'package:yaml/yaml.dart';
 const String bucketName = "apexo-releases";
 const String appName = "apexo";
 const String bucketDomain = "download.apexo.app";
+const String pagesProjectName = "apexo-web";
 
 void main() {
   print("🚀 Starting Production Build & Deploy...");
@@ -33,6 +34,7 @@ void main() {
     sourcePath: p.join(Directory.current.path, "build", "app", "outputs",
         "flutter-apk", "app-release.apk"),
     version: version,
+    isArchive: false,
   );
 
   // 3. Build Web (Keep in /dist/web for Git/Cloudflare Pages)
@@ -74,16 +76,29 @@ void _buildPlatform({
 }
 
 void _buildWeb(String version) {
-  print("\n🌐 Building Web (Local Dist for Pages - needs commit and push)...");
+  print("\n🌐 Building Web (Web app & demo app)...");
   _runCommand(Platform.isWindows ? "flutter.bat" : "flutter",
       ["build", "web", "--release"]);
 
-  final source = Directory(p.join(Directory.current.path, "build", "web"));
-  final destination = Directory(p.join(Directory.current.path, "dist", "web"));
+  final webBuildPath = p.join(Directory.current.path, "build", "web");
 
-  if (destination.existsSync()) destination.deleteSync(recursive: true);
-  _copyDirectorySync(source, destination);
-  print(" ✅ Web build moved to /dist/web for Git tracking.");
+  print(" 🚀 Deploying directly to Cloudflare Pages...");
+
+  final wranglerCmd = Platform.isWindows ? "wrangler.cmd" : "wrangler";
+  final deployRes = Process.runSync(wranglerCmd, [
+    "pages",
+    "deploy",
+    webBuildPath,
+    "--project-name=$pagesProjectName",
+  ]);
+
+  if (deployRes.exitCode == 0) {
+    print(" ✅ Web version $version is now LIVE on Cloudflare Pages.");
+  } else {
+    print(" ❌ Web deployment failed: ${deployRes.stderr}");
+    // We don't exit here because R2 builds might have succeeded,
+    // but you should check why the upload failed.
+  }
 }
 
 void _finalizeRelease(String version) {
@@ -124,12 +139,24 @@ void _uploadToR2(String localPath, String remotePath) {
   final wranglerCmd = Platform.isWindows ? "wrangler.cmd" : "wrangler";
   print(" ☁️  Uploading to R2: $remotePath");
   Platform.isWindows ? "wrangler.cmd" : "wrangler";
+
+// Determine content type based on extension
+  String contentType = "application/octet-stream";
+  if (remotePath.endsWith(".apk")) {
+    contentType = "application/vnd.android.package-archive";
+  } else if (remotePath.endsWith(".zip")) {
+    contentType = "application/zip";
+  } else if (remotePath.endsWith(".json")) {
+    contentType = "application/json";
+  }
+
   final result = Process.runSync(wranglerCmd, [
     "r2",
     "object",
     "put",
     "$bucketName/$remotePath",
     "--file=$localPath",
+    "--content-type=$contentType",
     "--remote"
   ]);
   if (result.exitCode != 0) {
@@ -173,18 +200,6 @@ void _createZip(String dirPath, String zipPath) {
     }
   }
   File(zipPath).writeAsBytesSync(ZipEncoder().encode(archive)!);
-}
-
-// Standard helper for deep-copying directories
-void _copyDirectorySync(Directory source, Directory destination) {
-  destination.createSync(recursive: true);
-  for (var entity in source.listSync()) {
-    final newPath = p.join(destination.path, p.basename(entity.path));
-    if (entity is File)
-      entity.copySync(newPath);
-    else if (entity is Directory)
-      _copyDirectorySync(entity, Directory(newPath));
-  }
 }
 
 String _readPubspecVersion() {

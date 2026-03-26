@@ -88,10 +88,26 @@ class FCMManager {
                     });
 
 
-                    if (Notification.permission !== "granted") {
-                        this.showPrompt();
+                    const supported = "Notification" in window;
+                    const legacySafari = !supported && "safari" in window && "pushNotification" in window.safari;
+
+                    if (supported) {
+                        if (Notification.permission !== "granted") {
+                            this.showPrompt();
+                        } else {
+                            this.setup();
+                        }
+                    } else if (legacySafari) {
+                        // Legacy Safari Push API support could be added here if needed
+                        console.log("Legacy Safari Push Notification API detected");
+                        // For now, we just avoid the crash
                     } else {
-                        this.setup();
+                        console.warn("Notifications are not supported in this browser environment.");
+                        // On iOS, explain PWA requirement
+                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                        if (isIOS && !window.navigator.standalone) {
+                            console.info("On iOS, Web Push requires the app to be 'Added to Home Screen'.");
+                        }
                     }
                 }
             }
@@ -157,7 +173,12 @@ class FCMManager {
         this.hidePrompt();
 
         if (!("Notification" in window)) {
-            alert("This browser does not support notifications.");
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS && !window.navigator.standalone) {
+                alert("To enable notifications on iOS, please add this app to your Home Screen (Tap Share > Add to Home Screen).");
+            } else {
+                alert("This browser does not support notifications.");
+            }
             return;
         }
 

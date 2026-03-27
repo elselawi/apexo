@@ -12,67 +12,87 @@ const String appName = "apexo";
 const String bucketDomain = "download.apexo.app";
 const String pagesProjectName = "apexo-web";
 
+final List<String> changes = [];
+String version = _readPubspecVersion();
+
 void main() {
   print("🚀 Starting Production Build & Deploy...");
 
-  final version = _updateVersion();
+  final isPatch = _getIsPatch();
 
-  // 1. Build Windows (Zip and Upload to R2)
-  _buildPlatform(
-    platform: "windows",
-    flutterArg: "windows",
-    sourcePath: p.join(
-        Directory.current.path, "build", "windows", "x64", "runner", "Release"),
+  if (!isPatch) {
+    changes.addAll(_getChanges());
+    version = _updateVersion();
+  }
+
+  // 1. Build for windows and android
+  _buildNative(
+    isPatch: isPatch,
     version: version,
-    isArchive: true,
   );
 
-  // 2. Build Android (APK and Upload to R2)
-  _buildPlatform(
-    platform: "android",
-    flutterArg: "apk",
-    sourcePath: p.join(Directory.current.path, "build", "app", "outputs",
-        "flutter-apk", "app-release.apk"),
-    version: version,
-    isArchive: false,
-  );
-
-  // 3. Build Web (Keep in /dist/web for Git/Cloudflare Pages)
+  // 2. Build Web (Keep in /dist/web for Git/Cloudflare Pages)
   _buildWeb(version);
 
-  // 4. Update Metadata & Changelog
-  _finalizeRelease(version);
+  if (!isPatch) {
+    // 3. Update Metadata & Changelog
+    _finalizeRelease(version);
+  }
 }
 
 // --- Core Logic ---
 
-void _buildPlatform({
-  required String platform,
-  required String flutterArg,
-  required String sourcePath,
+void _buildNative({
+  required bool isPatch,
   required String version,
-  bool isArchive = false,
 }) {
-  print("\n📦 Building $platform...");
-  _runCommand(Platform.isWindows ? "flutter.bat" : "flutter",
-      ["build", flutterArg, "--release"]);
+  print("\n📦 Building for windows and android");
 
-  String finalFilePath;
+  final executable = Platform.isWindows ? "shorebird.bat" : "shorebird";
+  final shoreBirdCommand = isPatch ? "patch" : "release";
 
-  if (isArchive) {
-    finalFilePath = p.join(Directory.current.path, "temp_${platform}.zip");
-    _createZip(sourcePath, finalFilePath);
-  } else {
-    finalFilePath = sourcePath;
-  }
+  _runCommand(
+    executable,
+    [
+      shoreBirdCommand,
+      "--platform",
+      "android",
+      if (!isPatch) ...["--artifact", "apk"],
+    ],
+  );
+  _runCommand(
+    executable,
+    [shoreBirdCommand, "--platform", "windows"],
+  );
+
+  if (isPatch) return;
+
+  final windowsInstallerPath =
+      p.join(Directory.current.path, "temp_windows.zip");
+  _createZip(
+      p.join(Directory.current.path, "build", "windows", "x64", "runner",
+          "Release"),
+      windowsInstallerPath);
+
+  final androidInstallerPath = p.join(
+    Directory.current.path,
+    "build",
+    "app",
+    "outputs",
+    "flutter-apk",
+    "app-release.apk",
+  );
 
   // Upload to R2
-  final extension = p.extension(finalFilePath);
-  final r2Path = "releases/$version/${appName}_${platform}_$version$extension";
-  _uploadToR2(finalFilePath, r2Path);
+  final r2PathWindows =
+      "releases/$version/${appName}_windows_$version${p.extension(windowsInstallerPath)}";
+  final r2PathAndroid =
+      "releases/$version/${appName}_android_$version${p.extension(androidInstallerPath)}";
+  _uploadToR2(windowsInstallerPath, r2PathWindows);
+  _uploadToR2(androidInstallerPath, r2PathAndroid);
 
   // Cleanup temp zip if created
-  if (isArchive) File(finalFilePath).deleteSync();
+  File(windowsInstallerPath).deleteSync();
 }
 
 void _buildWeb(String version) {
@@ -101,15 +121,17 @@ void _buildWeb(String version) {
   }
 }
 
-void _finalizeRelease(String version) {
+List<String> _getChanges() {
   final changesInput =
       _prompt("What are the changes? (separate by /// or leave empty)");
-  final changes = changesInput
+  return changesInput
       .split("///")
       .map((e) => e.trim())
       .where((e) => e.isNotEmpty)
       .toList();
+}
 
+void _finalizeRelease(String version) {
   if (changes.isNotEmpty) {
     _prependChangelog(version, changes);
   }
@@ -138,7 +160,6 @@ void _finalizeRelease(String version) {
 void _uploadToR2(String localPath, String remotePath) {
   final wranglerCmd = Platform.isWindows ? "wrangler.cmd" : "wrangler";
   print(" ☁️  Uploading to R2: $remotePath");
-  Platform.isWindows ? "wrangler.cmd" : "wrangler";
 
 // Determine content type based on extension
   String contentType = "application/octet-stream";
@@ -171,6 +192,12 @@ void _runCommand(String cmd, List<String> args) {
     print("Error running $cmd: ${res.stderr}");
     exit(1);
   }
+}
+
+bool _getIsPatch() {
+  print("Is this a patch? (y/n, default: n)");
+  final input = stdin.readLineSync() ?? "n";
+  return input.toLowerCase() == "y";
 }
 
 String _updateVersion() {

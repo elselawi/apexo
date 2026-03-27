@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:apexo/app/app.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
@@ -7,7 +10,10 @@ import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/windows_ding/sound_service.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
+import 'package:toastification/toastification.dart';
 
 class NotificationAction {
   final Color color;
@@ -72,6 +78,46 @@ class _NotificationsService {
 
   void addNotification(StaticNotification notification) {
     _notifications.add(notification);
+  }
+
+  Future<void> dingANotification({
+    required String title,
+    required String body,
+    required IconData icon,
+  }) async {
+    addNotification(
+      StaticNotification(
+        icon: icon,
+        title: title,
+        body: body,
+        actions: [],
+      ),
+    );
+
+    if (kIsWeb || Platform.isWindows == false) {
+      // the sound and should only be visible on windows
+      // since there are currently no other way to support
+      // windows notifications other than this
+      return;
+    }
+
+    triggerSound();
+
+    toastification.show(
+      context: bContext,
+      type: ToastificationType.info,
+      style: ToastificationStyle.flat,
+      title: Text(title),
+      description: Text(body),
+      alignment: locale.isRtl ? Alignment.bottomLeft : Alignment.bottomRight,
+      autoCloseDuration: const Duration(seconds: 4),
+      icon: Icon(icon),
+      borderRadius: BorderRadius.circular(12.0),
+      boxShadow: lowModeShadow,
+      direction: locale.isRtl ? TextDirection.rtl : TextDirection.ltr,
+      dragToClose: true,
+      applyBlurEffect: true,
+    );
   }
 
   List<StaticNotification> get notifications {

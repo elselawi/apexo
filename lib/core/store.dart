@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/notifications/static_notifications.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:apexo/services/notifications/model_push_data.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
@@ -359,7 +362,68 @@ class Store<G extends Model> {
       // until the versions match
       // this is why there's another sync method below
 
+      // finally show a notification if the store or model has something notification worthy
+
+      if (docs.isNotEmpty) {
+        // only do this if there were already docs
+        for (var element in toLocalWrite.entries) {
+          final id = element.key;
+          final document = modeling(jsonDecode(element.value));
+          if (!document.targetsToPushTo.contains(login.currentAccountID)) {
+            continue;
+          }
+
+          if (modeling({}).pushOnCreation && !docs.containsKey(id)) {
+            final readableIdentifier = document.title;
+
+            List<String> displayTuple = PushData(
+              store: remote!.storeName,
+              id: id,
+              readableIdentifier: readableIdentifier,
+              isCreation: true,
+              isUpdate: false,
+              updatedFields: [],
+              oldVals: [],
+              newVals: [],
+              targetIDs: [],
+            ).displayTuple();
+
+            await staticNotifications.dingANotification(
+              title: displayTuple[0],
+              body: displayTuple[1],
+              icon: FluentIcons.add,
+            );
+          } else if (document.pushIfChanged.isNotEmpty) {
+            final oldJson = docs[id]!.toJson();
+            final newJson = document.toJson();
+            final diff = diffJson(oldJson, newJson).toList();
+            if (diff.isEmpty) {
+              continue;
+            }
+            final readableIdentifier = document.title;
+            List<String> displayTuple = PushData(
+              store: remote!.storeName,
+              id: id,
+              readableIdentifier: readableIdentifier,
+              isCreation: false,
+              isUpdate: true,
+              updatedFields: diff,
+              oldVals: diff.map((key) => oldJson[key]).toList(),
+              newVals: diff.map((key) => newJson[key]).toList(),
+              targetIDs: [],
+            ).displayTuple();
+
+            await staticNotifications.dingANotification(
+              title: displayTuple[0],
+              body: displayTuple[1],
+              icon: FluentIcons.edit,
+            );
+          }
+        }
+      }
+
       await reload();
+
       return SyncResult(
           pulled: toLocalWrite.length,
           pushed: toRemoteWrite.length,

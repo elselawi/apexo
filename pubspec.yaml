@@ -39,6 +39,8 @@ dependencies:
   firebase_messaging: ^16.1.2
   flutter_local_notifications: ^21.0.0
   web: ^1.1.1
+  toastification: ^3.0.3
+  ffi: ^2.2.0
   
 dev_dependencies:
   integration_test:
@@ -63,3 +65,5 @@ flutter:
     - assets/fonts/readex.ttf
     - assets/fonts/readex-bold.ttf
     - assets/fonts/DentalIcons.ttf
+    - assets/ding.wav
+    - shorebird.yaml

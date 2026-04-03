@@ -90,6 +90,7 @@ class Notes extends Store<Note> {
     }).toList();
   }
 
+  final showIncoming = ObservableState(false);
   final filterByAccountId = ObservableState("");
   final sortDirection = ObservableState(1);
 
@@ -97,10 +98,12 @@ class Notes extends Store<Note> {
     if (login.permissions[PInt.notes] == 0 && !login.isAdmin) {
       filterByAccountId(login.currentAccountID);
     }
-    if (filterByAccountId().isEmpty) return present;
+    if (filterByAccountId().isEmpty && showIncoming() == false) return present;
     return Map<String, Note>.fromEntries(present.entries.where((entry) =>
-        entry.value.createdBy == filterByAccountId() ||
-        entry.value.assignedTo == filterByAccountId()));
+        (showIncoming() == false || entry.value.incoming) &&
+        (filterByAccountId().isEmpty ||
+            entry.value.createdBy == filterByAccountId() ||
+            entry.value.assignedTo == filterByAccountId())));
   }
 
   // Rebuilds the parent-to-children index for fast lookups

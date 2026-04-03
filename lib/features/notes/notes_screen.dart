@@ -31,7 +31,8 @@ class NotesScreen extends StatelessWidget {
                   notes.observableMap.stream,
                   showArchived.stream,
                   notes.filterByAccountId.stream,
-                  notes.sortDirection.stream
+                  notes.sortDirection.stream,
+                  notes.showIncoming.stream,
                 ],
                 // ignore: prefer_const_constructors
                 builder: (context, snapshot) => NotesKanBanBoard()),
@@ -93,6 +94,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
         Padding(
           padding: const EdgeInsets.only(top: 14, left: 8, right: 8),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.end,
             spacing: 5,
             children: [
               Button(
@@ -107,22 +109,24 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
                 },
               ),
               if (login.permissions[PInt.notes] == 1 || login.isAdmin)
-                Button(
-                  child: ButtonContent(
-                      notes.filterByAccountId().isNotEmpty
-                          ? FluentIcons.clear_filter
-                          : FluentIcons.filter,
-                      notes.filterByAccountId().isNotEmpty
-                          ? txt("showAll")
-                          : txt("showOnlyMine")),
-                  onPressed: () {
-                    if (notes.filterByAccountId().isEmpty) {
+                ToggleButton(
+                  checked: notes.filterByAccountId().isNotEmpty,
+                  child: ButtonContent(FluentIcons.contact, txt("personal")),
+                  onChanged: (value) {
+                    if (value) {
                       notes.filterByAccountId(login.currentAccountID);
                     } else {
                       notes.filterByAccountId('');
                     }
                   },
-                )
+                ),
+              ToggleButton(
+                checked: notes.showIncoming(),
+                child: ButtonContent(FluentIcons.reply, txt("incoming")),
+                onChanged: (value) {
+                  notes.showIncoming(value);
+                },
+              )
             ],
           ),
         ),

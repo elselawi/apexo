@@ -39,6 +39,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
+      resizeToAvoidBottomInset: true,
       padding: EdgeInsets.zero,
       content: MStreamBuilder(
           streams: [
@@ -394,7 +395,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           PermissionLevel(value: 1, label: txt("personal")),
                           PermissionLevel(value: 2, label: txt("full"))
                         ],
-                        onChanged: (level) => permissions[PInt.patients] = level,
+                        onChanged: (level) =>
+                            permissions[PInt.patients] = level,
                       ),
                       PermissionSelector(
                         title: txt("appointments"),
@@ -404,7 +406,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           PermissionLevel(value: 1, label: txt("personal")),
                           PermissionLevel(value: 2, label: txt("full"))
                         ],
-                        onChanged: (level) => permissions[PInt.appointments] = level,
+                        onChanged: (level) =>
+                            permissions[PInt.appointments] = level,
                       ),
                       PermissionSelector(
                         title: txt("post-opNotes"),
@@ -434,7 +437,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           PermissionLevel(value: 1, label: txt("view")),
                           PermissionLevel(value: 2, label: txt("full"))
                         ],
-                        onChanged: (level) => permissions[PInt.expenses] = level,
+                        onChanged: (level) =>
+                            permissions[PInt.expenses] = level,
                       ),
                       PermissionSelector(
                         title: txt("notes"),

@@ -23,6 +23,7 @@ class Login extends StatelessWidget {
         stream: loginCtrl.loginError.stream,
         builder: (context, _) {
           return ScaffoldPage(
+            resizeToAvoidBottomInset: true,
             padding: EdgeInsets.zero,
             bottomBar: loginCtrl.loginError().isNotEmpty
                 ? _buildErrorContainer()

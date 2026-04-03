@@ -28,6 +28,7 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ScaffoldPage(
+      resizeToAvoidBottomInset: true,
       key: WK.settingsScreen,
       content: Padding(
         padding: const EdgeInsets.only(top: 10),

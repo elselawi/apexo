@@ -174,7 +174,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
               ((visibleTags.isNotEmpty &&
                       usedWidth + tokenWidth + collapseWidth >
                           constraints.maxWidth - 80) ||
-                  tag.label.length > 20)) {
+                  tag.label.length > 20) &&
+              _tags.length > 1) {
             hiddenTags.add(tag);
           } else {
             usedWidth += tokenWidth + tokenSpacing;
@@ -277,8 +278,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         focusNode: _focusNode,
         placeholder: widget.placeholder,
         key: autoSuggestBoxRef,
-        trailingIcon: (_tags.length < 2 || widget.multiline) && widget.enabled
-            ? (IconButton(
+        trailingIcon: widget.enabled
+            ? IconButton(
                 icon: autoSuggestBoxRef.currentState == null
                     ? const Icon(FluentIcons.chevron_down)
                     : autoSuggestBoxRef.currentState!.isOverlayVisible
@@ -288,6 +289,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                 style: const ButtonStyle(iconSize: WidgetStatePropertyAll(14)),
                 onPressed: () {
                   setState(() {
+                    _focusNode.requestFocus();
                     if (autoSuggestBoxRef.currentState == null) return;
                     if (autoSuggestBoxRef.currentState!.isOverlayVisible ==
                         false) {
@@ -296,7 +298,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                       autoSuggestBoxRef.currentState!.dismissOverlay();
                     }
                   });
-                }))
+                })
             : null,
         items: _filteredSuggestions
             .map(

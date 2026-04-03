@@ -2,7 +2,7 @@ name: apexo
 description: "Dental Clinic Management System"
 publish_to: "none"
 
-version: 0.10.3
+version: 0.10.4
 
 environment:
   sdk: ">=3.4.4 <4.0.0"
@@ -51,6 +51,16 @@ dev_dependencies:
   test: ^1.25.2
   archive: ^3.6.1
   yaml: ^3.1.2
+  msix: ^3.16.13
+
+msix_config:
+  display_name: Apexo.app
+  identity_name: alisaleem.apexo.app
+  logo_path: assets/app_icon.png
+  build_windows: false
+  publisher: "CN=275027E7-AE47-4DEE-B3D6-0BE5AF8D773E"
+  publisher_display_name: "alisaleem"
+  capabilities: internetClient
 
 flutter:
   fonts:

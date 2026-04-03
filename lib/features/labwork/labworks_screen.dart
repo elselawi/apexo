@@ -8,6 +8,8 @@ import 'package:apexo/features/labwork/labworks_ctrl.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/archive_toggle.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -59,7 +61,14 @@ class LabworksTable extends StatefulWidget {
 }
 
 class _LabworksTableState extends State<LabworksTable> {
-  bool showReceived = false;
+  bool canEdit(List<String> operatorIDs) {
+    if (login.isAdmin) return true;
+    if (login.permissions[PInt.appointments] > 1) return true;
+    if (operatorIDs.contains(login.currentAccountID)) return true;
+    return false;
+  }
+
+  bool showReceived = true;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   int _maxShowingItems = 20;
@@ -136,20 +145,15 @@ class _LabworksTableState extends State<LabworksTable> {
 
   @override
   Widget build(BuildContext context) {
-    return NavigationView(
-      content: ScaffoldPage(
-        padding: EdgeInsets.zero,
-        content: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildCommandBar(),
-            _buildGrayBar(),
-            filteredAndSorted.isEmpty
-                ? const NoItemsFound()
-                : _buildInnerTable(context),
-          ],
-        ),
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildCommandBar(),
+        _buildGrayBar(),
+        filteredAndSorted.isEmpty
+            ? const NoItemsFound()
+            : _buildInnerTable(context),
+      ],
     );
   }
 
@@ -279,7 +283,25 @@ class _LabworksTableState extends State<LabworksTable> {
                 ),
                 child: Row(
                   children: [
-                    _buildDataCell(lab.patient?.title ?? ""),
+                    Checkbox(
+                        style: CheckboxThemeData(
+                          icon: lab.status
+                              ? WindowsIcons.completed
+                              : FluentIcons.hour_glass,
+                          uncheckedIconColor: WidgetStatePropertyAll(
+                              FluentTheme.of(context).inactiveColor),
+                        ),
+                        checked: lab.status,
+                        onChanged: (checked) {
+                          final appointment =
+                              appointments.get(lab.appointmentId);
+                          if (appointment == null) return;
+                          if (!canEdit(appointment.operatorsIDs)) return;
+                          appointment.labworkReceived = checked == true;
+                          appointments.set(appointment);
+                        }),
+                    const SizedBox(width: 5),
+                    _buildDataCell(lab.patient?.title ?? "", cross: lab.status),
                     _buildDataCell(lab.date.toString().split(" ").first),
                     _buildDataCell(lab.operators),
                     _buildDataCell(lab.laboratory),
@@ -312,6 +334,7 @@ class _LabworksTableState extends State<LabworksTable> {
       ),
       child: Row(
         children: [
+          const SizedBox(width: 15),
           _buildHeaderCell(txt("patient"), 'patient'),
           _buildHeaderCell(txt("date"), 'date'),
           _buildHeaderCell(txt("doctors"), 'operators'),
@@ -424,12 +447,15 @@ class _LabworksTableState extends State<LabworksTable> {
     );
   }
 
-  Widget _buildDataCell(String text, {double width = 150}) {
+  Widget _buildDataCell(String text, {double width = 150, bool cross = false}) {
     return SizedBox(
       width: width,
       child: Text(
         text,
-        style: FluentTheme.of(context).typography.body,
+        style: FluentTheme.of(context)
+            .typography
+            .body
+            ?.copyWith(decoration: cross ? TextDecoration.lineThrough : null),
         overflow: TextOverflow.ellipsis,
       ),
     );

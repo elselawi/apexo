@@ -23,15 +23,9 @@ class DefaultFirebaseOptions {
       case TargetPlatform.android:
         return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
         return windows;
       case TargetPlatform.linux:
@@ -58,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCuRbOixyXDU1GDcdsRhks9iE67zQ_d0MU',
-    appId: '1:107363374876:android:94394fabaf3c6672620cd9',
+    appId: '1:107363374876:android:1fb8ee3b7cbca2b6620cd9',
     messagingSenderId: '107363374876',
     projectId: 'apexo-14f90',
     storageBucket: 'apexo-14f90.firebasestorage.app',
@@ -73,4 +67,23 @@ class DefaultFirebaseOptions {
     storageBucket: 'apexo-14f90.firebasestorage.app',
     measurementId: 'G-W74EZWCJR4',
   );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDY3bJRe4lqUOgxSrLyev7Z8KgyW0xBj3U',
+    appId: '1:107363374876:ios:175e4f459f574b09620cd9',
+    messagingSenderId: '107363374876',
+    projectId: 'apexo-14f90',
+    storageBucket: 'apexo-14f90.firebasestorage.app',
+    iosBundleId: 'app.apexo.get',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDY3bJRe4lqUOgxSrLyev7Z8KgyW0xBj3U',
+    appId: '1:107363374876:ios:175e4f459f574b09620cd9',
+    messagingSenderId: '107363374876',
+    projectId: 'apexo-14f90',
+    storageBucket: 'apexo-14f90.firebasestorage.app',
+    iosBundleId: 'app.apexo.get',
+  );
+
 }

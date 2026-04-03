@@ -55,14 +55,14 @@ void _buildNative({
     executable,
     [
       shoreBirdCommand,
-      "--platform",
+      "--platforms",
       "android",
       if (!isPatch) ...["--artifact", "apk"],
     ],
   );
   _runCommand(
     executable,
-    [shoreBirdCommand, "--platform", "windows"],
+    [shoreBirdCommand, "--platforms", "windows"],
   );
 
   if (isPatch) return;
@@ -188,6 +188,9 @@ void _uploadToR2(String localPath, String remotePath) {
 
 void _runCommand(String cmd, List<String> args) {
   final res = Process.runSync(cmd, args, environment: Platform.environment);
+  print("✅ $cmd ${args.join(" ")} completed.");
+  print(res.stdout);
+  print(res.stderr);
   if (res.exitCode != 0) {
     print("Error running $cmd: ${res.stderr}");
     exit(1);

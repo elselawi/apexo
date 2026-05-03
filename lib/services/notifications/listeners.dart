@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/firebase_options.dart';
 import 'package:apexo/services/notifications/core_local_notification.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
@@ -55,8 +56,18 @@ abstract class PushListeners {
     if (login.token.isEmpty && patientSide.patientID.isEmpty) {
       return;
     }
+
     final payload = jsonDecode(message.data["payload"]);
     final pushData = PushData.fromJson(payload);
+
+    if (pushData.store == "appointments") {
+      await appointments.synchronize();
+    }
+
+    if (pushData.store == "notes") {
+      await notes.synchronize();
+    }
+
     final tuple = pushData.displayTuple();
     _addStaticNotification(pushData);
     await Messaging.local?.showNotification(
@@ -64,6 +75,16 @@ abstract class PushListeners {
       tuple[1],
       message.data["payload"],
     );
+  }
+
+  static void _openAppointmentIfExist(String id) {
+    if (appointments.get(id) == null) {
+      return;
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        openAppointment(appointments.get(id));
+      });
+    }
   }
 
   static void foregroudRes(NotificationResponse res) {
@@ -76,9 +97,7 @@ abstract class PushListeners {
       routes.navigate("notes");
     } else if (pushData.store == "appointments") {
       routes.navigate("calendar");
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        openAppointment(appointments.get(pushData.id));
-      });
+      _openAppointmentIfExist(pushData.id);
     }
   }
 
@@ -107,9 +126,7 @@ abstract class PushListeners {
       routes.navigate("notes");
     } else if (pushData.store == "appointments") {
       routes.navigate("calendar");
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        openAppointment(appointments.get(pushData.id));
-      });
+      _openAppointmentIfExist(pushData.id);
     }
   }
 
@@ -129,9 +146,7 @@ abstract class PushListeners {
                 routes.navigate("notes");
               } else if (pushData.store == "appointments") {
                 routes.navigate("calendar");
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  openAppointment(appointments.get(pushData.id));
-                });
+                _openAppointmentIfExist(pushData.id);
               }
             },
             hideOnRoute: pushData.store == "notes" ? "notes" : "calendar",

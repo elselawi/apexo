@@ -278,7 +278,10 @@ class En {
     "unpaid": "Unpaid",
     "noSuggestions": "No suggestions",
     "received": "Labwork received",
-    "showReceived": "Show received",
+    "showDone": "Show done",
+    "waitingForLab": "waiting for lab",
+    "undelivered": "Undelivered to patient",
+    "receivedAndDelivered": "Received and delivered",
 
     // expenses
     "expense": "Expense",

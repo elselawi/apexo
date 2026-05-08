@@ -280,7 +280,10 @@ class Es implements En {
     "unpaid": "No pagado",
     "noSuggestions": "Sin sugerencias",
     "received": "Recibido del laboratorio",
-    "showReceived": "Lab. entregados",
+    "showDone": "Mostrar completados",
+    "waitingForLab": "Esperando al laboratorio",
+    "undelivered": "No entregado al paciente",
+    "receivedAndDelivered": "Recibido y entregado",
 
     // expenses
     "expense": "Gasto",

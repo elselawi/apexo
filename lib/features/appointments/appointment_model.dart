@@ -3,6 +3,7 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 
@@ -42,6 +43,10 @@ class Appointment extends Model {
   }
 
   String get subtitleLine2 {
+    return operatorsNames;
+  }
+
+  String get operatorsNames {
     if (operatorsIDs.isEmpty) return "";
     return "👨‍⚕️ ${operatorsIDs.map((id) => accounts.nameOrEmailFromID(id)).join(", ")}";
   }
@@ -73,6 +78,19 @@ class Appointment extends Model {
     if (patient!.allAppointments.isEmpty) return false;
     return patient!.allAppointments.first == this;
   }
+
+  bool get isLaboworkUndelivered {
+    return hasLabwork && labworkReceived && patient != null && patient!.doneAppointments.isNotEmpty && patient!.doneAppointments.last.id == id;
+  }
+
+  String get labworkStatus {
+    if (!hasLabwork) return "none";
+    if (isLaboworkUndelivered) return txt("undelivered");
+    if (labworkReceived) return txt("receivedAndDelivered");
+    return txt("waitingForLab");
+  }
+
+
 
   // id: id of the appointment (inherited from Model)
 

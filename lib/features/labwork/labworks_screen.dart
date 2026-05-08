@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';
@@ -32,18 +33,7 @@ class LabworksScreen extends StatelessWidget {
                 ],
                 builder: (context, snapshot) {
                   return LabworksTable(
-                      labworks: labworks.appointmentsWithLabworks
-                          .map(
-                            (appointment) => LabworkItem(
-                                appointmentId: appointment.id,
-                                patient: appointment.patient,
-                                date: appointment.date,
-                                laboratory: appointment.labName,
-                                notes: appointment.labworkNotes,
-                                status: appointment.labworkReceived,
-                                operators: appointment.subtitleLine2),
-                          )
-                          .toList());
+                      labworks: labworks.appointmentsWithLabworks);
                 }),
           ),
         ],
@@ -54,7 +44,7 @@ class LabworksScreen extends StatelessWidget {
 
 class LabworksTable extends StatefulWidget {
   const LabworksTable({super.key, required this.labworks});
-  final List<LabworkItem> labworks;
+  final List<Appointment> labworks;
 
   @override
   State<LabworksTable> createState() => _LabworksTableState();
@@ -68,7 +58,7 @@ class _LabworksTableState extends State<LabworksTable> {
     return false;
   }
 
-  bool showReceived = true;
+  bool showReceived = false;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   int _maxShowingItems = 20;
@@ -76,12 +66,12 @@ class _LabworksTableState extends State<LabworksTable> {
   bool _sortAscending = false;
   TextEditingController searchController = TextEditingController();
 
-  List<LabworkItem> get filteredAndSorted {
-    List<LabworkItem> result = widget.labworks.toSet().toList();
+  List<Appointment> get filteredAndSorted {
+    List<Appointment> result = widget.labworks.toSet().toList();
 
     // if we're not showing received orders
     if (!showReceived) {
-      result = result.where((lab) => lab.status == false).toList();
+      result = result.where((appointment) => appointment.labworkReceived == false || appointment.isLaboworkUndelivered).toList();
     }
 
     // filtering by search
@@ -92,8 +82,8 @@ class _LabworksTableState extends State<LabworksTable> {
                 .toLowerCase()
                 .contains(q.toLowerCase()) ||
             lab.date.toString().toLowerCase().contains(q.toLowerCase()) ||
-            lab.laboratory.toLowerCase().contains(q.toLowerCase()) ||
-            lab.notes.toLowerCase().contains(q.toLowerCase());
+            lab.labName.toLowerCase().contains(q.toLowerCase()) ||
+            lab.labworkNotes.toLowerCase().contains(q.toLowerCase());
       }).toList();
     }
 
@@ -110,15 +100,15 @@ class _LabworksTableState extends State<LabworksTable> {
               a.date.toIso8601String().compareTo(b.date.toIso8601String());
           break;
         case 'operators':
-          compare = a.operators.compareTo(b.operators);
+          compare = a.operatorsNames.compareTo(b.operatorsNames);
         case 'laboratory':
           compare =
-              a.laboratory.toLowerCase().compareTo(b.laboratory.toLowerCase());
+              a.labName.toLowerCase().compareTo(b.labName.toLowerCase());
           break;
         case 'notes':
-          compare = a.notes.compareTo(b.notes);
+          compare = a.labworkNotes.compareTo(b.labworkNotes);
         case 'status':
-          compare = a.status.toString().compareTo(b.status.toString());
+          compare = a.labworkStatus.toString().compareTo(b.labworkStatus.toString());
           break;
       }
       return _sortAscending ? compare : -compare;
@@ -127,7 +117,7 @@ class _LabworksTableState extends State<LabworksTable> {
     return result;
   }
 
-  List<LabworkItem> get truncated {
+  List<Appointment> get truncated {
     return filteredAndSorted.sublist(
         0, min(_maxShowingItems, filteredAndSorted.length));
   }
@@ -253,10 +243,10 @@ class _LabworksTableState extends State<LabworksTable> {
         controller: _scrollController,
         itemCount: truncated.length,
         itemBuilder: (context, index) {
-          final lab = truncated[index];
+          final apt = truncated[index];
           return HoverButton(
             onPressed: () {
-              openAppointment(appointments.get(lab.appointmentId));
+              openAppointment(appointments.get(apt.id));
             },
             builder: (context, states) {
               return Container(
@@ -285,30 +275,25 @@ class _LabworksTableState extends State<LabworksTable> {
                   children: [
                     Checkbox(
                         style: CheckboxThemeData(
-                          icon: lab.status
+                          icon: apt.labworkReceived
                               ? WindowsIcons.completed
                               : FluentIcons.hour_glass,
                           uncheckedIconColor: WidgetStatePropertyAll(
                               FluentTheme.of(context).inactiveColor),
                         ),
-                        checked: lab.status,
+                        checked: apt.labworkReceived,
                         onChanged: (checked) {
-                          final appointment =
-                              appointments.get(lab.appointmentId);
-                          if (appointment == null) return;
-                          if (!canEdit(appointment.operatorsIDs)) return;
-                          appointment.labworkReceived = checked == true;
-                          appointments.set(appointment);
+                          if (!canEdit(apt.operatorsIDs)) return;
+                          apt.labworkReceived = checked == true;
+                          appointments.set(apt);
                         }),
                     const SizedBox(width: 5),
-                    _buildDataCell(lab.patient?.title ?? "", cross: lab.status),
-                    _buildDataCell(lab.date.toString().split(" ").first),
-                    _buildDataCell(lab.operators),
-                    _buildDataCell(lab.laboratory),
-                    _buildDataCell(lab.notes),
-                    lab.status == true
-                        ? _buildDataCell("➡️ ${txt("received")}")
-                        : _buildDataCell("⚠️ ${txt("due")}"),
+                    _buildDataCell(apt.patient?.title ?? "", cross: apt.labworkStatus == "done"),
+                    _buildDataCell(apt.date.toString().split(" ").first),
+                    _buildDataCell(apt.operatorsNames),
+                    _buildDataCell(apt.labName),
+                    _buildDataCell(apt.labworkNotes),
+                    _buildDataCell("${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0,1).toUpperCase()}${apt.labworkStatus.substring(1)}"),
                   ],
                 ),
               );
@@ -370,7 +355,7 @@ class _LabworksTableState extends State<LabworksTable> {
               children: [
                 const Icon(FluentIcons.view, size: 17),
                 const SizedBox(width: 10),
-                Txt(txt("showReceived"))
+                Txt(txt("showDone")),
               ],
             ),
           ),

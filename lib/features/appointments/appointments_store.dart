@@ -1,6 +1,5 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
-import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
@@ -125,26 +124,6 @@ class Appointments extends Store<Appointment> {
         Set<String>.from(present.values.expand((doc) => doc.prescriptions))
             .toList();
   }
-}
-
-class LabworkItem {
-  final String appointmentId;
-  final Patient? patient;
-  final DateTime date;
-  final String laboratory;
-  final String notes;
-  final bool status;
-  final String operators;
-
-  LabworkItem({
-    required this.appointmentId,
-    required this.patient,
-    required this.date,
-    required this.laboratory,
-    required this.notes,
-    required this.status,
-    required this.operators,
-  });
 }
 
 final appointments = Appointments();

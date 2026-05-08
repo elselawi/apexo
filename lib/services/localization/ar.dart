@@ -276,7 +276,10 @@ class Ar implements En {
     "unpaid": "غير مدفوع",
     "noSuggestions": "لا توجد اقتراحات",
     "received": "تم الاستلام من المختبر",
-    "showReceived": "إظهار المستلم",
+    "showDone": "إظهار المكتمل",
+    "waitingForLab": "في انتظار المختبر",
+    "undelivered": "غير مسلم للمريض",
+    "receivedAndDelivered": "مكتمل",
 
     // expenses
     "expense": "مصروف",

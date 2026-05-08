@@ -473,7 +473,6 @@ class Es implements En {
     "cantUpload": "No puede subir",
     "accounts": "Cuentas",
     "operatesOnPatients": "Opera a pacientes",
-    "undelivered": "no entregado",
 
     // advanced settings: prod tests
     "prodTests": "Pruebas de producción",

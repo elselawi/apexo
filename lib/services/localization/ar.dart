@@ -467,7 +467,6 @@ class Ar implements En {
     "cantUpload": "لا يمكنه الرفع",
     "accounts": "المستخدمين",
     "operatesOnPatients": "يعمل على المرضى",
-    "undelivered": "مستحق التسليم",
 
     // advanced settings: prod tests
     "prodTests": "اختبارات الإنتاج",

@@ -471,7 +471,6 @@ class En {
     "cantUpload": "Can not upload",
     "accounts": "ِAccounts",
     "operatesOnPatients": "Operates on patients",
-    "undelivered": "undelivered",
 
     // advanced settings: prod tests
     "prodTests": "Production tests",

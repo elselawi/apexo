@@ -70,7 +70,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions macos = FirebaseOptions(
     apiKey: 'AIzaSyDY3bJRe4lqUOgxSrLyev7Z8KgyW0xBj3U',
-    appId: '1:107363374876:ios:175e4f459f574b09620cd9',
+    appId: '1:107363374876:ios:d6cf0f906a40c2bc620cd9',
     messagingSenderId: '107363374876',
     projectId: 'apexo-14f90',
     storageBucket: 'apexo-14f90.firebasestorage.app',
@@ -79,11 +79,11 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyDY3bJRe4lqUOgxSrLyev7Z8KgyW0xBj3U',
-    appId: '1:107363374876:ios:175e4f459f574b09620cd9',
+    appId: '1:107363374876:ios:e5f7c3790b7b2c90620cd9',
     messagingSenderId: '107363374876',
     projectId: 'apexo-14f90',
     storageBucket: 'apexo-14f90.firebasestorage.app',
-    iosBundleId: 'app.apexo.get',
+    iosBundleId: 'app.apexo.mobile.apexo',
   );
 
 }

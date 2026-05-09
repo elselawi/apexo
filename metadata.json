@@ -1,1 +1,10 @@
-{"latest_version":"0.10.4","updated_at":"2026-04-03T20:09:06.661800","changelog":[],"downloads":{"windows":"https://download.apexo.app/releases/0.10.4/apexo_windows_0.10.4.zip","android":"https://download.apexo.app/releases/0.10.4/apexo_android_0.10.4.apk"}}
+{
+    "latest_version":"0.10.4",
+    "updated_at":"2026-04-03T20:09:06.661800",
+    "changelog":[],
+    "downloads": {
+        "windows":"https://download.apexo.app/releases/0.10.4/apexo_windows_0.10.4.zip",
+        "android":"https://download.apexo.app/releases/0.10.4/apexo_android_0.10.4.apk",
+        "macos": "https://download.apexo.app/releases/0.10.6/Apexo-Installer.dmg"
+    }
+}

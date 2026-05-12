@@ -614,6 +614,7 @@ class OrderRowState extends State<OrderRow>
 
   void uploadFromGallery() async {
     List<XFile> res = await ImagePicker().pickMultiImage(limit: 10);
+    if (!mounted) return;
     setState(() => inProgress = true);
     try {
       for (var img in res) {
@@ -629,13 +630,14 @@ class OrderRowState extends State<OrderRow>
     } catch (e, s) {
       logger("Error during file upload: $e", s);
     }
-    setState(() => inProgress = false);
+    if (mounted) setState(() => inProgress = false);
   }
 
   void uploadFromCamera() async {
     final XFile? res =
         await ImagePicker().pickImage(source: ImageSource.camera);
     if (res == null) return;
+    if (!mounted) return;
     setState(() => inProgress = true);
     try {
       final imgName = await handleNewImage(
@@ -649,7 +651,7 @@ class OrderRowState extends State<OrderRow>
     } catch (e, s) {
       logger("Error during camera upload: $e", s);
     }
-    setState(() => inProgress = false);
+    if (mounted) setState(() => inProgress = false);
   }
 
   Widget _buildMoreButton() {

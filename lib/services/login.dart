@@ -28,7 +28,9 @@ class _LoginService extends ObservablePersistingObject {
   String pushNotificationsToken = "";
 
   String get currentAccountID {
-    if (launch.isDemo) return accounts.list().first.id;
+    if (launch.isDemo) {
+      return accounts.list().isEmpty ? "" : accounts.list().first.id;
+    }
     final findByEmail =
         accounts.list().where((x) => x.getStringValue("email") == email);
     if ((token.isEmpty || pb == null || pb!.authStore.record == null) &&
@@ -46,18 +48,20 @@ class _LoginService extends ObservablePersistingObject {
 
   String get currentName {
     if (accounts.list().isEmpty) return "";
-    return accounts.name(
-        accounts.list().firstWhere((x) => x.id == login.currentAccountID));
+    final account = accounts.list().where((x) => x.id == currentAccountID);
+    if (account.isEmpty) return "";
+    return accounts.name(account.first);
   }
 
   List<int> get _permissions {
     if (launch.isDemo) return fullPermissions;
     if (isAdmin) return fullPermissions;
     if (network.isOnline()) {
-      final currentAccount =
-          accounts.list().firstWhere((r) => r.id == currentAccountID);
-      return accounts
-          .parsePermissions(currentAccount.getStringValue("permissions"));
+      final currentAccountCandidates =
+          accounts.list().where((r) => r.id == currentAccountID);
+      if (currentAccountCandidates.isEmpty) return savedPermissions;
+      return accounts.parsePermissions(
+          currentAccountCandidates.first.getStringValue("permissions"));
     } else {
       return savedPermissions;
     }

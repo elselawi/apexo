@@ -9,7 +9,8 @@ import 'package:apexo/services/login.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 class _Accounts extends ObservablePersistingObject {
-  final list = ObservableState(List<RecordModel>.from(launch.isDemo ? demoAccounts(10) : []));
+  final list = ObservableState(
+      List<RecordModel>.from(launch.isDemo ? demoAccounts(10) : []));
   final loaded = ObservableState(false);
   final loading = ObservableState(false);
   final creating = ObservableState(false);
@@ -135,7 +136,7 @@ class _Accounts extends ObservablePersistingObject {
 
   List<int> parsePermissions(String str) {
     if (str.isEmpty) str = "[0,0,0,0,0,0,0,0]";
-    return List<int>.from(jsonDecode(str))..addAll([0,0,0,0]);
+    return List<int>.from(jsonDecode(str))..addAll([0, 0, 0, 0]);
   }
 
   String name(RecordModel account) {
@@ -148,14 +149,19 @@ class _Accounts extends ObservablePersistingObject {
   }
 
   String nameOrEmailFromID(String id) {
-    if(list().isEmpty) return "";
-    final filtered = list().where((x)=>x.id == id);
-    if(filtered.isEmpty) return name(list().where((x)=>x.getStringValue("type") == "admin").first);
+    if (list().isEmpty) return "";
+    final filtered = list().where((x) => x.id == id);
+    if (filtered.isEmpty) {
+      return name(list()
+              .where((x) => x.getStringValue("type") == "admin")
+              .firstOrNull ??
+          list().first);
+    }
     return name(filtered.first);
   }
 
   List<RecordModel> get operators {
-    return list().where((e)=>e.getIntValue("operate") == 1).toList();
+    return list().where((e) => e.getIntValue("operate") == 1).toList();
   }
 
   _Accounts() : super("accounts");

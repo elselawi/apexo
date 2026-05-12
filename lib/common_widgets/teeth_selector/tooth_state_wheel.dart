@@ -119,6 +119,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                               controller: _otherController,
                               autofocus: true,
                               style: theme.typography.bodyStrong!,
+                              maxLines: null,
+                              expands: true,
                             )
                           : _selectedLabel != null
                               ? Txt(

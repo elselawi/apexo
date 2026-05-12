@@ -151,7 +151,7 @@ class _LoginService extends ObservablePersistingObject {
     loginCtrl.loadingIndicator("Connecting to the server");
     loginCtrl.loginError("");
 
-    if (url.isNotEmpty) {
+    if (inputURL.isNotEmpty) {
       url = inputURL;
     }
 
@@ -162,7 +162,6 @@ class _LoginService extends ObservablePersistingObject {
           token =
               await _authenticateWithPassword(credentials[0], credentials[1]);
           email = credentials[0];
-          url = inputURL;
         }
         // token authentication
         if (credentials.length == 1) {

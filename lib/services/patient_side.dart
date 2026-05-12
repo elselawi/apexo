@@ -2,6 +2,7 @@ import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
+import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/utils/href/href_service.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:apexo/utils/logger.dart';
@@ -145,6 +146,10 @@ class PatientSide extends ObservablePersistingObject {
     }
 
     loginCtrl.loginError("");
+
+    // Initialize deferred push storage early so stores can safely
+    // defer push notifications throughout the rest of activate().
+    deferredPush.init(server);
 
     // getting currency
     final settingsRes = await http.get(Uri.parse(

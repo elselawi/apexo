@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:apexo/core/save_local.dart';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/model_push_data.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/safe_dir.dart';
@@ -26,6 +27,7 @@ class _DeferredPush {
 
   // Put notifications into the box
   Future<void> putBulk(List<PushData> toPush) async {
+    if (!_initialized) init(login.url);
     try {
       final box = await hiveBox;
       await box.putAll(
@@ -38,6 +40,7 @@ class _DeferredPush {
 
   // Get a value from the main box
   Future<PushData?> getByID(String key) async {
+    if (!_initialized) init(login.url);
     try {
       final box = await hiveBox;
       final boxRes = box.get(key);
@@ -52,6 +55,7 @@ class _DeferredPush {
   }
 
   Future<void> clearByStore(String store) async {
+    if (!_initialized) init(login.url);
     try {
       final box = await hiveBox;
       final List<String> keysToDelete = [];

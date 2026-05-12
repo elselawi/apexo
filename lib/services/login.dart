@@ -9,6 +9,7 @@ import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/encode.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
+import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
@@ -254,6 +255,10 @@ class _LoginService extends ObservablePersistingObject {
 
       loginCtrl.proceededOffline(false);
     }
+
+    // Initialize deferred push storage unconditionally (online OR offline)
+    // so stores can safely defer push notifications before identifyDevice() runs.
+    deferredPush.init(inputURL);
 
     for (var callback in activators.values) {
       try {

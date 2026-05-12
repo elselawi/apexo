@@ -151,20 +151,26 @@ class PatientSide extends ObservablePersistingObject {
         "$server/api/collections/data/records?page=1&perPage=500&skipTotal=1"));
 
     final settingsJson = jsonDecode(settingsRes.body);
-    currency = (settingsJson["items"] as List<dynamic>).firstWhere(
-            (item) => (item["id"] as String).startsWith("currency"))["data"]
-        ["value"];
+    currency = (settingsJson["items"] as List<dynamic>)
+            .where((item) => (item["id"] as String).startsWith("currency"))
+            .firstOrNull?["data"]?["value"] ??
+        "";
 
-    phone = (settingsJson["items"] as List<dynamic>).firstWhere(
-        (item) => (item["id"] as String).startsWith("phone"))["data"]["value"];
+    phone = (settingsJson["items"] as List<dynamic>)
+            .where((item) => (item["id"] as String).startsWith("phone"))
+            .firstOrNull?["data"]?["value"] ??
+        "";
 
-    countryCode = (settingsJson["items"] as List<dynamic>).firstWhere(
-            (item) => (item["id"] as String).startsWith("country"))["data"]
-        ["value"];
+    countryCode = (settingsJson["items"] as List<dynamic>)
+            .where((item) => (item["id"] as String).startsWith("country"))
+            .firstOrNull?["data"]?["value"] ??
+        "";
 
-    clinicNameAndAddress = (settingsJson["items"] as List<dynamic>).firstWhere(
-            (item) => (item["id"] as String).startsWith("prescripti"))["data"]
-        ["value"];
+    clinicNameAndAddress = (settingsJson["items"] as List<dynamic>)
+            .where((item) =>
+                (item["id"] as String).startsWith("prescription_header"))
+            .firstOrNull?["data"]?["value"] ??
+        "";
 
     // getting appointments
     final appointmentsRes = await http.get(Uri.parse(

@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
+import 'package:apexo/app/routes.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/folder_widget.dart';
@@ -46,6 +47,25 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
   String justCreatedId = "";
+
+  @override
+  void initState() {
+    super.initState();
+    routes.onBackInterceptor = () {
+      if (selectedSupplierId != null) {
+        setState(() => selectedSupplierId = null);
+        return false; // consumed — don't pop the route
+      }
+      return true; // nothing to close, proceed normally
+    };
+  }
+
+  @override
+  void dispose() {
+    routes.onBackInterceptor = null;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);

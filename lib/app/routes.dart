@@ -102,6 +102,11 @@ class Route {
 
 class _Routes {
   final ObservableState<List<Panel>> panels = ObservableState([]);
+
+  /// Optional interceptor registered by a screen to handle the back action
+  /// internally. Return [true] to let [goBack] proceed normally, or [false]
+  /// if the interceptor fully handled the back action.
+  bool Function()? onBackInterceptor;
   final minimizePanels = ObservableState(false);
 
   void openPanel(Panel panel) {
@@ -271,6 +276,10 @@ class _Routes {
   }
 
   void goBack() {
+    if (onBackInterceptor != null) {
+      final shouldProceed = onBackInterceptor!();
+      if (!shouldProceed) return;
+    }
     if (history.isNotEmpty) {
       currentRouteIndex(history.removeLast());
       currentRoute.onSelect();

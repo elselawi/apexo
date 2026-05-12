@@ -119,7 +119,7 @@ class DashboardScreen extends StatelessWidget {
                             onPressed: () => openPatient(e),
                             title: ItemTitle(item: e),
                             subtitle: Txt(
-                                "${DateTime.now().difference(e.doneAppointments.last.date).inDays} ${txt("daysAgo")}"),
+                                "${DateTime.now().difference(e.doneAppointments.lastOrNull?.date ?? e.allAppointments.last.date).inDays} ${txt("daysAgo")}"),
                           ))
                       .toList(),
                 ),

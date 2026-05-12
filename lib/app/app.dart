@@ -189,7 +189,7 @@ class ApexoApp extends StatelessWidget {
             actions: const NetworkActions(key: WK.globalActions),
           ),
           onDisplayModeChanged: (mode) {
-            if (mode == PaneDisplayMode.minimal) {
+            if (mode == PaneDisplayMode.minimal && constraints.maxWidth < 710) {
               routes.showBottomNav(true);
             } else {
               routes.showBottomNav(false);
@@ -221,8 +221,10 @@ class ApexoApp extends StatelessWidget {
                               body: route.accessible
                                   ? Padding(
                                       padding: EdgeInsets.only(
-                                          bottom:
-                                              routes.showBottomNav() ? 60 : 0),
+                                          bottom: (routes.showBottomNav() &&
+                                                  constraints.maxWidth < 710)
+                                              ? 60
+                                              : 0),
                                       child: (route.screen)(),
                                     )
                                   : const SizedBox(),

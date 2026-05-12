@@ -88,26 +88,30 @@ class FCMManager {
                     });
 
 
-                    const supported = "Notification" in window;
-                    const legacySafari = !supported && "safari" in window && "pushNotification" in window.safari;
+                    try {
+                        const supported = "Notification" in window && typeof window.Notification !== "undefined";
+                        const legacySafari = !supported && "safari" in window && "pushNotification" in window.safari;
 
-                    if (supported) {
-                        if (Notification.permission !== "granted") {
-                            this.showPrompt();
+                        if (supported) {
+                            if (window.Notification.permission !== "granted") {
+                                this.showPrompt();
+                            } else {
+                                this.setup();
+                            }
+                        } else if (legacySafari) {
+                            // Legacy Safari Push API support could be added here if needed
+                            console.log("Legacy Safari Push Notification API detected");
+                            // For now, we just avoid the crash
                         } else {
-                            this.setup();
+                            console.warn("Notifications are not supported in this browser environment.");
+                            // On iOS, explain PWA requirement
+                            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                            if (isIOS && !window.navigator.standalone) {
+                                console.info("On iOS, Web Push requires the app to be 'Added to Home Screen'.");
+                            }
                         }
-                    } else if (legacySafari) {
-                        // Legacy Safari Push API support could be added here if needed
-                        console.log("Legacy Safari Push Notification API detected");
-                        // For now, we just avoid the crash
-                    } else {
-                        console.warn("Notifications are not supported in this browser environment.");
-                        // On iOS, explain PWA requirement
-                        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-                        if (isIOS && !window.navigator.standalone) {
-                            console.info("On iOS, Web Push requires the app to be 'Added to Home Screen'.");
-                        }
+                    } catch (notifErr) {
+                        console.warn("Notification API unavailable or restricted in this environment:", notifErr.message);
                     }
                 }
             }
@@ -182,7 +186,7 @@ class FCMManager {
             return;
         }
 
-        const permission = await Notification.requestPermission();
+        const permission = await window.Notification.requestPermission();
         if (permission === 'granted') {
             await this.setup();
         } else {

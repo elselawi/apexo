@@ -76,7 +76,7 @@ Future<Patient> openPatient([Patient? patient]) {
       if (login.permissions[PInt.appointments] > 0)
         PanelTab(
           title: txt("appointments"),
-          icon: FluentIcons.calendar,
+          icon: WindowsIcons.calendar,
           body: _PatientAppointments(editingCopy),
           footer: AppointmentsListFooter(forPatientID: editingCopy.id),
           onlyIfSaved: true,

@@ -19,11 +19,11 @@ class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
 
   final List<IconData> _icons = const [
-    FluentIcons.calendar_day,
-    FluentIcons.calendar_week,
-    FluentIcons.calendar,
-    FluentIcons.calendar_agenda,
-    FluentIcons.calendar_year,
+    WindowsIcons.calendar_day,
+    WindowsIcons.calendar_week,
+    WindowsIcons.calendar,
+    WindowsIcons.calendar,
+    WindowsIcons.calendar,
   ];
 
   @override
@@ -158,7 +158,7 @@ class StatsScreen extends StatelessWidget {
                         ),
                         constraints.maxWidth,
                         context,
-                        FluentIcons.calendar_day,
+                        WindowsIcons.calendar_day,
                       );
                     }
                     if (index == 6) {
@@ -171,7 +171,7 @@ class StatsScreen extends StatelessWidget {
                                 31, (index) => (index + 1).toString())),
                         constraints.maxWidth,
                         context,
-                        FluentIcons.calendar_day,
+                        WindowsIcons.calendar_day,
                       );
                     }
                     if (index == 7) {
@@ -197,7 +197,7 @@ class StatsScreen extends StatelessWidget {
                         ),
                         constraints.maxWidth,
                         context,
-                        FluentIcons.calendar_year,
+                        WindowsIcons.calendar,
                       );
                     }
                     if (index == 8) {

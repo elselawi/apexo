@@ -167,7 +167,7 @@ class _Routes {
             title: txt("appointments"),
             identifier: "calendar",
             navbarTitle: txt("calendar"),
-            icon: FluentIcons.calendar,
+            icon: WindowsIcons.calendar,
             screen: CalendarScreen.new,
             accessible:
                 login.permissions[PInt.appointments] > 0 || login.isAdmin,

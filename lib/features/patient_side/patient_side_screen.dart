@@ -66,7 +66,7 @@ class _PatientSideScreenState extends State<PatientSideScreen> {
             children: [
               _TabChip(
                 label: txt("appointments"),
-                icon: FluentIcons.calendar,
+                icon: WindowsIcons.calendar,
                 selected: _selectedTab == 0,
                 onTap: () => setState(() => _selectedTab = 0),
               ),
@@ -543,7 +543,7 @@ class _AppointmentTimeline extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              FluentIcons.calendar_agenda,
+              WindowsIcons.calendar,
               size: 48,
               color: theme.resources.textFillColorTertiary,
             ),
@@ -705,7 +705,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                         child: Row(
                           children: [
                             Icon(
-                              FluentIcons.calendar,
+                              WindowsIcons.calendar,
                               size: 14,
                               color: theme.resources.textFillColorSecondary,
                             ),

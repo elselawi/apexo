@@ -76,7 +76,7 @@ class DashboardScreen extends StatelessWidget {
                 _buildDashboardList(
                   context: context,
                   height: height,
-                  icon: FluentIcons.calendar,
+                  icon: WindowsIcons.calendar,
                   onPressed: () => routes.navigate("calendar"),
                   title: txt("newPatientsToday"),
                   items: dashboardCtrl.newPatientsToday.map((e) {

@@ -35,7 +35,7 @@ void openAppointment([Appointment? appointment]) {
   final panel = Panel(
     item: editingCopy,
     store: appointments,
-    icon: FluentIcons.calendar,
+    icon: WindowsIcons.calendar,
     title: appointments.get(editingCopy.id) == null
         ? txt("addAppointment")
         : editingCopy.title,
@@ -44,7 +44,7 @@ void openAppointment([Appointment? appointment]) {
   final tabs = [
     PanelTab(
       title: txt("appointment"),
-      icon: FluentIcons.calendar,
+      icon: WindowsIcons.calendar,
       body: _AppointmentDetails(editingCopy),
     ),
     if (login.permissions[PInt.postOp] == 2 ||
@@ -356,7 +356,7 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                   );
                 },
                 buttonText: txt("changeDate"),
-                buttonIcon: FluentIcons.calendar,
+                buttonIcon: WindowsIcons.calendar,
                 format: "d MMMM yyyy",
               ),
             ),

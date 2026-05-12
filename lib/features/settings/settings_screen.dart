@@ -121,7 +121,7 @@ class SettingsScreen extends StatelessWidget {
               title: txt("dateFormat"),
               identifier: "dateFormat",
               description: txt("dateFormat_desc"),
-              icon: FluentIcons.calendar_settings,
+              icon: WindowsIcons.date_time,
               inputType: InputType.dropDown,
               scope: Scope.device,
               options: [

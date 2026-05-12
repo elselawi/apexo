@@ -309,10 +309,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
           border: BorderDirectional(
               bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
           gradient: LinearGradient(colors: [
-            colorsWithoutYellow[selectedDate.weekday - 1]
-                .darkest
-                .withValues(alpha: 0.08),
-            colorsWithoutYellow[selectedDate.weekday - 1].withValues(alpha: 0),
+            colorsWithoutYellow[selectedDate.weekday - 1].darkest.withAlpha(20),
+            colorsWithoutYellow[selectedDate.weekday - 1].withAlpha(0),
           ])),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       height: 45,
@@ -423,15 +421,15 @@ class DayCell extends StatelessWidget {
         gradient: LinearGradient(
           colors: type == DayCellType.normal
               ? [
-                  Colors.grey.withValues(alpha: 0.02),
-                  Colors.grey.withValues(alpha: 0.05),
+                  Colors.grey.withAlpha((10).toInt()),
+                  Colors.grey.withAlpha((20).toInt()),
                 ]
               : type == DayCellType.today
                   ? [
                       colorsWithoutYellow[day.weekday - 1]
-                          .withValues(alpha: 0.1),
+                          .withAlpha((20).toInt()),
                       colorsWithoutYellow[day.weekday - 1]
-                          .withValues(alpha: 0.2),
+                          .withAlpha((100).toInt()),
                     ]
                   : [
                       colorsWithoutYellow[day.weekday - 1],

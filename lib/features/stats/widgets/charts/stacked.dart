@@ -37,11 +37,15 @@ class StyledStackedChart extends StatelessWidget {
             getTooltipItem: (group, groupIndex, rod, rodIndex) {
               return BarTooltipItem(
                 '${labels[groupIndex]} : ${datasetLabels[rodIndex]} \n',
-                const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.bold),
                 children: <TextSpan>[
                   TextSpan(
                     text: rod.toY.round().toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w100),
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w100),
                   ),
                 ],
               );
@@ -66,11 +70,14 @@ class StyledStackedChart extends StatelessWidget {
             return BarChartRodData(
               width: barWidth(labels),
               fromY: valueIndex == 0 ? 0 : set[valueIndex - 1],
-              toY: valueIndex == 0 ? set[valueIndex] : set[valueIndex] + set[valueIndex - 1],
+              toY: valueIndex == 0
+                  ? set[valueIndex]
+                  : set[valueIndex] + set[valueIndex - 1],
               gradient: LinearGradient(colors: [
-                Colors.white.withValues(alpha: 0.4),
-                getDeterministicItem(Colors.accentColors, datasetLabels[valueIndex] + setIndex.toString())
-                    .withValues(alpha: 0.9),
+                Colors.white.withValues(alpha: 150),
+                getDeterministicItem(Colors.accentColors,
+                        datasetLabels[valueIndex] + setIndex.toString())
+                    .withValues(alpha: 230),
               ], begin: Alignment.bottomCenter, end: Alignment.topCenter),
               borderRadius: BorderRadius.circular(7),
               backDrawRodData: BackgroundBarChartRodData(

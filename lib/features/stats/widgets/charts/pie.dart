@@ -16,8 +16,10 @@ class _StyledPieState extends State<StyledPie> {
   @override
   Widget build(BuildContext context) {
     if (widget.data.isEmpty) return const Center(child: Txt('No data'));
-    if (widget.data.values.length < 2) return const Center(child: Txt('No data'));
-    if (widget.data.values.reduce((x, y) => x + y) == 0) return const Center(child: Txt('No data'));
+    if (widget.data.values.length < 2)
+      return const Center(child: Txt('No data'));
+    if (widget.data.values.reduce((x, y) => x + y) == 0)
+      return const Center(child: Txt('No data'));
 
     return PieChart(
       PieChartData(
@@ -30,7 +32,8 @@ class _StyledPieState extends State<StyledPie> {
                   touchedIndex = -1;
                   return;
                 }
-                touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                touchedIndex =
+                    pieTouchResponse.touchedSection!.touchedSectionIndex;
               });
             },
           ),
@@ -44,7 +47,8 @@ class _StyledPieState extends State<StyledPie> {
             widget.data.length,
             (i) {
               final total = widget.data.values.reduce((a, b) => a + b);
-              final color = Colors.accentColors.reversed.toList()[i % Colors.accentColors.length];
+              final color = Colors.accentColors.reversed
+                  .toList()[i % Colors.accentColors.length];
               return PieChartSectionData(
                 value: widget.data.values.elementAt(i),
                 radius: touchedIndex == i ? 150 : 130,
@@ -52,13 +56,16 @@ class _StyledPieState extends State<StyledPie> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    color.lightest.withValues(alpha: 0.7),
+                    color.lightest.withAlpha(70),
                     color,
                   ],
                 ),
                 title: widget.data.keys.elementAt(i),
-                badgeWidget: Txt("${((widget.data.values.elementAt(i) / total) * 100).toStringAsFixed(2)}%",
-                    style: TextStyle(color: Colors.white, backgroundColor: color.withValues(alpha: 0.2))),
+                badgeWidget: Txt(
+                    "${((widget.data.values.elementAt(i) / total) * 100).toStringAsFixed(2)}%",
+                    style: TextStyle(
+                        color: Colors.white,
+                        backgroundColor: color.withValues(alpha: 0.2))),
                 badgePositionPercentageOffset: 0.8,
                 titlePositionPercentageOffset: 0.4,
                 titleStyle: TextStyle(

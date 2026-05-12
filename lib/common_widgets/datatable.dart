@@ -729,15 +729,8 @@ class _DataTableSearchFieldState extends State<DataTableSearchField> {
           onChanged: widget.onChanged,
           controller: _controller,
           decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              gradient: LinearGradient(
-                end: AlignmentDirectional.topStart,
-                begin: AlignmentDirectional.bottomEnd,
-                colors: [
-                  Colors.white.withValues(alpha: 0.1),
-                  Colors.white.withValues(alpha: 0.05),
-                ],
-              ))),
+            borderRadius: BorderRadius.circular(5),
+          )),
     );
   }
 }

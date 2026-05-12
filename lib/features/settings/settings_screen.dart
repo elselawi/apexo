@@ -359,11 +359,11 @@ class SettingsItemState extends State<SettingsItem> {
           end: Alignment.bottomCenter,
           colors: [
             widget.scope == Scope.app
-                ? Colors.blue.withValues(alpha: 0.05)
-                : Colors.teal.withValues(alpha: 0.05),
+                ? Colors.blue.withAlpha(20)
+                : Colors.teal.withAlpha(20),
             widget.scope == Scope.app
-                ? Colors.blue.withValues(alpha: 0.14)
-                : Colors.teal.withValues(alpha: 0.14),
+                ? Colors.blue.withAlpha(60)
+                : Colors.teal.withAlpha(60),
           ],
         ),
       ),

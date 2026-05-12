@@ -33,8 +33,10 @@ class StyledLineChart extends StatelessWidget {
         maxY: max + 0.05 * max,
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (touchedSpot) => Colors.white.withValues(alpha: 0.5),
-            tooltipBorder: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+            getTooltipColor: (touchedSpot) =>
+                Colors.white.withValues(alpha: 0.5),
+            tooltipBorder:
+                BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
             fitInsideHorizontally: true,
             fitInsideVertically: true,
             getTooltipItems: (touchedSpots) {
@@ -44,7 +46,9 @@ class StyledLineChart extends StatelessWidget {
                   '${datasetLabels[datasetIndex]}: ${spot.y.toStringAsFixed(2)}\n${labels[spot.x.toInt()]}',
                   TextStyle(
                       color: getDeterministicItem(
-                          colorsWithoutYellow, datasetIndex.toString() + datasetLabels[datasetIndex]),
+                          colorsWithoutYellow,
+                          datasetIndex.toString() +
+                              datasetLabels[datasetIndex]),
                       fontSize: 12),
                 );
               }).toList();
@@ -57,14 +61,15 @@ class StyledLineChart extends StatelessWidget {
         lineBarsData: List.generate(
           datasets.length,
           (datasetIndex) {
-            final color =
-                getDeterministicItem(colorsWithoutYellow, datasetIndex.toString() + datasetLabels[datasetIndex]);
+            final color = getDeterministicItem(colorsWithoutYellow,
+                datasetIndex.toString() + datasetLabels[datasetIndex]);
             final colorA = color.lightest;
             final colorB = color.darkest;
             return LineChartBarData(
               spots: List.generate(
                 labels.length,
-                (index) => FlSpot(index.toDouble(), datasets[datasetIndex][index]),
+                (index) =>
+                    FlSpot(index.toDouble(), datasets[datasetIndex][index]),
               ),
               isCurved: true,
               color: colorA,
@@ -78,7 +83,7 @@ class StyledLineChart extends StatelessWidget {
                 gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [colorA, Colors.white.withValues(alpha: 0.1)]),
+                    colors: [colorA, Colors.white.withAlpha(20)]),
               ),
             );
           },

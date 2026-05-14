@@ -48,6 +48,7 @@ class _Accounts extends ObservablePersistingObject {
         "operate": operates
       });
     } catch (e) {
+      login.askForLoginAgain(e);
       errorMessage((e as ClientException).response.toString());
     }
 
@@ -70,6 +71,7 @@ class _Accounts extends ObservablePersistingObject {
           .getFirstListItem('account_id = "$userID"');
       return record.id;
     } catch (e) {
+      login.askForLoginAgain(e);
       return "";
     }
   }
@@ -110,6 +112,7 @@ class _Accounts extends ObservablePersistingObject {
             .update(profileId, body: profileBody);
       }
     } catch (e) {
+      login.askForLoginAgain(e);
       errorMessage((e as ClientException).response.toString());
     }
     updating(updating()..remove(id));

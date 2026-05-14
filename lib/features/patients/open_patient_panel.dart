@@ -123,6 +123,7 @@ class _PatientQrPageState extends State<_PatientQrPage> {
                 try {
                   p.link = await p.generatePatientLink();
                 } catch (e, stacktrace) {
+                  login.askForLoginAgain(e);
                   logger("error while generating patient link $e", stacktrace);
                 }
                 patients.set(p);

@@ -4,6 +4,7 @@ import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -99,6 +100,7 @@ class ImportDialog extends StatelessWidget {
                       panel.selectedTab(panel.selectedTab());
                     }
                   } catch (e, s) {
+                    login.askForLoginAgain(e);
                     logger("Error during images importing: $e", s);
                   }
                   panel.inProgress(false);

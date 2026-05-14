@@ -1,10 +1,12 @@
 import 'dart:convert';
 
+import 'package:apexo/app/app.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/accounts/accounts_screen.dart';
 import 'package:apexo/services/launch.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/encode.dart';
@@ -13,6 +15,7 @@ import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -27,6 +30,7 @@ class _LoginService extends ObservablePersistingObject {
   String token = "";
   String adminCollectionId = "__UNDEFINED__";
   String pushNotificationsToken = "";
+  bool didAskForLoginAgain = false;
 
   String get currentAccountID {
     if (launch.isDemo) {
@@ -93,11 +97,47 @@ class _LoginService extends ObservablePersistingObject {
     return pb!.authStore.record!.collectionName == "_superusers";
   }
 
-  void logout() {
+  void askForLoginAgain(Object e) {
+    if (network.isOnline() == false) return;
+    if (didAskForLoginAgain) return;
+    if (launch.isDemo) return;
+    if (launch.open() == Open.login) return;
+    final strErr = e.toString();
+    final authError = strErr.contains("400") ||
+        strErr.contains("401") ||
+        strErr.contains("402") ||
+        strErr.contains("403");
+    if (e is ClientException && authError) {
+      didAskForLoginAgain = true;
+      showDialog(
+        context: bContext,
+        barrierDismissible: false,
+        builder: (context) {
+          return ContentDialog(
+            title: Txt(txt("loginRequired")),
+            content: Txt(txt("loginRequiredDesc")),
+            actions: [
+              Button(
+                child: Txt(txt("login")),
+                onPressed: () {
+                  Navigator.pop(context);
+                  logout(false);
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void logout([bool cleanCredentials = true]) {
     launch.open(Open.login);
-    url = "";
-    email = "";
-    password = "";
+    if (cleanCredentials) {
+      url = "";
+      email = "";
+      password = "";
+    }
     token = "";
     if (pb != null) {
       pb!.authStore.clear();
@@ -127,7 +167,7 @@ class _LoginService extends ObservablePersistingObject {
     }
   }
 
-  Future<String> _authenticateWithToken(String token) async {
+  Future<String> authenticateWithToken(String token) async {
     try {
       final auth = await pb!.collection("_superusers").authRefresh();
       adminCollectionId = auth.record.collectionId;
@@ -169,7 +209,7 @@ class _LoginService extends ObservablePersistingObject {
           if (pb!.authStore.isValid == false) {
             throw Exception("Invalid token");
           }
-          token = await _authenticateWithToken(token);
+          token = await authenticateWithToken(token);
           url = inputURL;
         }
 
@@ -234,6 +274,8 @@ class _LoginService extends ObservablePersistingObject {
           logger("Could not initialize notifications: $e", s, 2);
         }
       } catch (e, s) {
+        askForLoginAgain(e);
+
         if (e.runtimeType != ClientException) {
           loginCtrl.loginError("Error while logging-in: $e.");
         } else if ((e as ClientException).statusCode == 404) {
@@ -269,6 +311,7 @@ class _LoginService extends ObservablePersistingObject {
       }
     }
 
+    didAskForLoginAgain = false;
     launch.open(Open.staff);
     return loginCtrl.finishedLoginProcess();
   }

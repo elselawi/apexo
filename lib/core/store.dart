@@ -196,6 +196,7 @@ class Store<G extends Model> {
         }
         return;
       } catch (e, s) {
+        login.askForLoginAgain(e);
         logger("Error during sending (Will defer updates): $e", s);
       }
     }
@@ -244,6 +245,20 @@ class Store<G extends Model> {
       // fetch updates since our local version
       VersionedResult remoteUpdates =
           await remote!.getSince(version: localVersion);
+
+      if (remoteVersion == 0 &&
+          localVersion > 0 &&
+          remoteUpdates.rows.isEmpty) {
+        // since the above condition usually happens when the token is expired,
+        // we try to refresh the token
+        // if this fails the authentication will throw an exception and the user will be asked to login again
+        try {
+          await login.authenticateWithToken(login.token);
+        } catch (e) {
+          login.askForLoginAgain(e);
+          return SyncResult(exception: "Failed to refresh token: $e");
+        }
+      }
 
       List<int> remoteLosersIndices = [];
 
@@ -430,6 +445,7 @@ class Store<G extends Model> {
           conflicts: conflicts,
           exception: null);
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error during synchronization: $e", s);
       return SyncResult(exception: e.toString());
     }
@@ -455,6 +471,7 @@ class Store<G extends Model> {
           _syncJob = null;
         }
       } catch (e, s) {
+        login.askForLoginAgain(e);
         logger("Error during synchronization: $e", s);
       }
       _jobRunning = false;
@@ -519,6 +536,7 @@ class Store<G extends Model> {
       }).then((cancellation) {
         realtimeSub = cancellation;
       }).catchError((e, s) {
+        login.askForLoginAgain(e);
         logger("Error during realtime subscription: $e", s);
       });
     }
@@ -542,6 +560,7 @@ class Store<G extends Model> {
       if (deferredPresent) return false;
       return await local!.getVersion() == await remote!.getVersion();
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error during inSync check: $e", s);
       return false;
     }
@@ -620,6 +639,7 @@ class Store<G extends Model> {
         synchronize();
         return;
       } catch (e, s) {
+        login.askForLoginAgain(e);
         logger("Error during sending the file (Will defer upload): $e", s);
       }
     }
@@ -683,6 +703,7 @@ class Store<G extends Model> {
         synchronize();
         return;
       } catch (e, s) {
+        login.askForLoginAgain(e);
         logger("Error during sending the file (Will defer upload): $e", s);
       }
     }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
@@ -67,6 +68,7 @@ class ObservableBase<S> {
     try {
       fn();
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error during silent modification: $e", s);
     }
     _silent--;

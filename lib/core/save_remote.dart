@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:http/http.dart' as http;
@@ -222,6 +223,7 @@ class SaveRemote {
             (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
       } catch (e, s) {
         alreadyUploaded = [];
+        login.askForLoginAgain(e);
         logger(
             "Error while trying to get a list of already uploaded images: $e",
             s);

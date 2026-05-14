@@ -111,6 +111,7 @@ class _UploadButtons extends StatelessWidget {
                     panel.savedJson = jsonEncode(panel.item.toJson());
                   }
                 } catch (e, s) {
+                  login.askForLoginAgain(e);
                   logger("Error during uploading camera capture: $e", s);
                 }
                 panel.selectedTab(panel.selectedTab());
@@ -140,6 +141,7 @@ class _UploadButtons extends StatelessWidget {
                   }
                 }
               } catch (e, s) {
+                login.askForLoginAgain(e);
                 logger("Error during file upload: $e", s);
               }
               panel.inProgress(false);
@@ -222,6 +224,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                           widget.panel.savedJson =
                               jsonEncode(widget.panel.item.toJson());
                         } catch (e, s) {
+                          login.askForLoginAgain(e);
                           logger("Error during deleting image: $e", s);
                         }
                         widget.panel.inProgress(false);

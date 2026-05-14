@@ -127,6 +127,7 @@ class _Accounts extends ObservablePersistingObject {
       list(
           await login.pb!.collection(profilesViewCollectionName).getFullList());
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error when getting full list of accounts service: $e", s);
     }
     loaded(true);

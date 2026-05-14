@@ -75,7 +75,8 @@ class _Backups {
       "file",
       file.readStream!,
       file.size,
-      filename: "uploaded-${DateTime.now().millisecondsSinceEpoch}-${file.name}",
+      filename:
+          "uploaded-${DateTime.now().millisecondsSinceEpoch}-${file.name}",
       contentType: MediaType("application", "zip"),
     );
     uploading(true);
@@ -85,14 +86,20 @@ class _Backups {
   }
 
   Future<void> reloadFromRemote() async {
-    if (login.isAdmin == false || login.pb == null || login.token.isEmpty || login.pb!.authStore.isValid == false) {
+    if (login.isAdmin == false ||
+        login.pb == null ||
+        login.token.isEmpty ||
+        login.pb!.authStore.isValid == false) {
       return;
     }
     loading(true);
     try {
-      list((await login.pb!.backups.getFullList()).map((e) => BackupFile(e)).toList()
+      list((await login.pb!.backups.getFullList())
+          .map((e) => BackupFile(e))
+          .toList()
         ..sort((a, b) => b.date.compareTo(a.date)));
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error when getting full list of backups service: $e", s);
     }
     loaded(true);

@@ -177,6 +177,7 @@ class AppointmentCard extends StatelessWidget {
                                     appointments
                                         .set(appointment..imgs.remove(img));
                                   } catch (e, s) {
+                                    login.askForLoginAgain(e);
                                     logger(
                                         "Error during deleting image: $e", s);
                                   }

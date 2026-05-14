@@ -628,6 +628,7 @@ class OrderRowState extends State<OrderRow>
         }
       }
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error during file upload: $e", s);
     }
     if (mounted) setState(() => inProgress = false);
@@ -649,6 +650,7 @@ class OrderRowState extends State<OrderRow>
         expenses.set(widget.order..photos.add(imgName));
       }
     } catch (e, s) {
+      login.askForLoginAgain(e);
       logger("Error during camera upload: $e", s);
     }
     if (mounted) setState(() => inProgress = false);

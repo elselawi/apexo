@@ -531,5 +531,9 @@ class En {
     "newVersionDialogTitle": "New version available",
     "newVersionDialogContent":
         "A new version of Apexo is available. Please update to the latest version to get the best experience. Scan the QR code below to get started.",
+
+    // login required
+    "loginRequired": "Login required",
+    "loginRequiredDesc": "Please login to continue",
   };
 }

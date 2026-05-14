@@ -95,6 +95,8 @@ class ApexoApp extends StatelessWidget {
         !launch.dialogShown() &&
         bContext.mounted) {
       launch.dialogShown(true);
+
+      // TODO: this needs to be updated for macos users since all other users will be using the store apps
       showDialog(
         context: bContext,
         builder: (context) => NewVersionDialog(

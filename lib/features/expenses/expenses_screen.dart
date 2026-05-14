@@ -242,11 +242,15 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
     });
     expenses.set(expense);
     justCreatedId = expense.id;
-    await _scrollController.animateTo(
-      _scrollController.position.minScrollExtent,
-      duration: const Duration(milliseconds: 600),
-      curve: Curves.easeOut,
-    );
+    
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (_scrollController.hasClients) {
+      await _scrollController.animateTo(
+        _scrollController.position.minScrollExtent,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   Widget _buildCommandBar() {
@@ -689,7 +693,7 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
     showDialog(
       context: context,
       builder: (context) => DialogWithTextBox(
-        title: "Add Supplier",
+        title: txt("addSupplier"),
         onSave: (name) {
           expenses.set(Expense.fromJson({
             "isSupplier": true,

@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:apexo/app/app.dart';
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/accounts/accounts_screen.dart';
@@ -114,11 +116,15 @@ class _LoginService extends ObservablePersistingObject {
         barrierDismissible: false,
         builder: (context) {
           return ContentDialog(
+            style: dialogStyling(context, false),
             title: Txt(txt("loginRequired")),
-            content: Txt(txt("loginRequiredDesc")),
+            content: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 16.0),
+              child: Txt(txt("loginRequiredDesc")),
+            ),
             actions: [
               Button(
-                child: Txt(txt("login")),
+                child: ButtonContent(FluentIcons.signin, txt("login")),
                 onPressed: () {
                   Navigator.pop(context);
                   logout(false);

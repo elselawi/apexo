@@ -41,19 +41,42 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 - [How to run ___integration testing___](https://github.com/elselawi/apexo/blob/master/integration_test/readme.md).
 
 
-## Building
+## Building & Distribution
 
-To build the application the common flutter commands should be used:
+- For the web:
+   - Build with the command: `flutter build web --release`
+   - deploy to wrangler: `wrangler pages deploy build/web --project-name=apexo-web`
 
-```
-flutter build windows
-flutter build apk
-flutter build web
-```
+- For android:
+   - Run: `shorebird release --platforms android -- --build-number=X` (replace X with build number)
+   - Upload: `build/app/outputs/bundle/release/app-release.aab` to play console.
 
-... etc.
+- For MacOS
+   - build with: `shorebird release --platforms macos -- --release`
+   - then run: `pod install`
+   - then `open with xcode` this should open `Runner.xcworkspace` not `Runner.xcodeproj`
+   - then go to product -> archive
+   - after build finishes -> direct distribute (for notarization)
+   - wait for the notification
+   - export it
+   - staple: `xcrun stapler staple apexo.app`
+   - make sure it was successful: `spctl --assess --verbose apexo.app`
+   - create a dmg: `create-dmg --volname "Apexo Installer" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Apexo.app" 200 190 --hide-extension "Apexo.app" --app-drop-link 600 185 "apexo-installer.dmg" "apexo.app"`
+   - Notarize DMG: `xcrun notarytool submit apexo-installer.dmg --apple-id "ali.a.saleem@outlook.com" --team-id "8T5VB3M83P" --password "APP_SPECIFIC_PASSWORD" --wait` (replace app specific password with the app specific password from macos directory).
+   - staple dmg: `xcrun stapler staple apexo-installer.dmg`
+   - Upload it: `wrangler r2 object put apexo-releases/releases/0.10.6/Apexo-Installer.dmg --file=Apexo-Installer.dmg --remote`
+   - Update the `metadata.json` and upload it: `wrangler r2 object put apexo-releases/metadata.json --file=metadata.json --remote`
 
-However, to streamline distribution I've wrote the file [scripts/build_and_dist.dart](https://github.com/elselawi/apexo/blob/master/scripts/build_and_dist.dart) so that it builds for the supported platforms, then move the builds to _"dist"_ directory where the landing page would fetch and display download links for all versions.
+- For windows: (On a windows machine)
+   - build with `shorebird release --platforms windows`
+   - build msix: `dart run msix:create --store`
+   - upload to ms store through microsoft partner
+   
+- For iOS:
+   - build with `flutter build ipa --release --export-method app-store`
+   - upload with transporter
+   - continue on appstoreconnect `https://appstoreconnect.apple.com/apps/6767690393/distribution/ios/version/inflight`
+
 
 ## Support
 
@@ -65,15 +88,6 @@ If you insist to help:
 - Submit PR request to improve the project.
 - Pray for peace and better future in the middle east.
 
-
-## Roadmap
-
-The roadmap is not written in stone, but here are some ideas that I have in mind:
-- Patient side application
-   - booking requests
-- Voice notes in patient records
-- Lip filler and TMJ in dental treatments
-- some icons might be better with windows icons instead of fluent icons
 
 #### Built with ❤️ in Mosul, Iraq.
 

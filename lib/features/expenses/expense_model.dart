@@ -39,6 +39,7 @@ class Expense extends Model {
   /* 7 */ double paidAmount = 0;
   /* 8 */ bool processed = false;
   /* 9 */ List<String> photos = [];
+  /* 10 */ String notes = "";
 
   Expense.fromJson(super.json) : super.fromJson();
 
@@ -65,6 +66,7 @@ class Expense extends Model {
         double.parse((json["paidAmount"] ?? paidAmount).toString());
     /* 8 */ processed = json['processed'] ?? processed;
     /* 9 */ photos = List<String>.from(json["photos"] ?? photos);
+    /* 10 */ notes = json["notes"] ?? notes;
   }
 
   @override
@@ -83,6 +85,7 @@ class Expense extends Model {
     /* 7 */ if (paidAmount != d.paidAmount) json['paidAmount'] = paidAmount;
     /* 8 */ if (processed != d.processed) json['processed'] = processed;
     /* 9 */ if (photos.isNotEmpty) json['photos'] = photos;
+    /* 10 */ if (notes != d.notes) json['notes'] = notes;
 
     return json;
   }

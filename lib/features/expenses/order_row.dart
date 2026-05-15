@@ -37,6 +37,7 @@ class OrderRowState extends State<OrderRow>
     with SingleTickerProviderStateMixin {
   final TextEditingController costCtrl = TextEditingController();
   final TextEditingController paidCtrl = TextEditingController();
+  final TextEditingController notesController = TextEditingController();
   final FlyoutController moreOptionsCtrl = FlyoutController();
   final FlyoutController photoAddMenu = FlyoutController();
   final bool canEdit = login.permissions[PInt.expenses] == 2;
@@ -49,7 +50,7 @@ class OrderRowState extends State<OrderRow>
   void initState() {
     costCtrl.text = widget.order.cost.toString();
     paidCtrl.text = widget.order.paidAmount.toString();
-
+    notesController.text = widget.order.notes;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -82,7 +83,7 @@ class OrderRowState extends State<OrderRow>
             orElse: () => Expense.fromJson({"supplierName": "Unknown"}));
 
     final card = Container(
-      height: 455,
+      height: 486,
       width: 310,
       decoration: BoxDecoration(
         color: theme.brightness.isLight ? Colors.white : theme.cardColor,
@@ -275,6 +276,25 @@ class OrderRowState extends State<OrderRow>
           ),
           const SizedBox(height: 8),
           _buildItemsInput(),
+          const SizedBox(height: 8),
+          Text(
+            txt("notes").toUpperCase(),
+            style: _sectionTitleTextStyle(theme).copyWith(
+              fontSize: 14,
+            ),
+          ),
+          const SizedBox(height: 3),
+          CupertinoTextField(
+            placeholder: txt("notes"),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: Colors.grey.withAlpha(40)),
+            ),
+            enabled: canEdit && !inProgress,
+            controller: notesController,
+            maxLines: null,
+            onChanged: (value) => expenses.set(widget.order..notes = value),
+          ),
           const SizedBox(height: 12),
           _buildPhotosSection(),
         ],
@@ -456,7 +476,9 @@ class OrderRowState extends State<OrderRow>
             children: [
               Text(
                 txt("photos").toUpperCase(),
-                style: _sectionTitleTextStyle(theme),
+                style: _sectionTitleTextStyle(theme).copyWith(
+                  fontSize: 14,
+                ),
               ),
               if (canEdit && !inProgress) _buildAddPhotoButton(),
             ],

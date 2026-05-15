@@ -242,7 +242,7 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
     });
     expenses.set(expense);
     justCreatedId = expense.id;
-    
+
     await Future.delayed(const Duration(milliseconds: 100));
     if (_scrollController.hasClients) {
       await _scrollController.animateTo(
@@ -592,7 +592,7 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
         padding: const EdgeInsets.all(15),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
-          mainAxisExtent: 455,
+          mainAxisExtent: 486,
           mainAxisSpacing: 15,
           crossAxisSpacing: 15,
         ),

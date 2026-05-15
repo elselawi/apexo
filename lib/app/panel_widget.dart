@@ -306,7 +306,7 @@ class _PanelScreenState extends State<PanelScreen> {
       ),
       child: ButtonContent(
         FluentIcons.archive_undo,
-        "${txt("Restore")} ${txt(widget.panel.storeSingularName)}",
+        "${txt("restore")} ${txt(widget.panel.storeSingularName)}",
       ),
     );
   }

@@ -114,7 +114,7 @@ class DashboardScreen extends StatelessWidget {
                   icon: FluentIcons.manufacturing,
                   onPressed: () => routes.navigate("labworks"),
                   title: "${txt("labworks")} (${txt("undelivered")})",
-                  items: labworks.notDelivered
+                  items: labworks.notDeliveredPatients
                       .map((e) => ListTile(
                             onPressed: () => openPatient(e),
                             title: ItemTitle(item: e),

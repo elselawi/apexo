@@ -32,8 +32,8 @@ class LabworksScreen extends StatelessWidget {
                   showArchived.stream
                 ],
                 builder: (context, snapshot) {
-                  return LabworksTable(
-                      labworks: labworks.appointmentsWithLabworks);
+                  // ignore: prefer_const_constructors
+                  return LabworksTable();
                 }),
           ),
         ],
@@ -43,8 +43,7 @@ class LabworksScreen extends StatelessWidget {
 }
 
 class LabworksTable extends StatefulWidget {
-  const LabworksTable({super.key, required this.labworks});
-  final List<Appointment> labworks;
+  const LabworksTable({super.key});
 
   @override
   State<LabworksTable> createState() => _LabworksTableState();
@@ -67,12 +66,9 @@ class _LabworksTableState extends State<LabworksTable> {
   TextEditingController searchController = TextEditingController();
 
   List<Appointment> get filteredAndSorted {
-    List<Appointment> result = widget.labworks.toSet().toList();
-
-    // if we're not showing received orders
-    if (!showReceived) {
-      result = result.where((appointment) => appointment.labworkReceived == false || appointment.isLaboworkUndelivered).toList();
-    }
+    List<Appointment> result = showReceived
+        ? labworks.appointmentsWithLabworks
+        : <Appointment>{...labworks.due, ...labworks.notDelivered}.toList();
 
     // filtering by search
     final q = searchController.text;
@@ -102,13 +98,13 @@ class _LabworksTableState extends State<LabworksTable> {
         case 'operators':
           compare = a.operatorsNames.compareTo(b.operatorsNames);
         case 'laboratory':
-          compare =
-              a.labName.toLowerCase().compareTo(b.labName.toLowerCase());
+          compare = a.labName.toLowerCase().compareTo(b.labName.toLowerCase());
           break;
         case 'notes':
           compare = a.labworkNotes.compareTo(b.labworkNotes);
         case 'status':
-          compare = a.labworkStatus.toString().compareTo(b.labworkStatus.toString());
+          compare =
+              a.labworkStatus.toString().compareTo(b.labworkStatus.toString());
           break;
       }
       return _sortAscending ? compare : -compare;
@@ -288,12 +284,14 @@ class _LabworksTableState extends State<LabworksTable> {
                           appointments.set(apt);
                         }),
                     const SizedBox(width: 5),
-                    _buildDataCell(apt.patient?.title ?? "", cross: apt.labworkStatus == "done"),
+                    _buildDataCell(apt.patient?.title ?? "",
+                        cross: apt.labworkStatus == "done"),
                     _buildDataCell(apt.date.toString().split(" ").first),
                     _buildDataCell(apt.operatorsNames),
                     _buildDataCell(apt.labName),
                     _buildDataCell(apt.labworkNotes),
-                    _buildDataCell("${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0,1).toUpperCase()}${apt.labworkStatus.substring(1)}"),
+                    _buildDataCell(
+                        "${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0, 1).toUpperCase()}${apt.labworkStatus.substring(1)}"),
                   ],
                 ),
               );

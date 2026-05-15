@@ -56,7 +56,7 @@ class _NotificationsService {
   }
 
   List<Patient> get notDeliveredLabworks {
-    return labworks.notDelivered
+    return labworks.notDeliveredPatients
         .where((p) => p.allAppointments.last.operatorsIDs
             .contains(login.currentAccountID))
         .toList();

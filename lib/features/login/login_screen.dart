@@ -63,7 +63,8 @@ class Login extends StatelessWidget {
           StreamBuilder<Object>(
               stream: localSettings.stream,
               builder: (context, snapshot) {
-                return const LanguagePicker();
+                // ignore: prefer_const_constructors
+                return LanguagePicker();
               }),
           if (loginCtrl.loadingIndicator().isEmpty &&
               !loginCtrl.loadingPatientSide())

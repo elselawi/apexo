@@ -539,5 +539,11 @@ class Es implements En {
     // login required
     "loginRequired": "Se requiere inicio de sesión",
     "loginRequiredDesc": "Por favor inicia sesión para continuar",
+
+    // server help flyout
+    "whatIsAServer": "¿Qué es un servidor?",
+    "helpOnCreatingAServer":
+        "Un servidor permite que tus datos se almacenen de forma segura, se hagan copias de seguridad, se sincronicen entre dispositivos y más.",
+    "createNewServer": "Crear nuevo servidor",
   };
 }

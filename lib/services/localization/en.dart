@@ -535,5 +535,11 @@ class En {
     // login required
     "loginRequired": "Login required",
     "loginRequiredDesc": "Please login to continue",
+
+    // server help flyout
+    "whatIsAServer": "What is a server?",
+    "helpOnCreatingAServer":
+        "A server enables your data to be stored securely, backed up, synchronized across devices, and more.",
+    "createNewServer": "Create new server",
   };
 }

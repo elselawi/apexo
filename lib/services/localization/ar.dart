@@ -531,5 +531,11 @@ class Ar implements En {
     // login required
     "loginRequired": "تسجيل الدخول مطلوب",
     "loginRequiredDesc": "يرجى تسجيل الدخول للمتابعة",
+
+    // server help flyout
+    "whatIsAServer": "ما هو الخادم؟",
+    "helpOnCreatingAServer":
+        "يتيح لك الخادم تخزين بياناتك بأمان، وإجراء النسخ الاحتياطية، والمزامنة بين الأجهزة، والمزيد.",
+    "createNewServer": "إنشاء خادم جديد",
   };
 }

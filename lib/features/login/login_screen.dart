@@ -10,12 +10,15 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import "package:flutter/cupertino.dart" show CupertinoTextField;
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../common_widgets/logo.dart';
 
 class Login extends StatelessWidget {
   Login({super.key});
 
   final FlyoutController _qrFlyoutController = FlyoutController();
+
+  final FlyoutController _serverHelpFlyoutController = FlyoutController();
 
   @override
   Widget build(BuildContext context) {
@@ -271,14 +274,55 @@ class Login extends StatelessWidget {
   Widget serverField() {
     return InfoLabel(
       label: txt("serverUrl"),
-      child: CupertinoTextField(
-        key: WK.serverField,
-        controller: loginCtrl.urlField,
-        textDirection: TextDirection.ltr,
-        enabled: loginCtrl.loadingIndicator().isEmpty,
-        placeholder: "https://[pocketbase server]",
-        onSubmitted: (_) => fieldSubmit(),
+      child: Row(
+        spacing: 8,
+        children: [
+          Expanded(
+            child: CupertinoTextField(
+              key: WK.serverField,
+              controller: loginCtrl.urlField,
+              textDirection: TextDirection.ltr,
+              enabled: loginCtrl.loadingIndicator().isEmpty,
+              placeholder: "https://[pocketbase server]",
+              onSubmitted: (_) => fieldSubmit(),
+            ),
+          ),
+          FlyoutTarget(
+            controller: _serverHelpFlyoutController,
+            child: IconButton(
+                icon: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(50),
+                    border:
+                        Border.all(color: Colors.grey.withAlpha(100), width: 1),
+                  ),
+                  padding: const EdgeInsets.all(5),
+                  child: const Icon(WindowsIcons.help, size: 20),
+                ),
+                onPressed: () {
+                  showTeachingTip(
+                      placementMode: FlyoutPlacementMode.topCenter,
+                      builder: (ctx) => _buildServerHelpTip(ctx),
+                      flyoutController: _serverHelpFlyoutController);
+                }),
+          )
+        ],
       ),
+    );
+  }
+
+  Widget _buildServerHelpTip(BuildContext context) {
+    return TeachingTip(
+      title: Txt(txt("whatIsAServer")),
+      subtitle: Txt(txt("helpOnCreatingAServer")),
+      buttons: [
+        Button(
+            child: ButtonContent(
+                WindowsIcons.open_in_new_window, txt("createNewServer")),
+            onPressed: () {
+              launchUrl(Uri.parse("https://apexo.app/#download"));
+            }),
+      ],
     );
   }
 

@@ -23,6 +23,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 Future<Patient> openPatient([Patient? patient]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
@@ -325,8 +326,9 @@ class _PatientDetails extends StatefulWidget {
 }
 
 class _PatientDetailsState extends State<_PatientDetails> {
-  TextEditingController phoneTextController = TextEditingController();
+  PhoneTextEditingController phoneTextController = PhoneTextEditingController();
   TextEditingController emailTextController = TextEditingController();
+  final phoneFlyoutController = FlyoutController();
 
   @override
   void initState() {
@@ -337,6 +339,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
 
   @override
   Widget build(BuildContext context) {
+    phoneTextController.accentColor = FluentTheme.of(context).accentColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -402,13 +405,16 @@ class _PatientDetailsState extends State<_PatientDetails> {
                 key: WK.fieldPatientPhone,
                 placeholder: "${txt("phone")}...",
                 controller: phoneTextController,
+                inputFormatters: [PhonePasteFormatter()],
                 onChanged: (value) {
                   setState(() {
                     widget.patient.phone = value;
                   });
                 },
                 suffix: widget.patient.phone.isNotEmpty
-                    ? PhoneNumberButton(phoneNumber: phoneTextController.text)
+                    ? PhoneNumberButton(
+                        phoneNumber: phoneTextController.text,
+                      )
                     : null,
               ),
             ),
@@ -478,5 +484,76 @@ class _PatientDetailsState extends State<_PatientDetails> {
         )
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
     );
+  }
+}
+
+class PhoneTextEditingController extends TextEditingController {
+  Color? accentColor;
+
+  @override
+  TextSpan buildTextSpan({
+    required BuildContext context,
+    TextStyle? style,
+    required bool withComposing,
+  }) {
+    final List<TextSpan> children = [];
+    final List<String> parts = text.split(' ');
+
+    for (int i = 0; i < parts.length; i++) {
+      final String part = parts[i];
+      if (part.isNotEmpty) {
+        children.add(
+          TextSpan(
+            text: part,
+            style: style?.copyWith(
+              decoration: TextDecoration.underline,
+              decorationColor: accentColor,
+              decorationThickness: 2,
+            ),
+          ),
+        );
+      }
+      if (i < parts.length - 1) {
+        children.add(TextSpan(text: ' ', style: style));
+      }
+    }
+
+    return TextSpan(children: children, style: style);
+  }
+}
+
+class PhonePasteFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // If the change is more than 1 character, it's likely a paste
+    if (newValue.text.length > oldValue.text.length + 1) {
+      final int start = oldValue.selection.start;
+
+      // Find the text that was added
+      final String addedText = newValue.text.substring(
+        start,
+        newValue.selection.end,
+      );
+
+      if (addedText.contains(' ')) {
+        final String trimmedText = addedText.replaceAll(' ', '');
+        final String fullNewText = newValue.text.replaceRange(
+          start,
+          newValue.selection.end,
+          trimmedText,
+        );
+
+        return TextEditingValue(
+          text: fullNewText,
+          selection: TextSelection.collapsed(
+            offset: start + trimmedText.length,
+          ),
+        );
+      }
+    }
+    return newValue;
   }
 }

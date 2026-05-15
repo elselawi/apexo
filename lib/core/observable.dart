@@ -26,7 +26,7 @@ class ObservableBase<S> {
         try {
           observer(events);
         } catch (e, s) {
-          logger("Error while trying to register an observer: $e", s);
+          logger("Error while notifying an observer: $e", s);
         }
       }
     });

@@ -74,12 +74,14 @@ class _PanelScreenState extends State<PanelScreen> {
     // update the imgs if it has been changed on the server
     final itemID = (widget.panel.item).id;
     for (var event in events) {
-      if (event.type == DictEventType.modify &&
-          (widget.panel.item as Appointment).imgs.length !=
-              appointments.get(itemID)!.imgs.length) {
-        (widget.panel.item as Appointment).imgs =
-            appointments.get(itemID)!.imgs;
-        widget.panel.selectedTab(widget.panel.selectedTab()); // notify
+      if (event.id == itemID && event.type == DictEventType.modify) {
+        final appointmentInStore = appointments.get(itemID);
+        if (appointmentInStore != null &&
+            (widget.panel.item as Appointment).imgs.length !=
+                appointmentInStore.imgs.length) {
+          (widget.panel.item as Appointment).imgs = appointmentInStore.imgs;
+          widget.panel.selectedTab(widget.panel.selectedTab()); // notify
+        }
       }
     }
   }

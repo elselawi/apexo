@@ -145,8 +145,14 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
+  Map<String, String>? _labels;
+  void nullifyLabels() {
+    _labels = null;
+  }
+
   @override
   Map<String, String> get labels {
+    if (_labels != null) return _labels!;
     final Map<String, String> _ = {};
     _["age"] = (DateTime.now().year - birth).toString();
 
@@ -177,7 +183,7 @@ class Patient extends Model {
     for (var i = 0; i < tags.length; i++) {
       _[List.generate(i + 1, (_) => "\u200B").join("")] = tags[i];
     }
-    return _;
+    return _labels = _;
   }
 
   Future<String> generatePatientLink() async {
@@ -216,6 +222,7 @@ class Patient extends Model {
 
   @override
   void fromJson(Map<String, dynamic> json) {
+    nullifyLabels();
     super.fromJson(json);
 
     /* 1 */ birth = json['birth'] ?? birth;

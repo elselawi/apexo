@@ -68,15 +68,21 @@ class ApexoApp extends StatelessWidget {
                   ],
                   builder: (BuildContext context, _) {
                     bContext = context;
-                    return Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        buildAppLayout(),
-                        if (routes.showBottomNav() &&
-                            routes.panels().isEmpty &&
-                            launch.open() == Open.staff)
-                          const BottomNavBar()
-                      ],
+                    return SafeArea(
+                      top: false,
+                      left: false,
+                      right: false,
+                      bottom: true,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          buildAppLayout(),
+                          if (routes.showBottomNav() &&
+                              routes.panels().isEmpty &&
+                              launch.open() == Open.staff)
+                            const BottomNavBar()
+                        ],
+                      ),
                     );
                   },
                 ),

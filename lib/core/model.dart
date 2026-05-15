@@ -32,8 +32,6 @@ class Model {
     return {};
   }
 
-  void onSave() {}
-
   Model copy(bool blank) {
     return Model.fromJson(blank ? {} : toJson());
   }

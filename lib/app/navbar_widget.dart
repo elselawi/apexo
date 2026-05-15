@@ -1,6 +1,5 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -275,7 +274,7 @@ class BottomNavBarMoreButton extends StatelessWidget {
                         color: color,
                         fontFamily: theme.typography.body?.fontFamily,
                       ),
-                      child: Text(txt("more") ?? "More"),
+                      child: Text(txt("more")),
                     ),
                   ),
                 ),

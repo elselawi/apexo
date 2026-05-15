@@ -208,18 +208,19 @@ class _PatientAppointments extends StatelessWidget {
     return MStreamBuilder(
         streams: [appointments.observableMap.stream, showArchived.stream],
         builder: (context, snapshot) {
+          final apts = patient.allAppointments;
           return Column(
-            children: patient.allAppointments.isEmpty
+            children: apts.isEmpty
                 ? [
                     InfoBar(title: Txt(txt("noAppointmentsFound"))),
                   ]
                 : [
-                    ...List.generate(patient.allAppointments.length, (index) {
-                      final appointment = patient.allAppointments[index];
+                    ...List.generate(apts.length, (index) {
+                      final appointment = apts[index];
                       String? difference;
-                      if (patient.allAppointments.last != appointment) {
+                      if (apts.last != appointment) {
                         int differenceInDays = appointment.date
-                            .difference(patient.allAppointments[index + 1].date)
+                            .difference(apts[index + 1].date)
                             .inDays
                             .abs();
 

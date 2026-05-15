@@ -14,24 +14,23 @@ import 'package:apexo/utils/encode.dart';
 import 'package:http/http.dart' as http;
 
 class Patient extends Model {
-  List<String>? _allPredefinedTreatmentsCached;
   List<String> get allPredefinedTreatments {
-    return _allPredefinedTreatmentsCached ??= List.from(teeth.values)
-      ..addAll((appointments.byPatient[id]?["all"] ?? []).fold<Set<String>>(
-          {},
-          (set, x) => set
-            ..addAll((x.archived == true && showArchived() == false)
-                ? []
-                : x.teeth.values)))
-      ..where((label) =>
-          txOptions.any((x) => x.type != StateType.state && x.label == label))
-      ..toSet()
-      ..toList();
+    final List<String> list = List.from(teeth.values);
+    list.addAll((appointments.byPatient[id]?["all"] ?? []).fold<Set<String>>(
+        {},
+        (set, x) => set
+          ..addAll((x.archived == true && showArchived() == false)
+              ? []
+              : x.teeth.values)));
+    return list
+        .where((label) =>
+            txOptions.any((x) => x.type != StateType.state && x.label == label))
+        .toSet()
+        .toList();
   }
 
-  Map<String, String>? _allAppointmentsDentalNotesCached;
   Map<String, String> get allAppointmentsDentalNotes {
-    return _allAppointmentsDentalNotesCached ??= Map.from(teeth)
+    return Map.from(teeth)
       ..addAll((appointments.byPatient[id]?["all"] ?? [])
           .fold<Map<String, String>>({}, (x, y) {
         if ((y.archived == true && showArchived() == false)) return x;
@@ -42,9 +41,8 @@ class Patient extends Model {
       }));
   }
 
-  List<Appointment>? _allAppointmentsCached;
   List<Appointment> get allAppointments {
-    return _allAppointmentsCached ??= (appointments.byPatient[id]?["all"] ?? [])
+    return (appointments.byPatient[id]?["all"] ?? [])
         .where((appointment) =>
             (appointment.archived != true || showArchived()) &&
             appointment.locked == false)
@@ -52,10 +50,8 @@ class Patient extends Model {
       ..sort((a, b) => a.date.compareTo(b.date));
   }
 
-  List<Appointment>? _doneAppointmentsCached;
   List<Appointment> get doneAppointments {
-    return _doneAppointmentsCached ??= (appointments.byPatient[id]?["done"] ??
-            [])
+    return (appointments.byPatient[id]?["done"] ?? [])
         .where((appointment) =>
             (appointment.archived != true || showArchived()) &&
             appointment.locked == false)
@@ -110,11 +106,9 @@ class Patient extends Model {
     return pricesGiven - paymentsMade;
   }
 
-  int? _daysSinceLastAppointmentCached;
   int? get daysSinceLastAppointment {
     if (doneAppointments.isEmpty) return null;
-    return _daysSinceLastAppointmentCached ??=
-        DateTime.now().difference(doneAppointments.last.date).inDays;
+    return DateTime.now().difference(doneAppointments.last.date).inDays;
   }
 
   @override
@@ -151,43 +145,39 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
-  Map<String, String> _labelsCached = {};
-
   @override
   Map<String, String> get labels {
-    if (_labelsCached.isNotEmpty) return _labelsCached;
-
-    _labelsCached["age"] = (DateTime.now().year - birth).toString();
+    final Map<String, String> _ = {};
+    _["age"] = (DateTime.now().year - birth).toString();
 
     if (daysSinceLastAppointment == null) {
-      _labelsCached["lastVisit"] = txt("noVisits");
+      _["lastVisit"] = txt("noVisits");
     } else {
-      _labelsCached["lastVisit"] =
-          "$daysSinceLastAppointment ${txt("daysAgo")}";
+      _["lastVisit"] = "$daysSinceLastAppointment ${txt("daysAgo")}";
     }
 
     if (gender == 0) {
-      _labelsCached["gender"] = "♀";
+      _["gender"] = "♀";
     } else {
-      _labelsCached["gender"] = "♂️";
+      _["gender"] = "♂️";
     }
 
     if (outstandingPayments > 0) {
-      _labelsCached["pay"] = "${txt("underpaid")}🔻";
+      _["pay"] = "${txt("underpaid")}🔻";
     }
 
     if (outstandingPayments < 0) {
-      _labelsCached["pay"] = "${txt("overpaid")}🔺";
+      _["pay"] = "${txt("overpaid")}🔺";
     }
 
     if (paymentsMade != 0) {
-      _labelsCached["totalPayments"] = "$paymentsMade";
+      _["totalPayments"] = "$paymentsMade";
     }
 
     for (var i = 0; i < tags.length; i++) {
-      _labelsCached[List.generate(i + 1, (_) => "\u200B").join("")] = tags[i];
+      _[List.generate(i + 1, (_) => "\u200B").join("")] = tags[i];
     }
-    return _labelsCached;
+    return _;
   }
 
   Future<String> generatePatientLink() async {
@@ -227,18 +217,6 @@ class Patient extends Model {
   @override
   void fromJson(Map<String, dynamic> json) {
     super.fromJson(json);
-    nullifyCachedAppointments(_) {
-      _doneAppointmentsCached = null;
-      _allAppointmentsCached = null;
-      _allPredefinedTreatmentsCached = null;
-      _allAppointmentsDentalNotesCached = null;
-      _daysSinceLastAppointmentCached = null;
-
-      _labelsCached = {};
-    }
-
-    showArchived.observe(nullifyCachedAppointments);
-    appointments.observableMap.observe(nullifyCachedAppointments);
 
     /* 1 */ birth = json['birth'] ?? birth;
     /* 2 */ gender = json['gender'] ?? gender;

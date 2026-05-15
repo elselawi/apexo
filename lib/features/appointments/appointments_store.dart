@@ -29,13 +29,17 @@ class Appointments extends Store<Appointment> {
           },
         );
 
-  Map<String, Map<String, List<Appointment>>>? _byPatientCache;
-  Map<String, Map<String, List<Appointment>>> get byPatient {
-    if (_byPatientCache != null) {
-      return _byPatientCache!;
-    }
-    final newCache = <String, Map<String, List<Appointment>>>{};
+  void _rebuildCache() {
+    labs.clear();
+    final newByPatientCache = <String, Map<String, List<Appointment>>>{};
+
+    _todayAppointments = [];
+    _thisMonthAppointments = [];
+
     final now = DateTime.now();
+
+    final today = DateTime(now.year, now.month, now.day);
+
     for (var appointment in observableMap.values) {
       final patientID = appointment.patientID ?? "";
       final isDone = appointment.isDone;
@@ -45,39 +49,93 @@ class Appointments extends Store<Appointment> {
       if (appointment.hasLabwork && appointment.labName.isNotEmpty) {
         labs.add(appointment.labName);
       }
+
+      if (appointment.date.year == today.year &&
+          appointment.date.month == today.month &&
+          appointment.date.day == today.day) {
+        _todayAppointments!.add(appointment);
+      }
+
+      if (appointment.date.year == today.year &&
+          appointment.date.month == today.month) {
+        _thisMonthAppointments!.add(appointment);
+      }
+
       // build patient caches
-      if (newCache[patientID] == null) {
-        newCache[patientID] = {
+      if (newByPatientCache[patientID] == null) {
+        newByPatientCache[patientID] = {
           "upcoming": [],
           "done": [],
           "past": [],
           "all": [],
         };
       }
-      newCache[patientID]!["all"]!.add(appointment);
+      newByPatientCache[patientID]!["all"]!.add(appointment);
       if (isUpcoming) {
-        newCache[patientID]!["upcoming"]!.add(appointment);
+        newByPatientCache[patientID]!["upcoming"]!.add(appointment);
       } else if (isDone) {
-        newCache[patientID]!["done"]!.add(appointment);
+        newByPatientCache[patientID]!["done"]!.add(appointment);
       }
       if (isPast) {
-        newCache[patientID]!["past"]!.add(appointment);
+        newByPatientCache[patientID]!["past"]!.add(appointment);
       }
     }
-    _byPatientCache = newCache;
-    return newCache;
+    _byPatientCache = newByPatientCache;
+  }
+
+  List<Appointment>? _thisMonthAppointments;
+  List<Appointment> get thisMonthAppointments {
+    if (_thisMonthAppointments != null) {
+      return _thisMonthAppointments!;
+    }
+    _rebuildCache();
+    return _thisMonthAppointments!;
+  }
+
+  List<Appointment>? _todayAppointments;
+  List<Appointment> get todayAppointments {
+    if (_todayAppointments != null) {
+      return _todayAppointments!;
+    }
+    _rebuildCache();
+    return _todayAppointments!;
+  }
+
+  Map<String, Map<String, List<Appointment>>>? _byPatientCache;
+  Map<String, Map<String, List<Appointment>>> get byPatient {
+    if (_byPatientCache != null) {
+      return _byPatientCache!;
+    }
+    _rebuildCache();
+    return _byPatientCache!;
   }
 
   Set<String> labs = {};
 
+  void nullifyAppointmentsCache(_) {
+    _byPatientCache = null;
+    _todayAppointments = null;
+    _thisMonthAppointments = null;
+    labs.clear();
+  }
+
+  @override
+  void set(Appointment item) {
+    super.set(item);
+    nullifyAppointmentsCache(null);
+  }
+
+  @override
+  void setAll(List<Appointment> items) {
+    super.setAll(items);
+    nullifyAppointmentsCache(null);
+  }
+
   @override
   init() {
     super.init();
-
-    observableMap.observe((_) {
-      _byPatientCache = null;
-      _allPrescriptions = null;
-    });
+    observableMap.observe(nullifyAppointmentsCache);
+    showArchived.observe(nullifyAppointmentsCache);
     login.activators[_storeName] = () async {
       await loaded;
 

@@ -80,7 +80,11 @@ class Appointment extends Model {
   }
 
   bool get isLaboworkUndelivered {
-    return hasLabwork && labworkReceived && patient != null && patient!.doneAppointments.isNotEmpty && patient!.doneAppointments.last.id == id;
+    return hasLabwork &&
+        labworkReceived &&
+        patient != null &&
+        patient!.doneAppointments.isNotEmpty &&
+        patient!.doneAppointments.last.id == id;
   }
 
   String get labworkStatus {
@@ -89,8 +93,6 @@ class Appointment extends Model {
     if (labworkReceived) return txt("receivedAndDelivered");
     return txt("waitingForLab");
   }
-
-
 
   // id: id of the appointment (inherited from Model)
 

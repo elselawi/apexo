@@ -193,7 +193,6 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
       ]);
     }
     _copyDictionary([item.id]);
-    item.onSave();
   }
 
   void setAll(List<G> items) {

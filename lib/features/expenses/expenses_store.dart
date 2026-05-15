@@ -30,6 +30,9 @@ class Expenses extends Store<Expense> {
   @override
   init() {
     super.init();
+    observableMap.observe((_) => nullifyExpensesCache());
+    showArchived.observe((_) => nullifyExpensesCache());
+
     login.activators[_storeName] = () async {
       await loaded;
 
@@ -60,25 +63,25 @@ class Expenses extends Store<Expense> {
     };
   }
 
+  void nullifyExpensesCache() {
+    _cachedAllItems = null;
+    _cachedSuppliers = null;
+    _cachedSupplierMap = null;
+  }
+
   List<String>? _cachedAllItems;
   List<Expense>? _cachedSuppliers;
 
   @override
-  void set(Expense doc) {
-    super.set(doc);
-    _clearCache();
+  void set(Expense item) {
+    super.set(item);
+    nullifyExpensesCache();
   }
 
   @override
   void setAll(List<Expense> docs) {
     super.setAll(docs);
-    _clearCache();
-  }
-
-  void _clearCache() {
-    _cachedAllItems = null;
-    _cachedSuppliers = null;
-    _cachedSupplierMap = null;
+    nullifyExpensesCache();
   }
 
   double get amountDue {

@@ -41,7 +41,7 @@ class En {
     "patients": "Patients",
     "doctors": "Doctors",
     "labworks": "Labworks",
-    "statistics": "Statistics",
+    "insights": "Insights",
 
     // dashboard
     "admin": "Admin",

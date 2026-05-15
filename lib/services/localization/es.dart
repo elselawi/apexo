@@ -42,7 +42,7 @@ class Es implements En {
     "patients": "Pacientes",
     "doctors": "Doctores",
     "labworks": "trabajos de lab.",
-    "statistics": "Estadísticas",
+    "insights": "Análisis",
 
     // dashboard
     "admin": "Administrador",

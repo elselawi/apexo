@@ -40,7 +40,7 @@ class Ar implements En {
     "patients": "مرضى",
     "doctors": "الاطباء",
     "labworks": "أعمال المختبر",
-    "statistics": "إحصائيات",
+    "insights": "إحصائيات",
 
     // dashboard
     "admin": "مسؤول",

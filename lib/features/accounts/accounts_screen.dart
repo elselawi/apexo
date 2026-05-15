@@ -420,7 +420,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                         onChanged: (level) => permissions[PInt.postOp] = level,
                       ),
                       PermissionSelector(
-                        title: txt("statistics"),
+                        title: txt("insights"),
                         initialSelected: permissions[PInt.stats],
                         levels: [
                           PermissionLevel(value: 0, label: txt("restricted")),

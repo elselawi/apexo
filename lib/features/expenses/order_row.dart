@@ -83,7 +83,7 @@ class OrderRowState extends State<OrderRow>
             orElse: () => Expense.fromJson({"supplierName": "Unknown"}));
 
     final card = Container(
-      height: 486,
+      height: 508,
       width: 310,
       decoration: BoxDecoration(
         color: theme.brightness.isLight ? Colors.white : theme.cardColor,

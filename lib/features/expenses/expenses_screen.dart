@@ -592,7 +592,7 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
         padding: const EdgeInsets.all(15),
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: crossAxisCount,
-          mainAxisExtent: 486,
+          mainAxisExtent: 508,
           mainAxisSpacing: 15,
           crossAxisSpacing: 15,
         ),

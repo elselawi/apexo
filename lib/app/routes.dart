@@ -224,8 +224,9 @@ class _Routes {
           ),
         if (login.permissions[PInt.stats] > 0 || login.isAdmin)
           Route(
-            title: txt("statistics"),
-            identifier: "statistics",
+            title: txt("insights"),
+            identifier: "insights",
+            navbarTitle: txt("insights"),
             icon: FluentIcons.chart,
             screen: StatsScreen.new,
             accessible: login.permissions[PInt.stats] > 0 || login.isAdmin,
@@ -244,15 +245,16 @@ class _Routes {
           Route(
             title: txt("accounts"),
             identifier: "accounts",
+            navbarTitle: txt("accounts"),
             icon: FluentIcons.people,
             screen: AccountsScreen.new,
             accessible: login.isAdmin,
-            navbarTitle: "",
             onSelect: () {},
           ),
         Route(
           title: txt("settings"),
           identifier: "settings",
+          navbarTitle: txt("settings"),
           icon: FluentIcons.settings,
           screen: SettingsScreen.new,
           accessible: true,

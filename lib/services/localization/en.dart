@@ -26,6 +26,7 @@ class En {
     "home": "Home",
     "calendar": "Calendar",
     "gettingImages": "Getting images",
+    "more": "More",
 
     // call
     "callLaboratory": "Call Laboratory",

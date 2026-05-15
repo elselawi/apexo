@@ -12,64 +12,90 @@ class BottomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned(
       bottom: 0,
-      height: 62,
+      height: 66,
       width: MediaQuery.of(context).size.width,
       child: Container(
         decoration: BoxDecoration(
+          color: FluentTheme.of(context).menuColor,
           boxShadow: [
             BoxShadow(
-              offset: const Offset(0.0, 3.0),
-              blurRadius: 30.0,
-              spreadRadius: 5.0,
-              color: Colors.grey.withAlpha(50),
-            )
+              offset: const Offset(0.0, -2.0), // Cast shadow upwards
+              blurRadius: 15.0,
+              spreadRadius: 1.0,
+              color: Colors.black.withOpacity(0.05), // Slight, elegant shadow
+            ),
           ],
-          color: FluentTheme.of(context).menuColor,
+          border: Border(
+            top: BorderSide(
+              color:
+                  FluentTheme.of(context).resources.dividerStrokeColorDefault,
+              width: 0.5,
+            ),
+          ),
         ),
-        child: Container(
-          padding: const EdgeInsets.all(1),
-          child: StreamBuilder(
-              stream: routes.currentRouteIndex.stream,
-              builder: (context, snapshot) {
+        child: StreamBuilder(
+          stream: routes.currentRouteIndex.stream,
+          builder: (context, snapshot) {
+            return LayoutBuilder(
+              builder: (context, constraints) {
+                final availableWidth = constraints.maxWidth;
+                final allRoutes = routes.allRoutes;
+                final int totalRoutes = allRoutes.length;
+
+                // Make it more compact to fit slightly more items
+                const double minItemWidth = 52.0;
+                int maxVisibleItems = (availableWidth / minItemWidth).floor();
+
+                var visibleRoutes = allRoutes;
+                var overflowRoutes = [];
+                bool showMore = false;
+
+                if (maxVisibleItems < totalRoutes) {
+                  showMore = true;
+                  int visibleCount =
+                      maxVisibleItems - 1; // Leave space for 'More'
+                  if (visibleCount < 1) visibleCount = 1; // Sanity check
+
+                  visibleRoutes = allRoutes.sublist(0, visibleCount);
+                  overflowRoutes = allRoutes.sublist(visibleCount);
+                }
+
                 return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ...routes.allRoutes
-                        .where((r) => r.navbarTitle.isNotEmpty)
-                        .map((r) => BottomNavBarButton(
-                              icon: r.icon,
-                              identifier: r.identifier,
-                              title: r.navbarTitle,
-                              active: r.identifier ==
-                                  routes.currentRoute.identifier,
-                            )),
-                    const Divider(direction: Axis.vertical),
-                    FlyoutTarget(
-                      controller: routes.bottomNavFlyoutController,
-                      child: IconButton(
-                        icon: const Icon(FluentIcons.more),
-                        onPressed: () async {
-                          await flyoutFocusFix(context);
-                          routes.bottomNavFlyoutController.showFlyout(
-                            dismissWithEsc: true,
-                            builder: (context) => MenuFlyout(items: [
-                              for (var route in routes.allRoutes
-                                  .where((r) => r.navbarTitle.isEmpty))
-                                MenuFlyoutItem(
-                                  leading: Icon(route.icon),
-                                  text: Txt(route.title),
-                                  onPressed: () =>
-                                      routes.navigate(route.identifier),
-                                  closeAfterClick: true,
-                                )
-                            ]),
-                          );
-                        },
+                    ...visibleRoutes.map((r) => Expanded(
+                          child: BottomNavBarButton(
+                            icon: r.icon,
+                            identifier: r.identifier,
+                            title: r.navbarTitle,
+                            active:
+                                r.identifier == routes.currentRoute.identifier,
+                          ),
+                        )),
+                    if (showMore)
+                      Container(
+                        width: 1,
+                        height:
+                            24, // Smaller height to look like a clean vertical divider
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 16),
+                        color: FluentTheme.of(context)
+                            .resources
+                            .dividerStrokeColorDefault
+                            .withOpacity(0.1),
                       ),
-                    )
+                    if (showMore)
+                      Expanded(
+                        child: BottomNavBarMoreButton(
+                          overflowRoutes: overflowRoutes,
+                        ),
+                      ),
                   ],
                 );
-              }),
+              },
+            );
+          },
         ),
       ),
     );
@@ -91,43 +117,173 @@ class BottomNavBarButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      style: active
-          ? ButtonStyle(
-              shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(0),
-                  side: BorderSide(color: Colors.blue.withAlpha(25)),
+    final theme = FluentTheme.of(context);
+    final color = active
+        ? Colors.blue
+        : (theme.typography.body?.color?.withOpacity(0.6) ?? Colors.grey);
+
+    return HoverButton(
+      onPressed: () => routes.navigate(identifier),
+      builder: (context, states) {
+        final isHovered = states.isHovered;
+
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutQuint,
+          decoration: BoxDecoration(
+            color: active
+                ? Colors.blue.withOpacity(0.08) // Indicative active pill
+                : (isHovered
+                    ? theme.resources.subtleFillColorSecondary
+                    : Colors.transparent),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          margin: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
+          padding: const EdgeInsets.symmetric(vertical: 4.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              AnimatedScale(
+                scale: states.isPressing ? 0.9 : (active ? 1.1 : 1.0),
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOutBack,
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 20,
                 ),
               ),
-              backgroundColor:
-                  WidgetStatePropertyAll(Colors.blue.withAlpha(25)))
-          : null,
-      icon: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                      color: color,
+                      fontFamily: theme.typography.body?.fontFamily,
+                    ),
+                    child: Text(title),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class BottomNavBarMoreButton extends StatelessWidget {
+  final List overflowRoutes;
+  const BottomNavBarMoreButton({super.key, required this.overflowRoutes});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+
+    // Highlight the "More" button if the currently active route is inside it
+    final isActive = overflowRoutes
+        .any((r) => r.identifier == routes.currentRoute.identifier);
+    final color = isActive
+        ? Colors.blue
+        : (theme.typography.body?.color?.withOpacity(0.6) ?? Colors.grey);
+
+    return FlyoutTarget(
+      controller: routes.bottomNavFlyoutController,
+      child: HoverButton(
+        onPressed: () {
+          routes.bottomNavFlyoutController.showFlyout(
+            autoModeConfiguration: FlyoutAutoConfiguration(
+              preferredMode: FlyoutPlacementMode.topCenter,
+            ),
+            barrierColor: Colors.transparent,
+            builder: (context) {
+              return MenuFlyout(
+                items: overflowRoutes.map((r) {
+                  final isItemActive =
+                      r.identifier == routes.currentRoute.identifier;
+                  return MenuFlyoutItem(
+                    text: Text(
+                      r.navbarTitle,
+                      style: TextStyle(
+                        fontWeight:
+                            isItemActive ? FontWeight.bold : FontWeight.normal,
+                        color: isItemActive ? Colors.blue : null,
+                      ),
+                    ),
+                    leading: Icon(
+                      r.icon,
+                      color: isItemActive ? Colors.blue : null,
+                    ),
+                    onPressed: () {
+                      routes.navigate(r.identifier);
+                      Flyout.of(context).close();
+                    },
+                  );
+                }).toList(),
+              );
+            },
+          );
+        },
+        builder: (context, states) {
+          final isHovered = states.isHovered;
+
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeOutQuint,
             decoration: BoxDecoration(
-              color: active ? Colors.blue : null,
-              borderRadius: BorderRadius.circular(10),
+              color: isActive
+                  ? Colors.blue.withOpacity(0.08)
+                  : (isHovered
+                      ? theme.resources.subtleFillColorSecondary
+                      : Colors.transparent),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Icon(
-              icon,
-              color: active ? Colors.white : null,
-              size: 16,
+            margin: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
+            padding: const EdgeInsets.symmetric(vertical: 4.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                AnimatedScale(
+                  scale: states.isPressing ? 0.9 : (isActive ? 1.1 : 1.0),
+                  duration: const Duration(milliseconds: 250),
+                  curve: Curves.easeOutBack,
+                  child: Icon(
+                    FluentIcons.more,
+                    color: color,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 200),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight:
+                            isActive ? FontWeight.w600 : FontWeight.w500,
+                        color: color,
+                        fontFamily: theme.typography.body?.fontFamily,
+                      ),
+                      child: Text(txt("more") ?? "More"),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          Txt(
-            title,
-            style: TextStyle(
-              fontSize: 11.5,
-              fontWeight: FontWeight.w500,
-              color: active ? Colors.blue : null,
-            ),
-          ),
-        ],
+          );
+        },
       ),
-      onPressed: () => routes.navigate(identifier),
     );
   }
 }

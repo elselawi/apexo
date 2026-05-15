@@ -25,6 +25,7 @@ class Ar implements En {
     "home": "الرئيسية",
     "calendar": "الرزنامة",
     "gettingImages": "يتم تحميل الصور",
+    "more": "المزيد",
 
     // call
     "callLaboratory": "اتصل بالمختبر",

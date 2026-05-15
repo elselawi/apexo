@@ -27,6 +27,7 @@ class Es implements En {
     "home": "Inicio",
     "calendar": "Calendario",
     "gettingImages": "Obteniendo imágenes",
+    "more": "Más",
 
     // call
     "callLaboratory": "Llamar al Laboratorio",

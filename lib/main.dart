@@ -8,6 +8,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:logging/logging.dart';
 import 'package:apexo/sentry_dsn.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
+import 'package:apexo/utils/js/js_bridge.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +26,10 @@ void main() async {
 
   // initialize stores
   initializeStores();
+
+  if (kIsWeb) {
+    JSBridge.removeItemFromSessionStorage('canvaskit_reload_count');
+  }
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarIconBrightness: Brightness.dark,

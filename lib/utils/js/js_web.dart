@@ -9,4 +9,8 @@ class JSBridgeImpl {
     // 2. Use the 'setProperty' extension from js_interop_unsafe
     web.window.setProperty(name.toJS, value.toJS);
   }
+
+  static void removeItemFromSessionStorage(String key) {
+    web.window.sessionStorage.removeItem(key);
+  }
 }

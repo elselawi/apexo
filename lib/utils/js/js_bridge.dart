@@ -7,4 +7,8 @@ abstract class JSBridge {
     // We call the version in the imported file.
     return JSBridgeImpl.setGlobalVariable(name, value);
   }
+
+  static void removeItemFromSessionStorage(String key) {
+    return JSBridgeImpl.removeItemFromSessionStorage(key);
+  }
 }

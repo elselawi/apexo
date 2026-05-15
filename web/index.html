@@ -179,6 +179,22 @@
 	</script>
 
 	<script type="module" src="./fcm/fcm.js"></script>
+	<script>
+		function reloadIfPathBuilderError(event) {
+			var errorMsg = event.message || (event.reason ? (event.reason.message || event.reason) : "");
+			var fallbackMsg = event.toString ? event.toString() : "";
+			var totalMessage = errorMsg + fallbackMsg;
+			if (totalMessage.indexOf('PathBuilder') !== -1) {
+				var reloadCount = parseInt(sessionStorage.getItem('canvaskit_reload_count') || '0');
+				if (reloadCount < 3) {
+					sessionStorage.setItem('canvaskit_reload_count', (reloadCount + 1).toString());
+					window.location.reload();
+				}
+			}
+		}
+		window.addEventListener('error', reloadIfPathBuilderError, true);
+		window.addEventListener('unhandledrejection', reloadIfPathBuilderError, true);
+	</script>
 	<script src="flutter_bootstrap.js" async></script>
 </body>
 

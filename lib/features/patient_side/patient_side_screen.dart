@@ -2,6 +2,7 @@ import 'dart:io' show File, Platform;
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/language_picker.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -445,8 +446,8 @@ class _FinancialChip extends StatelessWidget {
                     fontSize: 11,
                   ),
                 ),
-                Text(
-                  "${value.toStringAsFixed(0)} $currency",
+                MoneyDisplay(
+                  "${value.toStringAsFixed(2)} $currency",
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 15,
@@ -774,7 +775,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                                     Text(
                                       apt.price == 0
                                           ? "—"
-                                          : "${apt.paid.toStringAsFixed(0)} / ${apt.price.toStringAsFixed(0)} ${widget.currency}",
+                                          : "${apt.paid.toStringAsFixed(2)} / ${apt.price.toStringAsFixed(2)} ${widget.currency}",
                                       style: TextStyle(
                                         color: payColor,
                                         fontSize: 11,

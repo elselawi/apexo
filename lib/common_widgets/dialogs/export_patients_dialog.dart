@@ -32,7 +32,7 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
             phoneNumber ? patient!.phone : null,
             age ? patient!.age : null,
             gender ? patient!.gender : null,
-            totalPayments ? patient!.paymentsMade.toString() : null,
+            totalPayments ? patient!.paymentsMade.toStringAsFixed(2) : null,
           ].where((x) => x != null).join(","),
         )
         .join("\n");
@@ -40,7 +40,10 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
 
   @override
   void initState() {
-    selected = widget.ids.map((id) => patients.get(id)).where((e) => e != null).toList();
+    selected = widget.ids
+        .map((id) => patients.get(id))
+        .where((e) => e != null)
+        .toList();
     super.initState();
   }
 
@@ -51,7 +54,9 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Txt(txt("exportSelected")),
-          IconButton(icon: const Icon(FluentIcons.cancel), onPressed: () => Navigator.pop(context))
+          IconButton(
+              icon: const Icon(FluentIcons.cancel),
+              onPressed: () => Navigator.pop(context))
         ],
       ),
       content: selected.isEmpty
@@ -74,7 +79,8 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
                     ),
                     Checkbox(
                       checked: phoneNumber,
-                      onChanged: (checked) => setState(() => phoneNumber = checked!),
+                      onChanged: (checked) =>
+                          setState(() => phoneNumber = checked!),
                       content: Txt(txt("phone")),
                     ),
                     Checkbox(
@@ -89,7 +95,8 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
                     ),
                     Checkbox(
                       checked: totalPayments,
-                      onChanged: (checked) => setState(() => totalPayments = checked!),
+                      onChanged: (checked) =>
+                          setState(() => totalPayments = checked!),
                       content: Txt(txt("total payments")),
                     ),
                   ],
@@ -99,7 +106,8 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
                   height: 200,
                   child: CupertinoTextField(
                     maxLines: null,
-                    controller: TextEditingController(text: exportData.replaceAll("\n", "\n\n")),
+                    controller: TextEditingController(
+                        text: exportData.replaceAll("\n", "\n\n")),
                     placeholder: "no data",
                   ),
                 )

@@ -4,6 +4,7 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -14,6 +15,7 @@ import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/utils/money_editing_controller.dart';
 import 'package:apexo/utils/print/print_prescription.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -413,8 +415,8 @@ class _OperativeDetails extends StatefulWidget {
 
 class _OperativeDetailsState extends State<_OperativeDetails> {
   final TextEditingController postOpNotesController = TextEditingController();
-  final TextEditingController priceController = TextEditingController();
-  final TextEditingController paidController = TextEditingController();
+  final MoneyEditingController priceController = MoneyEditingController();
+  final MoneyEditingController paidController = MoneyEditingController();
   bool didNotEditPaidYet = true;
 
   void setToDone() {
@@ -427,8 +429,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   void initState() {
     super.initState();
     postOpNotesController.text = widget.appointment.postOpNotes;
-    priceController.text = widget.appointment.price.toStringAsFixed(0);
-    paidController.text = widget.appointment.paid.toStringAsFixed(0);
+    priceController.text = widget.appointment.price.toStringAsFixed(2);
+    paidController.text = widget.appointment.paid.toStringAsFixed(2);
     if (widget.appointment.paid != 0) didNotEditPaidYet = false;
   }
 
@@ -563,14 +565,16 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                       if (didNotEditPaidYet) {
                         widget.appointment.paid = double.tryParse(v) ?? 0;
                         paidController.text =
-                            widget.appointment.paid.toStringAsFixed(0);
+                            widget.appointment.paid.toStringAsFixed(2);
                       }
                       widget.appointment.isDone = true;
                     });
                   },
                   placeholder: txt("price"),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
                 ),
               ),
             ),
@@ -591,7 +595,9 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   },
                   placeholder: txt("paid"),
                   keyboardType: TextInputType.number,
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                  ],
                 ),
               ),
             ),
@@ -599,8 +605,8 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         ),
         if (paymentDifference != 0)
           InfoBar(
-            title: Txt(
-                "${paymentDifference > 0 ? txt("underpaid") : txt("overpaid")} ${paymentDifference.abs()} ${globalSettings.get("currency_______").value}"),
+            title: MoneyDisplay(
+                "${paymentDifference > 0 ? txt("underpaid") : txt("overpaid")} ${paymentDifference.abs().toStringAsFixed(2)} ${globalSettings.get("currency_______").value}"),
             content: Txt(txt("includesOtherAppointments")),
             severity: InfoBarSeverity.warning,
             isLong: true,

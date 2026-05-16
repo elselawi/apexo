@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -325,7 +326,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
             Row(
               children: [
                 if (showPayments)
-                  Text(
+                  MoneyDisplay(
                     "💵 ${(itemsForSelectedDay as List<Appointment>).fold<double>(0, (amount, appointment) => amount + appointment.paid)} ${globalSettings.get("currency_______").value}",
                     style: const TextStyle(fontSize: 13),
                   ),
@@ -588,8 +589,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                         style: const TextStyle(fontSize: 12),
                       )),
                 if (item.paid > 0 && login.isAdmin && showPayments)
-                  Txt(
-                    "💵 ${item.paid.toStringAsFixed(0)} ${globalSettings.get("currency_______").value}",
+                  MoneyDisplay(
+                    "💵 ${item.paid.toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
                     style: const TextStyle(fontSize: 12),
                   )
               ],

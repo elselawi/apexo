@@ -284,13 +284,15 @@ class _PatientAppointments extends StatelessWidget {
                                 PaymentPill(
                                   finalTextColor: Colors.grey,
                                   title: txt("cost"),
-                                  amount: patient.pricesGiven.toString(),
+                                  amount:
+                                      patient.pricesGiven.toStringAsFixed(2),
                                   color: Colors.white,
                                 ),
                                 PaymentPill(
                                   finalTextColor: Colors.grey,
                                   title: txt("paid"),
-                                  amount: patient.paymentsMade.toString(),
+                                  amount:
+                                      patient.paymentsMade.toStringAsFixed(2),
                                   color: Colors.white,
                                 ),
                                 PaymentPill(
@@ -303,7 +305,7 @@ class _PatientAppointments extends StatelessWidget {
                                   amount: (patient.paymentsMade -
                                           patient.pricesGiven)
                                       .abs()
-                                      .toString(),
+                                      .toStringAsFixed(2),
                                 )
                               ],
                             ),

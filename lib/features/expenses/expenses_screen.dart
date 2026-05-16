@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/folder_widget.dart';
@@ -656,7 +657,7 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
             ),
           ),
           const SizedBox(width: 16),
-          Text(
+          MoneyDisplay(
             "${totalDue.toStringAsFixed(2)} $currency",
             style: TextStyle(
               fontSize: 18,

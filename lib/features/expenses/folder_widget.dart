@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -57,7 +58,7 @@ class SupplierFolder extends StatelessWidget {
                     ),
                     if (hasDue) ...[
                       const SizedBox(height: 4),
-                      Text(
+                      MoneyDisplay(
                         hasDue ? "${due.toStringAsFixed(2)} $currency" : "",
                         style: TextStyle(
                           fontSize: 11,

@@ -1,5 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -350,7 +351,7 @@ class DashboardScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Txt(
+                      MoneyDisplay(
                         title,
                         style: TextStyle(
                             fontSize: 28,

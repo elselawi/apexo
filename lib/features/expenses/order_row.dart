@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/dialogs/loading_blocking.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/slideshow/slideshow.dart';
 import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
@@ -13,6 +14,7 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
+import 'package:apexo/utils/money_editing_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -35,8 +37,8 @@ class OrderRow extends StatefulWidget {
 
 class OrderRowState extends State<OrderRow>
     with SingleTickerProviderStateMixin {
-  final TextEditingController costCtrl = TextEditingController();
-  final TextEditingController paidCtrl = TextEditingController();
+  final MoneyEditingController costCtrl = MoneyEditingController();
+  final MoneyEditingController paidCtrl = MoneyEditingController();
   final TextEditingController notesController = TextEditingController();
   final FlyoutController moreOptionsCtrl = FlyoutController();
   final FlyoutController photoAddMenu = FlyoutController();
@@ -48,8 +50,8 @@ class OrderRowState extends State<OrderRow>
 
   @override
   void initState() {
-    costCtrl.text = widget.order.cost.toString();
-    paidCtrl.text = widget.order.paidAmount.toString();
+    costCtrl.text = widget.order.cost.toStringAsFixed(2);
+    paidCtrl.text = widget.order.paidAmount.toStringAsFixed(2);
     notesController.text = widget.order.notes;
     _pulseController = AnimationController(
       vsync: this,
@@ -342,7 +344,7 @@ class OrderRowState extends State<OrderRow>
                 txt("totalDue").toUpperCase(),
                 style: _sectionTitleTextStyle(theme),
               ),
-              Text(
+              MoneyDisplay(
                 "${(widget.order.cost - widget.order.paidAmount).toStringAsFixed(2)} $currency",
                 style: TextStyle(
                   fontFamily: 'monospace',
@@ -399,7 +401,7 @@ class OrderRowState extends State<OrderRow>
       ],
       style: TextStyle(
         fontFamily: 'monospace',
-        fontSize: 11,
+        fontSize: 14,
         color: theme.typography.body?.color,
       ),
       onChanged: (v) {

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -350,12 +351,12 @@ class AppointmentCard extends StatelessWidget {
           children: [
             PaymentPill(
               title: txt("price"),
-              amount: appointment.price.toString(),
+              amount: appointment.price.toStringAsFixed(2),
               finalTextColor: txtColor,
             ),
             PaymentPill(
               title: txt("paid"),
-              amount: appointment.paid.toString(),
+              amount: appointment.paid.toStringAsFixed(2),
               finalTextColor: txtColor,
             ),
           ],
@@ -363,7 +364,7 @@ class AppointmentCard extends StatelessWidget {
         if (appointment.paid != appointment.price)
           PaymentPill(
             title: appointment.overPaid ? txt("overpaid") : txt("underpaid"),
-            amount: appointment.paymentDifference.toString(),
+            amount: appointment.paymentDifference.toStringAsFixed(2),
             color: bgColor?.withAlpha(50),
             finalTextColor: txtColor,
           )
@@ -507,7 +508,7 @@ class PaymentPill extends StatelessWidget {
               color: finalTextColor,
             ),
           ),
-          Txt(
+          MoneyDisplay(
             amount,
             style: TextStyle(color: finalTextColor, fontSize: 12),
           ),

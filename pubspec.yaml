@@ -2,7 +2,7 @@ name: apexo
 description: "Dental Clinic Management System"
 publish_to: "none"
 
-version: 0.10.6
+version: 0.11.0
 
 environment:
   sdk: ">=3.4.4 <4.0.0"
@@ -41,7 +41,11 @@ dependencies:
   web: ^1.1.1
   toastification: ^3.0.3
   ffi: ^2.2.0
-  
+  currency_text_input_formatter: ^2.3.0
+
+dependency_overrides:
+  intl: 0.20.2
+
 dev_dependencies:
   integration_test:
     sdk: flutter

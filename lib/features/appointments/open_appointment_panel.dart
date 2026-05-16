@@ -1,5 +1,4 @@
 import 'dart:convert';
-
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -16,6 +15,7 @@ import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/utils/money_editing_controller.dart';
+import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:apexo/utils/print/print_prescription.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -29,7 +29,6 @@ import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 void openAppointment([Appointment? appointment]) {
@@ -429,8 +428,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   void initState() {
     super.initState();
     postOpNotesController.text = widget.appointment.postOpNotes;
-    priceController.text = widget.appointment.price.toStringAsFixed(2);
-    paidController.text = widget.appointment.paid.toStringAsFixed(2);
+
+    priceController.text =
+        moneyInputFormatter.formatDouble(widget.appointment.price);
+    paidController.text =
+        moneyInputFormatter.formatDouble(widget.appointment.paid);
     if (widget.appointment.paid != 0) didNotEditPaidYet = false;
   }
 
@@ -561,20 +563,19 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   controller: priceController,
                   onChanged: (v) {
                     setState(() {
-                      widget.appointment.price = double.tryParse(v) ?? 0;
+                      widget.appointment.price = moneyInputFormatter.parse(v);
                       if (didNotEditPaidYet) {
-                        widget.appointment.paid = double.tryParse(v) ?? 0;
-                        paidController.text =
-                            widget.appointment.paid.toStringAsFixed(2);
+                        widget.appointment.paid = widget.appointment.price;
+                        paidController.text = moneyInputFormatter
+                            .formatDouble(widget.appointment.paid);
                       }
                       widget.appointment.isDone = true;
                     });
                   },
                   placeholder: txt("price"),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [moneyInputFormatter],
                 ),
               ),
             ),
@@ -589,15 +590,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   onChanged: (v) {
                     setState(() {
                       didNotEditPaidYet = false;
-                      widget.appointment.paid = double.tryParse(v) ?? 0;
+                      widget.appointment.paid = moneyInputFormatter.parse(v);
                       widget.appointment.isDone = true;
                     });
                   },
                   placeholder: txt("paid"),
-                  keyboardType: TextInputType.number,
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [moneyInputFormatter],
                 ),
               ),
             ),

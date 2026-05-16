@@ -15,9 +15,9 @@ import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/money_editing_controller.dart';
+import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 
 class OrderRow extends StatefulWidget {
@@ -50,8 +50,8 @@ class OrderRowState extends State<OrderRow>
 
   @override
   void initState() {
-    costCtrl.text = widget.order.cost.toStringAsFixed(2);
-    paidCtrl.text = widget.order.paidAmount.toStringAsFixed(2);
+    costCtrl.text = moneyInputFormatter.formatDouble(widget.order.cost);
+    paidCtrl.text = moneyInputFormatter.formatDouble(widget.order.paidAmount);
     notesController.text = widget.order.notes;
     _pulseController = AnimationController(
       vsync: this,
@@ -396,9 +396,7 @@ class OrderRowState extends State<OrderRow>
       placeholder: "0.00",
       readOnly: !canEdit,
       keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-      ],
+      inputFormatters: [moneyInputFormatter],
       style: TextStyle(
         fontFamily: 'monospace',
         fontSize: 14,
@@ -406,7 +404,7 @@ class OrderRowState extends State<OrderRow>
       ),
       onChanged: (v) {
         setState(() {
-          final val = double.tryParse(v) ?? 0;
+          final val = moneyInputFormatter.parse(v);
           if (label == "due") {
             expenses.set(widget.order..cost = val);
           } else {

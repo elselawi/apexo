@@ -80,6 +80,8 @@ class Appointments extends Store<Appointment> {
         newByPatientCache[patientID]!["past"]!.add(appointment);
       }
     }
+    _thisMonthAppointments!.sort((a, b) => a.date.compareTo(b.date));
+    _todayAppointments!.sort((a, b) => a.date.compareTo(b.date));
     _byPatientCache = newByPatientCache;
   }
 

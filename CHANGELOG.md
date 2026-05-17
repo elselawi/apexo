@@ -1,3 +1,31 @@
+### [0.11.0]
+- New field on expenses: "notes"
+- Pasting a phone number now removes the spaces
+- Prices & payment currency formatting
+- Fixed internals & UI Improvements
+    - null safety using withValues inside LinearGradient
+    - better null safety on accounts
+    - Bad state on dashboard screen
+    - initialization of deferred pushes store
+    - Notification on iOS safari
+    - multiline in dental chart notes
+    - updated calendar icon
+    - bottom navbar inconsistencies
+    - ask user to login again if the token expires while the app is open
+    - fixed an issue when adding an order to en empty supplier
+    - "what's a server" teaching tip
+    - renamed stats to "insights"
+    - prevent multiple instances from running on macos
+    - bottom nav bar appearing behind android os bottom navigation buttons
+    - fixed slow labworks screen
+    - fixed and simplified caching mechanisms
+
+### [0.10.4]
+- notifications and sounds for windows
+
+### [0.10.3]
+- fixed safari iOS notification error
+
 ### [0.10.1]
 - updated version fetching mechanism
 

@@ -1111,7 +1111,7 @@ class _PhotoTile extends StatelessWidget {
       if (kIsWeb) {
         SaveFilePlatform.saveFileWeb(bytes, fileName);
       } else if (!kIsWeb && Platform.isWindows) {
-        String? outputFile = await FilePicker.platform.saveFile(
+        String? outputFile = await FilePicker.saveFile(
           dialogTitle: 'Save Photo',
           fileName: fileName,
         );

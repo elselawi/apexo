@@ -101,10 +101,9 @@ class _NoteAttachmentsWidgetState extends State<NoteAttachmentsWidget> {
 
   Future<String?> pickAndUpload() async {
     try {
-      final filePickerRes = await FilePicker.platform.pickFiles(
+      final filePickerRes = await FilePicker.pickFiles(
         allowMultiple: false,
         withReadStream: true,
-        allowCompression: true,
         type: FileType.any,
       );
       if (filePickerRes == null) {

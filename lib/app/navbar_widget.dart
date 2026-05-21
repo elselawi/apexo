@@ -144,7 +144,7 @@ class BottomNavBarButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               AnimatedScale(
-                scale: states.isPressing ? 0.9 : (active ? 1.1 : 1.0),
+                scale: states.isPressed ? 0.9 : (active ? 1.1 : 1.0),
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeOutBack,
                 child: Icon(
@@ -251,7 +251,7 @@ class BottomNavBarMoreButton extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 AnimatedScale(
-                  scale: states.isPressing ? 0.9 : (isActive ? 1.1 : 1.0),
+                  scale: states.isPressed ? 0.9 : (isActive ? 1.1 : 1.0),
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutBack,
                   child: Icon(

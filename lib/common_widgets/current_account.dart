@@ -9,7 +9,10 @@ class CurrentAccount extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(border: BoxBorder.fromLTRB(bottom: BorderSide(color: FluentTheme.of(context).inactiveBackgroundColor))),
+      decoration: BoxDecoration(
+          border: BoxBorder.fromLTRB(
+              bottom: BorderSide(
+                  color: FluentTheme.of(context).inactiveBackgroundColor))),
       padding: const EdgeInsets.all(8.0),
       child: Row(
         mainAxisSize: MainAxisSize.max,
@@ -18,20 +21,31 @@ class CurrentAccount extends StatelessWidget {
           Row(
             children: [
               const Icon(FluentIcons.contact),
-                      const SizedBox(width: 5),
-          SizedBox(
-            width: 130,
-            child: Txt(login.currentName, overflow: TextOverflow.ellipsis),
-          ),
+              const SizedBox(width: 5),
+              SizedBox(
+                width: 130,
+                child: Txt(login.currentName, overflow: TextOverflow.ellipsis),
+              ),
             ],
           ),
-          Button(
-            key: WK.btnLogout,
-            onPressed: login.logout,
-            child: ButtonContent(FluentIcons.sign_out, txt("logout")),
-          )
+          const LogoutButton()
         ],
       ),
+    );
+  }
+}
+
+class LogoutButton extends StatelessWidget {
+  const LogoutButton({
+    super.key,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Button(
+      key: WK.btnLogout,
+      onPressed: login.logout,
+      child: ButtonContent(FluentIcons.sign_out, txt("logout")),
     );
   }
 }

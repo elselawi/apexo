@@ -7,13 +7,16 @@ class BackButton extends StatelessWidget {
   const BackButton({super.key});
   @override
   Widget build(BuildContext context) {
-    return Visibility(
-      visible: routes.history.isNotEmpty,
-      child: Tooltip(
-        message: "Back",
-        child: IconButton(
-            icon: Icon(locale.s.$direction == Direction.rtl ? FluentIcons.forward : FluentIcons.back),
-            onPressed: () => routes.goBack()),
+    return Padding(
+      padding: const EdgeInsets.all(5),
+      child: Visibility(
+        visible: routes.history.isNotEmpty,
+        child: Tooltip(
+          message: txt("back"),
+          child: IconButton(
+              icon: Icon(locale.s.$direction == Direction.rtl ? FluentIcons.forward : FluentIcons.back),
+              onPressed: () => routes.goBack()),
+        ),
       ),
     );
   }

@@ -26,7 +26,9 @@ import 'package:flutter/foundation.dart';
 late BuildContext bContext;
 
 class ApexoApp extends StatelessWidget {
-  const ApexoApp({super.key});
+  ApexoApp({super.key});
+
+  final FlyoutController controller = FlyoutController();
 
   @override
   StatelessElement createElement() {
@@ -151,7 +153,7 @@ class ApexoApp extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _buildPositionedMainScreen(constraints, hideSidePanel),
+                _buildPositionedMainScreen(constraints, hideSidePanel, context),
                 if (routes.panels().isNotEmpty &&
                     routes.minimizePanels() == false &&
                     constraints.maxWidth < 710)
@@ -171,7 +173,7 @@ class ApexoApp extends StatelessWidget {
   }
 
   Widget _buildPositionedMainScreen(
-      BoxConstraints constraints, bool hideSidePanel) {
+      BoxConstraints constraints, bool hideSidePanel, BuildContext context) {
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       top: 0,
@@ -184,17 +186,76 @@ class ApexoApp extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(boxShadow: kElevationToShadow[6]),
         child: NavigationView(
-          appBar: NavigationAppBar(
-            automaticallyImplyLeading: false,
-            title: launch.open() == Open.staff
-                ? Txt(routes.currentRoute.title)
-                : launch.open() == Open.patient
-                    ? Txt(txt("patientSide"))
-                    : Txt(txt("login")),
-            leading: routes.history.isEmpty
-                ? null
-                : const BackButton(key: WK.backButton),
-            actions: const NetworkActions(key: WK.globalActions),
+          titleBar: Container(
+            color: FluentTheme.of(context).micaBackgroundColor,
+            child: TitleBar(
+              backButton: (routes.history.isNotEmpty && launch.open() == Open.staff) ? const BackButton() : const SizedBox(width: 5),
+              onBackRequested: routes.goBack,
+              height: 40,
+              captionControls: const NetworkActions(key: WK.globalActions),
+              leftHeader: FlyoutTarget(
+                controller: controller,
+                child: GestureDetector(
+                  onTap: () {
+                    if (launch.open() != Open.staff) return;
+                    controller.showFlyout(builder: (ctx) {
+                      return MenuFlyout(
+                        items: routes.allRoutes
+                            .where((p) => p.onFooter != true)
+                            .map((route) {
+                          return MenuFlyoutItem(
+                            text: Text(route.title),
+                            onPressed: () {
+                              controller.close();
+                              routes.navigate(route.identifier);
+                            },
+                          );
+                        }).toList(),
+                      );
+                    });
+                  },
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(50),
+                      color: launch.open() == Open.staff
+                          ? Colors.blue
+                          : Colors.grey.withValues(alpha: 0.6),
+                      border: Border.all(
+                          color: FluentTheme.of(context)
+                              .inactiveColor
+                              .withAlpha(40)),
+                    ),
+                    child: Row(
+                      spacing: 5,
+                      children: [
+                        if(constraints.maxWidth > 400) Icon(
+                          launch.open() == Open.staff
+                              ? routes.currentRoute.icon
+                              : WindowsIcons.lock,
+                          color: Colors.white,
+                        ),
+                        launch.open() == Open.staff
+                            ? Txt(
+                                routes.currentRoute.title,
+                                style: TextStyle(color: Colors.white),
+                              )
+                            : launch.open() == Open.patient
+                                ? Txt(
+                                    txt("patientSide"),
+                                    style: TextStyle(color: Colors.white),
+                                  )
+                                : Txt(
+                                    txt("login"),
+                                    style: TextStyle(color: Colors.white),
+                                  )
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
           onDisplayModeChanged: (mode) {
             if (mode == PaneDisplayMode.minimal && constraints.maxWidth < 710) {

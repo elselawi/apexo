@@ -267,7 +267,7 @@ class StatsScreen extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(size: 600),
+          const Divider(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),

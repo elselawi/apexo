@@ -13,7 +13,7 @@ FlTitlesData titles(List<String> labels, BuildContext context) {
         showTitles: labels.length > 15 ? false : true,
         getTitlesWidget: (value, meta) {
           return SideTitleWidget(
-            axisSide: meta.axisSide,
+            meta: meta,
             child: Transform.translate(
               offset: const Offset(0, -10),
               child: Transform.rotate(
@@ -37,7 +37,7 @@ FlTitlesData titles(List<String> labels, BuildContext context) {
         maxIncluded: false,
         getTitlesWidget: (value, meta) {
           return SideTitleWidget(
-            axisSide: meta.axisSide,
+            meta: meta,
             child: Text(
               value.toInt().toString(),
               style: TextStyle(fontSize: 12, color: FluentTheme.of(context).inactiveColor),

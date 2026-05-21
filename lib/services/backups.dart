@@ -57,11 +57,10 @@ class _Backups {
   }
 
   Future<void> pickAndUpload() async {
-    final filePickerRes = await FilePicker.platform.pickFiles(
+    final filePickerRes = await FilePicker.pickFiles(
       allowMultiple: false,
       allowedExtensions: ["zip"],
       withReadStream: true,
-      allowCompression: true,
       type: FileType.custom,
     );
     if (filePickerRes == null) {

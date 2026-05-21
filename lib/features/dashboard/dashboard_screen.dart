@@ -309,6 +309,7 @@ class DashboardScreen extends StatelessWidget {
                 FluentIcons.money,
                 dashboardCtrl.paymentsToday.toStringAsFixed(2),
                 txt("paymentsMadeToday"),
+                true,
               ),
           ],
         ),
@@ -317,7 +318,8 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Padding dashboardSquare(
-      AccentColor color, IconData icon, String title, String subtitle) {
+      AccentColor color, IconData icon, String title, String subtitle,
+      [bool isMoney = false]) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Container(
@@ -351,13 +353,22 @@ class DashboardScreen extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      MoneyDisplay(
-                        title,
-                        style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                            color: color.dark),
-                      ),
+                      if (isMoney)
+                        MoneyDisplay(
+                          title,
+                          style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: color.dark),
+                        )
+                      else
+                        Text(
+                          title,
+                          style: TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: color.dark),
+                        ),
                       Txt(
                         subtitle,
                         style: TextStyle(

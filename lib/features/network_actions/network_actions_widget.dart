@@ -22,20 +22,19 @@ class NetworkActions extends StatelessWidget {
             launch.open.stream
           ],
           builder: (context, _) {
-            return Wrap(
+            return Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 ...networkActions.actions
                     .where((action) => action.hidden != true)
                     .map(
-                      (action) => Container(
-                        margin: const EdgeInsets.only(left: 3, top: 7),
-                        child: Stack(
-                          alignment: Alignment.center,
-                          children: [
-                            _buildActionIcon(action),
-                            if (action.badge != null) _buildBadge(action),
-                          ],
-                        ),
+                      (action) => Stack(
+                        alignment: Alignment.center,
+                        clipBehavior: Clip.none,
+                        children: [
+                          _buildActionIcon(action),
+                          if (action.badge != null) _buildBadge(action),
+                        ],
                       ),
                     )
               ],
@@ -44,29 +43,25 @@ class NetworkActions extends StatelessWidget {
     );
   }
 
-  Container _buildActionIcon(NetworkAction action) {
-    return Container(
-      margin: action.badge != null ? const EdgeInsets.only(right: 6) : null,
-      child: RotatingWrapper(
-        key: Key(action.hashCode.toString()),
-        rotate: action.animate == true && action.processing == true,
-        child: Tooltip(
-          message: action.tooltip,
-          child: IconButton(
-            icon: action.icon,
-            onPressed: action.onPressed,
-            iconButtonMode: IconButtonMode.large,
-            style: ButtonStyle(
-                shape: WidgetStatePropertyAll(RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(50))),
-                iconSize: WidgetStateProperty.all(18),
-                foregroundColor: WidgetStatePropertyAll(
-                    action.processing ?? false ? Colors.white : null),
-                backgroundColor: WidgetStatePropertyAll(
-                    action.processing ?? false
-                        ? action.activeColor
-                        : Colors.transparent)),
-          ),
+  Widget _buildActionIcon(NetworkAction action) {
+    return RotatingWrapper(
+      key: Key(action.hashCode.toString()),
+      rotate: action.animate == true && action.processing == true,
+      child: Tooltip(
+        message: action.tooltip,
+        child: IconButton(
+          icon: action.icon,
+          onPressed: action.onPressed,
+          iconButtonMode: IconButtonMode.large,
+          style: ButtonStyle(
+              shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(50))),
+              iconSize: WidgetStateProperty.all(18),
+              foregroundColor: WidgetStatePropertyAll(
+                  action.processing ?? false ? Colors.white : null),
+              backgroundColor: WidgetStatePropertyAll(action.processing ?? false
+                  ? action.activeColor
+                  : Colors.transparent)),
         ),
       ),
     );
@@ -74,8 +69,8 @@ class NetworkActions extends StatelessWidget {
 
   Positioned _buildBadge(NetworkAction action) {
     return Positioned(
-      bottom: 0,
-      right: 0,
+      bottom: -5,
+      right: -2,
       child: Container(
         height: 14,
         width: 14,

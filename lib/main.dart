@@ -37,13 +37,13 @@ void main() async {
   ));
 
   if (kDebugMode) {
-    runApp(const ApexoApp());
+    runApp(ApexoApp());
   } else {
     await SentryFlutter.init(
       (options) {
         options.dsn = sentryDSN;
       },
-      appRunner: () => runApp(const ApexoApp()),
+      appRunner: () => runApp(ApexoApp()),
     );
   }
 }

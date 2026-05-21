@@ -1,6 +1,6 @@
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 
 String formatMoneyInText(String text) {
   // RegExp to find integers or decimals (e.g., 1250 or 1250.5)
@@ -54,6 +54,7 @@ class MoneyDisplay extends StatelessWidget {
 
     return Row(
       mainAxisSize: MainAxisSize.min,
+      textDirection: TextDirection.ltr,
       children: [
         Text(integerPart, style: integerStyle),
         if (decimalPart.isNotEmpty) Text(".", style: decimalStyle),

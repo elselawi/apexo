@@ -298,8 +298,8 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   _buildSingleItem(Item item, bool isChecked) {
     return ListTile(
       key: Key(item.id),
-      tileColor: WidgetStatePropertyAll(
-          isChecked ? Colors.blue.withAlpha(20) : Colors.transparent),
+      tileColor: WidgetStateColor.resolveWith(
+          (states) => isChecked ? Colors.blue.withAlpha(20) : Colors.transparent),
       contentPadding: const EdgeInsets.all(0),
       title: Row(
         children: [

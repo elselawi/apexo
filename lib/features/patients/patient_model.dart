@@ -177,7 +177,7 @@ class Patient extends Model {
     }
 
     if (paymentsMade != 0) {
-      _["totalPayments"] = "$paymentsMade";
+      _["totalPayments"] = paymentsMade.toStringAsFixed(2);
     }
 
     for (var i = 0; i < tags.length; i++) {

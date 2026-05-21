@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math';
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/store.dart';
@@ -672,7 +673,10 @@ class DataTablePill extends StatelessWidget {
                 ),
                 const SizedBox(width: 10),
               ],
-              Txt((content), style: const TextStyle(fontSize: 15)),
+              if (content.contains("."))
+                MoneyDisplay((content), style: const TextStyle(fontSize: 15))
+              else
+                Txt(content, style: const TextStyle(fontSize: 15)),
             ],
           ),
         ),

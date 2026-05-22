@@ -123,7 +123,8 @@ class _PanelScreenState extends State<PanelScreen> {
           }
         },
         child: Container(
-          margin: const EdgeInsets.all(5),
+          margin: const EdgeInsetsDirectional.only(
+              top: 5, bottom: 5, start: 0, end: 5),
           decoration: BoxDecoration(
               boxShadow: kElevationToShadow[24],
               color: FluentTheme.of(context).cardColor,

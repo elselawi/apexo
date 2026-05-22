@@ -12,7 +12,7 @@ dependencies:
     sdk: flutter
   hive: ^2.2.3
   http: ^1.2.2
-  fluent_ui: 4.15.1
+  fluent_ui: 4.13.0
   hive_flutter: ^1.1.0
   intl: 0.20.2
   table_calendar: ^3.1.2
@@ -74,6 +74,8 @@ flutter:
     - assets/app_icon.png
     - assets/images/logo.png
     - assets/images/missing.png
+    - assets/images/male.png
+    - assets/images/female.png
     - assets/fonts/readex.ttf
     - assets/fonts/readex-bold.ttf
     - assets/fonts/DentalIcons.ttf

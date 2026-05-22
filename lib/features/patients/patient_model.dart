@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
@@ -11,7 +13,30 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/utils/encode.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart' as http;
+
+class PatientTableLabel {
+  final IconData icon;
+  final Color? color;
+  final String title;
+  final String content;
+  final double value;
+  final String searchableString;
+  final bool sortable;
+  final int tab;
+
+  PatientTableLabel({
+    this.icon = FluentIcons.document,
+    this.color,
+    required this.title,
+    required this.content,
+    required this.value,
+    required this.searchableString,
+    required this.sortable,
+    required this.tab,
+  });
+}
 
 class Patient extends Model {
   List<String> get allPredefinedTreatments {
@@ -26,6 +51,17 @@ class Patient extends Model {
         .where((label) =>
             txOptions.any((x) => x.type != StateType.state && x.label == label))
         .toSet()
+        .toList();
+  }
+
+  List<TreatmentLabel> get treatmentLabels {
+    return allPredefinedTreatments
+        .map((x) => x == "pontic" || x == "abutment" ? "bridge" : x)
+        .where((x) =>
+            txOptions.any((y) => y.type != StateType.state && y.label == x))
+        .toSet()
+        .map((x) => TreatmentLabel(
+            string: x, color: labelToColor(x), icon: labelToIcon(x)))
         .toList();
   }
 
@@ -102,6 +138,12 @@ class Patient extends Model {
     return paymentsMade < pricesGiven;
   }
 
+  Color? get colorBasedOnPayments {
+    if (fullPaid) return null;
+    if (underPaid) return Colors.orange;
+    return Colors.blue;
+  }
+
   double get outstandingPayments {
     return pricesGiven - paymentsMade;
   }
@@ -145,44 +187,146 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
-  Map<String, String>? _labels;
+  List<PatientTableLabel>? _labels;
   void nullifyLabels() {
     _labels = null;
   }
 
-  @override
-  Map<String, String> get labels {
+  List<PatientTableLabel> get tableLabels {
     if (_labels != null) return _labels!;
-    final Map<String, String> _ = {};
-    _["age"] = (DateTime.now().year - birth).toString();
+    final List<PatientTableLabel> _ = [];
 
-    if (daysSinceLastAppointment == null) {
-      _["lastVisit"] = txt("noVisits");
-    } else {
-      _["lastVisit"] = "$daysSinceLastAppointment ${txt("daysAgo")}";
+    // age
+    final age = DateTime.now().year - birth;
+    _.add(PatientTableLabel(
+      content: age.toString(),
+      icon: FluentIcons.birthday_cake,
+      title: txt("age"),
+      value: age.toDouble(),
+      searchableString: age.toString(),
+      sortable: true,
+      tab: 0,
+    ));
+
+    // gender
+    final genderSymbol =
+        gender == 1 ? "👨 ${txt('male')}" : "👩 ${txt('female')}";
+    _.add(PatientTableLabel(
+      content: genderSymbol,
+      icon: FluentIcons.info,
+      title: txt("gender"),
+      value: gender.toDouble(),
+      searchableString: gender == 1 ? "male" : "female",
+      sortable: true,
+      tab: 0,
+    ));
+
+    // phones
+    _.add(PatientTableLabel(
+      title: txt("phone"),
+      content: phone.isEmpty ? txt("notSet") : phone,
+      value: 0,
+      searchableString: phone.isEmpty ? txt("notSet") : phone,
+      sortable: false,
+      tab: 0,
+      icon: WindowsIcons.phone,
+      color: phone.isEmpty ? Colors.orange : null,
+    ));
+
+    // last visit
+    final lastVisitContent = daysSinceLastAppointment == null
+        ? txt("noVisits")
+        : "$daysSinceLastAppointment ${txt("daysAgo")}";
+    _.add(PatientTableLabel(
+      icon: WindowsIcons.calendar,
+      title: txt("lastVisit"),
+      searchableString: lastVisitContent,
+      value: (daysSinceLastAppointment ?? double.infinity).toDouble(),
+      content: lastVisitContent,
+      sortable: true,
+      tab: 2,
+    ));
+
+    // number of visits
+    _.add(PatientTableLabel(
+      icon: WindowsIcons.calendar_reply,
+      title: txt("appointments"),
+      searchableString: "${allAppointments.length}",
+      value: allAppointments.length.toDouble(),
+      content: allAppointments.length.toString(),
+      sortable: true,
+      tab: 2,
+    ));
+
+    _.add(PatientTableLabel(
+      title: txt("share"),
+      content: txt("qrCode"),
+      value: 0,
+      searchableString: "",
+      sortable: false,
+      tab: 3,
+      icon: FluentIcons.q_r_code,
+    ));
+
+    final paymentStatus = txt(underPaid
+        ? "underpaid"
+        : overPaid
+            ? "overpaid"
+            : "fullyPaid");
+    _.add(PatientTableLabel(
+        icon: WindowsIcons.payment_card,
+        color: overPaid
+            ? Colors.blue
+            : underPaid
+                ? Colors.orange
+                : null,
+        content:
+            "${paymentsMade.toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
+        value: paymentsMade,
+        searchableString: paymentStatus,
+        title: txt("paid"),
+        sortable: true,
+        tab: 2));
+
+    if (underPaid) {
+      _.add(PatientTableLabel(
+          icon: FluentIcons.warning,
+          color: Colors.orange,
+          content:
+              "${outstandingPayments.toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
+          value: outstandingPayments,
+          searchableString: paymentStatus,
+          title: txt("underpaid"),
+          sortable: true,
+          tab: 2));
     }
 
-    if (gender == 0) {
-      _["gender"] = "♀";
-    } else {
-      _["gender"] = "♂️";
+    if (overPaid) {
+      _.add(PatientTableLabel(
+        icon: FluentIcons.warning,
+        color: Colors.blue,
+        content:
+            "${outstandingPayments.abs().toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
+        value: outstandingPayments.abs(),
+        searchableString: paymentStatus,
+        title: txt("overpaid"),
+        sortable: true,
+        tab: 2,
+      ));
     }
 
-    if (outstandingPayments > 0) {
-      _["pay"] = "${txt("underpaid")}🔻";
+    for (var tag in tags) {
+      _.add(PatientTableLabel(
+        content: tag,
+        icon: FluentIcons.tag,
+        title: txt("patientTags"),
+        searchableString: tag,
+        value: 0,
+        sortable: false,
+        tab: 0,
+      ));
     }
 
-    if (outstandingPayments < 0) {
-      _["pay"] = "${txt("overpaid")}🔺";
-    }
-
-    if (paymentsMade != 0) {
-      _["totalPayments"] = paymentsMade.toStringAsFixed(2);
-    }
-
-    for (var i = 0; i < tags.length; i++) {
-      _[List.generate(i + 1, (_) => "\u200B").join("")] = tags[i];
-    }
     return _labels = _;
   }
 

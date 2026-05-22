@@ -25,9 +25,10 @@ import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
-Future<Patient> openPatient([Patient? patient]) {
+Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
   final panel = Panel<Patient>(
+    selectedTabIndex: selectedTabIndex,
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,

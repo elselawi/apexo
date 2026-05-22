@@ -12,12 +12,11 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import '../utils/colors_without_yellow.dart';
-import '../core/model.dart';
 import 'item_title.dart';
 
-class _SortableItem<Item> {
+class _SortableItem {
   String value;
-  Item item;
+  Patient item;
   _SortableItem(this.value, this.item);
 }
 
@@ -37,11 +36,11 @@ class DataTableAction {
       {required this.callback, required this.icon, this.title, this.child});
 }
 
-class DataTable<Item extends Model> extends StatefulWidget {
-  final List<Item> items;
+class DataTable extends StatefulWidget {
+  final List<Patient> items;
   final Store store;
   final List<DataTableAction> actions;
-  final void Function(Item) onSelect;
+  final void Function(Patient) onSelect;
   final List<Widget> furtherActions;
   final bool compact;
   final List<ItemAction> itemActions;
@@ -62,10 +61,10 @@ class DataTable<Item extends Model> extends StatefulWidget {
   });
 
   @override
-  State<StatefulWidget> createState() => DataTableState<Item>();
+  State<StatefulWidget> createState() => DataTableState();
 }
 
-class DataTableState<Item extends Model> extends State<DataTable<Item>> {
+class DataTableState extends State<DataTable> {
   Set<String> checkedIds = {};
   int sortBy = -1;
   int sortDirection = 1;
@@ -79,17 +78,16 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return _labels ??= widget.items.fold(<String>{},
         (labels, item) => labels..addAll((item.labels.keys.toList()))).toList()
       ..sort((a, b) => a.compareTo(b));
-    //..removeWhere((label) => label.isEmpty);
   }
 
   List<String> get nonNullLabels {
     return labels.where((x) => !x.contains("\u200B")).toList();
   }
 
-  List<Item> get filteredItems {
+  List<Patient> get filteredItems {
     final words =
         _searchValue.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
-    final List<Item> candidates = [];
+    final List<Patient> candidates = [];
     for (var item in widget.items) {
       final searchIn = (item.title + jsonEncode(item.labels.values.toList()))
           .toLowerCase()
@@ -102,15 +100,14 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       if (allTermsFound) candidates.add(item);
     }
 
-    if (byTreatment != null && widget.items is List<Patient>) {
+    if (byTreatment != null) {
       return candidates.where((patient) {
-        final Patient p = patient as Patient;
         if (byTreatment != "bridge") {
-          return p.allPredefinedTreatments.contains(byTreatment);
+          return patient.allPredefinedTreatments.contains(byTreatment);
         } else {
-          return p.allPredefinedTreatments.contains("abutment") ||
-              p.allPredefinedTreatments.contains("pontic") ||
-              p.allPredefinedTreatments.contains("bridge");
+          return patient.allPredefinedTreatments.contains("abutment") ||
+              patient.allPredefinedTreatments.contains("pontic") ||
+              patient.allPredefinedTreatments.contains("bridge");
         }
       }).toList();
     }
@@ -128,15 +125,15 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return input;
   }
 
-  List<Item> get sortedItems {
-    List<Item> result = List<Item>.from(filteredItems);
+  List<Patient> get sortedItems {
+    List<Patient> result = List<Patient>.from(filteredItems);
     if (sortBy < 0) {
       result.sort((a, b) {
         return a.title.toLowerCase().compareTo(b.title.toLowerCase()) *
             sortDirection;
       });
     } else {
-      final sorted = List<_SortableItem<Item>>.from(
+      final sorted = List<_SortableItem>.from(
           result.map((e) => _SortableItem(e.labels[labels[sortBy]] ?? "", e)))
         ..sort((a, b) {
           if (double.tryParse(a.value) != null &&
@@ -166,7 +163,7 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
-  showMore() {
+  void showMore() {
     setState(() {
       slice = slice + 10;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -177,14 +174,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
   String _searchValue = '';
 
-  setSearchTerm(String value) {
+  void setSearchTerm(String value) {
     setState(() {
-      // Don't modify the controller directly, just use the value for filtering
       _searchValue = value;
     });
   }
 
-  itemSelectToggle(Item item, bool? checked) {
+  void itemSelectToggle(Patient item, bool? checked) {
     setState(() {
       if (checked == true) {
         checkedIds.add(item.id);
@@ -194,13 +190,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     });
   }
 
-  setSortBy(int? index) {
+  void setSortBy(int? index) {
     setState(() {
       sortBy = index ?? -1;
     });
   }
 
-  toggleSortDirection() {
+  void toggleSortDirection() {
     setState(() {
       sortDirection = sortDirection * -1;
     });
@@ -214,21 +210,25 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _buildCommandBar(),
-        _buildListController(),
-        _buildItemsList(context),
-        _buildShowMore(context)
-      ],
+    final theme = FluentTheme.of(context);
+    return Container(
+      color: theme.scaffoldBackgroundColor,
+      child: Column(
+        children: [
+          _buildCommandBar(),
+          _buildListController(),
+          _buildItemsList(context),
+          _buildShowMore(context)
+        ],
+      ),
     );
   }
 
   final contextMenuControllers = <String, FlyoutController>{};
   final ScrollController _scrollController = ScrollController();
 
-  Expanded _buildItemsList(BuildContext context) {
-    final sorted = [...sortedItems]; // caching those two for easier computation
+  Widget _buildItemsList(BuildContext context) {
+    final sorted = [...sortedItems];
     final filtered = [...filteredItems];
 
     for (var item in filtered) {
@@ -237,14 +237,20 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
 
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(10),
         child: Column(
           children: [
             if (filtered.isEmpty) const NoItemsFound(),
             Expanded(
-              child: ListView.builder(
+              child: GridView.builder(
                 controller: _scrollController,
                 key: WK.dataTableListView,
+                gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                  maxCrossAxisExtent: 400,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
+                  childAspectRatio: 0.75,
+                ),
                 itemCount: sorted.length,
                 itemBuilder: (context, index) => _buildSingleItem(
                   sorted[index],
@@ -259,12 +265,17 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
   }
 
   Widget _buildShowMore(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final sorted = [...sortedItems];
+    final filtered = [...filteredItems];
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
+        color: theme.resources.cardBackgroundFillColorDefault,
         border: Border(
           top: BorderSide(
-            color: FluentTheme.of(context).resources.cardStrokeColorDefault,
+            color: theme.resources.cardStrokeColorDefault,
+            width: 1.0,
           ),
         ),
       ),
@@ -272,96 +283,245 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Txt(
-            "${txt("showing")} ${sortedItems.length}/${filteredItems.length}",
-            style: FluentTheme.of(context).typography.body,
+            "${txt("showing")} ${sorted.length}/${filtered.length}",
+            style: theme.typography.caption?.copyWith(
+              color: theme.resources.textFillColorSecondary,
+              fontWeight: FontWeight.w500,
+            ),
           ),
-          Row(
-            children: [
-              if (filteredItems.length > sortedItems.length)
-                FilledButton(
-                  onPressed: showMore,
-                  child: Row(
-                    children: [
-                      const Icon(FluentIcons.double_chevron_down),
-                      const SizedBox(width: 8),
-                      Txt(txt("showMore")),
-                    ],
-                  ),
+          if (filtered.length > sorted.length)
+            FilledButton(
+              onPressed: showMore,
+              style: const ButtonStyle(
+                padding: WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 ),
-            ],
-          ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(FluentIcons.double_chevron_down, size: 12),
+                  const SizedBox(width: 6),
+                  Txt(txt("showMore"), style: const TextStyle(fontSize: 12)),
+                ],
+              ),
+            ),
         ],
       ),
     );
   }
 
-  _buildSingleItem(Item item, bool isChecked) {
-    return ListTile(
-      key: Key(item.id),
-      tileColor: WidgetStateColor.resolveWith(
-          (states) => isChecked ? Colors.blue.withAlpha(20) : Colors.transparent),
-      contentPadding: const EdgeInsets.all(0),
-      title: Row(
-        children: [
-          Divider(direction: Axis.vertical, size: widget.compact ? 1 : 45),
-          _buildInnerRow(item),
-          Divider(direction: Axis.vertical, size: widget.compact ? 1 : 45),
-        ],
-      ),
-      leading: _buildCheckBox(isChecked, item),
-      onPressed: () => widget.onSelect(item),
-      trailing: FlyoutTarget(
-          controller: contextMenuControllers[item.id]!,
-          child: IconButton(
-            icon: Container(
-              padding: const EdgeInsets.all(5),
-              child: const Icon(FluentIcons.more),
+  Widget _buildSingleItem(Patient item, bool isChecked) {
+    final theme = FluentTheme.of(context);
+    return Padding(
+      padding: EdgeInsets.zero,
+      child: HoverButton(
+        onPressed: () => widget.onSelect(item),
+        builder: (context, states) {
+          final isHovered = states.contains(WidgetState.hovered);
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOut,
+            decoration: BoxDecoration(
+              color: isChecked
+                  ? theme.accentColor.withValues(alpha: 0.08)
+                  : isHovered
+                      ? theme.resources.subtleFillColorSecondary
+                      : theme.resources.cardBackgroundFillColorDefault,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isChecked
+                    ? theme.accentColor.withValues(alpha: 0.45)
+                    : isHovered
+                        ? theme.resources.controlStrokeColorDefault
+                        : theme.resources.cardStrokeColorDefault,
+                width: 1.0,
+              ),
+              boxShadow: isHovered && !isChecked
+                  ? [
+                      BoxShadow(
+                        color: theme.shadowColor.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      )
+                    ]
+                  : null,
             ),
-            onPressed: () async {
-              await flyoutFocusFix(context);
-              contextMenuControllers[item.id]!.showFlyout(
-                barrierDismissible: true,
-                dismissOnPointerMoveAway: false,
-                dismissWithEsc: true,
-                builder: (context) {
-                  return StatefulBuilder(builder: (context, setState) {
-                    return MenuFlyout(items: [
-                      MenuFlyoutItem(
-                        text: Txt(item.title),
-                        leading: const Icon(FluentIcons.edit),
-                        onPressed: () => widget.onSelect(item),
-                        closeAfterClick: true,
-                      ),
-                      if (widget.itemActions.isNotEmpty)
-                        const MenuFlyoutSeparator(),
-                      for (var action in widget.itemActions)
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildCardHeader(item, isChecked, theme),
+                const SizedBox(height: 10),
+                Expanded(
+                  child: _buildCardContent(item),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildCardHeader(Patient item, bool isChecked, FluentThemeData theme) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildCheckBox(isChecked, item),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ItemTitle(
+            labels: [],
+            key: Key(item.id),
+            radius: 4,
+            item: item,
+            maxWidth: 200,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: FlyoutTarget(
+            controller: contextMenuControllers[item.id]!,
+            child: HoverButton(
+              onPressed: () async {
+                await flyoutFocusFix(context);
+                contextMenuControllers[item.id]!.showFlyout(
+                  barrierDismissible: true,
+                  dismissOnPointerMoveAway: false,
+                  dismissWithEsc: true,
+                  builder: (context) {
+                    return StatefulBuilder(
+                        builder: (context, setState) {
+                      return MenuFlyout(items: [
                         MenuFlyoutItem(
-                          leading: Icon(action.icon),
-                          text: Txt(action.title),
-                          onPressed: () => action.callback(item.id),
+                          text: Txt(item.title),
+                          leading: const Icon(FluentIcons.edit),
+                          onPressed: () => widget.onSelect(item),
                           closeAfterClick: true,
                         ),
-                      if (routes
-                          .panels()
-                          .where((p) => p.item.id == item.id)
-                          .isEmpty)
-                        MenuFlyoutItem(
-                          leading: Icon(item.archived == true
-                              ? FluentIcons.archive_undo
-                              : FluentIcons.archive),
-                          text: Txt(txt(
-                              item.archived == true ? "restore" : "archive")),
-                          onPressed: () => item.archived == true
-                              ? widget.store.unarchive(item.id)
-                              : widget.store.archive(item.id),
-                          closeAfterClick: true,
-                        )
-                    ]);
-                  });
-                },
-              );
-            },
-          )),
+                        if (widget.itemActions.isNotEmpty)
+                          const MenuFlyoutSeparator(),
+                        for (var action in widget.itemActions)
+                          MenuFlyoutItem(
+                            leading: Icon(action.icon),
+                            text: Txt(action.title),
+                            onPressed: () => action.callback(item.id),
+                            closeAfterClick: true,
+                          ),
+                        if (routes
+                            .panels()
+                            .where((p) => p.item.id == item.id)
+                            .isEmpty)
+                          MenuFlyoutItem(
+                            leading: Icon(item.archived == true
+                                ? FluentIcons.archive_undo
+                                : FluentIcons.archive),
+                            text: Txt(txt(item.archived == true
+                                ? "restore"
+                                : "archive")),
+                            onPressed: () => item.archived == true
+                                ? widget.store.unarchive(item.id)
+                                : widget.store.archive(item.id),
+                            closeAfterClick: true,
+                          )
+                      ]);
+                    });
+                  },
+                );
+              },
+              builder: (context, states) {
+                final isBtnHovered =
+                    states.contains(WidgetState.hovered);
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isBtnHovered
+                        ? theme.resources.subtleFillColorTertiary
+                        : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(
+                    FluentIcons.more,
+                    size: 14,
+                    color: theme.resources.textFillColorSecondary,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCardContent(Patient item) {
+    var nonEmptyLabels = labels.where((l) => item.labels[l] != null).toList();
+    final treatmentLabels = item.allPredefinedTreatments
+        .map((x) => x == "pontic" || x == "abutment" ? "bridge" : x)
+        .where((x) =>
+            txOptions.any((y) => y.type != StateType.state && y.label == x))
+        .toSet()
+        .map((x) => TreatmentLabel(
+            string: x, color: labelToColor(x), icon: labelToIcon(x)))
+        .toList();
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (treatmentLabels.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: treatmentLabels
+                    .map((label) => Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: label.color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                                color: label.color.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(label.icon,
+                                  size: 12, color: label.color),
+                              const SizedBox(width: 3),
+                              Txt(
+                                txt(label.string),
+                                style: TextStyle(
+                                    color: label.color,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10),
+                              ),
+                            ],
+                          ),
+                        ))
+                    .toList(),
+              ),
+            ),
+          if (nonEmptyLabels.isNotEmpty)
+            Wrap(
+              spacing: 4,
+              runSpacing: 4,
+              children: nonEmptyLabels.map((labelTitle) {
+                return _buildLabelPill(
+                  labelTitle,
+                  item,
+                  colorsWithoutYellow[
+                      getCycledNumber(nonEmptyLabels.indexOf(labelTitle))],
+                );
+              }).toList(),
+            ),
+        ],
+      ),
     );
   }
 
@@ -369,52 +529,9 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     return (num - 1) % 7;
   }
 
-  Expanded _buildInnerRow(Item item) {
-    var nonEmptyLabels = labels.where((l) => item.labels[l] != null).toList();
-    return Expanded(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Padding(
-          padding: widget.compact
-              ? const EdgeInsets.all(0)
-              : const EdgeInsets.all(8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              ItemTitle(
-                labels: item is Patient
-                    ? item.allPredefinedTreatments
-                        .map((x) =>
-                            x == "pontic" || x == "abutment" ? "bridge" : x)
-                        .where((x) => txOptions.any(
-                            (y) => y.type != StateType.state && y.label == x))
-                        .toSet()
-                        .map((x) => TreatmentLabel(
-                            string: x,
-                            color: labelToColor(x),
-                            icon: labelToIcon(x)))
-                        .toList()
-                    : [],
-                key: Key(item.id),
-                radius: widget.compact ? 1 : 20,
-                item: item,
-                maxWidth: 110,
-              ),
-              ...nonEmptyLabels.map((labelTitle) => _buildLabelPill(
-                  labelTitle,
-                  item,
-                  colorsWithoutYellow[
-                      getCycledNumber(nonEmptyLabels.indexOf(labelTitle))]))
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  _buildCheckBox(bool isChecked, Item item) {
+  Widget _buildCheckBox(bool isChecked, Patient item) {
     return Transform.scale(
-      scale: 1.25,
+      scale: 1.0,
       child: Checkbox(
         key: Key("dt_cb_${item.id}"),
         checked: isChecked,
@@ -423,74 +540,89 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     );
   }
 
-  Padding _buildListController() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
+  Widget _buildListController() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [_buildItemsNumIndicator(), _buildSorters()],
+        children: [
+          Expanded(child: _buildItemsNumIndicator()),
+          _buildSorters(),
+        ],
       ),
     );
   }
 
-  Row _buildSorters() {
+  Widget _buildSorters() {
     final treatments =
         txOptions.where((x) => x.type != StateType.state).toList();
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (widget.items is List<Patient>) ...[
-          ComboBox<String>(
-            onChanged: (treatment) => setState(() => byTreatment = treatment),
-            value: byTreatment,
-            placeholder: Txt(txt("treatment")),
-            items: [
-              ComboBoxItem<String>(
-                value: null,
-                child: Txt(txt("allTreatments")),
-              ),
-              ...List.generate(
-                treatments.length - 3,
-                (i) {
-                  final o = treatments[i];
-                  return ComboBoxItem<String>(
-                    value: o.label,
-                    child: Row(
-                      children: [
-                        Icon(o.icon, color: o.color),
-                        const SizedBox(width: 5),
-                        Container(
-                            decoration: BoxDecoration(
-                                color: o.color,
-                                borderRadius: BorderRadius.circular(8)),
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 4, vertical: 2),
-                            child: Txt(
-                              txt(o.label),
-                              style: const TextStyle(color: Colors.white),
-                            )),
-                      ],
-                    ),
-                  );
-                },
-              )
-            ],
-          ),
-          const SizedBox(width: 10)
-        ],
+        ComboBox<String>(
+          onChanged: (treatment) => setState(() => byTreatment = treatment),
+          value: byTreatment,
+          placeholder: Txt(txt("treatment")),
+          items: [
+            ComboBoxItem<String>(
+              value: null,
+              child: Txt(txt("allTreatments")),
+            ),
+            ...List.generate(
+              treatments.length - 3,
+              (i) {
+                final o = treatments[i];
+                return ComboBoxItem<String>(
+                  value: o.label,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(o.icon, color: o.color, size: 14),
+                      const SizedBox(width: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                            color: o.color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(
+                                color: o.color.withValues(alpha: 0.3))),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 2),
+                        child: Txt(
+                          txt(o.label),
+                          style: TextStyle(
+                              color: o.color,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            )
+          ],
+        ),
+        const SizedBox(width: 10),
         _buildSortBy(),
-        const SizedBox(width: 3),
+        const SizedBox(width: 6),
         _buildSortDirectionToggle()
       ],
     );
   }
 
-  IconButton _buildSortDirectionToggle() {
-    return IconButton(
-      key: WK.toggleSortDirection,
-      icon: sortDirection > 0
-          ? const Icon(FluentIcons.sort_up)
-          : const Icon(FluentIcons.sort_down),
-      onPressed: toggleSortDirection,
+  Widget _buildSortDirectionToggle() {
+    final theme = FluentTheme.of(context);
+    return Tooltip(
+      message: txt("toggleSortDirection"),
+      child: IconButton(
+        key: WK.toggleSortDirection,
+        icon: Icon(
+          sortDirection > 0 ? FluentIcons.sort_up : FluentIcons.sort_down,
+          size: 16,
+          color: theme.accentColor,
+        ),
+        onPressed: toggleSortDirection,
+      ),
     );
   }
 
@@ -499,10 +631,13 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
       key: WK.dataTableSortBy,
       items: [
         ComboBoxItem<int>(
-            value: -1, child: Txt(txt(widget.defaultSortingName))),
+          value: -1,
+          child: Txt(txt(widget.defaultSortingName)),
+        ),
         ...nonNullLabels.map((l) => ComboBoxItem<int>(
-            value: nonNullLabels.indexOf(l),
-            child: Txt("${txt("by")} ${txt(l)}")))
+              value: nonNullLabels.indexOf(l),
+              child: Txt("${txt("by")} ${txt(l)}"),
+            ))
       ],
       value: sortBy,
       onChanged: setSortBy,
@@ -519,103 +654,134 @@ class DataTableState<Item extends Model> extends State<DataTable<Item>> {
     final filtered = [...filteredItems];
     return Row(
       children: [
-        Txt(
-          "${txt("showing")} ${sortedItems.length}/${filtered.length}",
-          style: TextStyle(
-              color: Colors.grey.toAccentColor().lightest,
-              fontSize: 11,
-              fontWeight: FontWeight.bold),
-        ),
         if (filtered.isNotEmpty) ..._buildToggleSorters(context),
       ],
     );
   }
 
   List<Widget> _buildToggleSorters(BuildContext context) {
+    final theme = FluentTheme.of(context);
     return [
-      const SizedBox(width: 30),
       ...([widget.defaultSortingName, ...nonNullLabels])
           .map((e) => [
-                ToggleButton(
-                  checked: sortBy == nonNullLabels.indexOf(e),
-                  onChanged: (checked) {
-                    if (checked) {
-                      setSortBy(nonNullLabels.indexOf(e));
-                    } else {
-                      toggleSortDirection();
-                    }
-                  },
-                  style: const ToggleButtonThemeData(
+                Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: ToggleButton(
+                    checked: sortBy == nonNullLabels.indexOf(e),
+                    onChanged: (checked) {
+                      if (checked) {
+                        setSortBy(nonNullLabels.indexOf(e));
+                      } else {
+                        toggleSortDirection();
+                      }
+                    },
+                    style: ToggleButtonThemeData(
                       uncheckedButtonStyle: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Colors.transparent),
-                  )),
-                  child: Row(
-                    children: [
-                      Txt(txt(e)),
-                      const SizedBox(width: 5),
-                      if (sortBy == nonNullLabels.indexOf(e))
-                        Icon(sortDirection > 0
-                            ? FluentIcons.sort_up
-                            : FluentIcons.sort_down)
-                    ],
+                        backgroundColor:
+                            const WidgetStatePropertyAll(Colors.transparent),
+                        // border: WidgetStatePropertyAll(BorderSide(
+                        //   color: theme.resources.controlStrokeColorDefault,
+                        //   width: 1.0,
+                        // )),
+                      ),
+                      checkedButtonStyle: ButtonStyle(
+                        backgroundColor: WidgetStatePropertyAll(
+                            theme.accentColor.withValues(alpha: 0.15)),
+                        foregroundColor:
+                            WidgetStatePropertyAll(theme.accentColor),
+                        // border: WidgetStatePropertyAll(BorderSide(
+                        //   color: theme.accentColor,
+                        //   width: 1.5,
+                        // )),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Txt(
+                          txt(e),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: sortBy == nonNullLabels.indexOf(e)
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                          ),
+                        ),
+                        if (sortBy == nonNullLabels.indexOf(e)) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            sortDirection > 0
+                                ? FluentIcons.sort_up
+                                : FluentIcons.sort_down,
+                            size: 12,
+                            color: theme.accentColor,
+                          )
+                        ]
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(width: 5)
               ])
           .expand((e) => e)
     ];
   }
 
   Widget _buildCommandBar() {
+    final theme = FluentTheme.of(context);
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
+        color: theme.resources.cardBackgroundFillColorDefault,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.resources.cardStrokeColorDefault,
+            width: 1.0,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
+            color: theme.shadowColor.withValues(alpha: 0.025),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
           )
         ],
-        color: FluentTheme.of(context).menuColor,
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Expanded(
-            child: Builder(
-              builder: (context) => CommandBar(
-                primaryItems: List.generate(widget.actions.length, (index) {
-                  final action = widget.actions[index];
-                  return CommandBarButton(
-                    onPressed: () {
-                      if (Navigator.canPop(context)) {
-                        Navigator.pop(context);
-                      }
-                      action.callback(checkedIds.toList());
-                    },
-                    label: action.child ??
-                        (action.title != null ? Txt(action.title!) : null),
-                    icon: Icon(action.icon),
-                  );
-                }),
-                overflowBehavior: CommandBarOverflowBehavior.dynamicOverflow,
-              ),
+            child: CommandBar(
+              primaryItems: List.generate(widget.actions.length, (index) {
+                final action = widget.actions[index];
+                return CommandBarButton(
+                  onPressed: () {
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    }
+                    action.callback(checkedIds.toList());
+                  },
+                  label: action.child ??
+                      (action.title != null ? Txt(action.title!) : null),
+                  icon: Icon(action.icon),
+                );
+              }),
+              overflowBehavior: CommandBarOverflowBehavior.dynamicOverflow,
             ),
           ),
-          const Divider(size: 20, direction: Axis.vertical),
+          const SizedBox(width: 10),
           DataTableSearchField(
             onChanged: setSearchTerm,
             placeholder: _searchValue,
           ),
-          ...widget.furtherActions.map((a) => a)
+          if (widget.furtherActions.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            ...widget.furtherActions,
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildLabelPill(String l, Item item, [Color? color]) {
+  Widget _buildLabelPill(String l, Patient item, [Color? color]) {
     var selected = _searchValue.toLowerCase() == item.labels[l]?.toLowerCase();
     color = color ??
         colorsWithoutYellow[
@@ -655,42 +821,78 @@ class DataTablePill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      textDirection: TextDirection.ltr,
-      children: [
-        Container(
-          color: color.withValues(alpha: 0.1),
-          padding: const EdgeInsets.all(10),
-          child: Row(
-            children: [
-              if (title.length > 2) ...[
-                Txt(
-                  (txt(title)),
-                  style: FluentTheme.of(context)
-                      .typography
-                      .caption
-                      ?.copyWith(color: color, fontWeight: FontWeight.w500),
-                ),
-                const SizedBox(width: 10),
+    final theme = FluentTheme.of(context);
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      decoration: BoxDecoration(
+        color: selected
+            ? color.withValues(alpha: 0.13)
+            : color.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (title.length > 2) ...[
+                  Txt(
+                    txt(title).toUpperCase(),
+                    style: theme.typography.caption?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 9,
+                      letterSpacing: 0.4,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 5),
+                    child: Container(
+                        width: 1,
+                        height: 10,
+                        color: color.withValues(alpha: 0.35)),
+                  ),
+                ],
+                if (content.contains("."))
+                  MoneyDisplay(
+                    content,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: theme.resources.textFillColorPrimary,
+                    ),
+                  )
+                else
+                  Txt(
+                    content,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: theme.resources.textFillColorPrimary,
+                    ),
+                  ),
               ],
-              if (content.contains("."))
-                MoneyDisplay((content), style: const TextStyle(fontSize: 15))
-              else
-                Txt(content, style: const TextStyle(fontSize: 15)),
-            ],
-          ),
-        ),
-        if (selected)
-          Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(color: color.withValues(alpha: .7)),
-            child: const Icon(
-              FluentIcons.filter,
-              size: 13,
-              color: Colors.white,
             ),
           ),
-      ],
+          // Selected checkmark badge
+          if (selected)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: const Icon(
+                FluentIcons.check_mark,
+                size: 9,
+                color: Colors.white,
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -714,27 +916,51 @@ class _DataTableSearchFieldState extends State<DataTableSearchField> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return SizedBox(
-      width: 165,
+      width: 200,
+      height: 32,
       child: CupertinoTextField(
-          suffix: _controller.text.isEmpty
-              ? null
-              : IconButton(
-                  icon: const Icon(FluentIcons.clear),
-                  onPressed: () {
+        suffix: _controller.text.isEmpty
+            ? null
+            : Padding(
+                padding: const EdgeInsets.only(right: 6),
+                child: GestureDetector(
+                  onTap: () {
                     _controller.clear();
                     widget.onChanged("");
                   },
+                  child: Icon(
+                    FluentIcons.clear,
+                    size: 12,
+                    color: theme.resources.textFillColorSecondary,
+                  ),
                 ),
-          key: WK.dataTableSearch,
-          placeholder: widget.placeholder.isEmpty
-              ? "🔍 ${txt("searchPlaceholder")}"
-              : "${txt("filter")}: ${widget.placeholder}",
-          onChanged: widget.onChanged,
-          controller: _controller,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(5),
-          )),
+              ),
+        key: WK.dataTableSearch,
+        placeholder: widget.placeholder.isEmpty
+            ? "🔍 ${txt("searchPlaceholder")}"
+            : "${txt("filter")}: ${widget.placeholder}",
+        placeholderStyle: TextStyle(
+          color: theme.resources.textFillColorSecondary,
+          fontSize: 13,
+        ),
+        style: TextStyle(
+          color: theme.resources.textFillColorPrimary,
+          fontSize: 13,
+        ),
+        onChanged: widget.onChanged,
+        controller: _controller,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF9F9F9),
+          border: Border.all(
+            color: theme.resources.controlStrokeColorDefault,
+            width: 1.0,
+          ),
+          borderRadius: BorderRadius.circular(6),
+        ),
+      ),
     );
   }
 }

@@ -135,7 +135,7 @@ class _AdaptiveExpensesViewState extends State<AdaptiveExpensesView> {
         children: [
           Row(
             children: [
-              const Icon(WindowsIcons.folder, size: 24),
+              const Icon(WindowsIcons.folder),
               const SizedBox(width: 16),
               Text(
                 txt("pickASupplier"),

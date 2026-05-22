@@ -61,10 +61,12 @@ class Panel<T extends Model> {
     required this.tabs,
     required this.icon,
     this.title,
+    int? selectedTabIndex,
   }) {
     identifier =
         store.get(item.id) == null ? "new+${store.local?.name}" : item.id;
     savedJson = jsonEncode(item.toJson());
+    selectedTab(selectedTabIndex);
   }
 
   String get storeSingularName {
@@ -113,10 +115,9 @@ class _Routes {
     final foundPanel = panels()
         .indexWhere((element) => element.identifier == panel.identifier);
     if (foundPanel > -1) {
-      // bring to front
       bringPanelToFront(foundPanel);
+      panels()[foundPanel].selectedTab(panel.selectedTab());
     } else {
-      // add to end
       panels(panels()..add(panel));
       routes.minimizePanels(false);
     }

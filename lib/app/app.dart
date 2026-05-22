@@ -74,7 +74,7 @@ class ApexoApp extends StatelessWidget {
                       top: false,
                       left: false,
                       right: false,
-                      bottom: true,
+                      bottom: !kIsWeb && Platform.isAndroid,
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
@@ -186,72 +186,75 @@ class ApexoApp extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(boxShadow: kElevationToShadow[6]),
         child: NavigationView(
-          titleBar: Container(
-            color: FluentTheme.of(context).micaBackgroundColor,
-            child: TitleBar(
-              backButton: (routes.history.isNotEmpty && launch.open() == Open.staff) ? const BackButton() : const SizedBox(width: 5),
-              onBackRequested: routes.goBack,
-              height: 40,
-              captionControls: const NetworkActions(key: WK.globalActions),
-              leftHeader: FlyoutTarget(
-                controller: controller,
-                child: GestureDetector(
-                  onTap: () {
-                    if (launch.open() != Open.staff) return;
-                    controller.showFlyout(builder: (ctx) {
-                      return MenuFlyout(
-                        items: routes.allRoutes
-                            .where((p) => p.onFooter != true)
-                            .map((route) {
-                          return MenuFlyoutItem(
-                            text: Text(route.title),
-                            onPressed: () {
-                              controller.close();
-                              routes.navigate(route.identifier);
-                            },
-                          );
-                        }).toList(),
-                      );
-                    });
-                  },
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(50),
-                      color: launch.open() == Open.staff
-                          ? Colors.blue
-                          : Colors.grey.withValues(alpha: 0.6),
-                      border: Border.all(
-                          color: FluentTheme.of(context)
-                              .inactiveColor
-                              .withAlpha(40)),
-                    ),
-                    child: Row(
-                      spacing: 5,
-                      children: [
-                        if(constraints.maxWidth > 400) Icon(
-                          launch.open() == Open.staff
-                              ? routes.currentRoute.icon
-                              : WindowsIcons.lock,
-                          color: Colors.white,
-                        ),
+          appBar: NavigationAppBar(
+            leading: (routes.history.isNotEmpty && launch.open() == Open.staff)
+                ? const BackButton()
+                : null,
+            automaticallyImplyLeading: false,
+            height: 40,
+            actions: const NetworkActions(key: WK.globalActions),
+            title: FlyoutTarget(
+              controller: controller,
+              child: GestureDetector(
+                onTap: () {
+                  if (launch.open() != Open.staff) return;
+                  controller.showFlyout(builder: (ctx) {
+                    return MenuFlyout(
+                      items: routes.allRoutes
+                          .where((p) => p.onFooter != true)
+                          .map((route) {
+                        return MenuFlyoutItem(
+                          leading: Icon(route.icon),
+                          selected: route.identifier ==
+                              routes.currentRoute.identifier,
+                          text: Text(route.title),
+                          onPressed: () {
+                            controller.close();
+                            routes.navigate(route.identifier);
+                          },
+                        );
+                      }).toList(),
+                    );
+                  });
+                },
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(50),
+                    color: launch.open() == Open.staff
+                        ? Colors.white
+                        : Colors.grey.withValues(alpha: 0.6),
+                    border: Border.all(
+                        color: FluentTheme.of(context)
+                            .inactiveColor
+                            .withAlpha(40)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 5,
+                    children: [
+                      Icon(
                         launch.open() == Open.staff
-                            ? Txt(
-                                routes.currentRoute.title,
-                                style: TextStyle(color: Colors.white),
-                              )
-                            : launch.open() == Open.patient
-                                ? Txt(
-                                    txt("patientSide"),
-                                    style: TextStyle(color: Colors.white),
-                                  )
-                                : Txt(
-                                    txt("login"),
-                                    style: TextStyle(color: Colors.white),
-                                  )
-                      ],
-                    ),
+                            ? routes.currentRoute.icon
+                            : WindowsIcons.lock,
+                        color: Colors.grey,
+                      ),
+                      launch.open() == Open.staff
+                          ? Txt(
+                              routes.currentRoute.title,
+                              style: const TextStyle(color: Colors.grey),
+                            )
+                          : launch.open() == Open.patient
+                              ? Txt(
+                                  txt("patientSide"),
+                                  style: const TextStyle(color: Colors.grey),
+                                )
+                              : Txt(
+                                  txt("login"),
+                                  style: const TextStyle(color: Colors.grey),
+                                )
+                    ],
                   ),
                 ),
               ),
@@ -310,7 +313,9 @@ class ApexoApp extends StatelessWidget {
                             icon: Icon(route.icon),
                             body: (route.screen)(),
                             title: Txt(route.title),
-                            onTap: () => routes.navigate(route.identifier),
+                            onTap: () => route.accessible
+                                ? routes.navigate(route.identifier)
+                                : null,
                           ),
                         ),
                   ],
@@ -327,7 +332,7 @@ class ApexoApp extends StatelessWidget {
       duration: const Duration(milliseconds: 300),
       width: (constraints.maxWidth < 490 && minimized)
           ? constraints.maxWidth
-          : 350,
+          : 355,
       height: minimized ? 56 : constraints.maxHeight,
       top: minimized ? null : 0,
       bottom: minimized ? 0 : null,

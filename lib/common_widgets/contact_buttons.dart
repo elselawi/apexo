@@ -31,13 +31,19 @@ class EmailButton extends StatelessWidget {
   }
 }
 
-class PhoneNumberButton extends StatelessWidget {
+class PhoneNumberButton extends StatefulWidget {
   PhoneNumberButton({
     super.key,
     required this.phoneNumber,
   });
 
   final String phoneNumber;
+
+  @override
+  State<PhoneNumberButton> createState() => PhoneNumberButtonState();
+}
+
+class PhoneNumberButtonState extends State<PhoneNumberButton> {
   final flyoutCtrl = FlyoutController();
 
   String fullPhoneNumber(String num) {
@@ -48,11 +54,11 @@ class PhoneNumberButton extends StatelessWidget {
   }
 
   bool get singlePhoneNumber {
-    return !phoneNumber.trim().contains(" ");
+    return !widget.phoneNumber.trim().contains(" ");
   }
 
   List<String> get phoneNumbers {
-    return phoneNumber.trim().split(" ");
+    return widget.phoneNumber.trim().split(" ");
   }
 
   @override
@@ -62,42 +68,44 @@ class PhoneNumberButton extends StatelessWidget {
       child: FlyoutTarget(
         controller: flyoutCtrl,
         child: IconButton(
-            style: ButtonStyle(
-                backgroundColor: WidgetStatePropertyAll(
-                    FluentTheme.of(context).inactiveBackgroundColor)),
-            icon: Icon(
-              WindowsIcons.phone,
-              color: FluentTheme.of(context).inactiveColor,
-            ),
-            onPressed: () {
-              flyoutCtrl.showFlyout(
-                  barrierDismissible: true,
-                  dismissOnPointerMoveAway: false,
-                  dismissWithEsc: true,
-                  builder: (ctx) {
-                    return MenuFlyout(
-                        items: singlePhoneNumber
-                            ? [
-                                MenuFlyoutItem(
-                                  selected: true,
-                                  text: Text(phoneNumber),
-                                  leading: const Icon(FluentIcons.number_field),
-                                  onPressed: () {},
-                                ),
-                                const MenuFlyoutSeparator(),
-                                ...communicationActions(phoneNumber)
-                              ]
-                            : phoneNumbers
-                                .map((singleNumber) => MenuFlyoutSubItem(
-                                    showBehavior: SubItemShowAction.press,
-                                    text: Text(singleNumber),
-                                    items: (ctx) =>
-                                        communicationActions(singleNumber)))
-                                .toList());
-                  });
-            }),
+          style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+                  FluentTheme.of(context).inactiveBackgroundColor)),
+          icon: Icon(
+            WindowsIcons.phone,
+            color: FluentTheme.of(context).inactiveColor,
+          ),
+          onPressed: showFlyout,
+        ),
       ),
     );
+  }
+
+  showFlyout() {
+    flyoutCtrl.showFlyout(
+        barrierDismissible: true,
+        dismissOnPointerMoveAway: false,
+        dismissWithEsc: true,
+        builder: (ctx) {
+          return MenuFlyout(
+              items: singlePhoneNumber
+                  ? [
+                      MenuFlyoutItem(
+                        selected: true,
+                        text: Text(widget.phoneNumber),
+                        leading: const Icon(FluentIcons.number_field),
+                        onPressed: () {},
+                      ),
+                      const MenuFlyoutSeparator(),
+                      ...communicationActions(widget.phoneNumber)
+                    ]
+                  : phoneNumbers
+                      .map((singleNumber) => MenuFlyoutSubItem(
+                          showBehavior: SubItemShowAction.press,
+                          text: Text(singleNumber),
+                          items: (ctx) => communicationActions(singleNumber)))
+                      .toList());
+        });
   }
 
   List<MenuFlyoutItem> communicationActions(String num) {

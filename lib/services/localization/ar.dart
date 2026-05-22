@@ -181,6 +181,9 @@ class Ar implements En {
     "secondMolar": "رحاة ثانية",
     "thirdMolar": "رحاة ثالثة",
     "exportSelected": "تصدير المحدد",
+    "export": "تصدير",
+    "qrCode": "رمز المريض",
+    "share": "مشاركة",
     "noPatientsSelected": "لم يتم اختيار أي مرضى",
 
     // communication

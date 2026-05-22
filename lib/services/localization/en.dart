@@ -183,6 +183,9 @@ class En {
     "secondMolar": "Second Molar",
     "thirdMolar": "Third Molar",
     "exportSelected": "Export Selected",
+    "export": "Export",
+    "qrCode": "QR Code",
+    "share": "Share",
     "noPatientsSelected": "No patients selected",
 
     // communication

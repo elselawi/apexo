@@ -7,6 +7,7 @@ class _Launch {
   final isFirstLaunch = ObservableState(false);
   final isDemo = Uri.base.host == "demo.apexo.app";
   final open = ObservableState(Open.login);
+  final paneIsOverlaying = ObservableState(false);
   double layoutWidth = 0;
 }
 

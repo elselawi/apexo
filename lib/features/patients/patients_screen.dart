@@ -354,7 +354,7 @@ class _PatientsPageState extends State<_PatientsPage> {
       },
       child: SizedBox(
         width: constraints.maxWidth - 296,
-        height: 30,
+        height: 35,
         child: ListView(
           reverse: true,
           scrollDirection: Axis.horizontal,

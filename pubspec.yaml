@@ -74,8 +74,6 @@ flutter:
     - assets/app_icon.png
     - assets/images/logo.png
     - assets/images/missing.png
-    - assets/images/male.png
-    - assets/images/female.png
     - assets/fonts/readex.ttf
     - assets/fonts/readex-bold.ttf
     - assets/fonts/DentalIcons.ttf

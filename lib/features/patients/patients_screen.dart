@@ -354,7 +354,7 @@ class _PatientsPageState extends State<_PatientsPage> {
       },
       child: SizedBox(
         width: constraints.maxWidth - 296,
-        height: 35,
+        height: 30,
         child: ListView(
           reverse: true,
           scrollDirection: Axis.horizontal,
@@ -374,7 +374,7 @@ class _PatientsPageState extends State<_PatientsPage> {
       Patient patient, double cW, String searchStringLowerCased) {
     return SizedBox(
       width: constraints.maxWidth - 96,
-      height: 33,
+      height: 38,
       child: ListView.separated(
           separatorBuilder: (_, __) => SizedBox(width: cS),
           itemCount: patient.tableLabels.length,

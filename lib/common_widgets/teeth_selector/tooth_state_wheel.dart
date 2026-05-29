@@ -55,6 +55,12 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     }
   }
 
+  @override
+  void dispose() {
+    _otherController.dispose();
+    super.dispose();
+  }
+
   void _select(String? label) {
     setState(() {
       _selectedLabel = label;

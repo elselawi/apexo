@@ -1,3 +1,41 @@
+### [0.12.0]
+fixed the flyoutFix and applied it more widely in the app
+unified page scaffold into the main app screen so we don't have to define a screen widget safe inset for every page
+barrierDismissable and dismissWithEsc for all applicable dialogs
+fixed an issue with bottom navbar not displaying when the keyboard is open
+screen titles are now clickable and open a dropdown for other screens
+implemented dispose for all applicable controlleers across the app, less memory leaks, more stable, and performance improvements should be expected
+redesinged most of app screen and panels for consistency in UI and UX
+unified error message dialog
+a dialog asking to login when the token suddenly becomes invalid while the app is open
+changed the whole strategy of phone number handling and input to a wider text field that accepts any string then extracts phone numbers and turns them into clickable buttons at the same panel, auto validates, auto adds country code ..etc
+re-design and complete overhaul of the patients page
+made a utility function for date formatting that is reused across the app
+unified the design of all command bars across all pages
+unified the design of all search across all pages
+unified the "show more" slicing button across all 
+fixed inversed swipeDetector in RTL contexts
+hide (not disable) the text box when the tag input (parent) is dsiabled
+better CSV export (major overhaul)
+implemented CSV import
+share the globalSettings store into the modellingDocs isolate to get the country code
+major overhaul and redsign of the accounts page
+ability to taget specific tabs when opening panels (implemented on patients and appointments panels)
+fixed a bug in dashboard controller displayed archived appointments even if we're hiding the archived
+redesigned dashboard screen + clickable suppliers
+major overhaul and redsign of the expenses and suppliers page
+use GridGallery widget in orderRow
+major redesign and overhaul in labworks screen
+more semantic and better login screen
+added 2 pixels spacing in network actions
+fixed few permission issues in expenses page and notes page
+faster patients page
+removed country code from global settings and replaced it with auto-filled based on first IP visit ISOCountryCode
+periodicity clickable toggle buttons in insights screen
+better designed bar and radar charts
+all charts are now better viewed on all platforms and screen sizes
+initialize the settings store as the first store
+
 ### [0.11.0]
 - New field on expenses: "notes"
 - Pasting a phone number now removes the spaces

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
@@ -16,7 +17,6 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart' as intl;
 
 enum AppointmentSections {
   patient,
@@ -178,6 +178,8 @@ class AppointmentCard extends StatelessWidget {
                                     appointments
                                         .set(appointment..imgs.remove(img));
                                   } catch (e, s) {
+                                    showErrorMessage(
+                                        e, "deletingPatientImageFromServer");
                                     login.askForLoginAgain(e);
                                     logger(
                                         "Error during deleting image: $e", s);
@@ -257,7 +259,7 @@ class AppointmentCard extends StatelessWidget {
                                 style: const TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w500),
                               ),
-                              FluentIcons.pill,
+                              FluentIcons.manufacturing,
                               color,
                               context),
                         ],
@@ -284,7 +286,7 @@ class AppointmentCard extends StatelessWidget {
                             direction: Axis.horizontal,
                           ),
                           _buildSection(
-                              "${txt("pay")}\n${globalSettings.get("currency_______").value}",
+                              "${txt("pay")}\n${currency()}",
                               _paymentPills(context),
                               FluentIcons.money,
                               color,
@@ -426,14 +428,7 @@ class AppointmentCard extends StatelessWidget {
                 ),
               ),
             const SizedBox(height: 3),
-            Row(
-              children: [
-                Icon(WindowsIcons.date_time,
-                    color: showLeftBorder ? color : null),
-                const SizedBox(width: 5),
-                _buildFormattedDate(color),
-              ],
-            ),
+            _buildFormattedDate(color),
           ],
         ),
         IconButton(
@@ -449,11 +444,8 @@ class AppointmentCard extends StatelessWidget {
   }
 
   Text _buildFormattedDate(Color color) {
-    final df =
-        localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
     return Txt(
-      intl.DateFormat("E $df yyyy - hh:mm a", locale.s.$code)
-          .format(appointment.date),
+      DF.full(appointment.date),
       style: TextStyle(
         color: showLeftBorder ? color : null,
         fontSize: 13,

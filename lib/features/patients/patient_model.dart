@@ -13,6 +13,8 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/utils/encode.dart';
+import 'package:apexo/utils/parsed_phone_number.dart';
+import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart' as http;
 
@@ -25,10 +27,12 @@ class PatientTableLabel {
   final String searchableString;
   final bool sortable;
   final int tab;
+  final bool view;
 
   PatientTableLabel({
     this.icon = FluentIcons.document,
     this.color,
+    this.view = true,
     required this.title,
     required this.content,
     required this.value,
@@ -187,9 +191,18 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
+  String? _searchString;
   List<PatientTableLabel>? _labels;
   void nullifyLabels() {
     _labels = null;
+    _searchString = null;
+  }
+
+  String get searchString {
+    return _searchString ??=
+        (title + tableLabels.map((x) => x.searchableString).join(" "))
+            .toLowerCase()
+            .replaceAll(RegExp("أ|إ"), "ا");
   }
 
   List<PatientTableLabel> get tableLabels {
@@ -224,13 +237,34 @@ class Patient extends Model {
     // phones
     _.add(PatientTableLabel(
       title: txt("phone"),
-      content: phone.isEmpty ? txt("notSet") : phone,
+      content: phonesString.isEmpty ? txt("notSet") : phonesString,
       value: 0,
-      searchableString: phone.isEmpty ? txt("notSet") : phone,
+      searchableString: phonesString,
       sortable: false,
       tab: 0,
       icon: WindowsIcons.phone,
       color: phone.isEmpty ? Colors.orange : null,
+    ));
+
+    _.add(PatientTableLabel(
+      title: txt("share"),
+      content: txt("qrCode"),
+      value: 0,
+      searchableString: "",
+      sortable: false,
+      tab: 3,
+      icon: FluentIcons.q_r_code,
+    ));
+
+    // number of visits
+    _.add(PatientTableLabel(
+      icon: WindowsIcons.calendar_reply,
+      title: txt("appointments"),
+      searchableString: "${allAppointments.length}",
+      value: allAppointments.length.toDouble(),
+      content: allAppointments.length.toString(),
+      sortable: true,
+      tab: 2,
     ));
 
     // last visit
@@ -247,73 +281,49 @@ class Patient extends Model {
       tab: 2,
     ));
 
-    // number of visits
-    _.add(PatientTableLabel(
-      icon: WindowsIcons.calendar_reply,
-      title: txt("appointments"),
-      searchableString: "${allAppointments.length}",
-      value: allAppointments.length.toDouble(),
-      content: allAppointments.length.toString(),
-      sortable: true,
-      tab: 2,
-    ));
-
-    _.add(PatientTableLabel(
-      title: txt("share"),
-      content: txt("qrCode"),
-      value: 0,
-      searchableString: "",
-      sortable: false,
-      tab: 3,
-      icon: FluentIcons.q_r_code,
-    ));
-
     final paymentStatus = txt(underPaid
         ? "underpaid"
         : overPaid
             ? "overpaid"
             : "fullyPaid");
     _.add(PatientTableLabel(
-        icon: WindowsIcons.payment_card,
-        color: overPaid
-            ? Colors.blue
-            : underPaid
-                ? Colors.orange
-                : null,
-        content:
-            "${paymentsMade.toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
-        value: paymentsMade,
-        searchableString: paymentStatus,
-        title: txt("paid"),
-        sortable: true,
-        tab: 2));
+      icon: WindowsIcons.payment_card,
+      color: overPaid
+          ? Colors.blue
+          : underPaid
+              ? Colors.orange
+              : null,
+      content: "${paymentsMade.toStringAsFixed(2)} ${currency()}",
+      value: paymentsMade,
+      searchableString: paymentStatus,
+      title: txt("paid"),
+      sortable: true,
+      tab: 2,
+    ));
 
-    if (underPaid) {
-      _.add(PatientTableLabel(
-          icon: FluentIcons.warning,
-          color: Colors.orange,
-          content:
-              "${outstandingPayments.toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
-          value: outstandingPayments,
-          searchableString: paymentStatus,
-          title: txt("underpaid"),
-          sortable: true,
-          tab: 2));
-    }
+    _.add(PatientTableLabel(
+      icon: FluentIcons.warning,
+      color: Colors.orange,
+      content: "${outstandingPayments.toStringAsFixed(2)} ${currency()}",
+      value: outstandingPayments,
+      searchableString: paymentStatus,
+      title: txt("underpaid"),
+      sortable: true,
+      tab: 2,
+      view: underPaid,
+    ));
 
-    if (overPaid) {
-      _.add(PatientTableLabel(
-        icon: FluentIcons.warning,
-        color: Colors.blue,
-        content:
-            "${outstandingPayments.abs().toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
-        value: outstandingPayments.abs(),
-        searchableString: paymentStatus,
-        title: txt("overpaid"),
-        sortable: true,
-        tab: 2,
-      ));
-    }
+    _.add(PatientTableLabel(
+      icon: FluentIcons.warning,
+      color: Colors.blue,
+      content: "${outstandingPayments.abs().toStringAsFixed(2)} ${currency()}",
+      value: overPaid ? outstandingPayments.abs() : outstandingPayments,
+      searchableString: paymentStatus,
+      title: txt("overpaid"),
+      sortable: true,
+      tab: 2,
+      view: overPaid,
+    ));
 
     for (var tag in tags) {
       _.add(PatientTableLabel(
@@ -348,13 +358,15 @@ class Patient extends Model {
   // title: name of the patient (inherited from Model)
   /* 1 */ int birth = DateTime.now().year - 18;
   /* 2 */ int gender = 0; // 0 for female, 1 for male
-  /* 3 */ String phone = "";
+  /* 3 */ List<ParsedPhoneNumber> phone = [];
   /* 4 */ String email = "";
   /* 5 */ String address = "";
   /* 6 */ List<String> tags = [];
   /* 7 */ String notes = "";
   /* 8 */ Map<String, String> teeth = {};
   /* 9 */ String? link;
+
+  String get phonesString => phone.map((p) => p.e164).join(" ");
 
   @override
   Patient.fromJson(super.json) : super.fromJson();
@@ -371,7 +383,11 @@ class Patient extends Model {
 
     /* 1 */ birth = json['birth'] ?? birth;
     /* 2 */ gender = json['gender'] ?? gender;
-    /* 3 */ phone = json['phone'] ?? phone;
+    /* 3 */ phone = json['phone'] == null
+        ? []
+        : PhoneNumberExtractor.extract(json['phone'])
+            .map((s) => ParsedPhoneNumber(s))
+            .toList();
     /* 4 */ email = json['email'] ?? email;
     /* 5 */ address = json['address'] ?? address;
     /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
@@ -387,7 +403,7 @@ class Patient extends Model {
 
     /* 1 */ if (birth != d.birth) json['birth'] = birth;
     /* 2 */ if (gender != d.gender) json['gender'] = gender;
-    /* 3 */ if (phone != d.phone) json['phone'] = phone;
+    /* 3 */ if (phone != d.phone) json['phone'] = phonesString;
     /* 4 */ if (email != d.email) json['email'] = email;
     /* 5 */ if (address != d.address) json['address'] = address;
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;

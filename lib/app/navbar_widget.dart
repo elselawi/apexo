@@ -1,5 +1,6 @@
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -178,33 +179,47 @@ class BottomNavBarButton extends StatelessWidget {
   }
 }
 
-class BottomNavBarMoreButton extends StatelessWidget {
+class BottomNavBarMoreButton extends StatefulWidget {
   final List overflowRoutes;
   const BottomNavBarMoreButton({super.key, required this.overflowRoutes});
+
+  @override
+  State<BottomNavBarMoreButton> createState() => _BottomNavBarMoreButtonState();
+}
+
+class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
+  final bottomNavFlyoutController = FlyoutController();
+
+  @override
+  void dispose() {
+    bottomNavFlyoutController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
 
     // Highlight the "More" button if the currently active route is inside it
-    final isActive = overflowRoutes
+    final isActive = widget.overflowRoutes
         .any((r) => r.identifier == routes.currentRoute.identifier);
     final color = isActive
         ? Colors.blue
-        : (theme.typography.body?.color?.withOpacity(0.6) ?? Colors.grey);
+        : (theme.typography.body?.color?.withValues(alpha: .6) ?? Colors.grey);
 
     return FlyoutTarget(
-      controller: routes.bottomNavFlyoutController,
+      controller: bottomNavFlyoutController,
       child: HoverButton(
-        onPressed: () {
-          routes.bottomNavFlyoutController.showFlyout(
+        onPressed: () async {
+          await flyoutFocusFix(null);
+          bottomNavFlyoutController.showFlyout(
             autoModeConfiguration: FlyoutAutoConfiguration(
               preferredMode: FlyoutPlacementMode.topCenter,
             ),
             barrierColor: Colors.transparent,
             builder: (context) {
               return MenuFlyout(
-                items: overflowRoutes.map((r) {
+                items: widget.overflowRoutes.map((r) {
                   final isItemActive =
                       r.identifier == routes.currentRoute.identifier;
                   return MenuFlyoutItem(

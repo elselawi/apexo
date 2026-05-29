@@ -52,9 +52,8 @@ class StyledBarChart extends StatelessWidget {
                   fromY: 0,
                   toY: (yAxis.reduce((a, b) => a > b ? a : b) * 1.2).toDouble(),
                   color: FluentTheme.of(context)
-                      .inactiveBackgroundColor
-                      .toAccentColor()
-                      .lighter,
+                      .resources
+                      .subtleFillColorSecondary,
                 ),
               ),
             ],

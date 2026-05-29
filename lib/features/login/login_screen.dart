@@ -4,6 +4,7 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
@@ -13,45 +14,75 @@ import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../common_widgets/logo.dart';
 
-class Login extends StatelessWidget {
-  Login({super.key});
+class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
 
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
   final FlyoutController _qrFlyoutController = FlyoutController();
-
   final FlyoutController _serverHelpFlyoutController = FlyoutController();
+  final serverURLCtrl = TextEditingController(text: login.url);
+  final emailCtrl = TextEditingController(text: login.email);
+  final passwordCtrl = TextEditingController();
+
+  void fillFromPersistence(Object any) {
+    if (login.url.isNotEmpty) serverURLCtrl.text = login.url;
+    if (login.email.isNotEmpty) emailCtrl.text = login.email;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fillFromPersistence({});
+    login.observe(fillFromPersistence);
+  }
+
+  @override
+  void dispose() {
+    _qrFlyoutController.dispose();
+    _serverHelpFlyoutController.dispose();
+    serverURLCtrl.dispose();
+    emailCtrl.dispose();
+    passwordCtrl.dispose();
+    login.unObserve(fillFromPersistence);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
         stream: loginCtrl.loginError.stream,
         builder: (context, _) {
-          return ScaffoldPage(
-            resizeToAvoidBottomInset: true,
-            padding: EdgeInsets.zero,
-            bottomBar: loginCtrl.loginError().isNotEmpty
-                ? _buildErrorContainer()
-                : null,
-            header: _buildLoginPageHeader(context),
-            content: Center(
-                child: SizedBox(
-              width: 350,
-              height: 350,
-              child: MStreamBuilder(
-                  streams: [
-                    loginCtrl.selectedTab.stream,
-                    loginCtrl.loginError.stream,
-                    loginCtrl.resetInstructionsSent.stream,
-                    localSettings.stream,
-                    loginCtrl.obscureText.stream,
-                    loginCtrl.loadingPatientSide.stream,
-                  ],
-                  builder: (context, _) {
-                    if (loginCtrl.loadingPatientSide()) {
-                      return const Center(child: ProgressRing());
-                    }
-                    return _buildLoginTabs(context);
-                  }),
-            )),
+          return Column(
+            children: [
+              _buildLoginPageHeader(context),
+              Expanded(
+                child: Center(
+                    child: SizedBox(
+                  width: 350,
+                  height: 350,
+                  child: MStreamBuilder(
+                      streams: [
+                        loginCtrl.selectedTab.stream,
+                        loginCtrl.loginError.stream,
+                        loginCtrl.resetInstructionsSent.stream,
+                        localSettings.stream,
+                        loginCtrl.obscureText.stream,
+                        loginCtrl.loadingPatientSide.stream,
+                      ],
+                      builder: (context, _) {
+                        if (loginCtrl.loadingPatientSide()) {
+                          return const Center(child: ProgressRing());
+                        }
+                        return _buildLoginTabs(context);
+                      }),
+                )),
+              ),
+              if (loginCtrl.loginError().isNotEmpty) _buildErrorContainer(),
+            ],
           );
         });
   }
@@ -77,7 +108,7 @@ class Login extends StatelessWidget {
 
   Padding _buildErrorContainer() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18.0),
+      padding: const EdgeInsets.only(bottom: .0),
       child: InfoBar(
           key: WK.loginErr,
           title: Txt(txt("error")),
@@ -136,7 +167,9 @@ class Login extends StatelessWidget {
   FilledButton _buildResetBtn() {
     return FilledButton(
       key: WK.btnResetPassword,
-      onPressed: loginCtrl.resetButton,
+      onPressed: () {
+        loginCtrl.resetButton(serverURLCtrl.text, emailCtrl.text);
+      },
       child: Row(children: [
         const Icon(FluentIcons.password_field),
         const SizedBox(width: 10),
@@ -148,7 +181,12 @@ class Login extends StatelessWidget {
   FilledButton _buildOfflineBtn() {
     return FilledButton(
       key: WK.btnProceedOffline,
-      onPressed: () => loginCtrl.loginButton(false),
+      onPressed: () => loginCtrl.loginButton(
+        serverURLCtrl.text,
+        emailCtrl.text,
+        passwordCtrl.text,
+        false,
+      ),
       style: greyButtonStyle,
       child: ButtonContent(
         FluentIcons.virtual_network,
@@ -160,7 +198,13 @@ class Login extends StatelessWidget {
   FilledButton _buildLoginBtn() {
     return FilledButton(
       key: WK.btnLogin,
-      onPressed: loginCtrl.loginButton,
+      onPressed: () {
+        loginCtrl.loginButton(
+          serverURLCtrl.text,
+          emailCtrl.text,
+          passwordCtrl.text,
+        );
+      },
       child: Row(children: [
         const Icon(FluentIcons.forward),
         const SizedBox(width: 10),
@@ -182,8 +226,6 @@ class Login extends StatelessWidget {
   }
 
   Future<void> _pickToUpload(BuildContext context) async {
-    await flyoutFocusFix(context);
-
     final bool suppGallery =
         ImagePicker().supportsImageSource(ImageSource.gallery);
     final bool suppCamera =
@@ -196,6 +238,7 @@ class Login extends StatelessWidget {
     } else if (suppGallery && !suppCamera) {
       PatientSide.fromQR(ImagePicker().pickImage(source: ImageSource.gallery));
     } else {
+      await flyoutFocusFix(context);
       _qrFlyoutController.showFlyout(builder: (ctx) {
         return MenuFlyout(
           items: [
@@ -279,33 +322,34 @@ class Login extends StatelessWidget {
         children: [
           Expanded(
             child: CupertinoTextField(
+              suffix: FlyoutTarget(
+                controller: _serverHelpFlyoutController,
+                child: IconButton(
+                    icon: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(50),
+                        border: Border.all(
+                            color: Colors.grey.withAlpha(100), width: 1),
+                      ),
+                      padding: const EdgeInsets.all(5),
+                      child: const Icon(WindowsIcons.help, size: 12),
+                    ),
+                    onPressed: () {
+                      flyoutFocusFix(context);
+                      showTeachingTip(
+                          placementMode: FlyoutPlacementMode.topCenter,
+                          builder: (ctx) => _buildServerHelpTip(ctx),
+                          flyoutController: _serverHelpFlyoutController);
+                    }),
+              ),
               key: WK.serverField,
-              controller: loginCtrl.urlField,
+              controller: serverURLCtrl,
               textDirection: TextDirection.ltr,
               enabled: loginCtrl.loadingIndicator().isEmpty,
               placeholder: "https://[pocketbase server]",
               onSubmitted: (_) => fieldSubmit(),
             ),
           ),
-          FlyoutTarget(
-            controller: _serverHelpFlyoutController,
-            child: IconButton(
-                icon: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(50),
-                    border:
-                        Border.all(color: Colors.grey.withAlpha(100), width: 1),
-                  ),
-                  padding: const EdgeInsets.all(5),
-                  child: const Icon(WindowsIcons.help, size: 20),
-                ),
-                onPressed: () {
-                  showTeachingTip(
-                      placementMode: FlyoutPlacementMode.topCenter,
-                      builder: (ctx) => _buildServerHelpTip(ctx),
-                      flyoutController: _serverHelpFlyoutController);
-                }),
-          )
         ],
       ),
     );
@@ -331,7 +375,7 @@ class Login extends StatelessWidget {
       label: txt("email"),
       child: CupertinoTextField(
         key: WK.emailField,
-        controller: loginCtrl.emailField,
+        controller: emailCtrl,
         textDirection: TextDirection.ltr,
         enabled: loginCtrl.loadingIndicator().isEmpty,
         placeholder: "email@domain.com",
@@ -346,7 +390,7 @@ class Login extends StatelessWidget {
       child: CupertinoTextField(
         key: WK.passwordField,
         textDirection: TextDirection.ltr,
-        controller: loginCtrl.passwordField,
+        controller: passwordCtrl,
         enabled: loginCtrl.loadingIndicator().isEmpty,
         obscureText: loginCtrl.obscureText(),
         placeholder: txt("password"),
@@ -369,9 +413,10 @@ class Login extends StatelessWidget {
   void fieldSubmit() {
     if (loginCtrl.loadingIndicator().isNotEmpty) return;
     if (loginCtrl.selectedTab() == 0) {
-      loginCtrl.loginButton();
+      loginCtrl.loginButton(
+          serverURLCtrl.text, emailCtrl.text, passwordCtrl.text);
     } else if (loginCtrl.selectedTab() == 1) {
-      loginCtrl.resetButton();
+      loginCtrl.resetButton(serverURLCtrl.text, emailCtrl.text);
     }
   }
 }

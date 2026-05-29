@@ -23,6 +23,7 @@ class NetworkActions extends StatelessWidget {
           ],
           builder: (context, _) {
             return Row(
+              spacing: 2,
               mainAxisSize: MainAxisSize.min,
               children: [
                 ...networkActions.actions

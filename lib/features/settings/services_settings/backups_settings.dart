@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
+import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/utils/get_deterministic_item.dart';
 import 'package:apexo/common_widgets/transitions/border.dart';
@@ -9,8 +10,6 @@ import 'package:apexo/features/settings/services_settings/services_list_item.dar
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:intl/intl.dart';
 
 class BackupsSettings extends StatelessWidget {
   const BackupsSettings({
@@ -54,8 +53,12 @@ class BackupsSettings extends StatelessWidget {
               builder: (context, _) {
                 return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List<Widget>.from(backups.list().map((element) => buildBackupTile(element, context)))
-                        .followedBy([const SizedBox(height: 10), buildBottomControls()]).toList());
+                    children: List<Widget>.from(backups.list().map(
+                            (element) => buildBackupTile(element, context)))
+                        .followedBy([
+                      const SizedBox(height: 10),
+                      buildBottomControls()
+                    ]).toList());
               }),
         ),
       ),
@@ -63,9 +66,8 @@ class BackupsSettings extends StatelessWidget {
   }
 
   Widget buildBackupTile(BackupFile element, BuildContext context) {
-    final df = localSettings.dateFormat.startsWith("d") == true ? "d/MM" : "MM/d";
     return ServicesListItem(
-      title: DateFormat("$df/yy hh:mm a", locale.s.$code).format(element.date),
+      title: DF.fullCompact(element.date),
       subtitle: element.key,
       actions: [
         buildDownloadButton(element, context),
@@ -111,7 +113,9 @@ class BackupsSettings extends StatelessWidget {
       animate: backups.uploading(),
       child: Button(
         style: backups.uploading()
-            ? ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)))
+            ? ButtonStyle(
+                backgroundColor:
+                    WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)))
             : null,
         child: ButtonContent(FluentIcons.upload, txt("upload")),
         onPressed: () {
@@ -127,7 +131,9 @@ class BackupsSettings extends StatelessWidget {
       animate: backups.creating(),
       child: Button(
         style: backups.creating()
-            ? ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)))
+            ? ButtonStyle(
+                backgroundColor:
+                    WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)))
             : null,
         child: ButtonContent(FluentIcons.add, txt("createNew")),
         onPressed: () {
@@ -143,8 +149,10 @@ class BackupsSettings extends StatelessWidget {
       padding: const EdgeInsets.all(7),
       decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          color: getDeterministicItem(Colors.accentColors, element.key).withValues(alpha: 0.1)),
-      child: Txt(formatFileSize(element.size), style: const TextStyle(fontSize: 12)),
+          color: getDeterministicItem(Colors.accentColors, element.key)
+              .withValues(alpha: 0.1)),
+      child: Txt(formatFileSize(element.size),
+          style: const TextStyle(fontSize: 12)),
     );
   }
 
@@ -166,17 +174,20 @@ class BackupsSettings extends StatelessWidget {
 
   showRestoreDialog(BuildContext context, BackupFile element) {
     return showDialog(
+        barrierDismissible: true,
+        dismissWithEsc: true,
         context: context,
         builder: (BuildContext context) {
           return ContentDialog(
             title: Txt(txt("restoreBackup")),
-            style: dialogStyling(context, true),
+            style: dialogStyling(context, true, true),
             content: Txt(
-                "${txt("restoreBackupWarning1")} (${DateFormat().format(element.date)}) ${txt("restoreBackupWarning2")}"),
+                "${txt("restoreBackupWarning1")} (${DF.full(element.date)}) ${txt("restoreBackupWarning2")}"),
             actions: [
               const CloseButtonInDialog(),
               FilledButton(
-                style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)),
+                style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.red)),
                 child: Txt(txt("restore")),
                 onPressed: () async {
                   Navigator.pop(context);
@@ -206,23 +217,26 @@ class BackupsSettings extends StatelessWidget {
 
   showDeleteDialog(BuildContext context, BackupFile element) {
     return showDialog(
+        barrierDismissible: true,
+        dismissWithEsc: true,
         context: context,
         builder: (BuildContext context) {
           return ContentDialog(
             title: Txt(txt("delete")),
-            style: dialogStyling(context, true),
+            style: dialogStyling(context, true, true),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Txt("${txt("sureDeleteBackup")}: '${element.key}'?"),
-                Txt("${txt("backupDate")}: ${DateFormat().format(element.date)}"),
+                Txt("${txt("backupDate")}: ${DF.full(element.date)}"),
               ],
             ),
             actions: [
               const CloseButtonInDialog(),
               FilledButton(
-                style: ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.red)),
+                style: ButtonStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.red)),
                 child: Txt(txt("delete")),
                 onPressed: () async {
                   Navigator.pop(context);
@@ -255,20 +269,20 @@ class BackupsSettings extends StatelessWidget {
 
   showDownloadDialog(BuildContext context, Uri uri) {
     return showDialog(
+        barrierDismissible: true,
+        dismissWithEsc: true,
         context: context,
         builder: (BuildContext context) {
           return ContentDialog(
             title: Txt(txt("download")),
-            style: dialogStyling(context, false),
+            style: dialogStyling(context, false, true),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Txt("${txt("useTheFollowingLinkToDownloadTheBackup")}:"),
                 const SizedBox(height: 10),
-                CupertinoTextField(
-                  controller: TextEditingController(text: uri.toString()),
-                ),
+                StyledSelectableText(text: uri.toString()),
               ],
             ),
             actions: const [

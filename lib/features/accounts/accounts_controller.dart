@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/constants.dart';
@@ -14,7 +14,6 @@ class _Accounts extends ObservablePersistingObject {
   final loaded = ObservableState(false);
   final loading = ObservableState(false);
   final creating = ObservableState(false);
-  final errorMessage = ObservableState("");
   final updating = ObservableState(Map<String, bool>.from({}));
   final deleting = ObservableState(Map<String, bool>.from({}));
 
@@ -30,7 +29,6 @@ class _Accounts extends ObservablePersistingObject {
     required List<int> permissions,
     required bool operates,
   }) async {
-    errorMessage("");
     creating(true);
     try {
       final created =
@@ -48,8 +46,8 @@ class _Accounts extends ObservablePersistingObject {
         "operate": operates
       });
     } catch (e) {
+      showErrorMessage(e, "creatingNewAccount");
       login.askForLoginAgain(e);
-      errorMessage((e as ClientException).response.toString());
     }
 
     await reloadFromRemote();
@@ -57,9 +55,13 @@ class _Accounts extends ObservablePersistingObject {
   }
 
   Future<void> delete({required bool isAdmin, required String id}) async {
-    errorMessage("");
     deleting(deleting()..addAll({id: true}));
-    await login.pb!.collection(_collName(isAdmin)).delete(id);
+    try {
+      await login.pb!.collection(_collName(isAdmin)).delete(id);
+    } catch (e) {
+      showErrorMessage(e, "deletingAccount");
+      login.askForLoginAgain(e);
+    }
     deleting(deleting()..remove(id));
     await reloadFromRemote();
   }
@@ -85,7 +87,6 @@ class _Accounts extends ObservablePersistingObject {
     required List<int> permissions,
     required bool operates,
   }) async {
-    errorMessage("");
     updating(updating()..addAll({id: true}));
     try {
       await login.pb!.collection(_collName(isAdmin)).update(id, body: {
@@ -113,7 +114,7 @@ class _Accounts extends ObservablePersistingObject {
       }
     } catch (e) {
       login.askForLoginAgain(e);
-      errorMessage((e as ClientException).response.toString());
+      showErrorMessage(e, "updatingAccounts");
     }
     updating(updating()..remove(id));
     await reloadFromRemote();

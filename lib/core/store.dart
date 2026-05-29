@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -17,6 +18,8 @@ import 'model.dart';
 import 'observable.dart';
 import 'save_local.dart';
 import 'save_remote.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/features/settings/settings_model.dart';
 
 typedef ModellingFunc<G> = G Function(Map<String, dynamic> input);
 
@@ -96,9 +99,24 @@ class Store<G extends Model> {
     // Decode JSON strings in a background isolate
     final Map<String, Map<String, dynamic>> decoded =
         await compute(_decodeAllDocs, all);
+
+    // Get current global settings data to pass to the background isolate
+    Map<String, Map<String, dynamic>>? globalSettingsData;
+    try {
+      globalSettingsData = globalSettings.observableMap.docs.map(
+        (key, setting) => MapEntry(key, setting.toJson()),
+      );
+    } catch (_) {
+      // Ignore if globalSettings hasn't been initialized or is empty
+    }
+
     // model json maps to document in a background isolate
     final Map<String, G> modeled = await compute(_modelAllDocs<G>,
-        _ModelAllDocsParams(modeling: modeling, decoded: decoded));
+        _ModelAllDocsParams(
+          modeling: modeling,
+          decoded: decoded,
+          globalSettingsData: globalSettingsData,
+        ));
     // silent for persistence; use the optimized setAllWithJson
     observableMap.silently(() {
       observableMap.clear();
@@ -197,6 +215,7 @@ class Store<G extends Model> {
         return;
       } catch (e, s) {
         login.askForLoginAgain(e);
+        showErrorMessage(e, "sendingUpdatesToServer");
         logger("Error during sending (Will defer updates): $e", s);
       }
     }
@@ -639,8 +658,9 @@ class Store<G extends Model> {
         synchronize();
         return;
       } catch (e, s) {
+        showErrorMessage(e, "deletingFile");
         login.askForLoginAgain(e);
-        logger("Error during sending the file (Will defer upload): $e", s);
+        logger("Error during deleting the file (Will defer upload): $e", s);
       }
     }
 
@@ -704,6 +724,7 @@ class Store<G extends Model> {
         return;
       } catch (e, s) {
         login.askForLoginAgain(e);
+        showErrorMessage(e, "uploadingFile");
         logger("Error during sending the file (Will defer upload): $e", s);
       }
     }
@@ -750,10 +771,20 @@ Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
 class _ModelAllDocsParams<G extends Model> {
   final ModellingFunc<G> modeling;
   final Map<String, Map<String, dynamic>> decoded;
-  _ModelAllDocsParams({required this.modeling, required this.decoded});
+  final Map<String, Map<String, dynamic>>? globalSettingsData;
+  _ModelAllDocsParams({
+    required this.modeling,
+    required this.decoded,
+    this.globalSettingsData,
+  });
 }
 
 Map<String, G> _modelAllDocs<G extends Model>(_ModelAllDocsParams<G> params) {
+  if (params.globalSettingsData != null) {
+    params.globalSettingsData!.forEach((key, value) {
+      globalSettings.set(Setting.fromJson(value));
+    });
+  }
   return Map<String, G>.fromEntries(params.decoded.entries
       .map((entry) => MapEntry(entry.key, params.modeling(entry.value))));
 }

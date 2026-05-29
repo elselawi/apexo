@@ -1,7 +1,8 @@
+import 'package:apexo/common_widgets/money_display.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/features/stats/widgets/charts/bar.dart';
 import 'package:apexo/features/stats/widgets/charts/line.dart';
 import 'package:apexo/features/stats/widgets/charts/pie.dart';
@@ -36,7 +37,58 @@ class StatsScreen extends StatelessWidget {
               color:
                   FluentTheme.of(context).inactiveColor.withValues(alpha: 0.5)),
           icons: _icons),
-      const Divider(size: 1500),
+      Container(
+        decoration: topBarDecoration(context, Colors.grey),
+        child: Padding(
+          padding: const EdgeInsets.only(top: 0, bottom: 10, left: 8, right: 8),
+          child: StreamBuilder(
+              stream: chartsCtrl.interval.stream,
+              builder: (context, asyncSnapshot) {
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: 3,
+                  children: [
+                    ToggleButton(
+                        checked: chartsCtrl.interval() == StatsInterval.days,
+                        onChanged: (_) => chartsCtrl.setIntervalToDays(),
+                        child: Txt(
+                          txt("days"),
+                          style: const TextStyle(fontSize: 13),
+                        )),
+                    ToggleButton(
+                        checked: chartsCtrl.interval() == StatsInterval.weeks,
+                        onChanged: (_) => chartsCtrl.setIntervalToWeeks(),
+                        child: Txt(
+                          txt("weeks"),
+                          style: const TextStyle(fontSize: 13),
+                        )),
+                    ToggleButton(
+                        checked: chartsCtrl.interval() == StatsInterval.months,
+                        onChanged: (_) => chartsCtrl.setIntervalToMonths(),
+                        child: Txt(
+                          txt("months"),
+                          style: const TextStyle(fontSize: 13),
+                        )),
+                    ToggleButton(
+                        checked:
+                            chartsCtrl.interval() == StatsInterval.quarters,
+                        onChanged: (_) => chartsCtrl.setIntervalToQuarters(),
+                        child: Txt(
+                          txt("quarters"),
+                          style: const TextStyle(fontSize: 13),
+                        )),
+                    ToggleButton(
+                        checked: chartsCtrl.interval() == StatsInterval.years,
+                        onChanged: (_) => chartsCtrl.setIntervalToYears(),
+                        child: Txt(
+                          txt("years"),
+                          style: const TextStyle(fontSize: 13),
+                        )),
+                  ],
+                );
+              }),
+        ),
+      ),
       Expanded(
         child: MStreamBuilder(
             streams: [
@@ -50,12 +102,12 @@ class StatsScreen extends StatelessWidget {
                 return GridView.builder(
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 750,
-                    childAspectRatio: 1.5,
-                    crossAxisSpacing: 15,
-                    mainAxisSpacing: 15,
+                    childAspectRatio: 1.1,
+                    crossAxisSpacing: 0,
+                    mainAxisSpacing: 0,
                   ),
                   itemCount: 9,
-                  padding: const EdgeInsets.all(15),
+                  padding: const EdgeInsets.all(0),
                   itemBuilder: (context, index) {
                     if (index == 0) {
                       return _buildSingleChart(
@@ -76,7 +128,7 @@ class StatsScreen extends StatelessWidget {
                     if (index == 1) {
                       return _buildSingleChart(
                         "${txt("paymentsAndExpensesPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
-                        "${txt("total")}: ${txt("payments")} ${chartsCtrl.groupedPayments.reduce((v, e) => v += e)} ${globalSettings.get("currency_______").value} / ${txt("expenses")} ${chartsCtrl.groupedExpenses.reduce((v, e) => v += e)} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
+                        "${txt("total")}: ${txt("payments")} ${formatMoneyInText(chartsCtrl.groupedPayments.reduce((v, e) => v += e).toStringAsFixed(2))} ${currency()}\n${txt("expenses")} ${formatMoneyInText(chartsCtrl.groupedExpenses.reduce((v, e) => v += e).toStringAsFixed(2))} ${currency()} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
                         StyledLineChart(
                           labels:
                               chartsCtrl.periods.map((p) => p.label).toList(),
@@ -85,8 +137,8 @@ class StatsScreen extends StatelessWidget {
                             chartsCtrl.groupedExpenses.toList()
                           ],
                           datasetLabels: [
-                            "${txt("payments")} ${globalSettings.get("currency_______").value}",
-                            "${txt("expenses")} ${globalSettings.get("currency_______").value}"
+                            "${txt("payments")} ${currency()}",
+                            "${txt("expenses")} ${currency()}"
                           ],
                         ),
                         constraints.maxWidth,
@@ -229,16 +281,15 @@ class StatsScreen extends StatelessWidget {
     return Container(
       width: (parentWidth > 500 ? parentWidth / 2 : parentWidth) - 20,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
-          )
-        ],
-        color: FluentTheme.of(context).cardColor,
+        color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
+        border: BorderDirectional(
+          bottom: BorderSide(
+              color:
+                  FluentTheme.of(context).resources.dividerStrokeColorDefault),
+          end: BorderSide(
+              color:
+                  FluentTheme.of(context).resources.dividerStrokeColorDefault),
+        ),
       ),
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
@@ -267,7 +318,6 @@ class StatsScreen extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -281,37 +331,9 @@ class StatsScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
-          )
-        ],
-        color: FluentTheme.of(context).menuColor,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildPickRangeButton(context),
-          _buildFarItems(),
-        ],
-      ),
-    );
-  }
-
-  Row _buildFarItems() {
-    return Row(
-      children: [
-        _buildOperatorFilter(),
-        const SizedBox(width: 5),
-        const ArchiveToggle(),
-      ],
-    );
+    return ScreenCommandBar(
+        mainButton: _buildPickRangeButton(context),
+        farItems: [_buildOperatorFilter()]);
   }
 
   Widget _buildOperatorFilter() {
@@ -326,7 +348,7 @@ class StatsScreen extends StatelessWidget {
                 child: Txt(txt("allDoctors")),
               ),
               ...accounts.operators.map((account) {
-                var name = "👨‍⚕️ ${accounts.name(account)}";
+                var name = "🥼 ${accounts.name(account)}";
                 if (name.length > 17) {
                   name = "${name.substring(0, 14)}...";
                 }

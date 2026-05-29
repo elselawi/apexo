@@ -30,8 +30,17 @@ class Appointment extends Model {
   bool get locked {
     // lock if only personal appointments are permissible
     // and the appointment doesn't have the current account id as an operator
-    return login.permissions[PInt.appointments] != 2 &&
-        !operatorsIDs.contains(login.currentAccountID);
+    if (login.permissions[PInt.appointments] == 2) {
+      return false;
+    } else if (login.permissions[PInt.appointments] == 1) {
+      if (operatorsIDs.contains(login.currentAccountID)) {
+        return false;
+      } else {
+        return true;
+      }
+    } else {
+      return true;
+    }
   }
 
   Patient? get patient {
@@ -48,7 +57,7 @@ class Appointment extends Model {
 
   String get operatorsNames {
     if (operatorsIDs.isEmpty) return "";
-    return "👨‍⚕️ ${operatorsIDs.map((id) => accounts.nameOrEmailFromID(id)).join(", ")}";
+    return "🥼 ${operatorsIDs.map((id) => accounts.nameOrEmailFromID(id)).join(", ")}";
   }
 
   bool get fullPaid {

@@ -5,27 +5,47 @@ import 'package:apexo/features/notes/note_card_widget.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-class KanbanColumn extends StatelessWidget {
+class KanbanColumn extends StatefulWidget {
   final Note? column;
   final List<Note> columnNotes;
-  final FlyoutController archiveConfirmation = FlyoutController();
-  final FlyoutController moreMenuFlyout = FlyoutController();
-
-  Color get color {
-    if (column == null) {
-      return Colors.grey;
-    }
-    return column!.computedTint;
-  }
-
-  KanbanColumn({
+  const KanbanColumn({
     super.key,
     required this.column,
     required this.columnNotes,
   });
+
+  @override
+  State<KanbanColumn> createState() => _KanbanColumnState();
+}
+
+class _KanbanColumnState extends State<KanbanColumn> {
+  final FlyoutController archiveConfirmation = FlyoutController();
+  final FlyoutController moreMenuFlyout = FlyoutController();
+
+  @override
+  void dispose() {
+    archiveConfirmation.dispose();
+    moreMenuFlyout.dispose();
+    super.dispose();
+  }
+
+  bool get canEdit {
+    if (login.isAdmin) return true;
+    if (login.permissions[PInt.notes] == 2) return true;
+    return false;
+  }
+
+  Color get color {
+    if (widget.column == null) {
+      return Colors.grey;
+    }
+    return widget.column!.computedTint;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,10 +53,10 @@ class KanbanColumn extends StatelessWidget {
     return DragTarget<Note>(
       onAcceptWithDetails: (details) {
         final note = details.data;
-        if (column == null) {
+        if (widget.column == null) {
           note.columnID = "";
         } else {
-          note.columnID = column!.id;
+          note.columnID = widget.column!.id;
         }
         notes.set(note);
       },
@@ -48,27 +68,32 @@ class KanbanColumn extends StatelessWidget {
         return RepaintBoundary(
           child: Container(
             width: 325,
-            margin: const EdgeInsets.only(top: 13),
             decoration: locale.isRtl
                 ? BoxDecoration(
-                    color: Colors.transparent,
+                    color: FluentTheme.of(context)
+                        .resources
+                        .solidBackgroundFillColorBase,
                     border: Border(
-                      top: borderSide,
-                      right: (column == notes.columns.firstOrNull)
+                      right: (widget.column == notes.columns.firstOrNull)
                           ? BorderSide.none
                           : borderSide,
-                      left: (column == null) ? borderSide : BorderSide.none,
+                      left: (widget.column == null)
+                          ? borderSide
+                          : BorderSide.none,
                       bottom: borderSide,
                     ),
                   )
                 : BoxDecoration(
-                    color: Colors.transparent,
+                    color: FluentTheme.of(context)
+                        .resources
+                        .subtleFillColorSecondary,
                     border: Border(
-                      top: borderSide,
-                      left: (column == notes.columns.firstOrNull)
+                      left: (widget.column == notes.columns.firstOrNull)
                           ? BorderSide.none
                           : borderSide,
-                      right: (column == null) ? borderSide : BorderSide.none,
+                      right: (widget.column == null)
+                          ? borderSide
+                          : BorderSide.none,
                       bottom: borderSide,
                     ),
                   ),
@@ -86,7 +111,7 @@ class KanbanColumn extends StatelessWidget {
   }
 
   Widget _buildArchiveCompletedButton(FluentThemeData theme) {
-    if (columnNotes.any((note) => note.done && note.archived != true)) {
+    if (widget.columnNotes.any((note) => note.done && note.archived != true)) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(4, 16, 4, 4),
         child: FilledButton(
@@ -94,7 +119,7 @@ class KanbanColumn extends StatelessWidget {
           child: ButtonContent(
               FluentIcons.archive, txt("archiveAllCompletedNotes")),
           onPressed: () {
-            for (var note in columnNotes) {
+            for (var note in widget.columnNotes) {
               if (note.done && note.archived != true) {
                 notes.set(note..archived = true);
               }
@@ -109,7 +134,7 @@ class KanbanColumn extends StatelessWidget {
 
   Widget _buildColumnBody(BuildContext context) {
     return Expanded(
-      child: columnNotes.isEmpty
+      child: widget.columnNotes.isEmpty
           ? Center(
               child: Column(
                 spacing: 10,
@@ -137,14 +162,14 @@ class KanbanColumn extends StatelessWidget {
             )
           : ListView.builder(
               padding: const EdgeInsetsDirectional.fromSTEB(15, 20, 5, 12),
-              itemCount: columnNotes.length + 1,
+              itemCount: widget.columnNotes.length + 1,
               itemBuilder: (context, index) {
-                if (index == columnNotes.length) {
+                if (index == widget.columnNotes.length) {
                   return _buildArchiveCompletedButton(FluentTheme.of(context));
                 }
                 return NoteCard(
-                  note: columnNotes[index],
-                  key: Key(columnNotes[index].id),
+                  note: widget.columnNotes[index],
+                  key: Key(widget.columnNotes[index].id),
                 );
               },
             ),
@@ -167,8 +192,8 @@ class KanbanColumn extends StatelessWidget {
                   message: txt("editColumn"),
                   child: GestureDetector(
                     onTap: () {
-                      if (column != null) {
-                        showColumnEditDialog(context, column: column);
+                      if (widget.column != null) {
+                        showColumnEditDialog(context, column: widget.column);
                       }
                     },
                     child: _buildColumnName(context, theme),
@@ -179,7 +204,7 @@ class KanbanColumn extends StatelessWidget {
                 message: txt("addNote"),
                 child: _buildAddNoteButton(theme, context),
               ),
-              if (column != null)
+              if (widget.column != null && canEdit)
                 FlyoutTarget(
                   controller: moreMenuFlyout,
                   child: IconButton(
@@ -194,11 +219,12 @@ class KanbanColumn extends StatelessWidget {
                                 leading: const Icon(FluentIcons.edit),
                                 onPressed: () {
                                   moreMenuFlyout.close();
-                                  showColumnEditDialog(context, column: column);
+                                  showColumnEditDialog(context,
+                                      column: widget.column);
                                 },
                               ),
                               const MenuFlyoutSeparator(),
-                              if (notes.columns.firstOrNull != column)
+                              if (notes.columns.firstOrNull != widget.column)
                                 MenuFlyoutItem(
                                   text: Text(txt("moveTowardsStart")),
                                   leading: Icon(locale.isRtl
@@ -206,17 +232,18 @@ class KanbanColumn extends StatelessWidget {
                                       : FluentIcons.chevron_left),
                                   onPressed: () {
                                     final index =
-                                        notes.columns.indexOf(column!);
+                                        notes.columns.indexOf(widget.column!);
                                     final prev = notes.columns[index - 1];
-                                    final thisOrder =
-                                        double.parse(column!.order.toString());
+                                    final thisOrder = double.parse(
+                                        widget.column!.order.toString());
                                     final prevOrder =
                                         double.parse(prev.order.toString());
-                                    notes.set(column!..order = prevOrder);
+                                    notes
+                                        .set(widget.column!..order = prevOrder);
                                     notes.set(prev..order = thisOrder);
                                   },
                                 ),
-                              if (notes.columns.lastOrNull != column)
+                              if (notes.columns.lastOrNull != widget.column)
                                 MenuFlyoutItem(
                                   text: Text(txt("moveTowardsEnd")),
                                   leading: Icon(locale.isRtl
@@ -224,13 +251,14 @@ class KanbanColumn extends StatelessWidget {
                                       : FluentIcons.chevron_right),
                                   onPressed: () {
                                     final index =
-                                        notes.columns.indexOf(column!);
+                                        notes.columns.indexOf(widget.column!);
                                     final next = notes.columns[index + 1];
-                                    final thisOrder =
-                                        double.parse(column!.order.toString());
+                                    final thisOrder = double.parse(
+                                        widget.column!.order.toString());
                                     final nextOrder =
                                         double.parse(next.order.toString());
-                                    notes.set(column!..order = nextOrder);
+                                    notes
+                                        .set(widget.column!..order = nextOrder);
                                     notes.set(next..order = thisOrder);
                                   },
                                 )
@@ -251,12 +279,14 @@ class KanbanColumn extends StatelessWidget {
       width: 20,
       height: 20,
       decoration: BoxDecoration(
-        color: column != null ? color : FluentTheme.of(context).inactiveColor,
+        color: widget.column != null
+            ? color
+            : FluentTheme.of(context).inactiveColor,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Center(
         child: Txt(
-          columnNotes.length.toString(),
+          widget.columnNotes.length.toString(),
           style: const TextStyle(
               color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
         ),
@@ -269,7 +299,7 @@ class KanbanColumn extends StatelessWidget {
       style: _addNoteButtonStyle(context),
       icon: const Icon(FluentIcons.add),
       onPressed: () {
-        showNoteEditDialog(context, columnID: column?.id);
+        showNoteEditDialog(context, columnID: widget.column?.id);
       },
     );
   }
@@ -291,10 +321,10 @@ class KanbanColumn extends StatelessWidget {
       padding: const EdgeInsets.all(2),
       child: Row(
         children: [
-          if (column != null) const SizedBox(width: 5),
+          if (widget.column != null) const SizedBox(width: 5),
           Expanded(
             child: Txt(
-              column?.columnName ?? txt("uncategorized"),
+              widget.column?.columnName ?? txt("uncategorized"),
               style: theme.typography.bodyStrong?.copyWith(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,

@@ -46,13 +46,18 @@ class _PanelScreenState extends State<PanelScreen> {
       widget.panel.store.observableMap
           .unObserve(observeAppointmentForImgUpdate);
     }
+    focusNode.dispose();
+    panelSwitchController.dispose();
+    confirmCancelController.dispose();
     super.dispose();
   }
 
   @override
   void initState() {
     super.initState();
-    isNew = widget.panel.store.get(widget.panel.item.id) == null;
+    isNew = widget.panel.canNotBeNew
+        ? false
+        : widget.panel.store.get(widget.panel.item.id) == null;
     saveButtonCheckTimer =
         Timer.periodic(const Duration(milliseconds: 750), (_) {
       if (jsonEncode(widget.panel.item.toJson()) != widget.panel.savedJson &&
@@ -88,105 +93,107 @@ class _PanelScreenState extends State<PanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      resizeToAvoidBottomInset: true,
-      padding: EdgeInsets.zero,
-      content: KeyboardListener(
-        autofocus: true,
-        focusNode: focusNode,
-        onKeyEvent: (value) {
-          if (value is KeyDownEvent &&
-              value.logicalKey == LogicalKeyboardKey.escape &&
-              routes.panels().isNotEmpty &&
-              widget.panel.inProgress() == false) {
-            closeOrConfirmCancel();
-            return;
-          }
+    return KeyboardListener(
+      autofocus: true,
+      focusNode: focusNode,
+      onKeyEvent: (value) {
+        if (value is KeyDownEvent &&
+            value.logicalKey == LogicalKeyboardKey.escape &&
+            routes.panels().isNotEmpty &&
+            widget.panel.inProgress() == false) {
+          closeOrConfirmCancel();
+          return;
+        }
 
-          if (value.logicalKey == LogicalKeyboardKey.controlLeft ||
-              value.logicalKey == LogicalKeyboardKey.controlLeft) {
-            if (value is KeyDownEvent) {
-              ctrlPressed = true;
-            } else {
-              ctrlPressed = false;
-            }
+        if (value.logicalKey == LogicalKeyboardKey.controlLeft ||
+            value.logicalKey == LogicalKeyboardKey.controlLeft) {
+          if (value is KeyDownEvent) {
+            ctrlPressed = true;
+          } else {
+            ctrlPressed = false;
           }
+        }
 
-          if (value is KeyDownEvent &&
-              value.logicalKey == LogicalKeyboardKey.tab &&
-              ctrlPressed) {
-            if (widget.panel.selectedTab() == widget.panel.tabs.length - 1) {
-              widget.panel.selectedTab(0);
-            } else {
-              widget.panel.selectedTab(widget.panel.selectedTab() + 1);
-            }
+        if (value is KeyDownEvent &&
+            value.logicalKey == LogicalKeyboardKey.tab &&
+            ctrlPressed) {
+          if (widget.panel.selectedTab() == widget.panel.tabs.length - 1) {
+            widget.panel.selectedTab(0);
+          } else {
+            widget.panel.selectedTab(widget.panel.selectedTab() + 1);
           }
-        },
-        child: Container(
-          margin: const EdgeInsetsDirectional.only(
-              top: 5, bottom: 5, start: 0, end: 5),
-          decoration: BoxDecoration(
-              boxShadow: kElevationToShadow[24],
-              color: FluentTheme.of(context).cardColor,
-              border: Border.all(color: Colors.grey.withAlpha(150)),
-              borderRadius: BorderRadius.circular(5)),
-          child: MStreamBuilder(
-              streams: [
-                localSettings.stream,
-                widget.panel.selectedTab.stream,
-                routes.minimizePanels.stream,
-              ],
-              builder: (context, snapshot) {
-                return Column(
-                  key: Key(localSettings.selectedLocale.toString()),
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildPanelHeader(),
-                    if (routes.minimizePanels() == false ||
-                        widget.layoutWidth >= 710) ...[
-                      _buildTabsControllers(),
-                      _buildTabBody(),
-                      if (widget
-                              .panel.tabs[widget.panel.selectedTab()].footer !=
-                          null)
-                        widget.panel.tabs[widget.panel.selectedTab()].footer!,
-                      _buildBottomControls(),
-                    ],
+        }
+      },
+      child: Container(
+        margin: const EdgeInsetsDirectional.only(
+            top: 5, bottom: 5, start: 0, end: 5),
+        decoration: BoxDecoration(
+            boxShadow: kElevationToShadow[24],
+            color: FluentTheme.of(context)
+                .resources
+                .solidBackgroundFillColorBaseAlt,
+            border: Border.all(color: Colors.grey.withAlpha(150)),
+            borderRadius: BorderRadius.circular(5)),
+        child: MStreamBuilder(
+            streams: [
+              localSettings.stream,
+              widget.panel.selectedTab.stream,
+              routes.minimizePanels.stream,
+            ],
+            builder: (context, snapshot) {
+              return Column(
+                key: Key(localSettings.selectedLocale.toString()),
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildPanelHeader(),
+                  if (routes.minimizePanels() == false ||
+                      widget.layoutWidth >= 710) ...[
+                    _buildTabsControllers(),
+                    _buildTabBody(),
+                    if (widget.panel.tabs[widget.panel.selectedTab()].footer !=
+                        null)
+                      widget.panel.tabs[widget.panel.selectedTab()].footer!,
+                    _buildBottomControls(),
                   ],
-                );
-              }),
-        ),
+                ],
+              );
+            }),
       ),
     );
   }
 
   Widget _buildTabBody() {
     return Expanded(
-      child: SingleChildScrollView(
-        child: SwipeDetector(
-          onSwipeLeft: () {
-            if (widget.panel.selectedTab() > 0) {
-              widget.panel.selectedTab(widget.panel.selectedTab() - 1);
-            }
-          },
-          onSwipeRight: () {
-            if (widget.panel.selectedTab() < widget.panel.tabs.length - 1) {
-              widget.panel.selectedTab(widget.panel.selectedTab() + 1);
-            }
-          },
-          child: Container(
-            color: FluentTheme.of(context).scaffoldBackgroundColor,
-            padding: EdgeInsets.all(widget
-                .panel.tabs[widget.panel.selectedTab()].padding
-                .toDouble()),
-            constraints: BoxConstraints(
-                minHeight:
-                    widget.panel.tabs[widget.panel.selectedTab()].footer == null
-                        ? widget.layoutHeight - 161
-                        : widget.layoutHeight - 206),
-            child: widget.panel.tabs[widget.panel.selectedTab()].body,
-          ),
-        ),
+      child: widget.panel.inherentlyScrollable
+          ? _buildBodyChild()
+          : SingleChildScrollView(
+              child: _buildBodyChild(),
+            ),
+    );
+  }
+
+  SwipeDetector _buildBodyChild() {
+    return SwipeDetector(
+      onSwipePrev: () {
+        if (widget.panel.selectedTab() > 0) {
+          widget.panel.selectedTab(widget.panel.selectedTab() - 1);
+        }
+      },
+      onSwipeNext: () {
+        if (widget.panel.selectedTab() < widget.panel.tabs.length - 1) {
+          widget.panel.selectedTab(widget.panel.selectedTab() + 1);
+        }
+      },
+      child: Container(
+        color: FluentTheme.of(context).scaffoldBackgroundColor,
+        padding: EdgeInsets.all(
+            widget.panel.tabs[widget.panel.selectedTab()].padding.toDouble()),
+        constraints: BoxConstraints(
+            minHeight:
+                widget.panel.tabs[widget.panel.selectedTab()].footer == null
+                    ? widget.layoutHeight - 161
+                    : widget.layoutHeight - 206),
+        child: widget.panel.tabs[widget.panel.selectedTab()].body,
       ),
     );
   }
@@ -208,13 +215,17 @@ class _PanelScreenState extends State<PanelScreen> {
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        if (isNew == false &&
-                            widget.panel.item.archived == true)
-                          _buildRestoreButton(),
-                        if (isNew == false &&
-                            widget.panel.item.archived != true)
-                          _buildArchiveButton(),
-                        _buildSaveButton(),
+                        if (widget.panel.additionalControls != null)
+                          widget.panel.additionalControls!,
+                        if (widget.panel.showBottomControls) ...[
+                          if (isNew == false &&
+                              widget.panel.item.archived == true)
+                            _buildRestoreButton(),
+                          if (isNew == false &&
+                              widget.panel.item.archived != true)
+                            _buildArchiveButton(),
+                          _buildSaveButton(),
+                        ],
                         _buildCancelButton(),
                       ],
                     ),
@@ -278,21 +289,22 @@ class _PanelScreenState extends State<PanelScreen> {
         });
   }
 
-  FilledButton _buildArchiveButton() {
-    return FilledButton(
-      onPressed: () {
-        setState(() {
-          widget.panel.item.archived = true;
-          widget.panel.store.archive(widget.panel.item.id);
-        });
-      },
-      style: greyButtonStyle.copyWith(
-        backgroundColor: const WidgetStatePropertyAll(Colors.grey),
-        textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-      ),
-      child: ButtonContent(FluentIcons.archive,
-          "${txt("archive")} ${txt(widget.panel.storeSingularName)}"),
-    );
+  Widget _buildArchiveButton() {
+    return widget.panel.archiveButtonReplacement ??
+        FilledButton(
+          onPressed: () {
+            setState(() {
+              widget.panel.item.archived = true;
+              widget.panel.store.archive(widget.panel.item.id);
+            });
+          },
+          style: greyButtonStyle.copyWith(
+            backgroundColor: const WidgetStatePropertyAll(Colors.grey),
+            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+          ),
+          child: ButtonContent(FluentIcons.archive,
+              "${txt("archive")} ${txt(widget.panel.singularName)}"),
+        );
   }
 
   FilledButton _buildRestoreButton() {
@@ -309,7 +321,7 @@ class _PanelScreenState extends State<PanelScreen> {
       ),
       child: ButtonContent(
         FluentIcons.archive_undo,
-        "${txt("restore")} ${txt(widget.panel.storeSingularName)}",
+        "${txt("restore")} ${txt(widget.panel.singularName)}",
       ),
     );
   }
@@ -327,10 +339,14 @@ class _PanelScreenState extends State<PanelScreen> {
           currentIndex: widget.panel.selectedTab(),
           showScrollButtons: false,
           shortcutsEnabled: true,
-          tabWidthBehavior: TabWidthBehavior.compact,
+          tabWidthBehavior: widget.panel.showTitles
+              ? TabWidthBehavior.equal
+              : TabWidthBehavior.compact,
           header: widget.panel.selectedTab() != 0
               ? IconButton(
-                  icon: const Icon(FluentIcons.chevron_left),
+                  icon: Icon(Directionality.of(context) == TextDirection.rtl
+                      ? FluentIcons.chevron_right
+                      : FluentIcons.chevron_left),
                   onPressed: () =>
                       widget.panel.selectedTab(widget.panel.selectedTab() - 1),
                 )
@@ -341,7 +357,9 @@ class _PanelScreenState extends State<PanelScreen> {
                           .length -
                       1
               ? IconButton(
-                  icon: const Icon(FluentIcons.chevron_right),
+                  icon: Icon(Directionality.of(context) == TextDirection.rtl
+                      ? FluentIcons.chevron_left
+                      : FluentIcons.chevron_right),
                   onPressed: () =>
                       widget.panel.selectedTab(widget.panel.selectedTab() + 1),
                 )
@@ -432,30 +450,16 @@ class _PanelScreenState extends State<PanelScreen> {
   }
 
   Widget _buildPanelHeaderStoreName() {
-    String emoji = "";
-
-    switch (widget.panel.storeSingularName) {
-      case "appointment":
-        emoji = "📅";
-        break;
-      case "doctor":
-        emoji = "🥼";
-        break;
-      case "patient":
-        emoji = "👤";
-        break;
-    }
-
     return SizedBox(
       width: 105,
       child: Row(
         children: [
           Txt(
-            emoji,
+            widget.panel.unicodeSymbol,
             style: const TextStyle(fontSize: 20),
           ),
           Txt(
-            txt(widget.panel.storeSingularName),
+            txt(widget.panel.singularName),
             style: TextStyle(
                 fontSize: 12,
                 color: FluentTheme.of(context).shadowColor,
@@ -531,7 +535,8 @@ class _PanelScreenState extends State<PanelScreen> {
     }
   }
 
-  void openPanelSwitch() {
+  void openPanelSwitch() async {
+    await flyoutFocusFix(context);
     panelSwitchController.showFlyout(
       barrierDismissible: widget.layoutWidth < 710,
       dismissWithEsc: true,
@@ -545,11 +550,12 @@ class _PanelScreenState extends State<PanelScreen> {
             leading: Icon(panel.icon),
             trailing: panel.inProgress()
                 ? const SizedBox(height: 20, width: 20, child: ProgressRing())
-                : Icon(panel.store.get(panel.item.id) == null
+                : Icon(widget.panel.canNotBeNew == false &&
+                        panel.store.get(panel.item.id) == null
                     ? FluentIcons.add
                     : FluentIcons.edit),
             text: Txt(
-                "${txt(panel.storeSingularName)}: ${panel.title ?? panel.item.title}",
+                "${txt(panel.singularName)}: ${panel.title ?? panel.item.title}",
                 style: TextStyle(
                     fontWeight:
                         panel == widget.panel ? FontWeight.w500 : null)),

@@ -8,9 +8,27 @@ import 'package:flutter/cupertino.dart';
 final _s3Result = ObservableState("");
 final _emailResult = ObservableState("");
 
-class ProductionTests extends StatelessWidget {
-  final testEmailController = TextEditingController(text: login.email);
-  ProductionTests({super.key});
+class ProductionTests extends StatefulWidget {
+  const ProductionTests({super.key});
+
+  @override
+  State<ProductionTests> createState() => _ProductionTestsState();
+}
+
+class _ProductionTestsState extends State<ProductionTests> {
+  final testEmailController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    testEmailController.text = login.email;
+  }
+
+  @override
+  void dispose() {
+    testEmailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +60,8 @@ class ProductionTests extends StatelessWidget {
                               try {
                                 await login.pb!.settings.testS3();
                               } catch (e) {
-                                _s3Result("ERROR: ${txt("fileStorageFail")}: ${e.toString()}");
+                                _s3Result(
+                                    "ERROR: ${txt("fileStorageFail")}: ${e.toString()}");
                                 return;
                               }
                               _s3Result(txt("fileStorageSuccess"));
@@ -73,9 +92,12 @@ class ProductionTests extends StatelessWidget {
                                 onPressed: () async {
                                   _emailResult(".");
                                   try {
-                                    await login.pb!.settings.testEmail(testEmailController.text, "password-reset");
+                                    await login.pb!.settings.testEmail(
+                                        testEmailController.text,
+                                        "password-reset");
                                   } catch (e) {
-                                    _emailResult("ERROR: ${txt("emailTestFail")}: ${e.toString()}");
+                                    _emailResult(
+                                        "ERROR: ${txt("emailTestFail")}: ${e.toString()}");
                                     return;
                                   }
                                   _emailResult(txt("emailTestSuccess"));
@@ -85,10 +107,14 @@ class ProductionTests extends StatelessWidget {
                           ],
                         ),
                         const SizedBox(height: 10),
-                        if (_emailResult().length > 1) buildTestResult(_emailResult),
+                        if (_emailResult().length > 1)
+                          buildTestResult(_emailResult),
                       ],
                     ),
-                  ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+                  ]
+                      .map((e) => [e, const SizedBox(height: 10)])
+                      .expand((e) => e)
+                      .toList(),
                 );
               }),
         ),
@@ -100,7 +126,9 @@ class ProductionTests extends StatelessWidget {
     return InfoBar(
       title: st().startsWith("ERROR") ? Txt(txt("fail")) : Txt(txt("success")),
       content: Txt(st()),
-      severity: st().startsWith("ERROR") ? InfoBarSeverity.error : InfoBarSeverity.success,
+      severity: st().startsWith("ERROR")
+          ? InfoBarSeverity.error
+          : InfoBarSeverity.success,
     );
   }
 }

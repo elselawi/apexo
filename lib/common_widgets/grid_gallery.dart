@@ -1,8 +1,10 @@
 import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
 import 'package:apexo/common_widgets/dialogs/loading_blocking.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/common_widgets/slideshow/slideshow.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -173,14 +175,17 @@ class _GridGalleryState extends State<GridGallery> {
   void openSingleImage(BuildContext context, String img) async {
     final closeDialog =
         showLoadingBlockingDialog(context, txt("gettingImages"));
-    final ImageProvider provider;
+    ImageProvider? provider;
     try {
       provider = await getImage(widget.rowId, img, false) ??
           const AssetImage("assets/images/missing.png");
+    } catch (e) {
+      closeDialog();
+      showErrorMessage(e, "openingImageFromGrid");
     } finally {
       closeDialog();
     }
-    if (context.mounted) {
+    if (context.mounted && provider != null) {
       _imageProviders.add(provider);
       showImageViewer(
         context,
@@ -203,7 +208,7 @@ class _GridGalleryState extends State<GridGallery> {
   void openSlideShow(BuildContext context, int initialIndex) async {
     final closeDialog =
         showLoadingBlockingDialog(context, txt("gettingImages"));
-    MultiImageProvider multiImageProvider;
+    MultiImageProvider? multiImageProvider;
     try {
       final List<ImageProvider<Object>> list = (await Future.wait(widget.imgs
               .map((img) => getImage(widget.rowId, img, false))
@@ -211,11 +216,16 @@ class _GridGalleryState extends State<GridGallery> {
           .map((el) => el ?? const AssetImage("assets/images/missing.png"))
           .toList();
       multiImageProvider = MultiImageProvider(list, initialIndex: initialIndex);
+    } catch (e) {
+      closeDialog();
+      showErrorMessage(e, "openingMultipleImagesFromGrid");
     } finally {
       closeDialog();
     }
 
-    if (context.mounted && multiImageProvider.imageCount > 0) {
+    if (multiImageProvider != null &&
+        context.mounted &&
+        multiImageProvider.imageCount > 0) {
       _imageProviders.addAll(multiImageProvider.imageProviders);
       showImageViewerPager(
         context,
@@ -237,8 +247,8 @@ class _GridGalleryState extends State<GridGallery> {
   }
 }
 
-class ImageDeleteButton extends StatelessWidget {
-  ImageDeleteButton({
+class ImageDeleteButton extends StatefulWidget {
+  const ImageDeleteButton({
     super.key,
     required this.widget,
     required this.img,
@@ -246,7 +256,19 @@ class ImageDeleteButton extends StatelessWidget {
 
   final GridGallery widget;
   final String img;
+
+  @override
+  State<ImageDeleteButton> createState() => _ImageDeleteButtonState();
+}
+
+class _ImageDeleteButtonState extends State<ImageDeleteButton> {
   final FlyoutController deleteConfirmationFlyout = FlyoutController();
+
+  @override
+  void dispose() {
+    deleteConfirmationFlyout.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -257,12 +279,13 @@ class ImageDeleteButton extends StatelessWidget {
             backgroundColor:
                 WidgetStatePropertyAll(FluentTheme.of(context).menuColor)),
         icon: const Icon(FluentIcons.delete),
-        onPressed: () {
+        onPressed: () async {
+          await flyoutFocusFix(context);
           deleteConfirmationFlyout.showFlyout(builder: (context) {
             return FlyoutContent(
               child: ConfirmDeleteFlyout(
                 controller: deleteConfirmationFlyout,
-                onConfirm: () => widget.onPressDelete.call(img),
+                onConfirm: () => widget.widget.onPressDelete.call(widget.img),
               ),
             );
           });

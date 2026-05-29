@@ -7,6 +7,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/archived.dart';
 
 initializeStores() {
+  globalSettings.init();
   patients.init();
   appointments.init();
 
@@ -31,7 +32,6 @@ initializeStores() {
     }
   });
 
-  globalSettings.init();
   expenses.init();
   notes.init();
 }

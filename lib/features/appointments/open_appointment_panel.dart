@@ -3,9 +3,11 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
+import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
@@ -31,9 +33,39 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:image_picker/image_picker.dart';
 
-void openAppointment([Appointment? appointment]) {
+void closeAppointmentsPanels() {
+  List<String> toClose = [];
+  for (var panel in routes.panels()) {
+    final identifier = panel.identifier;
+    if (identifier.contains("appointments") ||
+        appointments.get(identifier) != null) {
+      toClose.add(identifier);
+    }
+  }
+  for (final identifier in toClose) {
+    routes.closePanel(identifier);
+  }
+}
+
+void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
+  closeLabworksPanels();
+
+  final canViewPostOp = login.permissions[PInt.postOp] == 2 ||
+      (login.permissions[PInt.postOp] == 1 &&
+          appointment?.operatorsIDs.contains(login.currentAccountID) == true);
+
+  if (appointment != null &&
+      appointment.isDone &&
+      selectedTabIndex == 0 &&
+      canViewPostOp) {
+    selectedTabIndex = 1;
+  }
+
   final editingCopy = Appointment.fromJson(appointment?.toJson() ?? {});
   final panel = Panel(
+    singularName: "appointment",
+    unicodeSymbol: "📅",
+    selectedTabIndex: selectedTabIndex,
     item: editingCopy,
     store: appointments,
     icon: WindowsIcons.calendar,
@@ -48,9 +80,7 @@ void openAppointment([Appointment? appointment]) {
       icon: WindowsIcons.calendar,
       body: _AppointmentDetails(editingCopy),
     ),
-    if (login.permissions[PInt.postOp] == 2 ||
-        (login.permissions[PInt.postOp] == 1 &&
-            appointment?.operatorsIDs.contains(login.currentAccountID) == true))
+    if (canViewPostOp)
       PanelTab(
         title: txt("operativeDetails"),
         icon: FluentIcons.medical_care,
@@ -83,6 +113,8 @@ class _UploadButtons extends StatelessWidget {
             child: ButtonContent(WindowsIcons.link, txt("link")),
             onPressed: () {
               showDialog(
+                barrierDismissible: true,
+                dismissWithEsc: true,
                 context: context,
                 builder: (context) {
                   return ImportDialog(panel: panel);
@@ -112,6 +144,7 @@ class _UploadButtons extends StatelessWidget {
                     panel.savedJson = jsonEncode(panel.item.toJson());
                   }
                 } catch (e, s) {
+                  showErrorMessage(e, "uploadingPatientImageFromCamera");
                   login.askForLoginAgain(e);
                   logger("Error during uploading camera capture: $e", s);
                 }
@@ -142,6 +175,7 @@ class _UploadButtons extends StatelessWidget {
                   }
                 }
               } catch (e, s) {
+                showErrorMessage(e, "uploadingPatientImageFromGallery");
                 login.askForLoginAgain(e);
                 logger("Error during file upload: $e", s);
               }
@@ -225,6 +259,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                           widget.panel.savedJson =
                               jsonEncode(widget.panel.item.toJson());
                         } catch (e, s) {
+                          showErrorMessage(e, "deletingPatientImageFromServer");
                           login.askForLoginAgain(e);
                           logger("Error during deleting image: $e", s);
                         }
@@ -291,6 +326,20 @@ class _AppointmentDetails extends StatefulWidget {
 }
 
 class _AppointmentDetailsState extends State<_AppointmentDetails> {
+  final TextEditingController noteController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    noteController.text = widget.appointment.preOpNotes;
+  }
+
+  @override
+  void dispose() {
+    noteController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -361,7 +410,6 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                 },
                 buttonText: txt("changeDate"),
                 buttonIcon: WindowsIcons.calendar,
-                format: "d MMMM yyyy",
               ),
             ),
             const SizedBox(height: 5),
@@ -384,7 +432,6 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
             buttonText: txt("changeTime"),
             pickTime: true,
             buttonIcon: FluentIcons.clock,
-            format: "hh:mm a",
           ),
         ),
         InfoLabel(
@@ -393,8 +440,7 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
             key: WK.fieldAppointmentPreOpNotes,
             expands: true,
             maxLines: null,
-            controller:
-                TextEditingController(text: widget.appointment.preOpNotes),
+            controller: noteController,
             onChanged: (v) => widget.appointment.preOpNotes = v,
             placeholder: "${txt("preOperativeNotes")}...",
           ),
@@ -434,6 +480,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     paidController.text =
         moneyInputFormatter.formatDouble(widget.appointment.paid);
     if (widget.appointment.paid != 0) didNotEditPaidYet = false;
+  }
+
+  @override
+  void dispose() {
+    postOpNotesController.dispose();
+    priceController.dispose();
+    paidController.dispose();
+    super.dispose();
   }
 
   @override
@@ -556,8 +610,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           children: [
             Expanded(
               child: InfoLabel(
-                label:
-                    "${txt("priceIn")} ${globalSettings.get("currency_______").value}",
+                label: "${txt("priceIn")} ${currency()}",
                 child: CupertinoTextField(
                   key: WK.fieldAppointmentPrice,
                   controller: priceController,
@@ -582,8 +635,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             const SizedBox(width: 10),
             Expanded(
               child: InfoLabel(
-                label:
-                    "${txt("paidIn")} ${globalSettings.get("currency_______").value}",
+                label: "${txt("paidIn")} ${currency()}",
                 child: CupertinoTextField(
                   key: WK.fieldAppointmentPayment,
                   controller: paidController,
@@ -606,7 +658,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         if (paymentDifference != 0)
           InfoBar(
             title: MoneyDisplay(
-                "${paymentDifference > 0 ? txt("underpaid") : txt("overpaid")} ${paymentDifference.abs().toStringAsFixed(2)} ${globalSettings.get("currency_______").value}"),
+                "${paymentDifference > 0 ? txt("underpaid") : txt("overpaid")} ${paymentDifference.abs().toStringAsFixed(2)} ${currency()}"),
             content: Txt(txt("includesOtherAppointments")),
             severity: InfoBarSeverity.warning,
             isLong: true,
@@ -650,10 +702,50 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   }
 
   Widget _buildLabworkSection() {
+    return LabWorkEditor(
+        appointment: widget.appointment,
+        onDelete: () {
+          setState(() {
+            widget.appointment.hasLabwork = false;
+          });
+        });
+  }
+}
+
+class LabWorkEditor extends StatefulWidget {
+  final Appointment appointment;
+  final VoidCallback? onDelete;
+  const LabWorkEditor({super.key, required this.appointment, this.onDelete});
+  @override
+  State<LabWorkEditor> createState() => _LabWorkEditorState();
+}
+
+class _LabWorkEditorState extends State<LabWorkEditor> {
+  final labNameController = TextEditingController();
+  final labOrderNotesController = TextEditingController();
+
+  @override
+  void dispose() {
+    labNameController.dispose();
+    labOrderNotesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    labNameController.text = widget.appointment.labName;
+    labOrderNotesController.text = widget.appointment.labworkNotes;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+
     final color = widget.appointment.labworkReceived
         ? theme.accentColor
         : Colors.warningPrimaryColor;
+
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
@@ -672,17 +764,16 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             children: [
               Txt(txt("labworksForThisAppointment"),
                   style: theme.typography.bodyStrong),
-              Tooltip(
-                message: txt("delete"),
-                child: IconButton(
-                  icon: const Icon(FluentIcons.delete),
-                  onPressed: () {
-                    setState(() {
-                      widget.appointment.hasLabwork = false;
-                    });
-                  },
-                ),
-              )
+              if (widget.onDelete != null)
+                Tooltip(
+                  message: txt("delete"),
+                  child: IconButton(
+                    icon: const Icon(FluentIcons.delete),
+                    onPressed: () {
+                      widget.onDelete!();
+                    },
+                  ),
+                )
             ],
           ),
           const SizedBox(height: 5),
@@ -724,8 +815,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   onChanged: (text, reason) {
                     widget.appointment.labName = text;
                   },
-                  controller:
-                      TextEditingController(text: widget.appointment.labName),
+                  controller: labNameController,
                   items: appointments.labs
                       .map((name) =>
                           AutoSuggestBoxItem<String>(value: name, label: name))
@@ -740,15 +830,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             children: [
               Expanded(
                 child: TextFormBox(
-                  prefix: const Icon(FluentIcons.note_forward),
+                  prefix: const Icon(WindowsIcons.quick_note),
                   key: WK.fieldLabworkLabName,
                   decoration: WidgetStatePropertyAll(BoxDecoration(
                       color: Colors.transparent,
                       border: Border.all(color: Colors.transparent))),
                   placeholder: "${txt("orderNotes")}...",
                   maxLines: null,
-                  controller: TextEditingController(
-                      text: widget.appointment.labworkNotes),
+                  controller: labOrderNotesController,
                   onChanged: (value) {
                     widget.appointment.labworkNotes = value;
                   },

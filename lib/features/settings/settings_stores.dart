@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/login/login_controller.dart';
@@ -7,11 +5,13 @@ import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/utils/country_code_iso_fetch.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
@@ -23,13 +23,18 @@ const _storeNameGlobal = "settings_global";
 const _storeNameLocal = "settings_local";
 
 class GlobalSettings extends Store<Setting> {
+  String get currency => get("currency_______").value;
+  String get phone => get("phone__________").value;
+  String get prescriptionFooter => get("prescriptionFot").value;
+  String get startDayOfWeek => get("start_day_of_wk").value;
+  String get isoCountryCode => get("ISO_country____").value;
+
   Map<String, String> defaults = {
     "currency_______": "USD",
     "phone__________": "1234567890",
     "prescriptionFot": "",
-    "permissions____": jsonEncode([false, true, true, true, true, false]),
     "start_day_of_wk": "monday",
-    "country_code___": "+1",
+    "ISO_country____": "",
   };
 
   @override
@@ -97,10 +102,18 @@ class GlobalSettings extends Store<Setting> {
           backups.reloadFromRemote(),
           accounts.reloadFromRemote(),
         ]);
+
+        // setting country code iso if not already set
+        if (get("ISO_country____").value == "") {
+          set(Setting.fromJson(
+              {"id": "ISO_country____", "value": await getCountryCode()}));
+        }
       };
     };
   }
 }
+
+String currency() => globalSettings.get("currency_______").value;
 
 class LocalSettings extends ObservablePersistingObject {
   LocalSettings() : super(_storeNameLocal) {
@@ -135,6 +148,44 @@ class LocalSettings extends ObservablePersistingObject {
       "dentalNotation": dentalNotation,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
     };
+  }
+}
+
+abstract class DF {
+  static String commonDate(date) {
+    final df = localSettings.dateFormat.startsWith("d") == true
+        ? "📅 EE dd / MM / yyyy"
+        : "📅 EE MM / dd / yyyy";
+    return DateFormat(df, locale.s.$code).format(date);
+  }
+
+  static String full(date) {
+    final df = localSettings.dateFormat.startsWith("d") == true
+        ? "📅 EE dd / MM / yyyy 🕒 hh:mm a"
+        : "📅 EE MM / dd / yyyy 🕒 hh:mm a";
+    return DateFormat(df, locale.s.$code).format(date);
+  }
+
+  static String fullCompact(date) {
+    final df = localSettings.dateFormat.startsWith("d") == true
+        ? "📅 dd / MM / yyyy 🕒 hh:mm a"
+        : "📅 MM / dd / yyyy 🕒 hh:mm a";
+    return DateFormat(df, locale.s.$code).format(date);
+  }
+
+  static String allNumbers(date) {
+    final df = localSettings.dateFormat.startsWith("d") == true
+        ? "dd / MM / yyyy"
+        : "MM / dd / yyyy";
+    return DateFormat(df, locale.s.$code).format(date);
+  }
+
+  static String dayOfWeek(date) {
+    return DateFormat("EE", locale.s.$code).format(date);
+  }
+
+  static String time(date) {
+    return DateFormat("🕒 hh:mm a", locale.s.$code).format(date);
   }
 }
 

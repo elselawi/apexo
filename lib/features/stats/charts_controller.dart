@@ -29,7 +29,7 @@ class _ChartsController {
           .add(const Duration(days: 31)));
   final interval = ObservableState(StatsInterval.days);
   String get intervalString {
-    return "${chartsCtrl.interval().name[0].toUpperCase()}${chartsCtrl.interval().name.substring(1).toLowerCase()}";
+    return chartsCtrl.interval().name;
   }
 
   _nullifyCache(_) {
@@ -216,8 +216,8 @@ class _ChartsController {
 
   int _daysSinceWeekStart(DateTime date) {
     int adjustedWeekday = (date.weekday -
-            StartingDayOfWeek.values.indexWhere(
-                (e) => e.name == globalSettings.get("start_day_of_wk").value) -
+            StartingDayOfWeek.values
+                .indexWhere((e) => e.name == globalSettings.startDayOfWeek) -
             1) %
         7;
     return adjustedWeekday;
@@ -270,11 +270,9 @@ class _ChartsController {
   }
 
   String _getLabel(DateTime start) {
-    final df =
-        localSettings.dateFormat.startsWith("d") == true ? "dd/MM" : "MM/dd";
     switch (interval()) {
       case StatsInterval.days:
-        return DateFormat("$df/yy", locale.s.$code).format(start);
+        return DF.allNumbers(start);
       case StatsInterval.weeks:
         return "W${DateFormat("${_weekOfMonth(start)} MM/yy", locale.s.$code).format(start)}";
       case StatsInterval.months:
@@ -368,6 +366,31 @@ class _ChartsController {
 
     start(periods.first.start);
     end(periods.last.end);
+  }
+
+  void setIntervalToDays() {
+    interval(StatsInterval.days);
+    normalizeSelectedRange(false);
+  }
+
+  void setIntervalToWeeks() {
+    interval(StatsInterval.weeks);
+    normalizeSelectedRange(false);
+  }
+
+  void setIntervalToMonths() {
+    interval(StatsInterval.months);
+    normalizeSelectedRange(false);
+  }
+
+  void setIntervalToQuarters() {
+    interval(StatsInterval.quarters);
+    normalizeSelectedRange(false);
+  }
+
+  void setIntervalToYears() {
+    interval(StatsInterval.years);
+    normalizeSelectedRange(false);
   }
 
   void toggleInterval() {

@@ -67,6 +67,8 @@ class Expenses extends Store<Expense> {
     _cachedAllItems = null;
     _cachedSuppliers = null;
     _cachedSupplierMap = null;
+    _cachedOrdersPerSupplier = null;
+    _cachedTotalDue = null;
   }
 
   List<String>? _cachedAllItems;
@@ -79,8 +81,8 @@ class Expenses extends Store<Expense> {
   }
 
   @override
-  void setAll(List<Expense> docs) {
-    super.setAll(docs);
+  void setAll(List<Expense> items) {
+    super.setAll(items);
     nullifyExpensesCache();
   }
 
@@ -104,6 +106,30 @@ class Expenses extends Store<Expense> {
     }
     _cachedAllItems = items.toList();
     return _cachedAllItems!;
+  }
+
+  double? _cachedTotalDue;
+  double get totalDue {
+    return _cachedTotalDue ??= present.values
+        .where((x) => x.isOrder && x.processed == false)
+        .fold<double>(0, (sum, o) => sum + (o.cost - o.paidAmount));
+  }
+
+  Map<String, List<Expense>>? _cachedOrdersPerSupplier;
+  Map<String, List<Expense>> get ordersPerSupplier {
+    return _cachedOrdersPerSupplier ??= {
+      for (var supplier in suppliers)
+        supplier.id: expenses.present.values
+            .where((e) => e.supplierId == supplier.id)
+            .toList()
+          ..sort((x, y) => y.date.compareTo(x.date))
+    };
+  }
+
+  List<Expense>? _cachedAllOrders;
+  List<Expense> get allOrders {
+    return _cachedAllOrders ??= present.values.where((e) => e.isOrder).toList()
+      ..sort((x, y) => y.date.compareTo(x.date));
   }
 
   List<Expense> get suppliers {

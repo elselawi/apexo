@@ -203,6 +203,9 @@ class _EasyImageViewState extends State<EasyImageView>
   @override
   void dispose() {
     _animationController.dispose();
+    _transformationController.dispose();
+    _doubleTapAnimation?.removeListener(_animationListener);
+    _doubleTapAnimation?.removeStatusListener(_animationStatusListener);
     super.dispose();
   }
 }

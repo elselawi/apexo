@@ -2,7 +2,10 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
+bool isOpen = false;
+
 VoidCallback showLoadingBlockingDialog(BuildContext context, String text) {
+  isOpen = true;
   showDialog(
       barrierDismissible: false,
       dismissWithEsc: false,
@@ -20,6 +23,9 @@ VoidCallback showLoadingBlockingDialog(BuildContext context, String text) {
       });
 
   return () {
-    if (context.mounted) Navigator.of(context).pop();
+    if (context.mounted && isOpen) {
+      isOpen = false;
+      Navigator.of(context).pop();
+    }
   };
 }

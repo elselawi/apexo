@@ -11,7 +11,6 @@ import 'package:apexo/features/settings/services_settings/backups_settings.dart'
 import 'package:apexo/features/settings/services_settings/production_test.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
-import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -27,225 +26,220 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      resizeToAvoidBottomInset: true,
-      key: WK.settingsScreen,
-      content: Padding(
-        padding: const EdgeInsets.only(top: 10),
-        child: ListView(
-          children: [
-            if (login.isAdmin)
-              SettingsItem(
-                title: txt("currency"),
-                identifier: "currency",
-                description: txt("currency_desc"),
-                icon: FluentIcons.all_currency,
-                inputType: InputType.text,
-                scope: Scope.app,
-                initValue: globalSettings.get("currency_______").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson(
-                    {"id": "currency_______", "value": newVal})),
-              ),
-            if (login.isAdmin)
-              SettingsItem(
-                title: txt("countryCode"),
-                identifier: "countryCode",
-                description: txt("countryCode_desc"),
-                icon: FluentIcons.globe,
-                inputType: InputType.text,
-                scope: Scope.app,
-                initValue: globalSettings.get("country_code___").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson(
-                    {"id": "country_code___", "value": newVal})),
-              ),
-            if (login.isAdmin)
-              SettingsItem(
-                title: txt("prescriptionFooter"),
-                identifier: "prescriptionFot",
-                description: txt("prescriptionFooter_desc"),
-                icon: FluentIcons.footer,
-                inputType: InputType.text,
-                scope: Scope.app,
-                initValue: globalSettings.get("prescriptionFot").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson(
-                    {"id": "prescriptionFot", "value": newVal})),
-              ),
-            if (login.isAdmin)
-              SettingsItem(
-                title: txt("phone"),
-                identifier: "phone",
-                description: txt("phone_desc"),
-                icon: FluentIcons.phone,
-                inputType: InputType.multiline,
-                scope: Scope.app,
-                initValue: globalSettings.get("phone__________").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson(
-                    {"id": "phone__________", "value": newVal})),
-              ),
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: ListView(
+        children: [
+          if (login.isAdmin)
             SettingsItem(
-              title: txt("language"),
-              identifier: "language",
-              description: txt("language_desc"),
-              icon: FluentIcons.locale_language,
+              title: txt("currency"),
+              identifier: "currency",
+              description: txt("currency_desc"),
+              icon: FluentIcons.all_currency,
+              inputType: InputType.text,
+              scope: Scope.app,
+              initValue: globalSettings.get("currency_______").value,
+              apply: (newVal) => globalSettings.set(
+                  Setting.fromJson({"id": "currency_______", "value": newVal})),
+            ),
+          if (login.isAdmin)
+            SettingsItem(
+              title: txt("countryCode"),
+              identifier: "ISO_country____",
+              description: txt("countryCode_desc"),
+              icon: FluentIcons.globe,
+              inputType: InputType.text,
+              scope: Scope.app,
+              initValue: globalSettings.get("ISO_country____").value,
+              apply: (newVal) => globalSettings.set(
+                  Setting.fromJson({"id": "ISO_country____", "value": newVal})),
+            ),
+          if (login.isAdmin)
+            SettingsItem(
+              title: txt("prescriptionFooter"),
+              identifier: "prescriptionFot",
+              description: txt("prescriptionFooter_desc"),
+              icon: FluentIcons.footer,
+              inputType: InputType.text,
+              scope: Scope.app,
+              initValue: globalSettings.get("prescriptionFot").value,
+              apply: (newVal) => globalSettings.set(
+                  Setting.fromJson({"id": "prescriptionFot", "value": newVal})),
+            ),
+          if (login.isAdmin)
+            SettingsItem(
+              title: txt("phone"),
+              identifier: "phone",
+              description: txt("phone_desc"),
+              icon: FluentIcons.phone,
+              inputType: InputType.multiline,
+              scope: Scope.app,
+              initValue: globalSettings.get("phone__________").value,
+              apply: (newVal) => globalSettings.set(
+                  Setting.fromJson({"id": "phone__________", "value": newVal})),
+            ),
+          SettingsItem(
+            title: txt("language"),
+            identifier: "language",
+            description: txt("language_desc"),
+            icon: FluentIcons.locale_language,
+            inputType: InputType.dropDown,
+            scope: Scope.device,
+            options: locale.list
+                .map((e) => ComboBoxItem(
+                    value: locale.list.indexOf(e).toString(),
+                    child: Txt(e.$name)))
+                .toList(),
+            initValue: localSettings.selectedLocale.toString(),
+            apply: (newVal) {
+              localSettings.selectedLocale = int.parse(newVal);
+              localSettings.notifyAndPersist();
+              networkActions.resync();
+            },
+          ),
+          if (login.isAdmin)
+            SettingsItem(
+              title: txt("startingDayOfWeek"),
+              identifier: "startingDayOfWeek",
+              description: txt("startingDayOfWeek_desc"),
+              icon: FluentIcons.hazy_day,
               inputType: InputType.dropDown,
-              scope: Scope.device,
-              options: locale.list
-                  .map((e) => ComboBoxItem(
-                      value: locale.list.indexOf(e).toString(),
-                      child: Txt(e.$name)))
+              scope: Scope.app,
+              options: StartingDayOfWeek.values
+                  .map((e) =>
+                      ComboBoxItem(value: e.name, child: Txt(txt(e.name))))
                   .toList(),
-              initValue: localSettings.selectedLocale.toString(),
-              apply: (newVal) {
-                localSettings.selectedLocale = int.parse(newVal);
-                localSettings.notifyAndPersist();
-                networkActions.resync();
-              },
+              initValue: globalSettings.get("start_day_of_wk").value,
+              apply: (newVal) => globalSettings.set(
+                  Setting.fromJson({"id": "start_day_of_wk", "value": newVal})),
             ),
-            if (login.isAdmin)
-              SettingsItem(
-                title: txt("startingDayOfWeek"),
-                identifier: "startingDayOfWeek",
-                description: txt("startingDayOfWeek_desc"),
-                icon: FluentIcons.hazy_day,
-                inputType: InputType.dropDown,
-                scope: Scope.app,
-                options: StartingDayOfWeek.values
-                    .map((e) =>
-                        ComboBoxItem(value: e.name, child: Txt(txt(e.name))))
-                    .toList(),
-                initValue: globalSettings.get("start_day_of_wk").value,
-                apply: (newVal) => globalSettings.set(Setting.fromJson(
-                    {"id": "start_day_of_wk", "value": newVal})),
+          SettingsItem(
+            title: txt("dateFormat"),
+            identifier: "dateFormat",
+            description: txt("dateFormat_desc"),
+            icon: WindowsIcons.date_time,
+            inputType: InputType.dropDown,
+            scope: Scope.device,
+            options: [
+              ComboBoxItem(
+                value: "MM/dd/yyyy",
+                child: Txt(txt("month/day/year")),
               ),
-            SettingsItem(
-              title: txt("dateFormat"),
-              identifier: "dateFormat",
-              description: txt("dateFormat_desc"),
-              icon: WindowsIcons.date_time,
-              inputType: InputType.dropDown,
-              scope: Scope.device,
-              options: [
-                ComboBoxItem(
-                  value: "MM/dd/yyyy",
-                  child: Txt(txt("month/day/year")),
-                ),
-                ComboBoxItem(
-                  value: "dd/MM/yyyy",
-                  child: Txt(txt("day/month/year")),
-                ),
-              ],
-              initValue: localSettings.dateFormat,
-              apply: (newVal) {
-                localSettings.dateFormat = newVal;
-                localSettings.notifyAndPersist();
-              },
-            ),
-            SettingsItem(
-              title: txt("dentalNotation"),
-              identifier: "dentalNotation",
-              description: txt("dentalNotation_desc"),
-              icon: FluentIcons.teeth,
-              inputType: InputType.dropDown,
-              scope: Scope.device,
-              options: [
-                ComboBoxItem(
-                  value: "p",
-                  child: Txt(txt("palmer")),
-                ),
-                ComboBoxItem(
-                  value: "u",
-                  child: Txt(txt("universal")),
-                ),
-                ComboBoxItem(
-                  value: "i",
-                  child: Txt(txt("ISO")),
-                ),
-              ],
-              initValue: localSettings.dentalNotation,
-              apply: (newVal) {
-                localSettings.dentalNotation = newVal;
-                localSettings.notifyAndPersist();
-              },
-            ),
-            if (network.isOnline())
-              SettingsItem(
-                title: txt("cacheReset"),
-                identifier: "cacheReset",
-                description: txt("cacheReset_desc"),
-                icon: FluentIcons.offline_storage,
-                inputType: InputType.none,
-                scope: Scope.device,
-                initValue: "",
-                apply: (_) {},
-                footer: FilledButton(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(FluentIcons.offline_storage),
-                        const SizedBox(width: 10),
-                        Txt(txt("cacheReset"))
-                      ],
-                    ),
-                    onPressed: () async {
-                      showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          dismissWithEsc: false,
-                          builder: (context) {
-                            return ContentDialog(
-                              title: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [Txt(txt("cacheReset"))]),
-                              content: StreamBuilder(
-                                  stream: cacheResetState.stream,
-                                  builder: (context, _) {
-                                    return Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      spacing: 10,
-                                      children: [
-                                        if (!cacheResetState()
-                                            .startsWith("Error"))
-                                          const Center(child: ProgressRing()),
-                                        Center(child: Txt(cacheResetState())),
-                                        if (cacheResetState()
-                                            .startsWith("Error"))
-                                          FilledButton(
-                                              child: Txt(txt("close")),
-                                              onPressed: () =>
-                                                  Navigator.pop(context)),
-                                      ],
-                                    );
-                                  }),
-                              style: dialogStyling(context, false),
-                            );
-                          });
-
-                      try {
-                        cacheResetState(txt("initialSynchronization"));
-                        await networkActions.resync();
-                        cacheResetState(txt("clearingLocalData"));
-                        await patients.local!.clear();
-                        await appointments.local!.clear();
-                        await expenses.local!.clear();
-                        await notes.local!.clear();
-                        await globalSettings.local!.clear();
-                        cacheResetState(txt("synchronizing"));
-                        await networkActions.resync();
-                      } catch (e, s) {
-                        cacheResetState("Error: $e\n$s");
-                        return;
-                      }
-                      if (context.mounted) Navigator.of(context).pop();
-                    }),
+              ComboBoxItem(
+                value: "dd/MM/yyyy",
+                child: Txt(txt("day/month/year")),
               ),
-            if (login.isAdmin && network.isOnline()) ...[
-              const BackupsSettings(),
-              ProductionTests(),
             ],
+            initValue: localSettings.dateFormat,
+            apply: (newVal) {
+              localSettings.dateFormat = newVal;
+              localSettings.notifyAndPersist();
+            },
+          ),
+          SettingsItem(
+            title: txt("dentalNotation"),
+            identifier: "dentalNotation",
+            description: txt("dentalNotation_desc"),
+            icon: FluentIcons.teeth,
+            inputType: InputType.dropDown,
+            scope: Scope.device,
+            options: [
+              ComboBoxItem(
+                value: "p",
+                child: Txt(txt("palmer")),
+              ),
+              ComboBoxItem(
+                value: "u",
+                child: Txt(txt("universal")),
+              ),
+              ComboBoxItem(
+                value: "i",
+                child: Txt(txt("ISO")),
+              ),
+            ],
+            initValue: localSettings.dentalNotation,
+            apply: (newVal) {
+              localSettings.dentalNotation = newVal;
+              localSettings.notifyAndPersist();
+            },
+          ),
+          if (network.isOnline())
+            SettingsItem(
+              title: txt("cacheReset"),
+              identifier: "cacheReset",
+              description: txt("cacheReset_desc"),
+              icon: FluentIcons.offline_storage,
+              inputType: InputType.none,
+              scope: Scope.device,
+              initValue: "",
+              apply: (_) {},
+              footer: FilledButton(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(FluentIcons.offline_storage),
+                      const SizedBox(width: 10),
+                      Txt(txt("cacheReset"))
+                    ],
+                  ),
+                  onPressed: () async {
+                    showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        dismissWithEsc: false,
+                        builder: (context) {
+                          return ContentDialog(
+                            title: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [Txt(txt("cacheReset"))]),
+                            content: StreamBuilder(
+                                stream: cacheResetState.stream,
+                                builder: (context, _) {
+                                  return Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.center,
+                                    spacing: 10,
+                                    children: [
+                                      if (!cacheResetState()
+                                          .startsWith("Error"))
+                                        const Center(child: ProgressRing()),
+                                      Center(child: Txt(cacheResetState())),
+                                      if (cacheResetState().startsWith("Error"))
+                                        FilledButton(
+                                            child: Txt(txt("close")),
+                                            onPressed: () =>
+                                                Navigator.pop(context)),
+                                    ],
+                                  );
+                                }),
+                            style: dialogStyling(context, false, true),
+                          );
+                        });
+
+                    try {
+                      cacheResetState(txt("initialSynchronization"));
+                      await networkActions.resync();
+                      cacheResetState(txt("clearingLocalData"));
+                      await patients.local!.clear();
+                      await appointments.local!.clear();
+                      await expenses.local!.clear();
+                      await notes.local!.clear();
+                      await globalSettings.local!.clear();
+                      cacheResetState(txt("synchronizing"));
+                      await networkActions.resync();
+                    } catch (e, s) {
+                      cacheResetState("Error: $e\n$s");
+                      return;
+                    }
+                    if (context.mounted) Navigator.of(context).pop();
+                  }),
+            ),
+          if (login.isAdmin && network.isOnline()) ...[
+            const BackupsSettings(),
+            ProductionTests(),
           ],
-        ),
+        ],
       ),
     );
   }
@@ -290,6 +284,12 @@ class SettingsItemState extends State<SettingsItem> {
     super.initState();
     _controller.text = widget.initValue;
     value = widget.initValue;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override

@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/teeth_selector/svg.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:xml/xml.dart';
@@ -231,6 +232,12 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
   final FlyoutController wheelController = FlyoutController();
 
   @override
+  void dispose() {
+    wheelController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final bool darkMode = FluentTheme.of(context).brightness == Brightness.dark;
     final String? note = widget.oldNote ?? widget.currentNote;
@@ -254,8 +261,9 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
         child: GestureDetector(
           key: Key(
               "tooth-iso-${widget.toothNote.key}-${widget.tooth.selected ? "selected" : "not-selected"}"),
-          onTap: () {
+          onTap: () async {
             if (MediaQuery.of(context).size.width > 900) {
+              await flyoutFocusFix(context);
               wheelController.showFlyout(
                 builder: (context) => _showStateWheel(context, tKey),
                 barrierDismissible: true,

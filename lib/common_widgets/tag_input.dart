@@ -101,6 +101,9 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   @override
   void dispose() {
     _focusNode.removeListener(_onFocusChanged);
+    _focusNode.dispose();
+    _hiddenTappedFlyoutController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -209,7 +212,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                                   : _buildVisibleTags(
                                       visibleTags, tokenSpacing)),
                         ),
-                        if (_tags.length < widget.limit)
+                        if (_tags.length < widget.limit && widget.enabled)
                           _buildAutoSuggestInputTextBox(),
                       ])
                 : Row(
@@ -232,7 +235,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                                     ],
                                   )),
                       ),
-                      if (_tags.length < widget.limit)
+                      if (_tags.length < widget.limit && widget.enabled)
                         _buildAutoSuggestInputTextBox(),
                     ],
                   ),

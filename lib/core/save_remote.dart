@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
@@ -224,6 +225,7 @@ class SaveRemote {
       } catch (e, s) {
         alreadyUploaded = [];
         login.askForLoginAgain(e);
+        showErrorMessage(e, "gettingRemoteImagesList");
         logger(
             "Error while trying to get a list of already uploaded images: $e",
             s);

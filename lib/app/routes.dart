@@ -47,6 +47,8 @@ class Panel<T extends Model> {
   final Store store;
   final List<PanelTab> tabs;
   final IconData icon;
+  final String singularName;
+  final String unicodeSymbol;
   String? title;
   final inProgress = ObservableState(false);
   final selectedTab = ObservableState<int>(0);
@@ -55,16 +57,32 @@ class Panel<T extends Model> {
   late String identifier;
   final Completer<T> result = Completer<T>();
   final int creationDate = DateTime.now().millisecondsSinceEpoch;
+  final bool inherentlyScrollable;
+  final bool showTitles;
+  final bool showBottomControls;
+  final bool canNotBeNew;
+  final Widget? additionalControls;
+  final Widget? archiveButtonReplacement;
+
   Panel({
     required this.item,
     required this.store,
     required this.tabs,
     required this.icon,
+    required this.singularName,
+    required this.unicodeSymbol,
+    this.inherentlyScrollable = false,
+    this.showTitles = false,
     this.title,
+    this.showBottomControls = true,
     int? selectedTabIndex,
+    this.canNotBeNew = false,
+    this.additionalControls,
+    this.archiveButtonReplacement,
   }) {
-    identifier =
-        store.get(item.id) == null ? "new+${store.local?.name}" : item.id;
+    identifier = store.get(item.id) == null
+        ? (canNotBeNew ? item.id : "new+${store.local?.name ?? singularName}")
+        : item.id;
     savedJson = jsonEncode(item.toJson());
     selectedTab(selectedTabIndex);
   }
@@ -105,10 +123,6 @@ class Route {
 class _Routes {
   final ObservableState<List<Panel>> panels = ObservableState([]);
 
-  /// Optional interceptor registered by a screen to handle the back action
-  /// internally. Return [true] to let [goBack] proceed normally, or [false]
-  /// if the interceptor fully handled the back action.
-  bool Function()? onBackInterceptor;
   final minimizePanels = ObservableState(false);
 
   void openPanel(Panel panel) {
@@ -128,12 +142,13 @@ class _Routes {
     routes.minimizePanels(false);
   }
 
-  void closePanel(String itemId) {
-    panels(panels()..removeWhere((p) => p.item.id == itemId));
+  void closePanel(String targetToClose) {
+    panels(panels()
+      ..removeWhere(
+          (p) => p.item.id == targetToClose || targetToClose == p.identifier));
   }
 
   final showBottomNav = ObservableState(false);
-  final bottomNavFlyoutController = FlyoutController();
 
   List<Route> get allRoutes => [
         Route(
@@ -279,10 +294,6 @@ class _Routes {
   }
 
   void goBack() {
-    if (onBackInterceptor != null) {
-      final shouldProceed = onBackInterceptor!();
-      if (!shouldProceed) return;
-    }
     if (history.isNotEmpty) {
       currentRouteIndex(history.removeLast());
       currentRoute.onSelect();

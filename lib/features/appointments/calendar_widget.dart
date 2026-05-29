@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
@@ -18,6 +19,7 @@ import '../../utils/round.dart';
 import '../../common_widgets/item_title.dart';
 import 'appointments_store.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 
 class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   final List<Item> items;
@@ -101,10 +103,10 @@ class WeekAgendaCalendarState<Item extends Appointment>
         const SizedBox(height: 1),
         Expanded(
           child: SwipeDetector(
-            onSwipeLeft: () => setState(() {
+            onSwipePrev: () => setState(() {
               selectedDate = selectedDate.subtract(const Duration(days: 1));
             }),
-            onSwipeRight: () => setState(() {
+            onSwipeNext: () => setState(() {
               selectedDate = selectedDate.add(const Duration(days: 1));
             }),
             child: Column(children: [
@@ -120,36 +122,12 @@ class WeekAgendaCalendarState<Item extends Appointment>
   }
 
   Widget _buildCommandBar() {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
-          )
-        ],
-        color: FluentTheme.of(context).menuColor,
+    return ScreenCommandBar(
+      mainButton: IconButton(
+        onPressed: () => widget.onAddNew(selectedDate),
+        icon: ButtonContent(FluentIcons.add, txt("newAppointment")),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-              onPressed: () => widget.onAddNew(selectedDate),
-              icon: Row(
-                children: [
-                  const Icon(FluentIcons.add_event, size: 17),
-                  const SizedBox(width: 10),
-                  Txt(txt("add"))
-                ],
-              )),
-          Row(
-            children: widget.actions ?? [],
-          ),
-        ],
-      ),
+      farItems: widget.actions ?? [],
     );
   }
 
@@ -199,6 +177,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
         dowBuilder: (context, day) => Center(
           child: Txt(
             intl.DateFormat("EE", locale.s.$code).format(day),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
         ),
         headerTitleBuilder: (context, day) {
@@ -302,24 +281,18 @@ class WeekAgendaCalendarState<Item extends Appointment>
   }
 
   Widget _buildCurrentDayTitleBar(List<Item> itemsForSelectedDay) {
-    final df = localSettings.dateFormat.startsWith("d") == true
-        ? "dd MMMM"
-        : "MMMM dd";
     return Container(
-      decoration: BoxDecoration(
-          border: BorderDirectional(
-              bottom: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
-          gradient: LinearGradient(colors: [
-            colorsWithoutYellow[selectedDate.weekday - 1].darkest.withAlpha(20),
-            colorsWithoutYellow[selectedDate.weekday - 1].withAlpha(0),
-          ])),
+      decoration: topBarDecoration(
+        context,
+        Colors.grey,
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       height: 45,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Txt(
-            intl.DateFormat("$df / yyyy", locale.s.$code).format(selectedDate),
+            " ${DF.commonDate(selectedDate)}",
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           if (login.isAdmin)
@@ -327,7 +300,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
               children: [
                 if (showPayments)
                   MoneyDisplay(
-                    "💵 ${(itemsForSelectedDay as List<Appointment>).fold<double>(0, (amount, appointment) => amount + appointment.paid)} ${globalSettings.get("currency_______").value}",
+                    "💵 ${(itemsForSelectedDay as List<Appointment>).fold<double>(0, (amount, appointment) => amount + appointment.paid)} ${currency()}",
                     style: const TextStyle(fontSize: 13),
                   ),
                 const SizedBox(
@@ -470,20 +443,17 @@ class AppointmentCalendarTile<Item extends Appointment>
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        border: Border(
-          bottom:
-              BorderSide(color: Colors.grey.withValues(alpha: 0.2), width: 0.5),
-        ),
+        color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
       ),
       child: ListTile(
+        margin: EdgeInsets.zero,
+        shape: listDividerBorder(context),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Column(
               children: [
-                SizedBox(
-                    width: item.teeth.entries.isNotEmpty ? 160 : 180,
-                    child: ItemTitle(item: item)),
+                SizedBox(width: 165, child: ItemTitle(item: item)),
               ],
             ),
             Column(
@@ -548,8 +518,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                 Row(
                   spacing: 2,
                   children: [
-                    if ((item.patient?.phone ?? '').isNotEmpty)
-                      PhoneNumberButton(phoneNumber: item.patient!.phone),
+                    if ((item.patient?.phonesString ?? '').isNotEmpty)
+                      PhoneNumberButton(phoneNumbers: item.patient!.phone),
                     if ((item.patient?.email ?? '').isNotEmpty)
                       EmailButton(email: item.patient!.email),
                   ],
@@ -590,7 +560,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                       )),
                 if (item.paid > 0 && login.isAdmin && showPayments)
                   MoneyDisplay(
-                    "💵 ${item.paid.toStringAsFixed(2)} ${globalSettings.get("currency_______").value}",
+                    "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
                     style: const TextStyle(fontSize: 12),
                   )
               ],

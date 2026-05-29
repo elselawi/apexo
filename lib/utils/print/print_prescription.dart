@@ -1,13 +1,16 @@
 import 'package:apexo/utils/print/print.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:bidi/bidi.dart' as bidi;
 import 'package:qr_flutter/qr_flutter.dart';
 
 Future<void> printingPrescription(
-    BuildContext context, List<String> prescription, String patientName, String patientAge, String patientLink) async {
+    BuildContext context,
+    List<String> prescription,
+    String patientName,
+    String patientAge,
+    String patientLink) async {
   // Generate QR code image for PDF
   final qrImage = await QrPainter(
     data: patientLink,
@@ -38,7 +41,7 @@ Future<void> printingPrescription(
           )),
         ],
       ),
-      "${String.fromCharCodes(bidi.logicalToVisual(globalSettings.get("prescriptionFot").value))}\nPrescription printed on ${DateFormat(localSettings.dateFormat).format(DateTime.now())}.\nFor more information: please contact ${globalSettings.get("phone__________").value}.",
+      "${String.fromCharCodes(bidi.logicalToVisual(globalSettings.prescriptionFooter))}\nPrescription printed on ${DF.allNumbers(DateTime.now())}.\nFor more information: please contact ${globalSettings.phone}.",
     );
   }
 }

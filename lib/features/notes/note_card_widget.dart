@@ -14,7 +14,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show showDatePicker;
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart' as intl;
 
 class NoteCard extends StatefulWidget {
   final Note note;
@@ -43,10 +42,6 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   late Animation<double> _borderRadiusAnimation;
   late AnimationController _checkBoxScaleAnimationController;
   late Animation<double> _checkboxScaleAnimation;
-
-  String get df => localSettings.dateFormat.startsWith("d") == true
-      ? "dd/MM/yyyy"
-      : "MM/dd/yyyy";
 
   @override
   void didUpdateWidget(covariant NoteCard oldWidget) {
@@ -129,6 +124,10 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     _checkBoxScaleAnimationController.dispose();
     _titleController.dispose();
     _noteController.dispose();
+    _assigningFlyoutCtrl.dispose();
+    _confirmArchiveFlyoutCtrl.dispose();
+    _commentController.dispose();
+    _recurringIntervalController.dispose();
     super.dispose();
   }
 
@@ -809,7 +808,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
               _twoLinesProp(
                 theme,
                 txt("createdDate"),
-                intl.DateFormat(df, locale.s.$code).format(widget.note.date),
+                DF.allNumbers(widget.note.date),
                 theme.inactiveColor,
                 FontWeight.normal,
                 FluentIcons.date_time2,
@@ -817,7 +816,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
               _twoLinesProp(
                 theme,
                 txt("dueDate"),
-                intl.DateFormat(df, locale.s.$code).format(widget.note.dueDate),
+                DF.allNumbers(widget.note.dueDate),
                 widget.note.overdue
                     ? Colors.red
                     : widget.note.pending

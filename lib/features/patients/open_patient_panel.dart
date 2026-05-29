@@ -2,6 +2,7 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -12,6 +13,8 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/logger.dart';
+import 'package:apexo/utils/parsed_phone_number.dart';
+import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
@@ -23,11 +26,13 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
+import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
   final panel = Panel<Patient>(
+    singularName: "patient",
+    unicodeSymbol: "👤",
     selectedTabIndex: selectedTabIndex,
     item: editingCopy,
     store: patients,
@@ -125,6 +130,7 @@ class _PatientQrPageState extends State<_PatientQrPage> {
                 try {
                   p.link = await p.generatePatientLink();
                 } catch (e, stacktrace) {
+                  showErrorMessage(e, "generatingPatientLink");
                   login.askForLoginAgain(e);
                   logger("error while generating patient link $e", stacktrace);
                 }
@@ -268,7 +274,7 @@ class _PatientAppointments extends StatelessWidget {
                               padding:
                                   const EdgeInsets.symmetric(horizontal: 5),
                               child: Txt(
-                                  "${txt("paymentSummary")} (${globalSettings.get("currency_______").value})",
+                                  "${txt("paymentSummary")} (${currency()})",
                                   style: const TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -329,15 +335,35 @@ class _PatientDetails extends StatefulWidget {
 }
 
 class _PatientDetailsState extends State<_PatientDetails> {
-  PhoneTextEditingController phoneTextController = PhoneTextEditingController();
-  TextEditingController emailTextController = TextEditingController();
+  final phoneTextController = PhoneTextEditingController();
+  final emailTextController = TextEditingController();
   final phoneFlyoutController = FlyoutController();
+  final nameController = TextEditingController();
+  final yobController = TextEditingController();
+  final addressController = TextEditingController();
+  final notesController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    phoneTextController.text = widget.patient.phone;
+    phoneTextController.text = widget.patient.phonesString;
     emailTextController.text = widget.patient.email;
+    nameController.text = widget.patient.title;
+    yobController.text = widget.patient.birth.toString();
+    addressController.text = widget.patient.address;
+    notesController.text = widget.patient.notes;
+  }
+
+  @override
+  void dispose() {
+    phoneTextController.dispose();
+    emailTextController.dispose();
+    phoneFlyoutController.dispose();
+    nameController.dispose();
+    yobController.dispose();
+    addressController.dispose();
+    notesController.dispose();
+    super.dispose();
   }
 
   @override
@@ -352,7 +378,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           child: CupertinoTextField(
             key: WK.fieldPatientName,
             placeholder: "${txt("name")}...",
-            controller: TextEditingController(text: widget.patient.title),
+            controller: nameController,
             onChanged: (value) => widget.patient.title = value,
           ),
         ),
@@ -364,8 +390,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
               child: CupertinoTextField(
                 key: WK.fieldPatientYOB,
                 placeholder: "${txt("birthYear")}...",
-                controller: TextEditingController(
-                    text: widget.patient.birth.toString()),
+                controller: yobController,
                 onChanged: (value) => widget.patient.birth =
                     int.tryParse(value) ?? widget.patient.birth,
               ),
@@ -399,57 +424,66 @@ class _PatientDetailsState extends State<_PatientDetails> {
             ),
           ),
         ]),
-        Row(children: [
-          Expanded(
-            child: InfoLabel(
-              label: "${txt("phone")}:",
-              isHeader: true,
-              child: CupertinoTextField(
-                key: WK.fieldPatientPhone,
-                placeholder: "${txt("phone")}...",
-                controller: phoneTextController,
-                inputFormatters: [PhonePasteFormatter()],
-                onChanged: (value) {
-                  setState(() {
-                    widget.patient.phone = value;
-                  });
-                },
-                suffix: widget.patient.phone.isNotEmpty
-                    ? PhoneNumberButton(
-                        phoneNumber: phoneTextController.text,
-                      )
-                    : null,
-              ),
-            ),
+        InfoLabel(
+          label: "${txt("email")}:",
+          isHeader: true,
+          child: CupertinoTextField(
+            textDirection: TextDirection.ltr,
+            key: WK.fieldPatientEmail,
+            placeholder: "${txt("email")}...",
+            controller: emailTextController,
+            onChanged: (value) {
+              setState(() {
+                widget.patient.email = value;
+              });
+            },
+            suffix: widget.patient.email.isNotEmpty
+                ? EmailButton(email: widget.patient.email)
+                : null,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: InfoLabel(
-              label: "${txt("email")}:",
-              isHeader: true,
-              child: CupertinoTextField(
-                key: WK.fieldPatientEmail,
-                placeholder: "${txt("email")}...",
-                controller: emailTextController,
-                onChanged: (value) {
-                  setState(() {
-                    widget.patient.email = value;
-                  });
-                },
-                suffix: widget.patient.email.isNotEmpty
-                    ? EmailButton(email: widget.patient.email)
-                    : null,
-              ),
-            ),
+        ),
+        InfoLabel(
+          label: "${txt("phone")}:",
+          isHeader: true,
+          child: CupertinoTextField(
+            suffix: phoneTextController.text.isNotEmpty &&
+                    widget.patient.phone.isEmpty
+                ? const Padding(
+                    padding: EdgeInsets.all(5),
+                    child: Icon(
+                      WindowsIcons.warning,
+                      color: Colors.warningPrimaryColor,
+                    ),
+                  )
+                : null,
+            textDirection: TextDirection.ltr,
+            key: WK.fieldPatientPhone,
+            placeholder: "${txt("phone")}...",
+            controller: phoneTextController,
+            onChanged: (value) {
+              setState(() {
+                widget.patient.phone = PhoneNumberExtractor.extract(value)
+                    .map((s) => ParsedPhoneNumber(s))
+                    .toList();
+              });
+            },
           ),
-        ]),
+        ),
+        if (phoneTextController.text.isNotEmpty && widget.patient.phone.isEmpty)
+          Txt(txt("noValidNumbersFound")),
+        if (widget.patient.phone.isNotEmpty)
+          Text("${txt("theFollowingPhoneNumbersAreDetected")}:"),
+        ...widget.patient.phone.map((p) => PhoneNumberButton(
+              onlyIcon: false,
+              phoneNumbers: [p],
+            )),
         const SizedBox(height: 10),
         InfoLabel(
           label: "${txt("address")}:",
           isHeader: true,
           child: CupertinoTextField(
             key: WK.fieldPatientAddress,
-            controller: TextEditingController(text: widget.patient.address),
+            controller: addressController,
             onChanged: (value) => widget.patient.address = value,
             placeholder: "${txt("address")}...",
           ),
@@ -459,7 +493,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           isHeader: true,
           child: CupertinoTextField(
             key: WK.fieldPatientNotes,
-            controller: TextEditingController(text: widget.patient.notes),
+            controller: notesController,
             onChanged: (value) => widget.patient.notes = value,
             maxLines: null,
             placeholder: "${txt("notes")}...",
@@ -504,13 +538,27 @@ class PhoneTextEditingController extends TextEditingController {
 
     for (int i = 0; i < parts.length; i++) {
       final String part = parts[i];
-      if (part.isNotEmpty) {
+      if (PhoneNumber.parse(part,
+              destinationCountry:
+                  IsoCode.values.byName(globalSettings.isoCountryCode))
+          .isValid()) {
         children.add(
           TextSpan(
             text: part,
             style: style?.copyWith(
               decoration: TextDecoration.underline,
               decorationColor: accentColor,
+              decorationThickness: 2,
+            ),
+          ),
+        );
+      } else {
+        children.add(
+          TextSpan(
+            text: part,
+            style: style?.copyWith(
+              decoration: TextDecoration.underline,
+              decorationColor: Colors.red,
               decorationThickness: 2,
             ),
           ),
@@ -522,41 +570,5 @@ class PhoneTextEditingController extends TextEditingController {
     }
 
     return TextSpan(children: children, style: style);
-  }
-}
-
-class PhonePasteFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    // If the change is more than 1 character, it's likely a paste
-    if (newValue.text.length > oldValue.text.length + 1) {
-      final int start = oldValue.selection.start;
-
-      // Find the text that was added
-      final String addedText = newValue.text.substring(
-        start,
-        newValue.selection.end,
-      );
-
-      if (addedText.contains(' ')) {
-        final String trimmedText = addedText.replaceAll(' ', '');
-        final String fullNewText = newValue.text.replaceRange(
-          start,
-          newValue.selection.end,
-          trimmedText,
-        );
-
-        return TextEditingValue(
-          text: fullNewText,
-          selection: TextSelection.collapsed(
-            offset: start + trimmedText.length,
-          ),
-        );
-      }
-    }
-    return newValue;
   }
 }

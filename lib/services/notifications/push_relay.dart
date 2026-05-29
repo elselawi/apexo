@@ -32,7 +32,7 @@ class PushRelay {
     final key = await _getRelayKey();
     if (key == null) {
       final String newKey = secureHash(
-          "${login.url} ${login.token} ${login.email} ${login.password} ${DateTime.now().millisecondsSinceEpoch.toString()}");
+          "${login.url} ${login.token} ${login.email} ${DateTime.now().millisecondsSinceEpoch.toString()}");
       await login.pb!.collection(dataCollectionName).create(body: {
         "id": relayKeyIDInCollection,
         "data": jsonEncode({"key": newKey}),

@@ -1,7 +1,18 @@
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/utils/parsed_phone_number.dart';
+import 'package:country_flags/country_flags.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+ButtonStyle darkIconButtonStyle(BuildContext context, [Color? color]) {
+  return ButtonStyle(
+    backgroundColor: WidgetStatePropertyAll(
+      color ?? FluentTheme.of(context).inactiveColor.withAlpha(30),
+    ),
+  );
+}
 
 class EmailButton extends StatelessWidget {
   const EmailButton({
@@ -16,9 +27,7 @@ class EmailButton extends StatelessWidget {
     return Tooltip(
       message: txt("sendEmail"),
       child: IconButton(
-        style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(
-                FluentTheme.of(context).inactiveBackgroundColor)),
+        style: darkIconButtonStyle(context),
         icon: Icon(
           WindowsIcons.mail,
           color: FluentTheme.of(context).inactiveColor,
@@ -32,12 +41,14 @@ class EmailButton extends StatelessWidget {
 }
 
 class PhoneNumberButton extends StatefulWidget {
-  PhoneNumberButton({
+  const PhoneNumberButton({
     super.key,
-    required this.phoneNumber,
+    required this.phoneNumbers,
+    this.onlyIcon = true,
   });
 
-  final String phoneNumber;
+  final List<ParsedPhoneNumber> phoneNumbers;
+  final bool onlyIcon;
 
   @override
   State<PhoneNumberButton> createState() => PhoneNumberButtonState();
@@ -54,11 +65,13 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
   }
 
   bool get singlePhoneNumber {
-    return !widget.phoneNumber.trim().contains(" ");
+    return widget.phoneNumbers.length == 1;
   }
 
-  List<String> get phoneNumbers {
-    return widget.phoneNumber.trim().split(" ");
+  @override
+  void dispose() {
+    flyoutCtrl.dispose();
+    super.dispose();
   }
 
   @override
@@ -67,21 +80,43 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
       message: txt("contact"),
       child: FlyoutTarget(
         controller: flyoutCtrl,
-        child: IconButton(
-          style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(
-                  FluentTheme.of(context).inactiveBackgroundColor)),
-          icon: Icon(
-            WindowsIcons.phone,
-            color: FluentTheme.of(context).inactiveColor,
-          ),
-          onPressed: showFlyout,
+        child: Row(
+          textDirection: TextDirection.ltr,
+          children: [
+            IconButton(
+              style: ButtonStyle(
+                backgroundColor: WidgetStatePropertyAll(
+                  FluentTheme.of(context).inactiveColor.withAlpha(30),
+                ),
+              ),
+              icon: widget.onlyIcon
+                  ? const Icon(WindowsIcons.phone)
+                  : Row(
+                      textDirection: TextDirection.ltr,
+                      spacing: 5,
+                      children: [
+                        const Icon(WindowsIcons.phone),
+                        CountryFlag.fromCountryCode(
+                          widget.phoneNumbers.first.isoCode,
+                          theme: const ImageTheme(height: 20, width: 20),
+                        ),
+                        Text(
+                          widget.phoneNumbers.first.toInternationalFormat(),
+                          textDirection: TextDirection.ltr,
+                          style: FluentTheme.of(context).typography.bodyStrong,
+                        )
+                      ],
+                    ),
+              onPressed: showMenu,
+            ),
+          ],
         ),
       ),
     );
   }
 
-  showFlyout() {
+  showMenu() async {
+    await flyoutFocusFix(context);
     flyoutCtrl.showFlyout(
         barrierDismissible: true,
         dismissOnPointerMoveAway: false,
@@ -92,18 +127,22 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
                   ? [
                       MenuFlyoutItem(
                         selected: true,
-                        text: Text(widget.phoneNumber),
+                        text: Text(
+                          widget.phoneNumbers.first.toInternationalFormat(),
+                          textDirection: TextDirection.ltr,
+                        ),
                         leading: const Icon(FluentIcons.number_field),
                         onPressed: () {},
                       ),
                       const MenuFlyoutSeparator(),
-                      ...communicationActions(widget.phoneNumber)
+                      ...communicationActions(widget.phoneNumbers.first.e164)
                     ]
-                  : phoneNumbers
+                  : widget.phoneNumbers
                       .map((singleNumber) => MenuFlyoutSubItem(
                           showBehavior: SubItemShowAction.press,
-                          text: Text(singleNumber),
-                          items: (ctx) => communicationActions(singleNumber)))
+                          text: Text(singleNumber.toInternationalFormat()),
+                          items: (ctx) =>
+                              communicationActions(singleNumber.e164)))
                       .toList());
         });
   }

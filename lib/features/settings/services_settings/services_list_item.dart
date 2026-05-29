@@ -20,16 +20,15 @@ class ServicesListItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 1),
       child: Container(
-        decoration: BoxDecoration(
-          color: FluentTheme.of(context).menuColor,
-          boxShadow: [BoxShadow(
+        decoration:
+            BoxDecoration(color: FluentTheme.of(context).menuColor, boxShadow: [
+          BoxShadow(
             offset: const Offset(0.0, 6.0),
             blurRadius: 30.0,
             spreadRadius: 5.0,
             color: Colors.grey.withAlpha(50),
           )
-        ]
-        ),
+        ]),
         child: ListTile(
           title: ItemTitle(
             item: Model.fromJson({"title": title}),

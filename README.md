@@ -29,11 +29,11 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 ## Available platforms
 
-- __Windows__: All features should/are tested and works.
-- __Android__: All features should/are tested and works.
-- __Web__: partial support, photo uploading isn't supported (todo).
-- __iOS__: planned, not yet implemented.
-- __MacOS__: planned, not yet implemented.
+- __Windows__: All features should/are tested and works (available on [Microsoft Store](https://apps.microsoft.com/detail/9n2j1h8dz6mt)).
+- __Android__: All features should/are tested and works (available on [Google Play](https://play.google.com/store/apps/details?id=app.apexo.mobile)).
+- __Web__: All features should/are tested and works (available on [web.apexo.app](https://web.apexo.app)).
+- __iOS__: All features should/are tested and works (available on [App Store](https://apps.apple.com/us/app/apexo-app/id6767690393)).
+- __MacOS__: All features should/are tested and works (available to [Download](https://apexo.app/#download)).
 
 ## Testing
 

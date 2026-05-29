@@ -13,7 +13,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 class Note extends Model {
   @override
   bool get locked => (login.permissions[PInt.notes] == 0 &&
-      !login.isAdmin &&
       isColumn == false &&
       login.currentAccountID != createdBy &&
       login.currentAccountID != assignedTo);

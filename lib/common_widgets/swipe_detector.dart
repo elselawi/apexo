@@ -2,13 +2,13 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 class SwipeDetector extends StatelessWidget {
   final Widget child;
-  final void Function() onSwipeLeft;
-  final void Function() onSwipeRight;
+  final void Function() onSwipePrev;
+  final void Function() onSwipeNext;
 
   const SwipeDetector({
     super.key,
-    required this.onSwipeLeft,
-    required this.onSwipeRight,
+    required this.onSwipePrev,
+    required this.onSwipeNext,
     required this.child,
   });
 
@@ -17,9 +17,13 @@ class SwipeDetector extends StatelessWidget {
     return GestureDetector(
       onHorizontalDragEnd: (details) {
         if (details.velocity.pixelsPerSecond.dx > 0) {
-          onSwipeLeft();
+          Directionality.of(context) == TextDirection.ltr
+              ? onSwipePrev()
+              : onSwipeNext();
         } else if (details.velocity.pixelsPerSecond.dx < 0) {
-          onSwipeRight();
+          Directionality.of(context) == TextDirection.ltr
+              ? onSwipeNext()
+              : onSwipePrev();
         }
       },
       child: child,

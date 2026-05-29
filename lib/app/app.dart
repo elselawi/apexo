@@ -18,6 +18,7 @@ import 'package:apexo/common_widgets/current_account.dart';
 import 'package:apexo/common_widgets/logo.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/services/version.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -26,9 +27,7 @@ import 'package:flutter/foundation.dart';
 late BuildContext bContext;
 
 class ApexoApp extends StatelessWidget {
-  ApexoApp({super.key});
-
-  final FlyoutController controller = FlyoutController();
+  const ApexoApp({super.key});
 
   @override
   StatelessElement createElement() {
@@ -45,6 +44,7 @@ class ApexoApp extends StatelessWidget {
         stream: localSettings.stream,
         builder: (context, snapshot) {
           return FluentApp(
+            title: "Apexo",
             key: WK.fluentApp,
             locale: Locale(locale.s.$code),
             theme: localSettings.selectedTheme == ThemeMode.dark
@@ -75,15 +75,19 @@ class ApexoApp extends StatelessWidget {
                       left: false,
                       right: false,
                       bottom: !kIsWeb && Platform.isAndroid,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          buildAppLayout(),
-                          if (routes.showBottomNav() &&
-                              routes.panels().isEmpty &&
-                              launch.open() == Open.staff)
-                            const BottomNavBar()
-                        ],
+                      child: ScaffoldPage(
+                        padding: EdgeInsets.zero,
+                        resizeToAvoidBottomInset: true,
+                        content: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            buildAppLayout(),
+                            if (routes.showBottomNav() &&
+                                routes.panels().isEmpty &&
+                                launch.open() == Open.staff)
+                              const BottomNavBar()
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -106,6 +110,8 @@ class ApexoApp extends StatelessWidget {
 
       // TODO: this needs to be updated for macos users since all other users will be using the store apps
       showDialog(
+        barrierDismissible: true,
+        dismissWithEsc: true,
         context: bContext,
         builder: (context) => NewVersionDialog(
           downloadLink: ((kIsWeb == false) && Platform.isWindows)
@@ -119,6 +125,8 @@ class ApexoApp extends StatelessWidget {
     if (launch.isFirstLaunch() && bContext.mounted && !launch.dialogShown()) {
       launch.dialogShown(true);
       showDialog(
+        barrierDismissible: true,
+        dismissWithEsc: true,
         context: bContext,
         builder: (BuildContext context) => const FirstLaunchDialog(),
       );
@@ -163,7 +171,7 @@ class ApexoApp extends StatelessWidget {
                         .withValues(alpha: 0.4),
                     onDismiss: () => routes.minimizePanels(true),
                   ),
-                _buildPositionedPanel(constraints, hideSidePanel),
+                _buildPositionedPanel(context, constraints, hideSidePanel),
               ],
             ),
           );
@@ -174,8 +182,9 @@ class ApexoApp extends StatelessWidget {
 
   Widget _buildPositionedMainScreen(
       BoxConstraints constraints, bool hideSidePanel, BuildContext context) {
+    final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
     return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
+      duration: hasKeyboard ? Duration.zero : const Duration(milliseconds: 300),
       top: 0,
       left: locale.s.$direction == Direction.rtl ? null : 0,
       right: locale.s.$direction == Direction.rtl ? 0 : null,
@@ -193,72 +202,8 @@ class ApexoApp extends StatelessWidget {
             automaticallyImplyLeading: false,
             height: 40,
             actions: const NetworkActions(key: WK.globalActions),
-            title: FlyoutTarget(
-              controller: controller,
-              child: GestureDetector(
-                onTap: () {
-                  if (launch.open() != Open.staff) return;
-                  controller.showFlyout(builder: (ctx) {
-                    return MenuFlyout(
-                      items: routes.allRoutes
-                          .where((p) => p.onFooter != true)
-                          .map((route) {
-                        return MenuFlyoutItem(
-                          leading: Icon(route.icon),
-                          selected: route.identifier ==
-                              routes.currentRoute.identifier,
-                          text: Text(route.title),
-                          onPressed: () {
-                            controller.close();
-                            routes.navigate(route.identifier);
-                          },
-                        );
-                      }).toList(),
-                    );
-                  });
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(50),
-                    color: launch.open() == Open.staff
-                        ? Colors.white
-                        : Colors.grey.withValues(alpha: 0.6),
-                    border: Border.all(
-                        color: FluentTheme.of(context)
-                            .inactiveColor
-                            .withAlpha(40)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    spacing: 5,
-                    children: [
-                      Icon(
-                        launch.open() == Open.staff
-                            ? routes.currentRoute.icon
-                            : WindowsIcons.lock,
-                        color: Colors.grey,
-                      ),
-                      launch.open() == Open.staff
-                          ? Txt(
-                              routes.currentRoute.title,
-                              style: const TextStyle(color: Colors.grey),
-                            )
-                          : launch.open() == Open.patient
-                              ? Txt(
-                                  txt("patientSide"),
-                                  style: const TextStyle(color: Colors.grey),
-                                )
-                              : Txt(
-                                  txt("login"),
-                                  style: const TextStyle(color: Colors.grey),
-                                )
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // ignore: prefer_const_constructors
+            title: NavScreenTitle(),
           ),
           onDisplayModeChanged: (mode) {
             if (mode == PaneDisplayMode.minimal && constraints.maxWidth < 710) {
@@ -268,7 +213,8 @@ class ApexoApp extends StatelessWidget {
             }
           },
           content: launch.open() == Open.login
-              ? Login()
+              // ignore: prefer_const_constructors
+              ? LoginScreen()
               : launch.open() == Open.patient
                   ? const PatientSideScreen()
                   : null,
@@ -295,7 +241,7 @@ class ApexoApp extends StatelessWidget {
                                       padding: EdgeInsets.only(
                                           bottom: (routes.showBottomNav() &&
                                                   constraints.maxWidth < 710)
-                                              ? 60
+                                              ? 66
                                               : 0),
                                       child: (route.screen)(),
                                     )
@@ -326,13 +272,15 @@ class ApexoApp extends StatelessWidget {
     );
   }
 
-  Widget _buildPositionedPanel(BoxConstraints constraints, bool hideSidePanel) {
+  Widget _buildPositionedPanel(
+      BuildContext context, BoxConstraints constraints, bool hideSidePanel) {
     final minimized = routes.minimizePanels() && constraints.maxWidth < 710;
+    final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
     return AnimatedPositioned(
-      duration: const Duration(milliseconds: 300),
+      duration: hasKeyboard ? Duration.zero : const Duration(milliseconds: 300),
       width: (constraints.maxWidth < 490 && minimized)
           ? constraints.maxWidth
-          : 355,
+          : 350,
       height: minimized ? 56 : constraints.maxHeight,
       top: minimized ? null : 0,
       bottom: minimized ? 0 : null,
@@ -353,6 +301,84 @@ class ApexoApp extends StatelessWidget {
                 panel: routes.panels().last,
               ),
             ),
+    );
+  }
+}
+
+class NavScreenTitle extends StatefulWidget {
+  const NavScreenTitle({super.key});
+
+  @override
+  State<NavScreenTitle> createState() => _NavScreenTitleState();
+}
+
+class _NavScreenTitleState extends State<NavScreenTitle> {
+  final controller = FlyoutController();
+
+  @override
+  Widget build(BuildContext context) {
+    return FlyoutTarget(
+      controller: controller,
+      child: GestureDetector(
+        onTap: () async {
+          if (launch.open() != Open.staff) return;
+          await flyoutFocusFix(context);
+          controller.showFlyout(builder: (ctx) {
+            return MenuFlyout(
+              items: routes.allRoutes
+                  .where((p) => p.onFooter != true)
+                  .map((route) {
+                return MenuFlyoutItem(
+                  leading: Icon(route.icon),
+                  selected: route.identifier == routes.currentRoute.identifier,
+                  text: Text(route.title),
+                  onPressed: () {
+                    controller.close();
+                    routes.navigate(route.identifier);
+                  },
+                );
+              }).toList(),
+            );
+          });
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(50),
+            color: launch.open() == Open.staff
+                ? Colors.white
+                : Colors.grey.withValues(alpha: 0.6),
+            border: Border.all(
+                color: FluentTheme.of(context).inactiveColor.withAlpha(40)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              Icon(
+                launch.open() == Open.staff
+                    ? routes.currentRoute.icon
+                    : WindowsIcons.lock,
+                color: Colors.grey,
+              ),
+              launch.open() == Open.staff
+                  ? Txt(
+                      routes.currentRoute.title,
+                      style: const TextStyle(color: Colors.grey),
+                    )
+                  : launch.open() == Open.patient
+                      ? Txt(
+                          txt("patientSide"),
+                          style: const TextStyle(color: Colors.grey),
+                        )
+                      : Txt(
+                          txt("login"),
+                          style: const TextStyle(color: Colors.grey),
+                        )
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

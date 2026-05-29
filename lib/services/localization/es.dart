@@ -28,6 +28,17 @@ class Es implements En {
     "calendar": "Calendario",
     "gettingImages": "Obteniendo imágenes",
     "more": "Más",
+    "howToUse": "Cómo usar",
+
+    // new
+    "newPatient": "Nuevo paciente",
+    "newAppointment": "Nueva cita",
+    "newLabwork": "Nuevo caso",
+    "newNote": "Nueva nota",
+    "newSupplier": "Nuevo proveedor",
+    "newOrder": "Nuevo pedido",
+    "newUser": "Nuevo usuario",
+    "newAdmin": "Nuevo administrador",
 
     // call
     "callLaboratory": "Llamar al Laboratorio",
@@ -45,16 +56,16 @@ class Es implements En {
     "insights": "Análisis",
 
     // dashboard
-    "admin": "Administrador",
+    "admin": "Admin",
     "fullStats": "Estadísticas completas",
     "payments": "Pagos",
     "appointmentsToday": "Citas hoy",
     "patientsToday": "Pacientes hoy",
     "newPatientsToday": "Nuevos pacientes hoy",
     "paymentsMadeToday": "Pagos realizados hoy",
-    "modeAdmin": "ADMIN",
-    "modeUser": "USUARIO",
-    "modeOffline": "FUERA DE LÍNEA",
+    "modeAdmin": "ADMIN modo",
+    "modeUser": "USUARIO modo",
+    "modeOffline": "FUERA DE LÍNEA modo",
     "onceConnectionIsStable":
         "Una vez que tu conexión sea estable, puedes usar el botón en la esquina superior derecha para reconectar.",
     "unRestrictedAccess": "acceso sin restricciones en la aplicación",
@@ -72,7 +83,7 @@ class Es implements En {
     "showing": "Mostrando",
     "showMore": "Ver más",
     "by": "Por",
-    "byTitle": "Por título",
+    "byName": "Por nombre",
     "byDate": "Por fecha",
     "noItemsFound": "No se encontraron elementos",
     "filter": "Filtrar",
@@ -151,6 +162,9 @@ class Es implements En {
     "name": "Nombre",
     "birthYear": "Año de nacimiento",
     "phone": "Teléfono",
+    "noValidNumbersFound": "No se encontraron números de teléfono válidos",
+    "theFollowingPhoneNumbersAreDetected":
+        "Solo se detectaron los siguientes números de teléfono",
     "email": "Correo electrónico",
     "address": "Dirección",
     "notes": "Notas",
@@ -186,6 +200,8 @@ class Es implements En {
     "thirdMolar": "Tercer molar",
     "exportSelected": "Exportar seleccionados",
     "export": "Exportar",
+    "exportImportFeatureExplanation":
+        "Para mover los datos seleccionados de pacientes y citas entre servidores u otras aplicaciones, exporta un CSV desde el servidor de origen e impórtalo al servidor o aplicación de destino.",
     "qrCode": "Código QR",
     "share": "Compartir",
     "noPatientsSelected": "No se han seleccionado pacientes",
@@ -245,7 +261,6 @@ class Es implements En {
     "twoWeeksAbbr": "2S",
     "monthAbbr": "M",
     "today": "Hoy",
-    "newPatient": "Nuevo paciente",
     "date": "Fecha",
     "changeDate": "Cambiar fecha",
     "changeTime": "Cambiar hora",
@@ -277,7 +292,6 @@ class Es implements En {
     // labworks
     "laboratory": "Laboratorio",
     "month": "mes",
-    "newLabwork": "Nuevo trabajo de laboratorio",
     "labwork": "trabajo de laboratorio",
     "labworkTitle": "Título del trabajo de laboratorio",
     "orderNotes": "Notas del pedido",
@@ -288,6 +302,10 @@ class Es implements En {
     "waitingForLab": "Esperando al laboratorio",
     "undelivered": "No entregado al paciente",
     "receivedAndDelivered": "Recibido y entregado",
+    "selectPatientFirst": "Seleccione un paciente primero",
+    "patientHasNoAppointments": "El paciente no tiene citas",
+    "selectAppointment": "Seleccione una cita",
+    "areYouSureYouWantTo": "¿Está seguro de que desea",
 
     // expenses
     "expense": "Gasto",
@@ -302,7 +320,7 @@ class Es implements En {
     "due": "Vencido",
     "open": "Abrir",
     "rename": "Cambiar nombre",
-    "addSupplier": "Agregar proveedorr",
+    "addSupplier": "Agregar proveedor",
     "archiveSupplier": "Archivar proveedor",
     "items": "Ítems",
     "markAsPaid": "Marcar como pagado",
@@ -320,7 +338,10 @@ class Es implements En {
     "notSet": "No establecido",
     "photo": "Foto",
     "pickASupplier": "Seleccionar proveedor",
-    "allByDate": "Todo por fecha",
+    "viewAllOrders": "Ver todos los pedidos",
+    "lastOrder": "Ultimo pedido",
+    "supplier": "Proveedor",
+    "orders": "Pedidos",
 
     // notes
     "addColumn": "Agregar columna",
@@ -395,6 +416,7 @@ class Es implements En {
     "maleAndFemalePatients": "Pacientes masculinos y femeninos",
     "done": "realizado",
     "missed": "perdido",
+    "periodicity": "Periodicidad",
 
     // settings
     "currency": "Moneda",
@@ -455,13 +477,11 @@ class Es implements En {
     "leaveBlankToKeepUnchanged": "Deja en blanco para mantener sin cambios",
     "updatingPassword": "Actualizando contraseña",
     "leaveItEmpty": "Deja el campo de contraseña vacío si no deseas cambiarlo.",
-    "newAdmin": "Nuevo administrador",
     "minimumPasswordLength": "Contraseña de al menos 10 caracteres",
 
     // advanced settings: Users
     "users": "Usuarios",
     "editUser": "Editar usuario",
-    "newUser": "Nuevo usuario",
 
     // advanced settings: Permissions
     "permissions": "Permisos de usuario",
@@ -476,6 +496,8 @@ class Es implements En {
     "canUpload": "Puede subir",
     "cantUpload": "No puede subir",
     "accounts": "Cuentas",
+    "account": "Cuenta",
+    "user": "Usuario",
     "operatesOnPatients": "Opera a pacientes",
 
     // advanced settings: prod tests
@@ -549,5 +571,34 @@ class Es implements En {
     "helpOnCreatingAServer":
         "Un servidor permite que tus datos se almacenen de forma segura, se hagan copias de seguridad, se sincronicen entre dispositivos y más.",
     "createNewServer": "Crear nuevo servidor",
+
+    // when errors:
+    "errorHappenedWhen": "Ocurrió un error al",
+    "deletingPatientImageFromServer":
+        "eliminar la imagen del paciente del servidor",
+    "openingPatientImage": "abrir la imagen del paciente",
+    "importingRemoteImages": "importar imágenes remotas",
+    "creatingNewAccount": "crear una nueva cuenta",
+    "updatingAccounts": "actualizar cuentas",
+    "loadingAccounts": "cargar cuentas",
+    "openingFullPatientImage": "abrir la imagen completa del paciente",
+    "deletingAccount": "eliminar la cuenta",
+    "uploadingPatientImageFromCamera":
+        "subir la imagen del paciente desde la cámara",
+    "uploadingPatientImageFromGallery":
+        "subir la imagen del paciente desde la galería",
+    "deletingOrderImageFromServer":
+        "eliminar la imagen de la orden del servidor",
+    "uploadingOrderImageFromGallery":
+        "subir la imagen de la orden desde la galería",
+    "uploadingOrderImageFromCamera":
+        "subir la imagen de la orden desde la cámara",
+    "openingImageFromGrid": "abrir la imagen desde la cuadrícula",
+    "openingMultipleImagesFromGrid": "abrir las imágenes desde la cuadrícula",
+    "generatingPatientLink": "generando enlace del paciente",
+    "gettingRemoteImagesList": "obtener la lista de imágenes remotas",
+    "sendingUpdatesToServer": "enviar actualizaciones al servidor",
+    "deletingFile": "eliminar archivo",
+    "uploadingFile": "subir archivo",
   };
 }

@@ -3,7 +3,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
 
 class ChartsRangeSelector extends StatelessWidget {
   const ChartsRangeSelector({
@@ -21,10 +20,8 @@ class ChartsRangeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final df =
-        localSettings.dateFormat.startsWith("d") == true ? "dd/MM" : "MM/dd";
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 15),
+      padding: const EdgeInsets.only(top: 10, bottom: 0, left: 8, right: 8),
       child: MStreamBuilder(
           streams: [
             chartsCtrl.start.stream,
@@ -51,9 +48,7 @@ class ChartsRangeSelector extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Txt(txt("start"), style: _textStyle),
-                          Txt(
-                              DateFormat("$df/yyyy", locale.s.$code)
-                                  .format(chartsCtrl.start()),
+                          Txt(DF.allNumbers(chartsCtrl.start()),
                               style: _textStyle),
                         ],
                       ),
@@ -75,7 +70,7 @@ class ChartsRangeSelector extends StatelessWidget {
                             color: _color,
                           ),
                           const SizedBox(width: 5),
-                          Txt("${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString)}",
+                          Txt("${txt("periodicity")}: ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString)}",
                               style: _textStyle)
                         ],
                       ),
@@ -91,9 +86,7 @@ class ChartsRangeSelector extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Txt(txt("end"), style: _textStyle),
-                          Txt(
-                              DateFormat("$df/yyyy", locale.s.$code)
-                                  .format(chartsCtrl.end()),
+                          Txt(DF.allNumbers(chartsCtrl.end()),
                               style: _textStyle),
                         ],
                       ),

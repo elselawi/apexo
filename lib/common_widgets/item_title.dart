@@ -160,8 +160,8 @@ class TreatmentLabels extends StatelessWidget {
   }
 }
 
-class SingleTreatmentLabel extends StatelessWidget {
-  SingleTreatmentLabel({
+class SingleTreatmentLabel extends StatefulWidget {
+  const SingleTreatmentLabel({
     super.key,
     required this.label,
     required this.showPalmer,
@@ -169,25 +169,37 @@ class SingleTreatmentLabel extends StatelessWidget {
     this.endMargin = 2,
   });
 
-  final ctrl = FlyoutController();
   final TreatmentLabel label;
   final bool showPalmer;
   final bool showToolTip;
   final double endMargin;
 
   @override
+  State<SingleTreatmentLabel> createState() => _SingleTreatmentLabelState();
+}
+
+class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
+  final ctrl = FlyoutController();
+
+  @override
+  void dispose() {
+    ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final color = label.color;
+    final color = widget.label.color;
     return FlyoutTarget(
       controller: ctrl,
       child: GestureDetector(
-        onTap: showToolTip
+        onTap: widget.showToolTip
             ? () {
                 _showTreatmentLabelDetails();
               }
             : null,
         child: Container(
-            margin: EdgeInsetsDirectional.only(end: endMargin),
+            margin: EdgeInsetsDirectional.only(end: widget.endMargin),
             padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 5),
             decoration: BoxDecoration(
                 border: Border.all(
@@ -206,15 +218,15 @@ class SingleTreatmentLabel extends StatelessWidget {
                 ]),
             child: Row(
               children: [
-                Icon(label.icon, size: 18),
-                if (showPalmer) ...[
+                Icon(widget.label.icon, size: 18),
+                if (widget.showPalmer) ...[
                   const SizedBox(width: 5),
-                  Txt(txt(label.string)),
+                  Txt(txt(widget.label.string)),
                   Expanded(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        DentalNotation(iso: label.iso ?? "11"),
+                        DentalNotation(iso: widget.label.iso ?? "11"),
                       ],
                     ),
                   )
@@ -233,7 +245,7 @@ class SingleTreatmentLabel extends StatelessWidget {
         return TeachingTip(
           leading: Row(
             children: [
-              Icon(labelToIcon(label.string)),
+              Icon(labelToIcon(widget.label.string)),
               const SizedBox(width: 5),
               const Divider(
                 direction: Axis.vertical,
@@ -243,16 +255,16 @@ class SingleTreatmentLabel extends StatelessWidget {
               const SizedBox(width: 5),
               Column(children: [
                 Txt(
-                  txt(label.string),
+                  txt(widget.label.string),
                   style: FluentTheme.of(context).typography.bodyStrong,
                 ),
-                if (label.iso != null)
+                if (widget.label.iso != null)
                   Row(
                     children: [
-                      DentalNotation(iso: label.iso!),
+                      DentalNotation(iso: widget.label.iso!),
                       const SizedBox(width: 5),
                       Txt(
-                        txt(isoToTextualNotation(label.iso!)),
+                        txt(isoToTextualNotation(widget.label.iso!)),
                         style: FluentTheme.of(context).typography.caption,
                       )
                     ],

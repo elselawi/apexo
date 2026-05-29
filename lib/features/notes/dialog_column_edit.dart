@@ -8,22 +8,53 @@ import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
-final _archiveFlyoutCtrl = FlyoutController();
-
 void showColumnEditDialog(BuildContext context, {Note? column}) {
-  final controller = TextEditingController(text: column?.columnName ?? "");
-  Color? selectedColor = column?.computedTint;
   showDialog(
     context: context,
     dismissWithEsc: true,
     barrierDismissible: true,
-    builder: (context) => ContentDialog(
+    builder: (context) => _ColumnEditingWidget(column: column),
+  );
+}
+
+class _ColumnEditingWidget extends StatefulWidget {
+  final Note? column;
+  const _ColumnEditingWidget({
+    required this.column,
+  });
+
+  @override
+  State<_ColumnEditingWidget> createState() => _ColumnEditingWidgetState();
+}
+
+class _ColumnEditingWidgetState extends State<_ColumnEditingWidget> {
+  final controller = TextEditingController();
+  Color? selectedColor;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.column != null) {
+      controller.text = widget.column!.columnName;
+      selectedColor = widget.column!.computedTint;
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
       style: dialogStyling(context, false, true),
       title: Row(
         spacing: 8,
         children: [
-          Icon(column == null ? FluentIcons.add : FluentIcons.rename),
-          Txt(column == null ? txt("addColumn") : txt("editColumn")),
+          Icon(widget.column == null ? FluentIcons.add : FluentIcons.rename),
+          Txt(widget.column == null ? txt("addColumn") : txt("editColumn")),
         ],
       ),
       content: SizedBox(
@@ -40,7 +71,7 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
                 autofocus: true,
               ),
             ),
-            if (column != null) ...[
+            if (widget.column != null) ...[
               const SizedBox(height: 10),
               const Divider(),
               const SizedBox(height: 10),
@@ -48,7 +79,7 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
                 label: txt("columnColor"),
                 isHeader: true,
                 child: ColorPicker(
-                  color: selectedColor ?? column.computedTint,
+                  color: selectedColor ?? widget.column!.computedTint,
                   onChanged: (color) => selectedColor = color,
                   isAlphaEnabled: false,
                   isMoreButtonVisible: false,
@@ -71,67 +102,89 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
           child: ButtonContent(WindowsIcons.cancel, txt("cancel")),
           onPressed: () => Navigator.pop(context),
         ),
-        if (column != null)
-          FlyoutTarget(
-            controller: _archiveFlyoutCtrl,
-            child: FilledButton(
-                style: filledButtonStyle(
-                  column.archived == true
-                      ? Colors.teal
-                      : Colors.errorPrimaryColor,
-                ),
-                child: ButtonContent(
-                  column.archived == true
-                      ? FluentIcons.archive_undo
-                      : FluentIcons.archive,
-                  column.archived == true ? txt("restore") : txt("archive"),
-                ),
-                onPressed: () async {
-                  await flyoutFocusFix(context);
-                  _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
-                    return ConfirmDeleteFlyout(
-                      controller: _archiveFlyoutCtrl,
-                      onConfirm: () {
-                        if (column.archived == true) {
-                          notes.unarchive(column.id);
-                        } else {
-                          notes.archive(column.id);
-                        }
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          Navigator.pop(context);
-                        });
-                      },
-                      actionText:
-                          column.archived == true ? "restore" : "archive",
-                      actionIcon: column.archived == true
-                          ? FluentIcons.archive_undo
-                          : FluentIcons.archive,
-                    );
-                  });
-                }),
-          ),
+        if (widget.column != null) _ArchiveColumnButton(column: widget.column!),
         FilledButton(
           style: filledButtonStyle(Colors.blue),
-          child: ButtonContent(
-              WindowsIcons.save, column == null ? txt("add") : txt("save")),
+          child: ButtonContent(WindowsIcons.save,
+              widget.column == null ? txt("add") : txt("save")),
           onPressed: () {
             if (controller.text.isNotEmpty) {
-              if (column == null) {
+              if (widget.column == null) {
                 final newColumn = Note.fromJson({})
                   ..columnName = controller.text
                   ..isColumn = true
                   ..order = notes.columns.length.toDouble();
                 notes.set(newColumn);
               } else {
-                column.columnName = controller.text;
-                column.tint = selectedColor;
-                notes.set(column);
+                widget.column!.columnName = controller.text;
+                widget.column!.tint = selectedColor;
+                notes.set(widget.column!);
               }
               Navigator.pop(context);
             }
           },
         ),
       ],
-    ),
-  );
+    );
+  }
+}
+
+class _ArchiveColumnButton extends StatefulWidget {
+  final Note column;
+  const _ArchiveColumnButton({required this.column});
+
+  @override
+  State<_ArchiveColumnButton> createState() => _ArchiveColumnButtonState();
+}
+
+class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
+  final _archiveFlyoutCtrl = FlyoutController();
+
+  @override
+  void dispose() {
+    _archiveFlyoutCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FlyoutTarget(
+      controller: _archiveFlyoutCtrl,
+      child: FilledButton(
+          style: filledButtonStyle(
+            widget.column.archived == true
+                ? Colors.teal
+                : Colors.errorPrimaryColor,
+          ),
+          child: ButtonContent(
+            widget.column.archived == true
+                ? FluentIcons.archive_undo
+                : FluentIcons.archive,
+            widget.column.archived == true ? txt("restore") : txt("archive"),
+          ),
+          onPressed: () async {
+            await flyoutFocusFix(context);
+            _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
+              return ConfirmDeleteFlyout(
+                controller: _archiveFlyoutCtrl,
+                onConfirm: () {
+                  if (widget.column.archived == true) {
+                    notes.unarchive(widget.column.id);
+                  } else {
+                    notes.archive(widget.column.id);
+                  }
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    Navigator.pop(context);
+                  });
+                },
+                actionText:
+                    widget.column.archived == true ? "restore" : "archive",
+                actionIcon: widget.column.archived == true
+                    ? FluentIcons.archive_undo
+                    : FluentIcons.archive,
+              );
+            });
+          }),
+    );
+  }
 }

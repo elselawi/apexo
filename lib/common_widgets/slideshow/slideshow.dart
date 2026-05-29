@@ -107,6 +107,7 @@ showImageViewerPager(BuildContext context, EasyImageProvider imageProvider,
   return showDialog(
       context: context,
       barrierDismissible: true,
+      dismissWithEsc: true,
       barrierColor: barrierColor ?? backgroundColor,
       builder: (context) {
         return EasyImageViewerDismissibleDialog(

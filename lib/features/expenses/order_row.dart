@@ -1,8 +1,8 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
-import 'package:apexo/common_widgets/dialogs/loading_blocking.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
+import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/common_widgets/money_display.dart';
-import 'package:apexo/common_widgets/slideshow/slideshow.dart';
 import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
@@ -74,6 +74,12 @@ class OrderRowState extends State<OrderRow>
   @override
   void dispose() {
     _pulseController.dispose();
+    costCtrl.dispose();
+    paidCtrl.dispose();
+    notesController.dispose();
+    moreOptionsCtrl.dispose();
+    photoAddMenu.dispose();
+
     super.dispose();
   }
 
@@ -85,18 +91,21 @@ class OrderRowState extends State<OrderRow>
             orElse: () => Expense.fromJson({"supplierName": "Unknown"}));
 
     final card = Container(
-      height: 520,
-      width: 310,
       decoration: BoxDecoration(
-        color: theme.brightness == Brightness.light ? Colors.white : theme.cardColor,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
+        borderRadius: const BorderRadius.all(Radius.circular(5)),
+        color: FluentTheme.of(context).micaBackgroundColor,
+        boxShadow: const [
           BoxShadow(
-            color: theme.brightness == Brightness.light
-                ? Colors.black.withAlpha(20)
-                : Colors.black.withAlpha(80),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            offset: Offset(0.0, 8.0),
+            blurRadius: 17.0,
+            spreadRadius: 2.0,
+            color: Color.fromARGB(14, 0, 0, 0),
+          ),
+          BoxShadow(
+            offset: Offset(0.0, 5.0),
+            blurRadius: 22.0,
+            spreadRadius: 4.0,
+            color: Color(0x1F000000),
           ),
         ],
       ),
@@ -198,9 +207,6 @@ class OrderRowState extends State<OrderRow>
 
   Widget _buildReceiptHeader(Expense supplier) {
     final theme = FluentTheme.of(context);
-    final df = localSettings.dateFormat.startsWith("d") == true
-        ? "dd / MM / yyyy"
-        : "MM / dd / yyyy";
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -222,7 +228,7 @@ class OrderRowState extends State<OrderRow>
                   ),
                 ),
               ),
-              _buildMoreButton(),
+              if (canEdit) _buildMoreButton(),
             ],
           ),
           const SizedBox(height: 8),
@@ -237,7 +243,6 @@ class OrderRowState extends State<OrderRow>
             textStyle: theme.typography.bodyStrong?.copyWith(
               fontSize: 13,
             ),
-            format: df,
           ),
         ],
       ),
@@ -288,10 +293,6 @@ class OrderRowState extends State<OrderRow>
           const SizedBox(height: 3),
           CupertinoTextField(
             placeholder: txt("notes"),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: Colors.grey.withAlpha(40)),
-            ),
             enabled: canEdit && !inProgress,
             controller: notesController,
             maxLines: null,
@@ -306,7 +307,7 @@ class OrderRowState extends State<OrderRow>
 
   Widget _buildReceiptFooter() {
     final theme = FluentTheme.of(context);
-    final currency = globalSettings.get("currency_______").value;
+    final curr = currency();
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -317,7 +318,7 @@ class OrderRowState extends State<OrderRow>
                 child: _buildReceiptRow(
                   "due",
                   widget.order.cost,
-                  currency,
+                  curr,
                   isEditable: true,
                   controller: costCtrl,
                 ),
@@ -327,7 +328,7 @@ class OrderRowState extends State<OrderRow>
                 child: _buildReceiptRow(
                   "paid",
                   widget.order.paidAmount,
-                  currency,
+                  curr,
                   isEditable: true,
                   controller: paidCtrl,
                 ),
@@ -345,7 +346,7 @@ class OrderRowState extends State<OrderRow>
                 style: _sectionTitleTextStyle(theme),
               ),
               MoneyDisplay(
-                "${(widget.order.cost - widget.order.paidAmount).toStringAsFixed(2)} $currency",
+                "${(widget.order.cost - widget.order.paidAmount).toStringAsFixed(2)} $curr",
                 style: TextStyle(
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.bold,
@@ -467,9 +468,10 @@ class OrderRowState extends State<OrderRow>
   Widget _buildPhotosSection() {
     final theme = FluentTheme.of(context);
     return SizedBox(
-      height: 120,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: widget.order.photos.isEmpty
+            ? CrossAxisAlignment.center
+            : CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -502,88 +504,29 @@ class OrderRowState extends State<OrderRow>
               ],
             )
           else
-            Wrap(
-              spacing: 3,
-              runSpacing: 3,
-              children: List.generate(widget.order.photos.length, (index) {
-                return Button(
-                    child: Column(
-                      spacing: 3,
-                      children: [
-                        const Icon(FluentIcons.photo2, size: 16),
-                        Text(
-                          "${txt("photo")} ${index + 1}",
-                          style: _sectionTitleTextStyle(theme),
-                        ),
-                      ],
-                    ),
-                    onPressed: () async {
-                      final closeDialog = showLoadingBlockingDialog(
-                          context, txt("gettingImages"));
-                      MultiImageProvider multiImageProvider;
-                      try {
-                        final List<ImageProvider<Object>> list = (await Future
-                                .wait(widget.order.photos
-                                    .map((img) =>
-                                        getImage(widget.order.id, img, false))
-                                    .toList()))
-                            .map((el) =>
-                                el ??
-                                const AssetImage("assets/images/missing.png"))
-                            .toList();
-                        multiImageProvider =
-                            MultiImageProvider(list, initialIndex: index);
-                      } finally {
-                        closeDialog();
-                      }
-                      showImageViewerPager(
-                        // ignore: use_build_context_synchronously
-                        context,
-                        multiImageProvider,
-                        backgroundColor: Colors.black.withValues(alpha: 0.9),
-                        doubleTapZoomable: true,
-                        immersive: false,
-                        swipeDismissible: true,
-                        infinitelyScrollable: true,
-                        canDelete: canEdit,
-                        drawings: null,
-                        imageIds: widget.order.photos,
-                        onSaveDrawing: null,
-                        onPressDelete: (int index) async {
-                          inProgress = true;
-                          setState(() {});
-                          try {
-                            await expenses.deleteImg(
-                              widget.order.id,
-                              widget.order.photos[index],
-                            );
-                          } catch (e) {
-                            if (context.mounted) {
-                              showDialog(
-                                  // ignore: use_build_context_synchronously
-                                  context: context,
-                                  builder: (context) => ContentDialog(
-                                        title: const Text("Error"),
-                                        content: Text(e.toString()),
-                                        actions: [
-                                          Button(
-                                            child: const Text("Close"),
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                          ),
-                                        ],
-                                      ));
-                            }
-                          }
-                          widget.order.photos.removeAt(index);
-                          expenses.set(widget.order);
-                          inProgress = false;
-                          setState(() {});
-                        },
-                      );
-                    });
-              }),
-            ),
+            GridGallery(
+              rowId: widget.order.id,
+              imgs: widget.order.photos,
+              progress: inProgress,
+              onPressDelete: (img) async {
+                try {
+                  await expenses.deleteImg(
+                    widget.order.id,
+                    img,
+                  );
+                  expenses.set(widget.order..photos.remove(img));
+                } catch (e, s) {
+                  showErrorMessage(e, "deletingOrderImageFromServer");
+                  login.askForLoginAgain(e);
+                  logger("Error during deleting image: $e", s);
+                }
+              },
+              showDeleteMiniButton: false,
+              canDelete: canEdit,
+              size: 60,
+              showPlayIcon: false,
+              clipCount: 99999,
+            )
         ],
       ),
     );
@@ -650,6 +593,7 @@ class OrderRowState extends State<OrderRow>
         }
       }
     } catch (e, s) {
+      showErrorMessage(e, "uploadingOrderImageFromGallery");
       login.askForLoginAgain(e);
       logger("Error during file upload: $e", s);
     }
@@ -672,6 +616,7 @@ class OrderRowState extends State<OrderRow>
         expenses.set(widget.order..photos.add(imgName));
       }
     } catch (e, s) {
+      showErrorMessage(e, "uploadingOrderImageFromCamera");
       login.askForLoginAgain(e);
       logger("Error during camera upload: $e", s);
     }
@@ -690,8 +635,9 @@ class OrderRowState extends State<OrderRow>
                   strokeWidth: 2,
                 ))
             : const Icon(FluentIcons.more),
-        onPressed: () {
+        onPressed: () async {
           if (inProgress) return;
+          await flyoutFocusFix(context);
           moreOptionsCtrl.showFlyout(builder: (context) {
             return MenuFlyout(
               items: [
@@ -744,7 +690,7 @@ class DashedLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = this.color ?? Colors.grey.withAlpha(100);
+    final color = FluentTheme.of(context).resources.surfaceStrokeColorDefault;
     return CustomPaint(
       size: Size(double.infinity, thickness),
       painter: _DashedLinePainter(

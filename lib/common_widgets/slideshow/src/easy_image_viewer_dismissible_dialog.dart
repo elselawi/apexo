@@ -21,7 +21,6 @@ class EasyImageViewerDismissibleDialog extends StatefulWidget {
   final Color backgroundColor;
   final String closeButtonTooltip;
   final bool infinitelyScrollable;
-  final FlyoutController confirmDeleteFlyoutCtrl = FlyoutController();
 
   final Map<String, String>? drawings;
   final List<String>? imageIds;
@@ -56,7 +55,7 @@ class _EasyImageViewerDismissibleDialogState
   DismissDirection _dismissDirection = DismissDirection.down;
   void Function()? _internalPageChangeListener;
   late final PageController _pageController;
-
+  final FlyoutController confirmDeleteFlyoutCtrl = FlyoutController();
   bool _isDrawingMode = false;
   bool _showDrawings = true;
   Color _selectedColor = Colors.red;
@@ -87,6 +86,7 @@ class _EasyImageViewerDismissibleDialogState
       _pageController.removeListener(_internalPageChangeListener!);
     }
     _pageController.dispose();
+    confirmDeleteFlyoutCtrl.dispose();
     super.dispose();
   }
 
@@ -314,7 +314,7 @@ class _EasyImageViewerDismissibleDialogState
                       children: [
                         if (widget.canDelete) ...[
                           FlyoutTarget(
-                            controller: widget.confirmDeleteFlyoutCtrl,
+                            controller: confirmDeleteFlyoutCtrl,
                             child: IconButton(
                               icon: Row(
                                 children: [
@@ -334,7 +334,7 @@ class _EasyImageViewerDismissibleDialogState
                                 ],
                               ),
                               onPressed: () {
-                                widget.confirmDeleteFlyoutCtrl.showFlyout(
+                                confirmDeleteFlyoutCtrl.showFlyout(
                                   builder: (context) => ConfirmDeleteFlyout(
                                     onConfirm: () {
                                       if (_pageController.page != null) {
@@ -349,7 +349,7 @@ class _EasyImageViewerDismissibleDialogState
                                         });
                                       }
                                     },
-                                    controller: widget.confirmDeleteFlyoutCtrl,
+                                    controller: confirmDeleteFlyoutCtrl,
                                   ),
                                 );
                               },

@@ -1,5 +1,7 @@
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/notes/dialog_note_edit.dart';
 import 'package:apexo/features/notes/kanban_column_widget.dart';
 import 'package:apexo/features/notes/dialog_column_edit.dart';
 import 'package:apexo/features/notes/notes_model.dart';
@@ -8,38 +10,24 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/utils/constants.dart';
-import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 
 class NotesScreen extends StatelessWidget {
   const NotesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      key: WK.notesScreen,
-      padding: EdgeInsets.zero,
-      resizeToAvoidBottomInset: true,
-      content: Column(
-        children: [
-          Expanded(
-            child: MStreamBuilder(
-                streams: [
-                  notes.observableMap.stream,
-                  showArchived.stream,
-                  notes.filterByAccountId.stream,
-                  notes.sortDirection.stream,
-                  notes.showIncoming.stream,
-                ],
-                // ignore: prefer_const_constructors
-                builder: (context, snapshot) => NotesKanBanBoard()),
-          ),
+    return MStreamBuilder(
+        streams: [
+          notes.observableMap.stream,
+          showArchived.stream,
+          notes.filterByAccountId.stream,
+          notes.sortDirection.stream,
+          notes.showIncoming.stream,
         ],
-      ),
-    );
+        // ignore: prefer_const_constructors
+        builder: (context, snapshot) => NotesKanBanBoard());
   }
 }
 
@@ -92,9 +80,15 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
       children: [
         _buildCommandBar(),
         Padding(
-          padding: const EdgeInsets.only(top: 14, left: 8, right: 8),
+          padding: const EdgeInsets.all(8.0),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.end,
+            children: [_buildSearch()],
+          ),
+        ),
+        Container(
+          decoration: topBarDecoration(context, Colors.grey),
+          padding: const EdgeInsets.all(8),
+          child: Row(
             spacing: 5,
             children: [
               Button(
@@ -175,57 +169,41 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
   }
 
   Widget _buildCommandBar() {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
-          )
-        ],
-        color: FluentTheme.of(context).menuColor,
+    return ScreenCommandBar(
+      mainButton: IconButton(
+        onPressed: () => showNoteEditDialog(context),
+        icon: ButtonContent(FluentIcons.add, txt("newNote")),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: CupertinoTextField(
-              decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.all(color: Colors.transparent)),
-              placeholder: "🔍 ${txt("searchPlaceholder")}",
-              controller: _searchController,
-              onChanged: (text) => setState(() {}),
-            ),
-          ),
-          const SizedBox(width: 5),
-          ComboBox<String>(
-            style: const TextStyle(overflow: TextOverflow.ellipsis),
-            items: [
-              ComboBoxItem<String>(
-                value: "",
-                child: Txt(txt("allAccounts")),
-              ),
-              ...accounts.list().map((account) {
-                var name = "👨‍⚕️ ${accounts.name(account)}";
-                if (name.length > 17) {
-                  name = "${name.substring(0, 14)}...";
-                }
-                return ComboBoxItem(value: account.id, child: Text(name));
-              }),
-            ],
-            onChanged: (login.permissions[PInt.notes] == 0 && !login.isAdmin)
-                ? null
-                : (id) => notes.filterByAccountId(id ?? ""),
-            value: notes.filterByAccountId(),
-          ),
-          const SizedBox(width: 5),
-          const ArchiveToggle(),
-        ],
-      ),
+      farItems: [_buildAccountsFilter()],
     );
+  }
+
+  ComboBox<String> _buildAccountsFilter() {
+    return ComboBox<String>(
+      style: const TextStyle(overflow: TextOverflow.ellipsis),
+      items: [
+        ComboBoxItem<String>(
+          value: "",
+          child: Txt(txt("allAccounts")),
+        ),
+        ...accounts.list().map((account) {
+          var name = "🧑‍💼 ${accounts.name(account)}";
+          if (name.length > 17) {
+            name = "${name.substring(0, 14)}...";
+          }
+          return ComboBoxItem(value: account.id, child: Text(name));
+        }),
+      ],
+      onChanged: (login.permissions[PInt.notes] == 0 && !login.isAdmin)
+          ? null
+          : (id) => notes.filterByAccountId(id ?? ""),
+      value: notes.filterByAccountId(),
+    );
+  }
+
+  Expanded _buildSearch() {
+    return Expanded(
+        child: TopSearch(controller: _searchController, setState: setState));
   }
 }
 

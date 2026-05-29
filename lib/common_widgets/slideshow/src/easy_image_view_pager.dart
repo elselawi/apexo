@@ -62,15 +62,18 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
   bool _pagingEnabled = true;
   bool slideshowEnabled = false;
 
+  final _focusNode = FocusNode();
   late Timer _timer;
+
+  void _onPageChanged() {
+    setState(() {});
+  }
 
   @override
   void initState() {
     super.initState();
 
-    widget.pageController.addListener(() {
-      setState(() {});
-    });
+    widget.pageController.addListener(_onPageChanged);
 
     _timer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (slideshowEnabled) {
@@ -86,12 +89,14 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
   void dispose() {
     super.dispose();
     _timer.cancel();
+    _focusNode.dispose();
+    widget.pageController.removeListener(_onPageChanged);
   }
 
   @override
   Widget build(BuildContext context) {
     return KeyboardListener(
-      focusNode: FocusNode(),
+      focusNode: _focusNode,
       onKeyEvent: (ev) {
         if (widget.pageController.page == null) {
           return;

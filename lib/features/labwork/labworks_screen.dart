@@ -1,43 +1,37 @@
 import 'dart:math';
-
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
+import 'package:apexo/common_widgets/show_more_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';
+import 'package:apexo/features/labwork/open_labwork_panel.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
-import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 
 class LabworksScreen extends StatelessWidget {
   const LabworksScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ScaffoldPage(
-      key: WK.labworksScreen,
-      padding: EdgeInsets.zero,
-      content: Column(
-        children: [
-          Expanded(
-            child: MStreamBuilder(
-                streams: [
-                  appointments.observableMap.stream,
-                  showArchived.stream
-                ],
-                builder: (context, snapshot) {
-                  // ignore: prefer_const_constructors
-                  return LabworksTable();
-                }),
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        Expanded(
+          child: MStreamBuilder(
+              streams: [appointments.observableMap.stream, showArchived.stream],
+              builder: (context, snapshot) {
+                // ignore: prefer_const_constructors
+                return LabworksTable();
+              }),
+        ),
+      ],
     );
   }
 }
@@ -50,20 +44,26 @@ class LabworksTable extends StatefulWidget {
 }
 
 class _LabworksTableState extends State<LabworksTable> {
+  bool showReceived = false;
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController searchController = TextEditingController();
+  int slice = 20;
+  String _sortColumn = 'date';
+  bool _sortAscending = false;
+
+  @override
+  void dispose() {
+    searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   bool canEdit(List<String> operatorIDs) {
     if (login.isAdmin) return true;
     if (login.permissions[PInt.appointments] > 1) return true;
     if (operatorIDs.contains(login.currentAccountID)) return true;
     return false;
   }
-
-  bool showReceived = false;
-  final TextEditingController _searchController = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  int _maxShowingItems = 20;
-  String _sortColumn = 'date';
-  bool _sortAscending = false;
-  TextEditingController searchController = TextEditingController();
 
   List<Appointment> get filteredAndSorted {
     List<Appointment> result = showReceived
@@ -114,8 +114,7 @@ class _LabworksTableState extends State<LabworksTable> {
   }
 
   List<Appointment> get truncated {
-    return filteredAndSorted.sublist(
-        0, min(_maxShowingItems, filteredAndSorted.length));
+    return filteredAndSorted.sublist(0, min(slice, filteredAndSorted.length));
   }
 
   void _toggleSort(String column) {
@@ -135,7 +134,13 @@ class _LabworksTableState extends State<LabworksTable> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildCommandBar(),
-        _buildGrayBar(),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: Row(
+            spacing: 3,
+            children: [_buildSearch(), _buildShowingToggle()],
+          ),
+        ),
         filteredAndSorted.isEmpty
             ? const NoItemsFound()
             : _buildInnerTable(context),
@@ -145,68 +150,19 @@ class _LabworksTableState extends State<LabworksTable> {
 
   Expanded _buildInnerTable(BuildContext context) {
     return Expanded(
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(
-            color: FluentTheme.of(context).resources.cardStrokeColorDefault,
-          ),
-          borderRadius: BorderRadius.circular(8),
-          color:
-              FluentTheme.of(context).resources.cardBackgroundFillColorDefault,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildTable(context),
-            _buildTableFooter(context),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Container _buildTableFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(
-          top: BorderSide(
-            color: FluentTheme.of(context).resources.cardStrokeColorDefault,
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Txt(
-            "${txt("showing")} ${min(_maxShowingItems, truncated.length)}/${filteredAndSorted.length}",
-            style: FluentTheme.of(context).typography.body,
-          ),
-          Row(
-            children: [
-              if (filteredAndSorted.length > truncated.length)
-                FilledButton(
-                  child: Row(
-                    children: [
-                      const Icon(FluentIcons.double_chevron_down),
-                      const SizedBox(width: 8),
-                      Txt(txt("showMore")),
-                    ],
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _maxShowingItems = _maxShowingItems + 10;
-                      WidgetsBinding.instance.addPostFrameCallback((_) {
-                        _scrollController.animateTo(
-                          _scrollController.position.maxScrollExtent,
-                          duration: const Duration(milliseconds: 400),
-                          curve: Curves.easeOut,
-                        );
-                      });
-                    });
-                  },
-                ),
-            ],
+          _buildTable(context),
+          ShowMoreBar(
+            scrollController: _scrollController,
+            callBack: () {
+              setState(() {
+                slice = slice + 10;
+              });
+            },
+            all: filteredAndSorted.length,
+            slice: truncated.length,
           ),
         ],
       ),
@@ -233,16 +189,24 @@ class _LabworksTableState extends State<LabworksTable> {
     );
   }
 
+  bool canEditLabwork(Appointment? appointment) {
+    return login.permissions[PInt.postOp] == 2 ||
+        (login.permissions[PInt.postOp] == 1 &&
+            appointment?.operatorsIDs.contains(login.currentAccountID) == true);
+  }
+
   Expanded _buildTableItems() {
     return Expanded(
       child: ListView.builder(
-        controller: _scrollController,
+        padding: EdgeInsets.zero,
         itemCount: truncated.length,
         itemBuilder: (context, index) {
           final apt = truncated[index];
           return HoverButton(
             onPressed: () {
-              openAppointment(appointments.get(apt.id));
+              if (canEditLabwork(apt) == false) return;
+              openLabworkPanel(apt);
+              return;
             },
             builder: (context, states) {
               return Container(
@@ -253,19 +217,10 @@ class _LabworksTableState extends State<LabworksTable> {
                       ? FluentTheme.of(context)
                           .resources
                           .subtleFillColorSecondary
-                      : Colors.transparent,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: states.isHovered
-                          ? FluentTheme.of(context)
-                              .resources
-                              .accentTextFillColorDisabled
-                          : FluentTheme.of(context)
-                              .resources
-                              .dividerStrokeColorDefault,
-                      width: 1,
-                    ),
-                  ),
+                      : FluentTheme.of(context)
+                          .resources
+                          .solidBackgroundFillColorBase,
+                  border: listDividerBorder(context),
                 ),
                 child: Row(
                   children: [
@@ -286,7 +241,7 @@ class _LabworksTableState extends State<LabworksTable> {
                     const SizedBox(width: 5),
                     _buildDataCell(apt.patient?.title ?? "",
                         cross: apt.labworkStatus == "done"),
-                    _buildDataCell(apt.date.toString().split(" ").first),
+                    _buildDataCell("📅 ${DF.allNumbers(apt.date)}"),
                     _buildDataCell(apt.operatorsNames),
                     _buildDataCell(apt.labName),
                     _buildDataCell(apt.labworkNotes),
@@ -305,16 +260,10 @@ class _LabworksTableState extends State<LabworksTable> {
   Container _buildTableHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 16,
-        vertical: 12,
+        horizontal: 8,
+        vertical: 8,
       ),
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).resources.subtleFillColorSecondary,
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(8),
-          topRight: Radius.circular(8),
-        ),
-      ),
+      decoration: topBarDecoration(context, Colors.grey),
       child: Row(
         children: [
           const SizedBox(width: 15),
@@ -329,102 +278,64 @@ class _LabworksTableState extends State<LabworksTable> {
     );
   }
 
-  Padding _buildGrayBar() {
-    return Padding(
-      padding: const EdgeInsetsGeometry.all(10),
+  ToggleButton _buildShowingToggle() {
+    return ToggleButton(
+      onChanged: (checked) {
+        setState(() {
+          showReceived = checked;
+        });
+      },
+      checked: showReceived,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Txt(
-            "${txt("showing")} ${min(_maxShowingItems, truncated.length)}/${filteredAndSorted.length}",
-            style: TextStyle(
-                color: Colors.grey.toAccentColor().lightest,
-                fontSize: 11,
-                fontWeight: FontWeight.bold),
-          ),
-          ToggleButton(
-            onChanged: (checked) {
-              setState(() {
-                showReceived = checked;
-              });
-            },
-            checked: showReceived,
-            child: Row(
-              children: [
-                const Icon(FluentIcons.view, size: 17),
-                const SizedBox(width: 10),
-                Txt(txt("showDone")),
-              ],
-            ),
-          ),
+          const Icon(FluentIcons.view, size: 17),
+          const SizedBox(width: 10),
+          Txt(txt("showDone")),
         ],
       ),
     );
   }
 
   Widget _buildCommandBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
-          )
-        ],
-        color: FluentTheme.of(context).menuColor,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: CupertinoTextField(
-              decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  border: Border.all(color: Colors.transparent)),
-              placeholder: "🔍 ${txt("searchPlaceholder")}",
-              controller: searchController,
-              onChanged: (text) {
-                setState(() {});
-              },
-            ),
-          ),
-          const ArchiveToggle()
-        ],
-      ),
+    return ScreenCommandBar(
+      mainButton: (login.permissions[PInt.postOp] == 0 ||
+              login.permissions[PInt.appointments] == 0)
+          ? const SizedBox.shrink()
+          : IconButton(
+              icon: ButtonContent(WindowsIcons.add, txt("newLabwork")),
+              onPressed: () {
+                openLabworkPanel(null);
+              }),
     );
   }
 
-  Widget _buildHeaderCell(String title, String column, {double width = 150}) {
+  Expanded _buildSearch() {
+    return Expanded(
+      child: TopSearch(controller: searchController, setState: setState),
+    );
+  }
+
+  Widget _buildHeaderCell(String title, String column, {double width = 155}) {
     final isActive = _sortColumn == column;
     return SizedBox(
       width: width,
       child: IconButton(
           onPressed: () => _toggleSort(column),
           icon: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: FluentTheme.of(context).typography.bodyStrong?.copyWith(
-                      color: isActive ? Colors.blue : null,
-                    ),
-              ),
-              const SizedBox(
-                width: 10,
-              ),
               if (isActive) ...[
-                const SizedBox(width: 4),
+                const SizedBox(width: 10),
                 Icon(
-                  _sortAscending
-                      ? FluentIcons.chevron_up
-                      : FluentIcons.chevron_down,
-                  size: 12,
-                  color: Colors.blue,
+                  _sortAscending ? FluentIcons.sort_up : FluentIcons.sort_down,
+                  size: 16,
                 ),
               ],
+              Text(
+                title,
+                style: isActive
+                    ? const TextStyle(fontWeight: FontWeight.w500)
+                    : null,
+              ),
             ],
           )),
     );
@@ -442,11 +353,5 @@ class _LabworksTableState extends State<LabworksTable> {
         overflow: TextOverflow.ellipsis,
       ),
     );
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
   }
 }

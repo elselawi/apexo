@@ -28,7 +28,6 @@ class _LoginService extends ObservablePersistingObject {
   String url = "";
   String email = "";
   List<int> savedPermissions = zeroPermissions;
-  String password = "";
   String token = "";
   String adminCollectionId = "__UNDEFINED__";
   String pushNotificationsToken = "";
@@ -105,8 +104,7 @@ class _LoginService extends ObservablePersistingObject {
     if (launch.isDemo) return;
     if (launch.open() == Open.login) return;
     final strErr = e.toString();
-    final authError = strErr.contains("400") ||
-        strErr.contains("401") ||
+    final authError = strErr.contains("401") ||
         strErr.contains("402") ||
         strErr.contains("403");
     if (e is ClientException && authError) {
@@ -114,6 +112,7 @@ class _LoginService extends ObservablePersistingObject {
       showDialog(
         context: bContext,
         barrierDismissible: false,
+        dismissWithEsc: false,
         builder: (context) {
           return ContentDialog(
             style: dialogStyling(context, false),
@@ -142,7 +141,6 @@ class _LoginService extends ObservablePersistingObject {
     if (cleanCredentials) {
       url = "";
       email = "";
-      password = "";
     }
     token = "";
     if (pb != null) {
@@ -339,8 +337,6 @@ class _LoginService extends ObservablePersistingObject {
     adminCollectionId = json["adminCollectionId"] ?? adminCollectionId;
     pushNotificationsToken =
         json["pushNotificationsToken"] ?? pushNotificationsToken;
-    loginCtrl.urlField.text = url;
-    loginCtrl.emailField.text = email;
     if (token.isNotEmpty) {
       await activate(url, [token], true);
     } else {

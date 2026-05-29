@@ -27,6 +27,17 @@ class En {
     "calendar": "Calendar",
     "gettingImages": "Getting images",
     "more": "More",
+    "howToUse": "How to use",
+
+    // new
+    "newPatient": "New patient",
+    "newAppointment": "New appointment",
+    "newLabwork": "New labwork",
+    "newNote": "New note",
+    "newSupplier": "New supplier",
+    "newOrder": "newOrder",
+    "newUser": "New user",
+    "newAdmin": "New admin",
 
     // call
     "callLaboratory": "Call Laboratory",
@@ -51,9 +62,9 @@ class En {
     "patientsToday": "Patients today",
     "newPatientsToday": "New patients today",
     "paymentsMadeToday": "Payments made today",
-    "modeAdmin": "ADMIN",
-    "modeUser": "USER",
-    "modeOffline": "OFFLINE",
+    "modeAdmin": "admin mode",
+    "modeUser": "user mode",
+    "modeOffline": "offline mode",
     "onceConnectionIsStable":
         "Once your connection becomes stable you can use the button in the top right corner to reconnect.",
     "unRestrictedAccess": "unrestricted access in the application",
@@ -71,7 +82,7 @@ class En {
     "showing": "Showing",
     "showMore": "Show more",
     "by": "By",
-    "byTitle": "By Title",
+    "byName": "By name",
     "byDate": "By Date",
     "noItemsFound": "No items found",
     "filter": "Filter",
@@ -149,6 +160,9 @@ class En {
     "name": "Name",
     "birthYear": "Birth year",
     "phone": "Phone",
+    "noValidNumbersFound": "No valid phone numbers found",
+    "theFollowingPhoneNumbersAreDetected":
+        "Only the following phone numbers are detected",
     "email": "Email",
     "address": "Address",
     "notes": "Notes",
@@ -184,6 +198,8 @@ class En {
     "thirdMolar": "Third Molar",
     "exportSelected": "Export Selected",
     "export": "Export",
+    "exportImportFeatureExplanation":
+        "To move selected patient and appointment data between servers or other apps, export a CSV from the source server and import it into the destination server or app.",
     "qrCode": "QR Code",
     "share": "Share",
     "noPatientsSelected": "No patients selected",
@@ -239,7 +255,6 @@ class En {
     "twoWeeksAbbr": "2W",
     "monthAbbr": "M",
     "today": "Today",
-    "newPatient": "New Patient",
     "date": "Date",
     "changeDate": "Change Date",
     "changeTime": "Change Time",
@@ -275,7 +290,6 @@ class En {
     // labworks
     "laboratory": "Laboratory",
     "month": "month",
-    "newLabwork": "New Labwork",
     "labwork": "labwork",
     "labworkTitle": "Labwork title",
     "orderNotes": "Order notes",
@@ -286,6 +300,10 @@ class En {
     "waitingForLab": "waiting for lab",
     "undelivered": "Undelivered to patient",
     "receivedAndDelivered": "Received and delivered",
+    "selectPatientFirst": "Select a patient first",
+    "patientHasNoAppointments": "Patient has no appointments",
+    "selectAppointment": "Select an appointment",
+    "areYouSureYouWantTo": "Are you sure you want to",
 
     // expenses
     "expense": "Expense",
@@ -318,7 +336,10 @@ class En {
     "notSet": "Not set",
     "photo": "Photo",
     "pickASupplier": "Pick a supplier",
-    "allByDate": "All by date",
+    "viewAllOrders": "View all orders",
+    "lastOrder": "Last order",
+    "supplier": "Supplier",
+    "orders": "Orders",
 
     // notes
     "addColumn": "Add column",
@@ -393,6 +414,7 @@ class En {
     "maleAndFemalePatients": "Male and female patients",
     "done": "done",
     "missed": "missed",
+    "periodicity": "Periodicity",
 
     // settings
     "currency": "Currency",
@@ -453,13 +475,11 @@ class En {
     "updatingPassword": "Updating password",
     "leaveItEmpty":
         "Leave the password field empty if you don't want to change it.",
-    "newAdmin": "New admin",
     "minimumPasswordLength": "Minimum 10 characters password",
 
     // advanced settings: Users
     "users": "Users",
     "editUser": "Edit user",
-    "newUser": "New user",
 
     // advanced settings: Permissions
     "permissions": "User Permissions",
@@ -474,6 +494,8 @@ class En {
     "canUpload": "Can upload",
     "cantUpload": "Can not upload",
     "accounts": "ِAccounts",
+    "account": "Account",
+    "user": "User",
     "operatesOnPatients": "Operates on patients",
 
     // advanced settings: prod tests
@@ -545,5 +567,27 @@ class En {
     "helpOnCreatingAServer":
         "A server enables your data to be stored securely, backed up, synchronized across devices, and more.",
     "createNewServer": "Create new server",
+
+    // when errors
+    "errorHappenedWhen": "Error happened when",
+    "deletingPatientImageFromServer": "deleting patient image from server",
+    "openingPatientImage": "opening patient image",
+    "importingRemoteImages": "importing remote images",
+    "creatingNewAccount": "creating new account",
+    "updatingAccounts": "updating accounts",
+    "openingFullPatientImage": "opening full patient image",
+    "deletingAccount": "deleting account",
+    "uploadingPatientImageFromCamera": "uploading patient image from camera",
+    "uploadingPatientImageFromGallery": "uploading patient image from gallery",
+    "deletingOrderImageFromServer": "deleting order image from server",
+    "uploadingOrderImageFromGallery": "uploading order image from gallery",
+    "uploadingOrderImageFromCamera": "uploading order image from camera",
+    "openingImageFromGrid": "opening image from grid",
+    "openingMultipleImagesFromGrid": "opening multiple images from grid",
+    "generatingPatientLink": "generating patient link",
+    "gettingRemoteImagesList": "getting remote images list",
+    "sendingUpdatesToServer": "sending updates to server",
+    "deletingFile": "deleting file",
+    "uploadingFile": "uploading file",
   };
 }

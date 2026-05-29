@@ -21,49 +21,59 @@ class ConfirmDeleteFlyout extends StatelessWidget {
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(5),
       ),
-      child: Row(
+      child: Column(
+        spacing: 10,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Txt("${txt(actionText)}?", style: FluentTheme.of(context).typography.bodyStrong?.copyWith(color: Colors.grey)),
-          const SizedBox(width: 10),
-          FilledButton(
-            onPressed: () {
-              controller.close();
-              onConfirm();
-            },
-            style: const ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(Colors.errorPrimaryColor),
-              foregroundColor: WidgetStatePropertyAll(Colors.white),
-            ),
-            child: Row(
-              children: [
-                Icon(actionIcon),
-                const SizedBox(width: 5),
-                Txt(txt(actionText)),
-              ],
-            ),
+          Txt("${txt("areYouSureYouWantTo")} ${txt(actionText)}?",
+              style: FluentTheme.of(context)
+                  .typography
+                  .bodyStrong
+                  ?.copyWith(color: Colors.grey)),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FilledButton(
+                onPressed: () {
+                  controller.close();
+                  onConfirm();
+                },
+                style: const ButtonStyle(
+                  backgroundColor:
+                      WidgetStatePropertyAll(Colors.errorPrimaryColor),
+                  foregroundColor: WidgetStatePropertyAll(Colors.white),
+                ),
+                child: Row(
+                  children: [
+                    Icon(actionIcon),
+                    const SizedBox(width: 5),
+                    Txt(txt(actionText)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              FilledButton(
+                onPressed: () {
+                  if (controller.isOpen) {
+                    controller.close();
+                  }
+                },
+                style: const ButtonStyle(
+                  backgroundColor: WidgetStatePropertyAll(Colors.grey),
+                  foregroundColor: WidgetStatePropertyAll(Colors.white),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(FluentIcons.cancel),
+                    const SizedBox(width: 5),
+                    Txt(txt("cancel")),
+                  ],
+                ),
+              )
+            ],
           ),
-          const SizedBox(width: 10),
-          FilledButton(
-            onPressed: () {
-              if (controller.isOpen) {
-                controller.close();
-              }
-            },
-            style: const ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(Colors.grey),
-              foregroundColor: WidgetStatePropertyAll(Colors.white),
-            ),
-            child: Row(
-              children: [
-                const Icon(FluentIcons.cancel),
-                const SizedBox(width: 5),
-                Txt(txt("cancel")),
-              ],
-            ),
-          )
         ],
       ),
     );

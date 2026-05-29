@@ -26,6 +26,17 @@ class Ar implements En {
     "calendar": "الرزنامة",
     "gettingImages": "يتم تحميل الصور",
     "more": "المزيد",
+    "howToUse": "كيفية الإستخدام",
+
+    // new
+    "newPatient": "مريض جديد",
+    "newAppointment": "موعد جديد",
+    "newLabwork": "عمل مخبري جديد",
+    "newNote": "ملاحظة جديدة",
+    "newSupplier": "مزود جديد",
+    "newOrder": "طلبية جديدة",
+    "newUser": "مستخدم جديد",
+    "newAdmin": "مدير جديد",
 
     // call
     "callLaboratory": "اتصل بالمختبر",
@@ -43,16 +54,16 @@ class Ar implements En {
     "insights": "إحصائيات",
 
     // dashboard
-    "admin": "مسؤول",
+    "admin": "مدير",
     "fullStats": "إحصائيات كاملة",
     "payments": "مدفوعات",
     "appointmentsToday": "المواعيد اليوم",
     "patientsToday": "المرضى اليوم",
     "newPatientsToday": "مرضى جدد اليوم",
     "paymentsMadeToday": "المدفوعات اليوم",
-    "modeAdmin": "مسؤول",
-    "modeUser": "مستخدم",
-    "modeOffline": "غير متصل",
+    "modeAdmin": "الوضع الإداري",
+    "modeUser": "وضع المستخدم",
+    "modeOffline": "وضع عدم الاتصال",
     "onceConnectionIsStable":
         "عندما يصبح اتصالك مستقرًا، يمكنك استخدام الزر في الزاوية اليمنى العليا لإعادة الاتصال.",
     "unRestrictedAccess": "وصول غير مقيد في التطبيق",
@@ -69,7 +80,7 @@ class Ar implements En {
     "showing": "يتم إظهار",
     "showMore": "إظهار المزيد",
     "by": "بحسب",
-    "byTitle": "بحسب العنوان",
+    "byName": "بحسب الإسم",
     "byDate": "بحسب التاريخ",
     "noItemsFound": "لم يتم العثور على عناصر",
     "filter": "تصفية",
@@ -147,6 +158,8 @@ class Ar implements En {
     "name": "الاسم",
     "birthYear": "سنة الميلاد",
     "phone": "الهاتف",
+    "noValidNumbersFound": "لم يتم العثور على ارقام هاتف صالحة",
+    "theFollowingPhoneNumbersAreDetected": "تم إيجاد الارقام التالية فقط",
     "email": "البريد الإلكتروني",
     "address": "العنوان",
     "notes": "ملاحظات",
@@ -182,6 +195,8 @@ class Ar implements En {
     "thirdMolar": "رحاة ثالثة",
     "exportSelected": "تصدير المحدد",
     "export": "تصدير",
+    "exportImportFeatureExplanation":
+        "لنقل بيانات المرضى والمواعيد المحددة بين الخوادم أو التطبيقات الأخرى، قم بتصدير CSV من الخادم المصدر واستيراده إلى الخادم أو التطبيق الهدف.",
     "qrCode": "رمز المريض",
     "share": "مشاركة",
     "noPatientsSelected": "لم يتم اختيار أي مرضى",
@@ -237,7 +252,6 @@ class Ar implements En {
     "twoWeeksAbbr": "أسبوعان",
     "monthAbbr": "شهر",
     "today": "اليوم",
-    "newPatient": "مريض جديد",
     "date": "التاريخ",
     "changeDate": "تغيير التاريخ",
     "changeTime": "تغيير الوقت",
@@ -273,7 +287,6 @@ class Ar implements En {
     // labworks
     "laboratory": "مختبر",
     "month": "شهر",
-    "newLabwork": "عمل مختبر جديد",
     "labwork": "عمل المختبر",
     "labworkTitle": "عنوان عمل المختبر",
     "orderNotes": "ملاحظات الطلب",
@@ -284,6 +297,10 @@ class Ar implements En {
     "waitingForLab": "في انتظار المختبر",
     "undelivered": "غير مسلم للمريض",
     "receivedAndDelivered": "مكتمل",
+    "selectPatientFirst": "يرجى اختيار المريض اولا",
+    "patientHasNoAppointments": "لا يوجد مواعيد للمريض",
+    "selectAppointment": "تحديد الموعد",
+    "areYouSureYouWantTo": "هل انت متاكد من أنك تريد",
 
     // expenses
     "expense": "مصروف",
@@ -316,7 +333,10 @@ class Ar implements En {
     "notSet": "غير محدد",
     "photo": "صورة",
     "pickASupplier": "اختر مزود",
-    "allByDate": "الكل حسب التاريخ",
+    "viewAllOrders": "عرض جميع الطلبيات",
+    "lastOrder": "اخر طلبية",
+    "supplier": "المزود",
+    "orders": "طلبيات",
 
     // notes
     "addColumn": "إضافة عمود",
@@ -391,6 +411,7 @@ class Ar implements En {
     "maleAndFemalePatients": "المرضى الذكور والإناث",
     "done": "منجز",
     "missed": "مفقود",
+    "periodicity": "الدورية",
 
     // settings
     "currency": "العملة",
@@ -441,21 +462,19 @@ class Ar implements En {
         "استخدم الرابط التالي لتحميل النسخة الاحتياطية",
 
     // advanced settings: Admins
-    "admins": "المسؤولين",
+    "admins": "المدراء",
     "accountCreated": "تم إنشاء الحساب",
-    "editAdmin": "تعديل المسؤول",
+    "editAdmin": "تعديل المدير",
     "validEmailMustBeProvided": "يجب تقديم بريد إلكتروني صالح",
     "password": "كلمة المرور",
     "leaveBlankToKeepUnchanged": "اتركه فارغًا للإبقاء عليه دون تغيير",
     "updatingPassword": "تحديث كلمة المرور",
     "leaveItEmpty": "اترك حقل كلمة المرور فارغًا إذا كنت لا تريد تغييره.",
-    "newAdmin": "مسؤول جديد",
     "minimumPasswordLength": "كلمة مرور من 10 أحرف على الأقل",
 
     // advanced settings: Users
     "users": "المستخدمين",
     "editUser": "تعديل المستخدم",
-    "newUser": "مستخدم جديد",
 
     // advanced settings: Permissions
     "permissions": "أذونات المستخدم",
@@ -469,7 +488,9 @@ class Ar implements En {
     "local": "محلي فقط",
     "canUpload": "يمكنه الرفع",
     "cantUpload": "لا يمكنه الرفع",
-    "accounts": "المستخدمين",
+    "accounts": "الحسابات",
+    "account": "حساب",
+    "user": "مستخدم",
     "operatesOnPatients": "يعمل على المرضى",
 
     // advanced settings: prod tests
@@ -541,5 +562,28 @@ class Ar implements En {
     "helpOnCreatingAServer":
         "يتيح لك الخادم تخزين بياناتك بأمان، وإجراء النسخ الاحتياطية، والمزامنة بين الأجهزة، والمزيد.",
     "createNewServer": "إنشاء خادم جديد",
+
+    // when errors
+    "errorHappenedWhen": "حدث خطأ أثناء",
+    "deletingPatientImageFromServer": "حذف صورة المريض من الخادم",
+    "openingPatientImage": "فتح صورة المريض",
+    "importingRemoteImages": "استيراد الصور عن بعد",
+    "creatingNewAccount": "إنشاء حساب جديد",
+    "updatingAccounts": "تحديث الحسابات",
+    "loadingAccounts": "تحميل الحسابات",
+    "openingFullPatientImage": "فتح صورة المريض الكاملة",
+    "deletingAccount": "حذف الحساب",
+    "uploadingPatientImageFromCamera": "رفع صورة المريض من الكاميرا",
+    "uploadingPatientImageFromGallery": "رفع صورة المريض من المعرض",
+    "deletingOrderImageFromServer": "حذف صورة الطلب من الخادم",
+    "uploadingOrderImageFromGallery": "رفع صورة الطلب من المعرض",
+    "uploadingOrderImageFromCamera": "رفع صورة الطلب من الكاميرا",
+    "openingImageFromGrid": "فتح الصورة من الشبكة",
+    "openingMultipleImagesFromGrid": "فتح الصور من الشبكة",
+    "generatingPatientLink": "توليد رابط المريض",
+    "gettingRemoteImagesList": "الحصول على قائمة الصور من الخادم",
+    "sendingUpdatesToServer": "ارسال التحديثات للخادم",
+    "deletingFile": "حذف الملف",
+    "uploadingFile": "رفع الملف",
   };
 }

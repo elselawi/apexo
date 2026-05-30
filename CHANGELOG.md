@@ -1,40 +1,39 @@
 ### [0.12.0]
-- fixed the flyoutFix and applied it more widely in the app
-- unified page scaffold into the main app screen so we don't have to define a screen widget safe inset for every page
-- barrierDismissable and dismissWithEsc for all applicable dialogs
-- fixed an issue with bottom navbar not displaying when the keyboard is open
-- screen titles are now clickable and open a dropdown for other screens
-- implemented dispose for all applicable controlleers across the app, less memory leaks, more stable, and performance improvements should be expected
-- redesinged most of app screen and panels for consistency in UI and UX
-- unified error message dialog
-- a dialog asking to login when the token suddenly becomes invalid while the app is open
-- changed the whole strategy of phone number handling and input to a wider text field that accepts any string then extracts phone numbers and turns them into clickable buttons at the same panel, auto validates, auto adds country code ..etc
-- re-design and complete overhaul of the patients page
-- made a utility function for date formatting that is reused across the app
-- unified the design of all command bars across all pages
-- unified the design of all search across all pages
-- unified the "show more" slicing button across all 
-- fixed inversed swipeDetector in RTL contexts
-- hide (not disable) the text box when the tag input (parent) is dsiabled
-- better CSV export (major overhaul)
-- implemented CSV import
-- share the globalSettings store into the modellingDocs isolate to get the country code
-- major overhaul and redsign of the accounts page
-- ability to taget specific tabs when opening panels (implemented on patients and appointments panels)
-- fixed a bug in dashboard controller displayed archived appointments even if we're hiding the archived
-- redesigned dashboard screen + clickable suppliers
-- major overhaul and redsign of the expenses and suppliers page
-- use GridGallery widget in orderRow
-- major redesign and overhaul in labworks screen
-- more semantic and better login screen
-- added 2 pixels spacing in network actions
-- fixed few permission issues in expenses page and notes page
-- faster patients page
-- removed country code from global settings and replaced it with auto-filled based on first IP visit ISOCountryCode
-- periodicity clickable toggle buttons in insights screen
-- better designed bar and radar charts
-- all charts are now better viewed on all platforms and screen sizes
-- initialize the settings store as the first store
+- New Features & Enhancements
+    - In-App Settings Management: Configure 99% of relevant settings directly within the app—no more constant trips to the PocketBase dashboard.
+    - Smart Phone Number Input: Complete overhaul of phone number handling. The new, wider text field accepts any raw string, auto-validates, auto-appends country codes, and extracts numbers into clickable buttons on the fly.
+    - Data Portability: Major overhaul to CSV Export and introduced brand-new support for CSV Import.
+    - IP-Based Location Auto-Fill: Removed manual country code configuration; the app now automatically detects and fills your ISO country code based on your initial IP address visit.
+    - Session Expiration Alerts: Added an inline login prompt if your authentication token suddenly becomes invalid while the app is active.
+    - Deep Linking Panels: Added the ability to target specific tabs directly when opening the Patients and Appointments panels.
+    - Interactive Screen Navigation: Screen titles are now clickable, revealing a dropdown menu to seamlessly switch between different sections.
+    - Demo Environment Upgrades: The demo app now automatically generates sample notes for a better testing experience.
+
+- UI & UX Polish
+    - Dashboard Redesign: Fully revamped dashboard layout featuring clickable suppliers for quicker navigation.
+    - Comprehensive Page Overhauls: Major structural and visual redesigns implemented across the Patients, Accounts, Labworks, Expenses, and Suppliers pages.
+    - Global Component Unification: Standardized the design of Search bars, Command bars, Error dialogs, and "Show More" pagination buttons across the entire app for a highly consistent feel.
+    - Chart Optimizations: Redesigned bar and radar charts for sharper visuals and improved responsiveness across all platforms and screen sizes.
+    - Accessibility & Navigation: Added barrierDismissible and dismissWithEsc support to all applicable dialog windows.
+    - Cleaner Polish: Removed the unintended white background from the Windows app icon, introduced a more semantic login screen, and added a subtle 2px spacing fix to network action layouts.
+    - Conditional Visibility: Hidden (rather than disabled) text input fields when their parent tag input component is disabled.
+    - Media Layouts: Integrated the GridGallery widget into the orderRow component for better image handling.
+
+- Performance & Core Architecture
+    - Memory Leak Resolution: Implemented proper dispose logic for all applicable controllers app-wide, resulting in greater stability and noticeable performance gains.
+    - Smoother Layout Rendering: Unified the page scaffold into the main app screen, eliminating the need to manually define safe insets for every single page widget.
+    - Faster Loading Times: Optimized the Patients page for faster data rendering.
+    - Isolate Optimization: Shared the globalSettings store directly with the modellingDocs isolate to efficiently retrieve country codes.
+    - Startup Initialization: Configured the settings store to initialize first, ensuring user preferences are ready immediately on launch.
+    - Code Reusability: Created a centralized utility function for date formatting, cleaning up repetitive code across the app.
+
+- Bug Fixes
+    - Platform Specifics: Fixed macOS version-checking routines to ensure update prompts trigger correctly.
+    - Keyboard Layout Issues: Resolved a bug preventing the bottom navigation bar from displaying properly when the software keyboard was open.
+    - Data Filters: Fixed a bug in the dashboard controller that mistakenly displayed archived appointments even when hidden filters were active.
+    - Permissions Fix: Resolved access and permission bugs on the Expenses and Notes pages.
+    - RTL Layouts: Corrected an inverted swipeDetector orientation issue in Right-to-Left (RTL) language contexts.
+    - Flyout Fixes: Hardened the global flyoutFix patch and applied it more robustly across all UI panels.
 
 ### [0.11.0]
 - New field on expenses: "notes"

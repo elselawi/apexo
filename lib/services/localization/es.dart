@@ -441,7 +441,7 @@ class Es implements En {
     "day/month/year": "Día/Mes/Año",
     "appliesTo": "Aplica a",
     "all": "Todos",
-    "you": "tú",
+    "you": "tú", "system": "sistema",
     "initialSynchronization": "Sincronización inicial",
     "synchronizing": "Sincronizando",
     "clearingLocalData": "Limpiando datos locales",
@@ -466,6 +466,56 @@ class Es implements En {
     "backupDate": "Fecha de la copia de seguridad",
     "useTheFollowingLinkToDownloadTheBackup":
         "Usa el siguiente enlace para descargar la copia de seguridad",
+    "backups_config_title": "Configuración de copias de seguridad",
+    "backups_config_desc":
+        "Configura el programa de copias de seguridad automáticas y el almacenamiento.",
+    "backups_auto_enabled": "Activar copias automáticas",
+    "backups_cron": "Programación (cron)",
+    "backups_cron_presets": "Preajustes",
+    "backups_cron_hourly": "Cada hora",
+    "backups_cron_6hours": "Cada 6 horas",
+    "backups_cron_12hours": "Cada 12 horas",
+    "backups_cron_daily": "Diario a medianoche",
+    "backups_cron_daily3am": "Diario a las 3 AM",
+    "backups_cron_weekly": "Semanal (dom. medianoche)",
+    "backups_cron_monthly": "Mensual (día 1 medianoche)",
+    "backups_cron_hint":
+        "Selecciona una programación predefinida. La expresión cron se completa automáticamente.",
+    "backups_max_keep": "Máximo de copias a conservar",
+    "backups_max_keep_hint":
+        "Las copias más antiguas se eliminarán al superar este límite",
+    "backups_s3_enabled": "Guardar copias en S3",
+    "backups_save_success": "Configuración de copias guardada correctamente",
+    "backups_save_fail": "Error al guardar la configuración de copias",
+
+    // Meta settings
+    "meta_settings": "Configuración de la aplicación",
+    "meta_info_title": "Información general de la aplicación",
+    "meta_info_desc":
+        "Configura el nombre de tu aplicación, URL y ajustes de marca.",
+    "meta_appName": "Nombre de la aplicación",
+    "meta_appName_hint":
+        "Se muestra en los correos electrónicos y en el título de inicio de sesión",
+    "meta_appUrl": "URL de la aplicación",
+    "meta_appUrl_hint": "Se usa en correos electrónicos y enlaces compartidos",
+    "meta_save_success":
+        "Configuración de la aplicación guardada correctamente",
+    "meta_save_fail": "Error al guardar la configuración de la aplicación",
+
+    // Auth settings
+    "auth_settings": "Configuración de autenticación",
+    "auth_info_title": "Duración de sesión",
+    "auth_info_desc":
+        "Establece cuánto tiempo permanecen válidos los tokens antes de que los usuarios deban iniciar sesión nuevamente.",
+    "auth_users_duration": "Sesión de usuario (días)",
+    "auth_users_duration_hint":
+        "Cuántos días antes de que los usuarios regulares necesiten re-iniciar sesión",
+    "auth_superusers_duration": "Sesión de administrador (días)",
+    "auth_superusers_duration_hint":
+        "Cuántos días antes de que los administradores necesiten re-iniciar sesión",
+    "auth_save_success":
+        "Configuración de autenticación guardada correctamente",
+    "auth_save_fail": "Error al guardar la configuración de autenticación",
 
     // advanced settings: Admins
     "admins": "Administradores",
@@ -520,9 +570,57 @@ class Es implements En {
     "s3_region": "Región",
     "s3_accessKey": "Clave de acceso",
     "s3_secretKey": "Clave secreta",
+    "s3_secretKey_hint":
+        "Déjalo vacío para mantenerlo sin cambios. Tu clave de acceso secreta S3",
+    "s3_enabled": "Habilitar almacenamiento S3",
+    "s3_forcePathStyle": "Forzar estilo de ruta",
+    "s3_forcePathStyle_hint":
+        "Usar direccionamiento de estilo ruta en lugar de subdominio (necesario para Cloudflare R2)",
+    "s3_endpoint_hint": "URL del punto final de tu proveedor S3",
+    "s3_bucket_hint": "El nombre de tu bucket S3",
+    "s3_region_hint": "Región del bucket, o 'auto' para Cloudflare R2",
+    "s3_accessKey_hint": "Tu ID de clave de acceso S3",
     "s3_test_success": "La configuración de S3 está funcionando correctamente",
     "s3_test_fail": "La prueba de configuración de S3 falló",
+    "s3_save_success": "Configuración de S3 guardada correctamente",
+    "s3_save_fail": "Error al guardar la configuración de S3",
     "test": "Probar",
+
+    // SMTP settings
+    "smtp_settings": "Configuración SMTP",
+    "smtp_info_title": "Configurar correo SMTP",
+    "smtp_info_desc":
+        "Configura tus ajustes SMTP para enviar correos electrónicos (restablecimiento de contraseñas, notificaciones, etc.).",
+    "smtp_host": "Servidor",
+    "smtp_port": "Puerto",
+    "smtp_username": "Usuario",
+    "smtp_password": "Contraseña",
+    "smtp_senderName": "Nombre del remitente",
+    "smtp_senderEmail": "Correo del remitente",
+    "smtp_tls": "Usar TLS",
+    "smtp_tls_auto": "Auto (STARTTLS)",
+    "smtp_tls_always": "Siempre",
+    "smtp_tls_hint":
+        "Auto = STARTTLS (puerto 587)\n Siempre = SSL (puerto 465)",
+    "smtp_presets": "Preajustes",
+    "smtp_port_blocked_warning":
+        "Algunos proveedores cloud (ej. DigitalOcean, Hetzner, Google Cloud) bloquean los puertos SMTP por defecto. Asegúrate de que 587 o 465 estén permitidos.",
+    "smtp_host_hint": "Dirección del servidor SMTP de tu proveedor de correo",
+    "smtp_port_hint": "587 o 465",
+    "smtp_username_hint": "Generalmente tu dirección de correo completa",
+    "smtp_password_hint":
+        "Déjalo vacío para mantenerlo sin cambios. Usa una contraseña de aplicación si 2FA está activado",
+    "smtp_app_passwords": "Contraseñas de aplicación",
+    "smtp_senderName_hint": "Nombre mostrado en el campo De",
+    "smtp_senderEmail_hint": "Dirección de correo mostrada en el campo De",
+    "smtp_localName": "Nombre local HELO/EHLO",
+    "smtp_localName_hint":
+        "Usado en el saludo HELO/EHLO, generalmente tu dominio",
+    "smtp_enabled": "Habilitar SMTP",
+    "smtp_test_success": "La configuración SMTP está funcionando correctamente",
+    "smtp_test_fail": "La prueba de configuración SMTP falló",
+    "smtp_save_success": "Configuración SMTP guardada correctamente",
+    "smtp_save_fail": "Error al guardar la configuración SMTP",
 
     "emailTest": "Prueba de correo",
     "emailTestDesc":

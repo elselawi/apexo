@@ -7,9 +7,12 @@ import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/features/settings/applies_to_indicator.dart';
+import 'package:apexo/features/settings/services_settings/auth_settings.dart';
 import 'package:apexo/features/settings/services_settings/backups_settings.dart';
-import 'package:apexo/features/settings/services_settings/production_test.dart';
+import 'package:apexo/features/settings/services_settings/meta_settings.dart';
 import 'package:apexo/features/settings/services_settings/s3_settings.dart';
+import 'package:apexo/features/settings/services_settings/smtp_settings.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -19,8 +22,6 @@ import 'settings_model.dart';
 import 'settings_stores.dart';
 
 enum InputType { text, multiline, dropDown, none }
-
-enum Scope { device, app }
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -237,9 +238,11 @@ class SettingsScreen extends StatelessWidget {
                   }),
             ),
           if (login.isAdmin && network.isOnline()) ...[
+            const MetaSettings(),
+            const AuthSettings(),
             const S3Settings(),
+            const SmtpSettings(),
             const BackupsSettings(),
-            ProductionTests(),
           ],
         ],
       ),
@@ -346,32 +349,7 @@ class SettingsItemState extends State<SettingsItem> {
               }),
         ),
         initiallyExpanded: false,
-        trailing: buildAppliesToIndicator(),
-      ),
-    );
-  }
-
-  Container buildAppliesToIndicator() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(7, 5, 7, 5),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            widget.scope == Scope.app
-                ? Colors.blue.withAlpha(20)
-                : Colors.teal.withAlpha(20),
-            widget.scope == Scope.app
-                ? Colors.blue.withAlpha(60)
-                : Colors.teal.withAlpha(60),
-          ],
-        ),
-      ),
-      child: Txt(
-        "${txt("appliesTo")}: ${widget.scope == Scope.app ? txt("all") : txt("you")} ",
-        style: const TextStyle(fontSize: 13),
+        trailing: AppliesToIndicator(scope: widget.scope),
       ),
     );
   }

@@ -437,6 +437,7 @@ class Ar implements En {
     "appliesTo": "ينطبق على",
     "all": "الكل",
     "you": "أنت",
+    "system": "النظام",
     "initialSynchronization": "مزامة أولية",
     "synchronizing": "مزامنة مع الخادم",
     "clearingLocalData": "إزالة البيانات المحلية",
@@ -460,6 +461,52 @@ class Ar implements En {
     "backupDate": "تاريخ النسخ الاحتياطي",
     "useTheFollowingLinkToDownloadTheBackup":
         "استخدم الرابط التالي لتحميل النسخة الاحتياطية",
+    "backups_config_title": "إعدادات النسخ الاحتياطي",
+    "backups_config_desc":
+        "تكوين جدول النسخ الاحتياطي التلقائي وإعدادات التخزين.",
+    "backups_auto_enabled": "تفعيل النسخ التلقائي",
+    "backups_cron": "الجدولة (cron)",
+    "backups_cron_presets": "إعدادات مسبقة",
+    "backups_cron_hourly": "كل ساعة",
+    "backups_cron_6hours": "كل 6 ساعات",
+    "backups_cron_12hours": "كل 12 ساعة",
+    "backups_cron_daily": "يوميًا عند منتصف الليل",
+    "backups_cron_daily3am": "يوميًا عند 3 صباحًا",
+    "backups_cron_weekly": "أسبوعيًا (الأحد منتصف الليل)",
+    "backups_cron_monthly": "شهريًا (اليوم 1 منتصف الليل)",
+    "backups_cron_hint":
+        "اختر جدولاً محدداً مسبقاً. سيتم ملء تعبير cron تلقائياً.",
+    "backups_max_keep": "الحد الأقصى للنسخ المحفوظة",
+    "backups_max_keep_hint": "سيتم حذف النسخ الأقدم عند تجاوز هذا الحد",
+    "backups_s3_enabled": "تخزين النسخ في S3",
+    "backups_save_success": "تم حفظ إعدادات النسخ الاحتياطي بنجاح",
+    "backups_save_fail": "فشل حفظ إعدادات النسخ الاحتياطي",
+
+    // Meta settings
+    "meta_settings": "إعدادات التطبيق",
+    "meta_info_title": "معلومات التطبيق العامة",
+    "meta_info_desc":
+        "قم بتكوين اسم التطبيق وعنوان URL وإعدادات العلامة التجارية.",
+    "meta_appName": "اسم التطبيق",
+    "meta_appName_hint": "يظهر في البريد الإلكتروني وعنوان شاشة تسجيل الدخول",
+    "meta_appUrl": "رابط التطبيق",
+    "meta_appUrl_hint": "يستخدم في البريد الإلكتروني والروابط المشتركة",
+    "meta_save_success": "تم حفظ إعدادات التطبيق بنجاح",
+    "meta_save_fail": "فشل حفظ إعدادات التطبيق",
+
+    // Auth settings
+    "auth_settings": "إعدادات المصادقة",
+    "auth_info_title": "مدة الجلسة",
+    "auth_info_desc":
+        "حدد مدة صلاحية رموز المصادقة قبل أن يحتاج المستخدمون لتسجيل الدخول مرة أخرى.",
+    "auth_users_duration": "جلسة المستخدم (أيام)",
+    "auth_users_duration_hint":
+        "عدد الأيام قبل أن يحتاج المستخدمون العاديون لإعادة تسجيل الدخول",
+    "auth_superusers_duration": "جلسة المدير (أيام)",
+    "auth_superusers_duration_hint":
+        "عدد الأيام قبل أن يحتاج المدراء لإعادة تسجيل الدخول",
+    "auth_save_success": "تم حفظ إعدادات المصادقة بنجاح",
+    "auth_save_fail": "فشل حفظ إعدادات المصادقة",
 
     // advanced settings: Admins
     "admins": "المدراء",
@@ -512,9 +559,55 @@ class Ar implements En {
     "s3_region": "المنطقة",
     "s3_accessKey": "مفتاح الوصول",
     "s3_secretKey": "المفتاح السري",
+    "s3_secretKey_hint":
+        "اتركه فارغًا للاحتفاظ بالقيمة الحالية. مفتاح الوصول السري S3 الخاص بك",
+    "s3_enabled": "تفعيل تخزين S3",
+    "s3_forcePathStyle": "فرض نمط المسار",
+    "s3_forcePathStyle_hint":
+        "استخدام عنونة نمط المسار بدلاً من النطاق الفرعي (مطلوب لـ Cloudflare R2)",
+    "s3_endpoint_hint": "عنوان URL لنقطة النهاية لمزود S3",
+    "s3_bucket_hint": "اسم حاوية S3 الخاصة بك",
+    "s3_region_hint": "منطقة الحاوية، أو 'auto' لـ Cloudflare R2",
+    "s3_accessKey_hint": "معرف مفتاح الوصول S3 الخاص بك",
     "s3_test_success": "إعداد S3 يعمل بشكل صحيح",
     "s3_test_fail": "فشل اختبار إعداد S3",
+    "s3_save_success": "تم حفظ إعدادات S3 بنجاح",
+    "s3_save_fail": "فشل حفظ إعدادات S3",
     "test": "اختبار",
+
+    // SMTP settings
+    "smtp_settings": "إعدادات البريد SMTP",
+    "smtp_info_title": "تكوين بريد SMTP",
+    "smtp_info_desc":
+        "قم بتكوين إعدادات SMTP لإرسال البريد الإلكتروني (إعادة تعيين كلمة المرور، الإشعارات، إلخ).",
+    "smtp_host": "الخادم",
+    "smtp_port": "المنفذ",
+    "smtp_username": "اسم المستخدم",
+    "smtp_password": "كلمة المرور",
+    "smtp_senderName": "اسم المرسل",
+    "smtp_senderEmail": "بريد المرسل",
+    "smtp_tls": "استخدام TLS",
+    "smtp_tls_auto": "تلقائي (STARTTLS)",
+    "smtp_tls_always": "دائم",
+    "smtp_tls_hint": "تلقائي = STARTTLS (منفذ 587)\n دائم = SSL (منفذ 465)",
+    "smtp_presets": "إعدادات مسبقة",
+    "smtp_port_blocked_warning":
+        "بعض مزودي الاستضافة (مثل DigitalOcean و Hetzner و Google Cloud) يحظرون منافذ SMTP افتراضيًا. تأكد من السماح بـ 587 أو 465، أو استخدم منفذًا مختلفًا.",
+    "smtp_host_hint": "عنوان خادم SMTP لمزود البريد الإلكتروني",
+    "smtp_port_hint": "587 أو 465",
+    "smtp_username_hint": "عادة عنوان بريدك الإلكتروني الكامل",
+    "smtp_password_hint":
+        "اتركه فارغًا للاحتفاظ بالقيمة الحالية. استخدم كلمة مرور تطبيق إذا كانت المصادقة الثنائية مفعلة",
+    "smtp_app_passwords": "كلمات مرور التطبيقات",
+    "smtp_senderName_hint": "الاسم المعروض في حقل المرسل",
+    "smtp_senderEmail_hint": "عنوان البريد الإلكتروني المعروض في حقل المرسل",
+    "smtp_localName": "الاسم المحلي HELO/EHLO",
+    "smtp_localName_hint": "يستخدم في تحية HELO/EHLO، عادة نطاقك",
+    "smtp_enabled": "تفعيل SMTP",
+    "smtp_test_success": "إعداد SMTP يعمل بشكل صحيح",
+    "smtp_test_fail": "فشل اختبار إعداد SMTP",
+    "smtp_save_success": "تم حفظ إعدادات SMTP بنجاح",
+    "smtp_save_fail": "فشل حفظ إعدادات SMTP",
 
     "emailTest": "اختبار البريد الإلكتروني",
     "emailTestDesc":

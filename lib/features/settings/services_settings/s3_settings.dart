@@ -1,9 +1,12 @@
+import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
+import 'responsive_row.dart';
+import '../applies_to_indicator.dart';
 
 final _s3TestResult = ObservableState("");
 
@@ -20,6 +23,9 @@ class _S3SettingsState extends State<S3Settings> {
   final TextEditingController regionController = TextEditingController();
   final TextEditingController accessKeyController = TextEditingController();
   final TextEditingController secretKeyController = TextEditingController();
+  final ValueNotifier<bool> s3Enabled = ValueNotifier(false);
+  final ValueNotifier<bool> forcePathStyle = ValueNotifier(false);
+  final ValueNotifier<bool> showSecretKey = ValueNotifier(false);
 
   @override
   void initState() {
@@ -37,36 +43,42 @@ class _S3SettingsState extends State<S3Settings> {
       regionController.text = s3['region'] ?? '';
       accessKeyController.text = s3['accessKey'] ?? '';
       secretKeyController.text = s3['secret'] ?? '';
+      s3Enabled.value = s3['enabled'] ?? false;
+      forcePathStyle.value = s3['forcePathStyle'] ?? false;
     } catch (e) {
       // Controllers remain empty on error
     }
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _saveS3Settings() async {
     try {
       await login.pb!.settings.update(body: {
         "s3": {
-          "enabled": true,
+          "enabled": s3Enabled.value,
           "endpoint": endpointController.text,
           "bucket": bucketController.text,
           "region": regionController.text,
           "accessKey": accessKeyController.text,
-          "secret": secretKeyController.text,
-          "forcePathStyle": false,
+          if (secretKeyController.text.isNotEmpty)
+            "secret": secretKeyController.text,
+          "forcePathStyle": forcePathStyle.value,
         }
       });
 
       if (mounted) {
         showDialog(
           context: context,
+          barrierDismissible: true,
+          dismissWithEsc: true,
           builder: (context) => ContentDialog(
-            title: const Text("Success"),
-            content: const Text("S3 settings saved successfully"),
+            style: dialogStyling(context, false, true),
+            title: Txt(txt("success")),
+            content: Txt(txt("s3_save_success")),
             actions: [
               Button(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
+                child: Txt(txt("close")),
               )
             ],
           ),
@@ -76,13 +88,16 @@ class _S3SettingsState extends State<S3Settings> {
       if (mounted) {
         showDialog(
           context: context,
+          barrierDismissible: true,
+          dismissWithEsc: true,
           builder: (context) => ContentDialog(
-            title: const Text("Error"),
-            content: Text("Failed to save S3 settings: $e"),
+            style: dialogStyling(context, true, true),
+            title: Txt(txt("fail")),
+            content: Txt("${txt("s3_save_fail")}: $e"),
             actions: [
               Button(
                 onPressed: () => Navigator.pop(context),
-                child: const Text("OK"),
+                child: Txt(txt("close")),
               )
             ],
           ),
@@ -98,7 +113,20 @@ class _S3SettingsState extends State<S3Settings> {
     regionController.dispose();
     accessKeyController.dispose();
     secretKeyController.dispose();
+    s3Enabled.dispose();
+    forcePathStyle.dispose();
+    showSecretKey.dispose();
     super.dispose();
+  }
+
+  Widget _hint(String key) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Text(
+        txt(key),
+        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
+      ),
+    );
   }
 
   @override
@@ -108,6 +136,7 @@ class _S3SettingsState extends State<S3Settings> {
       child: Expander(
         leading: const Icon(FluentIcons.cloud_upload),
         header: Txt(txt("s3_settings")),
+        trailing: const AppliesToIndicator(scope: Scope.system),
         contentPadding: const EdgeInsets.all(10),
         content: SizedBox(
           width: 400,
@@ -123,41 +152,120 @@ class _S3SettingsState extends State<S3Settings> {
                       content: Txt(txt("s3_info_desc")),
                     ),
                     const SizedBox(height: 15),
+                    ValueListenableBuilder<bool>(
+                      valueListenable: s3Enabled,
+                      builder: (context, value, _) {
+                        return Row(
+                          children: [
+                            ToggleSwitch(
+                              checked: value,
+                              onChanged: (v) => s3Enabled.value = v,
+                            ),
+                            const SizedBox(width: 10),
+                            Txt(txt("s3_enabled")),
+                          ],
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 15),
                     Txt(txt("s3_endpoint")),
                     const SizedBox(height: 5),
                     CupertinoTextField(
                       controller: endpointController,
                       placeholder: "https://s3.amazonaws.com",
                     ),
+                    _hint("s3_endpoint_hint"),
                     const SizedBox(height: 15),
-                    Txt(txt("s3_bucket")),
-                    const SizedBox(height: 5),
-                    CupertinoTextField(
-                      controller: bucketController,
-                      placeholder: "my-bucket",
-                    ),
+                    ResponsiveRow(children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Txt(txt("s3_bucket")),
+                          const SizedBox(height: 5),
+                          CupertinoTextField(
+                            controller: bucketController,
+                            placeholder: "my-bucket",
+                          ),
+                          _hint("s3_bucket_hint"),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Txt(txt("s3_region")),
+                          const SizedBox(height: 5),
+                          CupertinoTextField(
+                            controller: regionController,
+                            placeholder: "us-east-1",
+                          ),
+                          _hint("s3_region_hint"),
+                        ],
+                      ),
+                    ]),
                     const SizedBox(height: 15),
-                    Txt(txt("s3_region")),
-                    const SizedBox(height: 5),
-                    CupertinoTextField(
-                      controller: regionController,
-                      placeholder: "us-east-1",
-                    ),
+                    ResponsiveRow(children: [
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Txt(txt("s3_accessKey")),
+                          const SizedBox(height: 5),
+                          CupertinoTextField(
+                            controller: accessKeyController,
+                            placeholder: "AKIA...",
+                          ),
+                          _hint("s3_accessKey_hint"),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Txt(txt("s3_secretKey")),
+                          const SizedBox(height: 5),
+                          ValueListenableBuilder<bool>(
+                            valueListenable: showSecretKey,
+                            builder: (context, show, _) {
+                              return CupertinoTextField(
+                                controller: secretKeyController,
+                                placeholder: txt("leaveBlankToKeepUnchanged"),
+                                obscureText: !show,
+                                suffix: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 4),
+                                  child: IconButton(
+                                    onPressed: () =>
+                                        showSecretKey.value = !show,
+                                    icon: Icon(
+                                      show
+                                          ? FluentIcons.red_eye
+                                          : FluentIcons.hide,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          _hint("s3_secretKey_hint"),
+                        ],
+                      ),
+                    ]),
                     const SizedBox(height: 15),
-                    Txt(txt("s3_accessKey")),
-                    const SizedBox(height: 5),
-                    CupertinoTextField(
-                      controller: accessKeyController,
-                      placeholder: "AKIA...",
+                    ValueListenableBuilder<bool>(
+                      valueListenable: forcePathStyle,
+                      builder: (context, value, _) {
+                        return Row(
+                          children: [
+                            ToggleSwitch(
+                              checked: value,
+                              onChanged: (v) => forcePathStyle.value = v,
+                            ),
+                            const SizedBox(width: 10),
+                            Txt(txt("s3_forcePathStyle")),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 15),
-                    Txt(txt("s3_secretKey")),
-                    const SizedBox(height: 5),
-                    CupertinoTextField(
-                      controller: secretKeyController,
-                      placeholder: "...",
-                      obscureText: true,
-                    ),
+                    _hint("s3_forcePathStyle_hint"),
                     const SizedBox(height: 20),
                     Row(
                       children: [

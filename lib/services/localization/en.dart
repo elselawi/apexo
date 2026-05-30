@@ -441,6 +441,7 @@ class En {
     "appliesTo": "Applies to",
     "all": "All",
     "you": "you",
+    "system": "system",
     "initialSynchronization": "Initial synchronization",
     "synchronizing": "Synchronizing",
     "clearingLocalData": "Clearing local data",
@@ -464,6 +465,52 @@ class En {
     "backupDate": "Backup date",
     "useTheFollowingLinkToDownloadTheBackup":
         "Use the following link to download the backup",
+    "backups_config_title": "Backup Configuration",
+    "backups_config_desc":
+        "Configure automatic backup schedule and storage settings.",
+    "backups_auto_enabled": "Enable automatic backups",
+    "backups_cron": "Schedule (cron)",
+    "backups_cron_presets": "Presets",
+    "backups_cron_hourly": "Every hour",
+    "backups_cron_6hours": "Every 6 hours",
+    "backups_cron_12hours": "Every 12 hours",
+    "backups_cron_daily": "Daily at midnight",
+    "backups_cron_daily3am": "Daily at 3 AM",
+    "backups_cron_weekly": "Weekly (Sun midnight)",
+    "backups_cron_monthly": "Monthly (1st midnight)",
+    "backups_cron_hint":
+        "Select a schedule preset from the dropdown. The cron expression is auto-filled.",
+    "backups_max_keep": "Max backups to keep",
+    "backups_max_keep_hint": "Older backups will be deleted when exceeded",
+    "backups_s3_enabled": "Store backups in S3",
+    "backups_save_success": "Backup settings saved successfully",
+    "backups_save_fail": "Failed to save backup settings",
+
+    // Meta settings
+    "meta_settings": "Application Settings",
+    "meta_info_title": "General Application Info",
+    "meta_info_desc":
+        "Configure your application name, URL, and branding settings.",
+    "meta_appName": "Application Name",
+    "meta_appName_hint": "Shown in emails and the login screen title",
+    "meta_appUrl": "Application URL",
+    "meta_appUrl_hint": "Used in emails and shared links",
+    "meta_save_success": "Application settings saved successfully",
+    "meta_save_fail": "Failed to save application settings",
+
+    // Auth settings
+    "auth_settings": "Authentication Settings",
+    "auth_info_title": "Session Duration",
+    "auth_info_desc":
+        "Set how long authentication tokens remain valid before users need to log in again.",
+    "auth_users_duration": "User session (days)",
+    "auth_users_duration_hint":
+        "How many days before regular users need to re-login",
+    "auth_superusers_duration": "Admin session (days)",
+    "auth_superusers_duration_hint":
+        "How many days before admins need to re-login",
+    "auth_save_success": "Authentication settings saved successfully",
+    "auth_save_fail": "Failed to save authentication settings",
 
     // advanced settings: Admins
     "admins": "Administrators",
@@ -517,9 +564,55 @@ class En {
     "s3_region": "Region",
     "s3_accessKey": "Access Key",
     "s3_secretKey": "Secret Key",
+    "s3_secretKey_hint":
+        "Leave empty to keep unchanged. Your S3 secret access key",
+    "s3_enabled": "Enable S3 Storage",
+    "s3_forcePathStyle": "Force path style",
+    "s3_forcePathStyle_hint":
+        "Use path-style addressing instead of subdomain (needed for Cloudflare R2)",
+    "s3_endpoint_hint": "Your S3 provider's endpoint URL",
+    "s3_bucket_hint": "The name of your S3 bucket",
+    "s3_region_hint": "Bucket region, or 'auto' for Cloudflare R2",
+    "s3_accessKey_hint": "Your S3 access key ID",
     "s3_test_success": "S3 configuration is working properly",
     "s3_test_fail": "S3 configuration test failed",
+    "s3_save_success": "S3 settings saved successfully",
+    "s3_save_fail": "Failed to save S3 settings",
     "test": "Test",
+
+    // SMTP settings
+    "smtp_settings": "SMTP Email Settings",
+    "smtp_info_title": "Configure SMTP Email",
+    "smtp_info_desc":
+        "Configure your SMTP email settings for sending emails (password resets, notifications, etc.).",
+    "smtp_host": "Host",
+    "smtp_port": "Port",
+    "smtp_username": "Username",
+    "smtp_password": "Password",
+    "smtp_senderName": "Sender Name",
+    "smtp_senderEmail": "Sender Email",
+    "smtp_tls": "Use TLS",
+    "smtp_tls_auto": "Auto (STARTTLS)",
+    "smtp_tls_always": "Always",
+    "smtp_tls_hint": "Auto = STARTTLS (port 587)\n Always = SSL (port 465)",
+    "smtp_presets": "Presets",
+    "smtp_port_blocked_warning":
+        "Some cloud hosts (e.g. DigitalOcean, Hetzner, Google Cloud) block outgoing SMTP ports by default. Make sure 587 or 465 is allowed, or use a different port.",
+    "smtp_host_hint": "Your email provider's SMTP server address",
+    "smtp_port_hint": "578 or 465",
+    "smtp_username_hint": "Usually your full email address",
+    "smtp_password_hint":
+        "Leave empty to keep unchanged. Use an app-specific password if 2FA is enabled",
+    "smtp_app_passwords": "App passwords",
+    "smtp_senderName_hint": "Display name shown in the From field",
+    "smtp_senderEmail_hint": "Email address shown in the From field",
+    "smtp_localName": "HELO/EHLO Local Name",
+    "smtp_localName_hint": "Used in HELO/EHLO greeting, usually your domain",
+    "smtp_enabled": "Enable SMTP",
+    "smtp_test_success": "SMTP configuration is working properly",
+    "smtp_test_fail": "SMTP configuration test failed",
+    "smtp_save_success": "SMTP settings saved successfully",
+    "smtp_save_fail": "Failed to save SMTP settings",
 
     "emailTest": "Email test",
     "emailTestDesc":

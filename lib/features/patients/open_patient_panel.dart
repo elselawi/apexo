@@ -539,8 +539,7 @@ class PhoneTextEditingController extends TextEditingController {
     for (int i = 0; i < parts.length; i++) {
       final String part = parts[i];
       if (PhoneNumber.parse(part,
-              destinationCountry:
-                  IsoCode.values.byName(globalSettings.isoCountryCode))
+              destinationCountry: IsoCode.values.byName(isoCC()))
           .isValid()) {
         children.add(
           TextSpan(

@@ -84,8 +84,7 @@ class PhoneNumberExtractor {
         // National format – use the provided default region via enum lookup
         return PhoneNumber.parse(
           trimmed,
-          destinationCountry:
-              IsoCode.values.byName(defaultRegion.toUpperCase()),
+          destinationCountry: IsoCode.values.byName(isoCC()),
         );
       }
     } catch (_) {

@@ -114,6 +114,9 @@ class GlobalSettings extends Store<Setting> {
 }
 
 String currency() => globalSettings.get("currency_______").value;
+String isoCC() => globalSettings.isoCountryCode.isEmpty
+    ? "US"
+    : globalSettings.isoCountryCode.substring(0, 2).toUpperCase();
 
 class LocalSettings extends ObservablePersistingObject {
   LocalSettings() : super(_storeNameLocal) {

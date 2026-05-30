@@ -35,7 +35,7 @@ class ParsedPhoneNumber {
         parsed = PhoneNumber.parse(
           cleaned,
           destinationCountry: IsoCode.values.byName(
-            globalSettings.isoCountryCode.toUpperCase(),
+            isoCC(),
           ),
         );
       }

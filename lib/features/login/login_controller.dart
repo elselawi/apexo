@@ -47,7 +47,7 @@ class _LoginScreenState {
   _LoginScreenState() {
     Future.delayed(const Duration(milliseconds: 300), () {
       if (launch.isDemo) {
-        loginButton("", "", ""); // TODO: test demo with this
+        loginButton("", "", "");
       }
     });
   }

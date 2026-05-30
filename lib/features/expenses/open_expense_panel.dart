@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -15,21 +16,23 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 
-// TODO:
-// make this save only after pressing a "save" button
-// but the problem will be uploading photos to non-saved orders!
-
-// TODO:
-// problem: while updating the footer doesn't update
-
-// TODO:
-// when archiving an expense, it should disappear unless showArchived is chekced
-
+// NOTE: Unlike other panels (patient, appointment) which track unsaved
+// changes on a single item, this panel manages multiple orders. It uses
+// [checkUnsavedChanges] and [onSave] callbacks so the panel's footer Save
+// button saves ALL changed orders at once. New orders are persisted
+// immediately in [addOrderForSupplier] so photo uploads work right away.
+// Archive/restore is handled per-order via the more menu in [OrderRow].
 Future<Expense> openExpenses(
     List<Expense> orders, String supplierName, String? supplierId) {
+  // Snapshot of each order's JSON at panel-open time.
+  // Updated after each save so we only re-save what changed.
+  final Map<String, String> savedSnapshots = {
+    for (var o in orders) o.id: jsonEncode(o.toJson()),
+  };
+
   final panel = Panel<Expense>(
     showTitles: true,
-    showBottomControls: false,
+    showBottomControls: true,
     inherentlyScrollable: true,
     singularName: "orders",
     unicodeSymbol: "📁",
@@ -39,7 +42,20 @@ Future<Expense> openExpenses(
     icon: WindowsIcons.folder,
     title: supplierName,
     canNotBeNew: true,
+    archiveButtonReplacement: const SizedBox.shrink(),
     additionalControls: _SupplierOrdersFooter(orders: orders),
+    checkUnsavedChanges: () {
+      return orders.any((o) => jsonEncode(o.toJson()) != savedSnapshots[o.id]);
+    },
+    onSave: () {
+      for (var o in orders) {
+        final current = jsonEncode(o.toJson());
+        if (current != savedSnapshots[o.id]) {
+          expenses.set(o);
+          savedSnapshots[o.id] = current;
+        }
+      }
+    },
     tabs: [
       PanelTab(
         title: txt("due"),
@@ -117,6 +133,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
     final orders = (widget.processed
             ? widget.allOrders.where((e) => e.processed == true).toList()
             : widget.allOrders.where((e) => e.processed == false).toList())
+        .where((e) => showArchived() || e.archived != true)
         .where((e) => e.items.join("").toLowerCase().contains(search))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
@@ -223,19 +240,20 @@ class _SupplierOrdersFooter extends StatefulWidget {
 class _SupplierOrdersFooterState extends State<_SupplierOrdersFooter> {
   @override
   Widget build(BuildContext context) {
-    final double totalDue = widget.orders
-        .where((e) => e.processed == false)
-        .fold(0, (sum, order) => sum + (order.cost - order.paidAmount));
-
-    final double totalPaid = widget.orders
-        .where((e) => e.processed == true)
-        .fold(0, (a, b) => a + b.paidAmount);
-
     final theme = FluentTheme.of(context);
     final currency = globalSettings.get("currency").value;
     return StreamBuilder(
         stream: expenses.observableMap.stream,
         builder: (context, asyncSnapshot) {
+          // Calculations moved inside the builder so they react to store changes
+          final double totalDue = widget.orders
+              .where((e) => e.processed == false)
+              .fold(0, (sum, order) => sum + (order.cost - order.paidAmount));
+
+          final double totalPaid = widget.orders
+              .where((e) => e.processed == true)
+              .fold(0, (a, b) => a + b.paidAmount);
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

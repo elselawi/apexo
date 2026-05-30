@@ -60,11 +60,11 @@ class _PanelScreenState extends State<PanelScreen> {
         : widget.panel.store.get(widget.panel.item.id) == null;
     saveButtonCheckTimer =
         Timer.periodic(const Duration(milliseconds: 750), (_) {
-      if (jsonEncode(widget.panel.item.toJson()) != widget.panel.savedJson &&
-          widget.panel.hasUnsavedChanges() != true) {
+      final changesDetected = widget.panel.checkUnsavedChanges?.call() ??
+          (jsonEncode(widget.panel.item.toJson()) != widget.panel.savedJson);
+      if (changesDetected && widget.panel.hasUnsavedChanges() != true) {
         widget.panel.hasUnsavedChanges(true);
-      } else if (jsonEncode(widget.panel.item.toJson()) ==
-              widget.panel.savedJson &&
+      } else if (!changesDetected &&
           widget.panel.hasUnsavedChanges() != false) {
         widget.panel.hasUnsavedChanges(false);
       }
@@ -265,11 +265,16 @@ class _PanelScreenState extends State<PanelScreen> {
           return FilledButton(
             onPressed: () {
               if (widget.panel.hasUnsavedChanges()) {
-                widget.panel.store.set(widget.panel.item);
-                widget.panel.savedJson = jsonEncode(widget.panel.item.toJson());
-                widget.panel.identifier = widget.panel.item.id;
-                if (!widget.panel.result.isCompleted) {
-                  widget.panel.result.complete(widget.panel.item);
+                if (widget.panel.onSave != null) {
+                  widget.panel.onSave!();
+                } else {
+                  widget.panel.store.set(widget.panel.item);
+                  widget.panel.savedJson =
+                      jsonEncode(widget.panel.item.toJson());
+                  widget.panel.identifier = widget.panel.item.id;
+                  if (!widget.panel.result.isCompleted) {
+                    widget.panel.result.complete(widget.panel.item);
+                  }
                 }
                 setState(() {
                   isNew = false;

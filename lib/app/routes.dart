@@ -64,6 +64,15 @@ class Panel<T extends Model> {
   final Widget? additionalControls;
   final Widget? archiveButtonReplacement;
 
+  /// If provided, used by the periodic timer instead of comparing
+  /// [item.toJson] against [savedJson]. Useful when the panel manages
+  /// multiple items (e.g. expenses orders panel).
+  final bool Function()? checkUnsavedChanges;
+
+  /// If provided, called when the Save button is pressed instead of the
+  /// default [store.set(item)]. Useful when the panel manages multiple items.
+  final void Function()? onSave;
+
   Panel({
     required this.item,
     required this.store,
@@ -79,6 +88,8 @@ class Panel<T extends Model> {
     this.canNotBeNew = false,
     this.additionalControls,
     this.archiveButtonReplacement,
+    this.checkUnsavedChanges,
+    this.onSave,
   }) {
     identifier = store.get(item.id) == null
         ? (canNotBeNew ? item.id : "new+${store.local?.name ?? singularName}")

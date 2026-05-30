@@ -45,6 +45,12 @@ class OrderRowState extends State<OrderRow>
   final bool canEdit = login.permissions[PInt.expenses] == 2;
 
   bool inProgress = false;
+
+  /// Notifier for the per-order "total due" calculation so the
+  /// [MoneyDisplay] updates in real-time without rebuilding the whole card
+  /// (which would cause photo flicker).
+  final ValueNotifier<double> _totalDueNotifier = ValueNotifier(0);
+
   late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
 
@@ -53,6 +59,7 @@ class OrderRowState extends State<OrderRow>
     costCtrl.text = moneyInputFormatter.formatDouble(widget.order.cost);
     paidCtrl.text = moneyInputFormatter.formatDouble(widget.order.paidAmount);
     notesController.text = widget.order.notes;
+    _totalDueNotifier.value = widget.order.cost - widget.order.paidAmount;
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1500),
@@ -73,6 +80,7 @@ class OrderRowState extends State<OrderRow>
 
   @override
   void dispose() {
+    _totalDueNotifier.dispose();
     _pulseController.dispose();
     costCtrl.dispose();
     paidCtrl.dispose();
@@ -234,7 +242,9 @@ class OrderRowState extends State<OrderRow>
           const SizedBox(height: 8),
           DateTimePicker(
             initValue: widget.order.date,
-            onChange: (v) => expenses.set(widget.order..date = v),
+            onChange: (v) {
+              widget.order.date = v;
+            },
             enabled: canEdit,
             showButton: true,
             buttonText: txt("change"),
@@ -296,7 +306,9 @@ class OrderRowState extends State<OrderRow>
             enabled: canEdit && !inProgress,
             controller: notesController,
             maxLines: null,
-            onChanged: (value) => expenses.set(widget.order..notes = value),
+            onChanged: (value) {
+              widget.order.notes = value;
+            },
           ),
           const SizedBox(height: 12),
           _buildPhotosSection(),
@@ -345,14 +357,19 @@ class OrderRowState extends State<OrderRow>
                 txt("totalDue").toUpperCase(),
                 style: _sectionTitleTextStyle(theme),
               ),
-              MoneyDisplay(
-                "${(widget.order.cost - widget.order.paidAmount).toStringAsFixed(2)} $curr",
-                style: TextStyle(
-                  fontFamily: 'monospace',
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: theme.typography.body?.color,
-                ),
+              ValueListenableBuilder<double>(
+                valueListenable: _totalDueNotifier,
+                builder: (context, totalDue, _) {
+                  return MoneyDisplay(
+                    "${totalDue.toStringAsFixed(2)} $curr",
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      color: theme.typography.body?.color,
+                    ),
+                  );
+                },
               ),
               if (widget.order.cost == 0)
                 SmallLabel(
@@ -404,14 +421,13 @@ class OrderRowState extends State<OrderRow>
         color: theme.typography.body?.color,
       ),
       onChanged: (v) {
-        setState(() {
-          final val = moneyInputFormatter.parse(v);
-          if (label == "due") {
-            expenses.set(widget.order..cost = val);
-          } else {
-            expenses.set(widget.order..paidAmount = val);
-          }
-        });
+        final val = moneyInputFormatter.parse(v);
+        if (label == "due") {
+          widget.order.cost = val;
+        } else {
+          widget.order.paidAmount = val;
+        }
+        _totalDueNotifier.value = widget.order.cost - widget.order.paidAmount;
       },
     );
   }
@@ -452,9 +468,7 @@ class OrderRowState extends State<OrderRow>
       enabled: !inProgress && canEdit,
       onChanged: (newItems) {
         setState(() {
-          expenses.set(
-            widget.order..items = newItems.map((e) => e.label).toList(),
-          );
+          widget.order.items = newItems.map((e) => e.label).toList();
         });
       },
       strict: false,
@@ -514,7 +528,7 @@ class OrderRowState extends State<OrderRow>
                     widget.order.id,
                     img,
                   );
-                  expenses.set(widget.order..photos.remove(img));
+                  widget.order.photos.remove(img);
                 } catch (e, s) {
                   showErrorMessage(e, "deletingOrderImageFromServer");
                   login.askForLoginAgain(e);
@@ -589,7 +603,7 @@ class OrderRowState extends State<OrderRow>
           sourceFile: img,
         );
         if (!widget.order.photos.contains(imgName)) {
-          expenses.set(widget.order..photos.add(imgName));
+          widget.order.photos.add(imgName);
         }
       }
     } catch (e, s) {
@@ -613,7 +627,7 @@ class OrderRowState extends State<OrderRow>
         sourceFile: res,
       );
       if (!widget.order.photos.contains(imgName)) {
-        expenses.set(widget.order..photos.add(imgName));
+        widget.order.photos.add(imgName);
       }
     } catch (e, s) {
       showErrorMessage(e, "uploadingOrderImageFromCamera");
@@ -649,8 +663,7 @@ class OrderRowState extends State<OrderRow>
                       ? FluentIcons.warning
                       : FluentIcons.accept),
                   onPressed: () {
-                    expenses
-                        .set(widget.order..processed = !widget.order.processed);
+                    widget.order.processed = !widget.order.processed;
                   },
                 ),
                 MenuFlyoutItem(
@@ -661,8 +674,9 @@ class OrderRowState extends State<OrderRow>
                       ? FluentIcons.archive_undo
                       : FluentIcons.archive),
                   onPressed: () {
-                    expenses.set(widget.order
-                      ..archived = widget.order.archived == true ? null : true);
+                    widget.order.archived =
+                        widget.order.archived == true ? null : true;
+                    expenses.set(widget.order);
                   },
                 ),
               ],

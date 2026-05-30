@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
+
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/utils/logger.dart';
 
@@ -9,14 +13,20 @@ import 'package:apexo/utils/logger.dart';
 class ReleaseMetadata {
   final String latestVersion;
   final List<String> changelog;
+  final String msStoreUrl;
+  final String macosUrl;
+  final String iosUrl;
   final String androidUrl;
-  final String windowsUrl;
+  final String webUrl;
 
   ReleaseMetadata({
     required this.latestVersion,
     required this.changelog,
+    required this.msStoreUrl,
+    required this.macosUrl,
+    required this.iosUrl,
     required this.androidUrl,
-    required this.windowsUrl,
+    required this.webUrl,
   });
 
   factory ReleaseMetadata.fromJson(Map<String, dynamic> json) {
@@ -24,8 +34,11 @@ class ReleaseMetadata {
     return ReleaseMetadata(
       latestVersion: json['latest_version'] ?? "0.0.0",
       changelog: List<String>.from(json['changelog'] ?? []),
+      msStoreUrl: downloads['ms_store'] ?? "",
+      macosUrl: downloads['macos'] ?? "",
+      iosUrl: downloads['ios'] ?? "",
       androidUrl: downloads['android'] ?? "",
-      windowsUrl: downloads['windows'] ?? "",
+      webUrl: downloads['web'] ?? "",
     );
   }
 }
@@ -38,11 +51,17 @@ class _VersionService {
   final isOutdated = ObservableState(false);
   final latestVersion = ObservableState("0.0.0");
 
-  String latestAPKLink = "";
-  String latestZipLink = "";
+  /// The macos DMG download link (only platform that needs manual updates).
+  String _macosDownloadLink = "";
   List<String> changelog = [];
 
-  // Your new Cloudflare R2 URL
+  /// Only macOS needs manual update notifications — all other platforms
+  /// (Windows MS Store, Play Store, App Store) auto-update via their stores.
+  bool get needsUpdateNotification => !kIsWeb && Platform.isMacOS;
+
+  /// The download link for the current platform (only valid for macOS).
+  String get downloadLink => _macosDownloadLink;
+
   final String metadataUrl = "https://download.apexo.app/metadata.json";
 
   _VersionService() {
@@ -75,8 +94,7 @@ class _VersionService {
 
       // Store data
       latestVersion(data.latestVersion);
-      latestAPKLink = data.androidUrl;
-      latestZipLink = data.windowsUrl;
+      _macosDownloadLink = data.macosUrl;
       changelog = data.changelog;
 
       // Compare versions

@@ -101,22 +101,20 @@ class ApexoApp extends StatelessWidget {
   void showDialogsIfNeeded() async {
     await version.init();
 
-    // Show new version dialog if app is outdated
-    if ((!kIsWeb) &&
+    // Show new version dialog only on macOS — all other platforms
+    // (MS Store, Play Store, App Store) handle updates automatically.
+    if (version.needsUpdateNotification &&
         version.isOutdated() &&
         !launch.dialogShown() &&
         bContext.mounted) {
       launch.dialogShown(true);
 
-      // TODO: this needs to be updated for macos users since all other users will be using the store apps
       showDialog(
         barrierDismissible: true,
         dismissWithEsc: true,
         context: bContext,
         builder: (context) => NewVersionDialog(
-          downloadLink: ((kIsWeb == false) && Platform.isWindows)
-              ? version.latestZipLink
-              : version.latestAPKLink,
+          downloadLink: version.downloadLink,
         ),
       );
     }

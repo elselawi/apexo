@@ -186,8 +186,8 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
                 )
               else
                 ComboBox<String>(
-                  items: selectedPatient!.allAppointments
-                      //TODO .sort((a, b) => a.date.compareTo(b.date))
+                  items: (selectedPatient!.allAppointments.toList()
+                        ..sort((a, b) => a.date.compareTo(b.date)))
                       .map((e) => ComboBoxItem(
                           value: e.id, child: formatAppointmentDate(e.date)))
                       .toList(),

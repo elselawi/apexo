@@ -9,6 +9,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/settings/services_settings/backups_settings.dart';
 import 'package:apexo/features/settings/services_settings/production_test.dart';
+import 'package:apexo/features/settings/services_settings/s3_settings.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -236,6 +237,7 @@ class SettingsScreen extends StatelessWidget {
                   }),
             ),
           if (login.isAdmin && network.isOnline()) ...[
+            const S3Settings(),
             const BackupsSettings(),
             ProductionTests(),
           ],

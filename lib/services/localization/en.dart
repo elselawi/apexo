@@ -506,6 +506,21 @@ class En {
     "fileStorageButton": "Test S3 setup",
     "fileStorageFail": "S3 setup failed",
     "fileStorageSuccess": "S3 setup is working properly",
+
+    // S3 settings
+    "s3_settings": "S3 Storage Settings",
+    "s3_info_title": "Configure S3 Storage",
+    "s3_info_desc":
+        "Configure your S3-compatible storage settings for file uploads and backups.",
+    "s3_endpoint": "Endpoint URL",
+    "s3_bucket": "Bucket Name",
+    "s3_region": "Region",
+    "s3_accessKey": "Access Key",
+    "s3_secretKey": "Secret Key",
+    "s3_test_success": "S3 configuration is working properly",
+    "s3_test_fail": "S3 configuration test failed",
+    "test": "Test",
+
     "emailTest": "Email test",
     "emailTestDesc":
         "Use the following button to test whether your server can send emails properly. A password-reset-like email should be delivered to the target email address.",

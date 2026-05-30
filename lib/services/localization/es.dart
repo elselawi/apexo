@@ -509,6 +509,21 @@ class Es implements En {
     "fileStorageFail": "La configuración de S3 falló",
     "fileStorageSuccess":
         "La configuración de S3 está funcionando correctamente",
+
+    // S3 settings
+    "s3_settings": "Configuración de almacenamiento S3",
+    "s3_info_title": "Configurar almacenamiento S3",
+    "s3_info_desc":
+        "Configura tus ajustes de almacenamiento compatible con S3 para cargas de archivos y copias de seguridad.",
+    "s3_endpoint": "URL del punto final",
+    "s3_bucket": "Nombre del bucket",
+    "s3_region": "Región",
+    "s3_accessKey": "Clave de acceso",
+    "s3_secretKey": "Clave secreta",
+    "s3_test_success": "La configuración de S3 está funcionando correctamente",
+    "s3_test_fail": "La prueba de configuración de S3 falló",
+    "test": "Probar",
+
     "emailTest": "Prueba de correo",
     "emailTestDesc":
         "Usa el siguiente botón para probar si tu servidor puede enviar correos electrónicos correctamente. Un correo parecido a una reestablecimiento de contraseña debería ser entregado a la dirección de correo objetivo.",

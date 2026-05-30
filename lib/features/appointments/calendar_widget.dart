@@ -245,7 +245,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
         itemBuilder: (context, index) {
           Item item = sortedItems[index];
           return Padding(
-            padding: const EdgeInsets.all(1),
+            padding: const EdgeInsets.all(0),
             child: AppointmentCalendarTile<Item>(
               key: WK.calendarAppointmentTile,
               context: context,

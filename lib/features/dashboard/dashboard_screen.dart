@@ -61,6 +61,7 @@ class DashboardScreen extends StatelessWidget {
                 _builCommandBar(context),
                 _buildTopSquares(),
                 Container(
+                  height: 36,
                   decoration: topBarDecoration(context, Colors.grey),
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),

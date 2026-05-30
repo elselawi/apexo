@@ -738,7 +738,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         if (widget.note.incoming)
           SmallLabel(
             bgColor: Colors.yellow,
-            textColor: theme.inactiveColor,
+            textColor: Colors.grey,
             icon: WindowsIcons.reply,
             label: txt("incoming"),
           ),

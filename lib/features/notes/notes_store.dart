@@ -4,6 +4,7 @@ import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/demo_generator.dart' show demoNotes;
 import 'package:apexo/utils/hash.dart';
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
@@ -47,7 +48,7 @@ class Notes extends Store<Note> {
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
       if (launch.isDemo) {
-        // if (docs.isEmpty) setAll(demoExpenses(100)); // TODO
+        if (docs.isEmpty) setAll(demoNotes(100));
       } else {
         remote = SaveRemote(
           pbInstance: login.pb!,

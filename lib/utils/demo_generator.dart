@@ -3,7 +3,9 @@ import 'dart:math';
 import 'package:apexo/features/accounts/accounts_screen.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -483,4 +485,109 @@ List<Expense> _demoSuppliers() {
 List<Expense> demoExpenses(int length) {
   _savedSuppliers = _demoSuppliers();
   return [..._savedSuppliers, ...List.generate(length, (_) => _demoExpense())];
+}
+
+const _columnNames = ["To Do", "In Progress", "Done"];
+const _columnColors = [0xFF4A90D9, 0xFFF5A623, 0xFF7ED321];
+const _noteTitles = [
+  "Order supplies",
+  "Call lab for results",
+  "Review patient charts",
+  "Schedule follow-up",
+  "Update inventory",
+  "File insurance claim",
+  "Confirm appointment",
+  "Send prescription",
+  "Check payment status",
+  "Clean operatory",
+  "Restock materials",
+  "Prepare treatment plan",
+  "Follow up on implant case",
+  "Verify insurance coverage",
+  "Submit lab order",
+  "Check equipment maintenance",
+  "Review X-rays",
+  "Call patient about sensitivity",
+  "Order crown material",
+  "Prepare consent form",
+];
+const _noteBodies = [
+  "Need to order before end of week.",
+  "Patient called requesting callback.",
+  "Waiting on lab confirmation.",
+  "Patient requested morning slot.",
+  "Running low on composite material.",
+  "Need to submit before deadline.",
+  "Left voicemail, waiting for callback.",
+  "Prescription needs renewal.",
+  "Partial payment received, balance due.",
+  "Deep cleaning required after last patient.",
+  "Gloves and masks need replenishing.",
+  "Complex case, needs detailed plan.",
+  "Check with lab on delivery date.",
+  "New patient, need to verify first.",
+  "PFM crown for tooth #30.",
+  "Compressor making unusual noise.",
+  "Compare with previous set.",
+  "Post-op day 3 sensitivity check.",
+  "Color A2, margin design needed.",
+  "Signed copy needed for records.",
+];
+
+List<Note> demoNotes(int length) {
+  final rng = Random(42);
+
+  final columns = List.generate(_columnNames.length, (i) {
+    return Note.fromJson({
+      "id": simpleHash("column_$i", length: 15),
+      "isColumn": true,
+      "columnName": _columnNames[i],
+      "tint": _columnColors[i],
+      "order": i.toDouble(),
+      "archived": false,
+      "createdAt": DateTime.now()
+          .subtract(Duration(days: 30 + rng.nextInt(60)))
+          .millisecondsSinceEpoch,
+    });
+  });
+
+  final notes = <Note>[];
+  for (var i = 0; i < length; i++) {
+    final col = columns[rng.nextInt(columns.length)];
+    final titleIndex = rng.nextInt(_noteTitles.length);
+    final createdDate = DateTime.now()
+        .subtract(Duration(days: rng.nextInt(90)))
+        .add(Duration(hours: rng.nextInt(24)));
+    final dueDate = createdDate.add(Duration(days: 1 + rng.nextInt(14)));
+    final isDone = rng.nextDouble() < 0.25;
+
+    notes.add(Note.fromJson({
+      "id": simpleHash("note_$i", length: 15),
+      "title": _noteTitles[titleIndex],
+      "isColumn": false,
+      "columnID": col.id,
+      "date": createdDate,
+      "note":
+          rng.nextBool() ? _noteBodies[rng.nextInt(_noteBodies.length)] : "",
+      "comments": rng.nextDouble() < 0.3
+          ? List.generate(
+              1 + rng.nextInt(2),
+              (_) =>
+                  ["Demo User", _noteBodies[rng.nextInt(_noteBodies.length)]],
+            )
+          : [],
+      "done": isDone,
+      "attachments": [],
+      "createdBy": "",
+      "assignedTo": "",
+      "dueDate": dueDate,
+      "forPatient": "",
+      "recurringInterval":
+          rng.nextDouble() < 0.1 ? 7 + rng.nextInt(4) * 7 : null,
+      "archived": false,
+      "createdAt": createdDate.millisecondsSinceEpoch,
+    }));
+  }
+
+  return [...columns, ...notes];
 }

@@ -566,7 +566,7 @@ List<Note> demoNotes(int length) {
       "title": _noteTitles[titleIndex],
       "isColumn": false,
       "columnID": col.id,
-      "date": createdDate,
+      "date": createdDate.millisecondsSinceEpoch ~/ (60 * 60 * 1000),
       "note":
           rng.nextBool() ? _noteBodies[rng.nextInt(_noteBodies.length)] : "",
       "comments": rng.nextDouble() < 0.3
@@ -580,7 +580,7 @@ List<Note> demoNotes(int length) {
       "attachments": [],
       "createdBy": "",
       "assignedTo": "",
-      "dueDate": dueDate,
+      "dueDate": dueDate.millisecondsSinceEpoch ~/ (60 * 60 * 1000),
       "forPatient": "",
       "recurringInterval":
           rng.nextDouble() < 0.1 ? 7 + rng.nextInt(4) * 7 : null,

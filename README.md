@@ -48,7 +48,7 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
    - deploy to wrangler: `wrangler pages deploy build/web --project-name=apexo-web`
 
 - For android:
-   - Run: `shorebird release --platforms android -- --build-number=X` (replace X with build number)
+   - Run: `shorebird release --platforms android -- --build-number=X` (replace X with build number, check on shorebird: https://console.shorebird.dev/orgs/44512/apps/34dc240a-bfe8-40d0-937e-f069465f0165)
    - Upload: `build/app/outputs/bundle/release/app-release.aab` to play console.
 
 - For MacOS

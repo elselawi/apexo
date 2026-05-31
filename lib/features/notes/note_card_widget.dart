@@ -256,7 +256,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
 
   IconButton _saveGhostButton(FluentThemeData theme) {
     return IconButton(
-      icon: const Icon(FluentIcons.save),
+      icon: const Icon(WindowsIcons.save),
       style: _iconButtonStyle(theme, color: Colors.grey),
       onPressed: () {
         notes.set(widget.note);
@@ -416,7 +416,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       maxLines: null,
       suffix: _showNoteSaveButton
           ? IconButton(
-              icon: const Icon(FluentIcons.save),
+              icon: const Icon(WindowsIcons.save),
               onPressed: () {
                 notes.set(widget.note..note = _noteController.text);
                 _showNoteSaveButton = false;
@@ -787,7 +787,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       },
       suffix: _showTitleSaveButton
           ? IconButton(
-              icon: const Icon(FluentIcons.save),
+              icon: const Icon(WindowsIcons.save),
               onPressed: () {
                 notes.set(widget.note..title = _titleController.text);
                 _showTitleSaveButton = false;

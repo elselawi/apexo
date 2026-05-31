@@ -284,10 +284,10 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         trailingIcon: widget.enabled
             ? IconButton(
                 icon: autoSuggestBoxRef.currentState == null
-                    ? const Icon(FluentIcons.chevron_down)
+                    ? const Icon(WindowsIcons.chevron_down)
                     : autoSuggestBoxRef.currentState!.isOverlayVisible
-                        ? const Icon(FluentIcons.chevron_up)
-                        : const Icon(FluentIcons.chevron_down),
+                        ? const Icon(WindowsIcons.chevron_up)
+                        : const Icon(WindowsIcons.chevron_down),
                 iconButtonMode: IconButtonMode.large,
                 style: const ButtonStyle(iconSize: WidgetStatePropertyAll(14)),
                 onPressed: () {

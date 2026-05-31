@@ -71,7 +71,7 @@ class _ImportDialogState extends State<ImportDialog> {
           style:
               ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.blue)),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            const Icon(FluentIcons.save),
+            const Icon(WindowsIcons.save),
             const SizedBox(width: 5),
             Txt(txt("import"))
           ]),

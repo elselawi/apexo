@@ -15,7 +15,11 @@ class CloseButtonInDialog extends StatelessWidget {
       style: greyButtonStyle,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
-        children: [const Icon(FluentIcons.cancel), const SizedBox(width: 10), Txt(txt(buttonText))],
+        children: [
+          const Icon(WindowsIcons.cancel),
+          const SizedBox(width: 10),
+          Txt(txt(buttonText))
+        ],
       ),
       onPressed: () => Navigator.pop(context),
     );

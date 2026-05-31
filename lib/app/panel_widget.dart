@@ -250,7 +250,7 @@ class _PanelScreenState extends State<PanelScreen> {
                     : const WidgetStatePropertyAll(Colors.grey),
               ),
               child: ButtonContent(
-                FluentIcons.cancel,
+                WindowsIcons.cancel,
                 widget.panel.hasUnsavedChanges() ? txt("cancel") : txt("close"),
               ),
             );
@@ -289,7 +289,7 @@ class _PanelScreenState extends State<PanelScreen> {
                       ? Colors.blue
                       : Colors.grey.withValues(alpha: 0.25)),
             ),
-            child: ButtonContent(FluentIcons.save, txt("save")),
+            child: ButtonContent(WindowsIcons.save, txt("save")),
           );
         });
   }
@@ -350,8 +350,8 @@ class _PanelScreenState extends State<PanelScreen> {
           header: widget.panel.selectedTab() != 0
               ? IconButton(
                   icon: Icon(Directionality.of(context) == TextDirection.rtl
-                      ? FluentIcons.chevron_right
-                      : FluentIcons.chevron_left),
+                      ? WindowsIcons.chevron_right
+                      : WindowsIcons.chevron_left),
                   onPressed: () =>
                       widget.panel.selectedTab(widget.panel.selectedTab() - 1),
                 )
@@ -363,8 +363,8 @@ class _PanelScreenState extends State<PanelScreen> {
                       1
               ? IconButton(
                   icon: Icon(Directionality.of(context) == TextDirection.rtl
-                      ? FluentIcons.chevron_left
-                      : FluentIcons.chevron_right),
+                      ? WindowsIcons.chevron_left
+                      : WindowsIcons.chevron_right),
                   onPressed: () =>
                       widget.panel.selectedTab(widget.panel.selectedTab() + 1),
                 )
@@ -420,7 +420,7 @@ class _PanelScreenState extends State<PanelScreen> {
     return FlyoutTarget(
       controller: confirmCancelController,
       child: IconButton(
-        icon: const Icon(FluentIcons.cancel),
+        icon: const Icon(WindowsIcons.cancel),
         onPressed: closeOrConfirmCancel,
       ),
     );
@@ -429,8 +429,8 @@ class _PanelScreenState extends State<PanelScreen> {
   IconButton _buildPanelMinimizeButton() {
     return IconButton(
       icon: Icon(routes.minimizePanels()
-          ? FluentIcons.chevron_up
-          : FluentIcons.chevron_down),
+          ? WindowsIcons.chevron_up
+          : WindowsIcons.chevron_down),
       onPressed: () => routes.minimizePanels(!routes.minimizePanels()),
     );
   }

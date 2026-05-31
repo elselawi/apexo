@@ -226,7 +226,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
       actions: [
         FilledButton(
           style: filledButtonStyle(Colors.grey),
-          child: ButtonContent(FluentIcons.cancel, txt("cancel")),
+          child: ButtonContent(WindowsIcons.cancel, txt("cancel")),
           onPressed: () => Navigator.pop(context),
         ),
         if (note != null)
@@ -270,7 +270,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
         FilledButton(
           style: filledButtonStyle(Colors.blue),
           child: ButtonContent(
-              note == null ? FluentIcons.add_field : FluentIcons.save,
+              note == null ? FluentIcons.add_field : WindowsIcons.save,
               txt("save")),
           onPressed: () {
             if (titleController.text.isNotEmpty) {

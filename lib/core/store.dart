@@ -111,7 +111,8 @@ class Store<G extends Model> {
     }
 
     // model json maps to document in a background isolate
-    final Map<String, G> modeled = await compute(_modelAllDocs<G>,
+    final Map<String, G> modeled = await compute(
+        _modelAllDocs<G>,
         _ModelAllDocsParams(
           modeling: modeling,
           decoded: decoded,
@@ -425,7 +426,7 @@ class Store<G extends Model> {
             await staticNotifications.dingANotification(
               title: displayTuple[0],
               body: displayTuple[1],
-              icon: FluentIcons.add,
+              icon: WindowsIcons.add,
             );
           } else if (document.pushIfChanged.isNotEmpty) {
             final oldJson = docs[id]!.toJson();

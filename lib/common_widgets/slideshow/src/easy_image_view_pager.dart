@@ -187,7 +187,7 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
                   textDirection: TextDirection.ltr,
                   children: [
                     IconButton(
-                      icon: const Icon(FluentIcons.chevron_left,
+                      icon: const Icon(WindowsIcons.chevron_left,
                           color: Colors.white, size: 30),
                       onPressed: () {
                         widget.pageController.animateToPage(
@@ -213,7 +213,7 @@ class _EasyImageViewPagerState extends State<EasyImageViewPager> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(FluentIcons.chevron_right,
+                      icon: const Icon(WindowsIcons.chevron_right,
                           color: Colors.white, size: 30),
                       onPressed: () {
                         widget.pageController.animateToPage(

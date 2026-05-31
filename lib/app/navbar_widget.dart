@@ -270,7 +270,7 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
                   duration: const Duration(milliseconds: 250),
                   curve: Curves.easeOutBack,
                   child: Icon(
-                    FluentIcons.more,
+                    WindowsIcons.more,
                     color: color,
                     size: 20,
                   ),

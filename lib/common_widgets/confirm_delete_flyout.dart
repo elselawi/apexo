@@ -66,7 +66,7 @@ class ConfirmDeleteFlyout extends StatelessWidget {
                 ),
                 child: Row(
                   children: [
-                    const Icon(FluentIcons.cancel),
+                    const Icon(WindowsIcons.cancel),
                     const SizedBox(width: 5),
                     Txt(txt("cancel")),
                   ],

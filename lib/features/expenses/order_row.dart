@@ -648,7 +648,7 @@ class OrderRowState extends State<OrderRow>
                 child: ProgressRing(
                   strokeWidth: 2,
                 ))
-            : const Icon(FluentIcons.more),
+            : const Icon(WindowsIcons.more),
         onPressed: () async {
           if (inProgress) return;
           await flyoutFocusFix(context);

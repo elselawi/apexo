@@ -19,7 +19,7 @@ class NewVersionDialog extends StatelessWidget {
         children: [
           Txt(txt("newVersionDialogTitle")),
           IconButton(
-              icon: const Icon(FluentIcons.cancel),
+              icon: const Icon(WindowsIcons.cancel),
               onPressed: () => Navigator.pop(context))
         ],
       ),

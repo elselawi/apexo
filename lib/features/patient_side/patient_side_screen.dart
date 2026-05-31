@@ -188,8 +188,8 @@ class _HeroHeaderState extends State<_HeroHeader> {
                     const SizedBox(width: 6),
                     Icon(
                       _showClinicInfo
-                          ? FluentIcons.chevron_up
-                          : FluentIcons.chevron_down,
+                          ? WindowsIcons.chevron_up
+                          : WindowsIcons.chevron_down,
                       color: Colors.white.withAlpha(180),
                       size: 10,
                     ),
@@ -350,7 +350,7 @@ class _HeroHeaderState extends State<_HeroHeader> {
                   icon: widget.balance > 0
                       ? FluentIcons.warning
                       : widget.balance < 0
-                          ? FluentIcons.chevron_up_small
+                          ? WindowsIcons.chevron_up_small
                           : FluentIcons.accept,
                   positive: widget.balance <= 0,
                 ),
@@ -788,8 +788,8 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                             const SizedBox(width: 6),
                             Icon(
                               _expanded
-                                  ? FluentIcons.chevron_up
-                                  : FluentIcons.chevron_down,
+                                  ? WindowsIcons.chevron_up
+                                  : WindowsIcons.chevron_down,
                               size: 12,
                               color: theme.resources.textFillColorTertiary,
                             ),
@@ -1089,12 +1089,12 @@ class _PhotoTile extends StatelessWidget {
         actions: [
           FilledButton(
             style: filledButtonStyle(Colors.grey),
-            child: ButtonContent(FluentIcons.cancel, txt("close")),
+            child: ButtonContent(WindowsIcons.cancel, txt("close")),
             onPressed: () => Navigator.of(ctx).pop(),
           ),
           FilledButton(
             style: filledButtonStyle(Colors.blue),
-            child: ButtonContent(FluentIcons.save, txt("save")),
+            child: ButtonContent(WindowsIcons.save, txt("save")),
             onPressed: () => _saveImage(fullUrl, context),
           ),
         ],

@@ -233,7 +233,7 @@ class ApexoApp extends StatelessWidget {
                               key: Key("${route.identifier}_screen_button"),
                               icon: route.accessible
                                   ? Icon(route.icon)
-                                  : const Icon(FluentIcons.lock),
+                                  : const Icon(WindowsIcons.lock),
                               body: route.accessible
                                   ? Padding(
                                       padding: EdgeInsets.only(

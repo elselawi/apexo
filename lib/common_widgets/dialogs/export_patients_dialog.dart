@@ -82,7 +82,7 @@ class _ImportPatientsDialogState extends State<ImportPatientsDialog> {
                 }),
           ),
           IconButton(
-              icon: const Icon(FluentIcons.cancel),
+              icon: const Icon(WindowsIcons.cancel),
               onPressed: () => Navigator.pop(context))
         ],
       ),
@@ -177,7 +177,7 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
                 }),
           ),
           IconButton(
-              icon: const Icon(FluentIcons.cancel),
+              icon: const Icon(WindowsIcons.cancel),
               onPressed: () => Navigator.pop(context))
         ],
       ),

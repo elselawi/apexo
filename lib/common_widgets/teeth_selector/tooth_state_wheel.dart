@@ -166,7 +166,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                             if (_isOtherMode)
                               FilledButton(
                                 child: ButtonContent(
-                                    FluentIcons.save, txt("save")),
+                                    WindowsIcons.save, txt("save")),
                                 onPressed: () => _select(_otherController.text),
                               )
                             else
@@ -176,7 +176,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                         WidgetStatePropertyAll(Colors.grey)),
                                 onPressed: widget.onTapClose,
                                 child: ButtonContent(
-                                    FluentIcons.cancel, txt("close")),
+                                    WindowsIcons.cancel, txt("close")),
                               ),
                           ],
                         ),

@@ -208,7 +208,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
                 FlyoutTarget(
                   controller: moreMenuFlyout,
                   child: IconButton(
-                      icon: const Icon(FluentIcons.more),
+                      icon: const Icon(WindowsIcons.more),
                       onPressed: () async {
                         await flyoutFocusFix(context);
                         moreMenuFlyout.showFlyout(builder: (context) {
@@ -228,8 +228,8 @@ class _KanbanColumnState extends State<KanbanColumn> {
                                 MenuFlyoutItem(
                                   text: Text(txt("moveTowardsStart")),
                                   leading: Icon(locale.isRtl
-                                      ? FluentIcons.chevron_right
-                                      : FluentIcons.chevron_left),
+                                      ? WindowsIcons.chevron_right
+                                      : WindowsIcons.chevron_left),
                                   onPressed: () {
                                     final index =
                                         notes.columns.indexOf(widget.column!);
@@ -247,8 +247,8 @@ class _KanbanColumnState extends State<KanbanColumn> {
                                 MenuFlyoutItem(
                                   text: Text(txt("moveTowardsEnd")),
                                   leading: Icon(locale.isRtl
-                                      ? FluentIcons.chevron_left
-                                      : FluentIcons.chevron_right),
+                                      ? WindowsIcons.chevron_left
+                                      : WindowsIcons.chevron_right),
                                   onPressed: () {
                                     final index =
                                         notes.columns.indexOf(widget.column!);

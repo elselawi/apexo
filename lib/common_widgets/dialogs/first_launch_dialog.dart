@@ -14,7 +14,9 @@ class FirstLaunchDialog extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Txt(txt("firstLaunchDialogTitle")),
-          IconButton(icon: const Icon(FluentIcons.cancel), onPressed: () => Navigator.pop(context))
+          IconButton(
+              icon: const Icon(WindowsIcons.cancel),
+              onPressed: () => Navigator.pop(context))
         ],
       ),
       content: Column(

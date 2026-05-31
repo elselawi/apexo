@@ -391,7 +391,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(FluentIcons.save),
+                              const Icon(WindowsIcons.save),
                               const SizedBox(width: 8),
                               Txt(txt("save")),
                             ],

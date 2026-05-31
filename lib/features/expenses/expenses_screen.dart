@@ -259,7 +259,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
     return FlyoutTarget(
       controller: menuController,
       child: IconButton(
-          icon: const Icon(FluentIcons.more),
+          icon: const Icon(WindowsIcons.more),
           onPressed: () async {
             await flyoutFocusFix(context);
             menuController.showFlyout(builder: (context) {

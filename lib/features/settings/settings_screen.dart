@@ -365,7 +365,7 @@ class SettingsItemState extends State<SettingsItem> {
             });
           },
           child: Row(children: [
-            const Icon(FluentIcons.save),
+            const Icon(WindowsIcons.save),
             const SizedBox(width: 10),
             Txt(txt("save")),
           ]),
@@ -380,7 +380,7 @@ class SettingsItemState extends State<SettingsItem> {
             });
           },
           child: Row(children: [
-            const Icon(FluentIcons.cancel),
+            const Icon(WindowsIcons.cancel),
             const SizedBox(width: 10),
             Txt(txt("cancel")),
           ]),

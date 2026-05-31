@@ -8,6 +8,8 @@
     - Deep Linking Panels: Added the ability to target specific tabs directly when opening the Patients and Appointments panels.
     - Interactive Screen Navigation: Screen titles are now clickable, revealing a dropdown menu to seamlessly switch between different sections.
     - Demo Environment Upgrades: The demo app now automatically generates sample notes for a better testing experience.
+    - Dental chart extra-notes: Extra notes can be added on top of each selected treatment.
+    - Dental charts on patient can now show previous notes and extra notes.
 
 - UI & UX Polish
     - Dashboard Redesign: Fully revamped dashboard layout featuring clickable suppliers for quicker navigation.

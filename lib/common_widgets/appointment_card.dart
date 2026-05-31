@@ -459,8 +459,8 @@ class AppointmentCard extends StatelessWidget {
 
   BoxDecoration _coloredHandleDecoration(Color color) {
     return BoxDecoration(
-      border: Border(
-        left: BorderSide(
+      border: BorderDirectional(
+        start: BorderSide(
           color: color,
           width: 5,
         ),

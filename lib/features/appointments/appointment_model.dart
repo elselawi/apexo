@@ -116,6 +116,7 @@ class Appointment extends Model {
   /* 9 */ DateTime date = DateTime.now();
   /* 10 */ bool isDone = false;
   /* 11 */ Map<String, String> teeth = {};
+  /* 11b */ Map<String, String> teethExtraNotes = {};
   /* 12 */ bool hasLabwork = false;
   /* 13 */ String labName = "";
   /* 14 */ String labworkNotes = "";
@@ -147,6 +148,8 @@ class Appointment extends Model {
         : date);
     /* 10 */ isDone = (json["isDone"] ?? isDone);
     /* 11 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    /* 11b */ teethExtraNotes =
+        Map<String, String>.from(json['teethExtraNotes'] ?? teethExtraNotes);
     /* 12 */ hasLabwork = json["hasLabwork"] ?? hasLabwork;
     /* 13 */ labName = json["labName"] ?? labName;
     /* 14 */ labworkNotes = json["labworkNotes"] ?? labworkNotes;
@@ -169,6 +172,8 @@ class Appointment extends Model {
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
     /* 11 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    /* 11b */ if (teethExtraNotes.isNotEmpty)
+      json['teethExtraNotes'] = teethExtraNotes;
     /* 12 */ if (hasLabwork != d.hasLabwork) json['hasLabwork'] = hasLabwork;
     /* 13 */ if (labName != d.labName) json['labName'] = labName;
     /* 14 */ if (labworkNotes != d.labworkNotes) {

@@ -529,8 +529,13 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                     widget.appointment.teeth[x] = y;
                   } else {
                     widget.appointment.teeth.remove(x);
+                    widget.appointment.teethExtraNotes.remove(x);
                   }
                 },
+                onExtraNote: (x, extra) {
+                  widget.appointment.teethExtraNotes[x] = extra;
+                },
+                extraNotes: widget.appointment.teethExtraNotes,
                 notation: (isoString) => isoToTextualNotation(isoString),
                 rightString: txt("right"),
                 leftString: txt("left"),

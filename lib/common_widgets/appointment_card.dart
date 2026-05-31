@@ -240,7 +240,9 @@ class AppointmentCard extends StatelessWidget {
                                             string: e.value,
                                             color: labelToColor(e.value),
                                             icon: labelToIcon(e.value),
-                                            iso: e.key))
+                                            iso: e.key,
+                                            extraNote: appointment
+                                                .teethExtraNotes[e.key]))
                                         .toList()),
                               ),
                               FluentIcons.teeth,

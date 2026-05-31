@@ -13,11 +13,13 @@ class TreatmentLabel {
   String string;
   IconData icon;
   String? iso;
+  String? extraNote;
   TreatmentLabel(
       {required this.string,
       required this.color,
       required this.icon,
-      this.iso});
+      this.iso,
+      this.extraNote});
 }
 
 class ItemTitle extends StatefulWidget {
@@ -242,6 +244,7 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
       flyoutController: ctrl,
       placementMode: FlyoutPlacementMode.topCenter,
       builder: (context) {
+        final extraNote = widget.label.extraNote;
         return TeachingTip(
           leading: Row(
             children: [
@@ -263,9 +266,16 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
                     children: [
                       DentalNotation(iso: widget.label.iso!),
                       const SizedBox(width: 5),
-                      Txt(
-                        txt(isoToTextualNotation(widget.label.iso!)),
-                        style: FluentTheme.of(context).typography.caption,
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 150),
+                        child: Txt(
+                          extraNote != null && extraNote.isNotEmpty
+                              ? extraNote
+                              : txt(isoToTextualNotation(widget.label.iso!)),
+                          style: FluentTheme.of(context).typography.caption,
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 3,
+                        ),
                       )
                     ],
                   ),

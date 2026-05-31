@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:xml/xml.dart';
 
@@ -13,9 +14,11 @@ typedef Data = ({Size size, Map<String, _Tooth> teeth});
 class TeethSelector extends StatefulWidget {
   final Map<String, String> currentNotes;
   final Map<String, String> oldNotes;
+  final Map<String, String> extraNotes;
   final String leftString;
   final String rightString;
   final void Function(String tooth, String? note) onNote;
+  final void Function(String tooth, String extraNote)? onExtraNote;
   final String Function(String isoString) notation;
   final TextStyle? textStyle;
   final TextStyle? tooltipTextStyle;
@@ -26,6 +29,7 @@ class TeethSelector extends StatefulWidget {
     super.key,
     this.currentNotes = const {},
     this.oldNotes = const {},
+    this.extraNotes = const {},
     this.leftString = "Left",
     this.rightString = "Right",
     this.textStyle,
@@ -33,6 +37,7 @@ class TeethSelector extends StatefulWidget {
     this.showPrimary = false,
     required this.notation,
     required this.onNote,
+    this.onExtraNote,
     required this.type,
   });
 
@@ -45,12 +50,22 @@ class _TeethSelectorState extends State<TeethSelector> {
 
   bool showPermanent = true;
   bool showPrimary = false;
+  late final Map<String, String> _extraNotes;
 
   @override
   void initState() {
     for (var element in widget.currentNotes.keys) {
       if (data.teeth[element] != null) {
         data.teeth[element]!.selected = true;
+      }
+    }
+    _extraNotes = Map<String, String>.from(widget.extraNotes);
+    // For "other" treatments, pre-fill the extra note with the custom text
+    for (final entry in widget.currentNotes.entries) {
+      if (txOptions.where((x) => x.label == entry.value).isEmpty &&
+          entry.value.isNotEmpty &&
+          !_extraNotes.containsKey(entry.key)) {
+        _extraNotes[entry.key] = entry.value;
       }
     }
     showPrimary = widget.showPrimary ||
@@ -173,7 +188,27 @@ class _TeethSelectorState extends State<TeethSelector> {
                   FluentTheme.of(context).inactiveColor,
                   context)
           ],
-        )
+        ),
+        if (widget.currentNotes.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          _ExtraNotesSection(
+            currentNotes: widget.currentNotes,
+            extraNotes: _extraNotes,
+            notation: widget.notation,
+            onExtraNote: widget.onExtraNote != null
+                ? (iso, text) {
+                    setState(() {
+                      _extraNotes[iso] = text;
+                      widget.onExtraNote!(iso, text);
+                    });
+                  }
+                : (iso, text) {
+                    setState(() {
+                      _extraNotes[iso] = text;
+                    });
+                  },
+          ),
+        ],
       ],
     );
   }
@@ -400,4 +435,137 @@ class _ToothBorder extends ShapeBorder {
 
   @override
   ShapeBorder scale(double t) => this;
+}
+
+class _ExtraNotesSection extends StatefulWidget {
+  const _ExtraNotesSection({
+    required this.currentNotes,
+    required this.extraNotes,
+    required this.notation,
+    required this.onExtraNote,
+  });
+
+  final Map<String, String> currentNotes;
+  final Map<String, String> extraNotes;
+  final String Function(String isoString) notation;
+  final void Function(String iso, String text) onExtraNote;
+
+  @override
+  State<_ExtraNotesSection> createState() => _ExtraNotesSectionState();
+}
+
+class _ExtraNotesSectionState extends State<_ExtraNotesSection> {
+  final Map<String, TextEditingController> _controllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _syncControllers();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ExtraNotesSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _syncControllers();
+  }
+
+  void _syncControllers() {
+    final currentKeys = widget.currentNotes.keys.toSet();
+    final controllerKeys = _controllers.keys.toSet();
+
+    // Remove controllers for teeth that are no longer selected
+    for (final key in controllerKeys.difference(currentKeys)) {
+      _controllers[key]!.dispose();
+      _controllers.remove(key);
+    }
+
+    // Add controllers for newly selected teeth
+    for (final key in currentKeys.difference(controllerKeys)) {
+      final ctrl = TextEditingController(text: widget.extraNotes[key] ?? '');
+      ctrl.addListener(() => _onControllerChanged(key, ctrl));
+      _controllers[key] = ctrl;
+    }
+
+    // Update controllers for teeth whose extra notes changed externally
+    for (final key in currentKeys.intersection(controllerKeys)) {
+      final ctrl = _controllers[key]!;
+      final externalText = widget.extraNotes[key] ?? '';
+      if (ctrl.text != externalText) {
+        ctrl.text = externalText;
+      }
+    }
+  }
+
+  void _onControllerChanged(String iso, TextEditingController ctrl) {
+    widget.onExtraNote(iso, ctrl.text);
+  }
+
+  @override
+  void dispose() {
+    for (final ctrl in _controllers.values) {
+      ctrl.dispose();
+    }
+    _controllers.clear();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sortedEntries = widget.currentNotes.entries.toList()
+      ..sort((a, b) => int.parse(a.key).compareTo(int.parse(b.key)));
+
+    return Wrap(
+      spacing: 12,
+      runSpacing: 12,
+      children: sortedEntries.map((entry) {
+        final iso = entry.key;
+        final note = entry.value;
+        final isOther = txOptions.where((x) => x.label == note).isEmpty;
+        final color = labelToColor(note);
+        final icon = labelToIcon(note);
+        final ctrl = _controllers[iso];
+
+        return SizedBox(
+          width: 280,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  DentalNotation(
+                    iso: iso,
+                    color: color,
+                    withTooltip: false,
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Txt(
+                      txt(isOther ? "other" : note),
+                      overflow: TextOverflow.ellipsis,
+                      style: FluentTheme.of(context)
+                          .typography
+                          .caption!
+                          .copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              SizedBox(
+                child: CupertinoTextField(
+                  controller: ctrl,
+                  placeholder: txt("extraInfoPlaceholder"),
+                  maxLines: null,
+                  style: FluentTheme.of(context).typography.caption,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
+    );
+  }
 }

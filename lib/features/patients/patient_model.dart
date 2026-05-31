@@ -364,6 +364,7 @@ class Patient extends Model {
   /* 6 */ List<String> tags = [];
   /* 7 */ String notes = "";
   /* 8 */ Map<String, String> teeth = {};
+  /* 8b */ Map<String, String> teethExtraNotes = {};
   /* 9 */ String? link;
 
   String get phonesString => phone.map((p) => p.e164).join(" ");
@@ -393,6 +394,8 @@ class Patient extends Model {
     /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
     /* 7 */ notes = json['notes'] ?? notes;
     /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
+    /* 8b */ teethExtraNotes =
+        Map<String, String>.from(json['teethExtraNotes'] ?? teethExtraNotes);
     /* 9 */ link = json["link"] ?? link;
   }
 
@@ -409,6 +412,8 @@ class Patient extends Model {
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (notes != d.notes) json['notes'] = notes;
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
+    /* 8b */ if (teethExtraNotes.isNotEmpty)
+      json['teethExtraNotes'] = teethExtraNotes;
     /* 9 */ if (link != d.link) json['link'] = link;
     return json;
   }

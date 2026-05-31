@@ -4,6 +4,7 @@ import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
+import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -522,30 +523,45 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 borderRadius: BorderRadius.circular(8),
               ),
               padding: const EdgeInsets.all(8),
-              child: TeethSelector(
-                type: StateType.treatment,
-                onNote: (x, y) {
-                  if (y != null) {
-                    widget.appointment.teeth[x] = y;
-                  } else {
-                    widget.appointment.teeth.remove(x);
-                    widget.appointment.teethExtraNotes.remove(x);
-                  }
-                },
-                onExtraNote: (x, extra) {
-                  widget.appointment.teethExtraNotes[x] = extra;
-                },
-                extraNotes: widget.appointment.teethExtraNotes,
-                notation: (isoString) => isoToTextualNotation(isoString),
-                rightString: txt("right"),
-                leftString: txt("left"),
-                currentNotes: widget.appointment.teeth,
-                oldNotes: (widget
-                        .appointment.patient?.allAppointmentsDentalNotes ??
-                    {})
-                  ..removeWhere(
-                      (key, val) => widget.appointment.teeth.containsKey(key)),
-                showPrimary: (widget.appointment.patient?.age ?? 18) < 14,
+              child: Column(
+                children: [
+                  TeethSelector(
+                    type: StateType.treatment,
+                    onNote: (x, y) {
+                      if (y != null) {
+                        widget.appointment.teeth[x] = y;
+                      } else {
+                        widget.appointment.teeth.remove(x);
+                        widget.appointment.teethExtraNotes.remove(x);
+                      }
+                    },
+                    onExtraNote: (x, extra) {
+                      widget.appointment.teethExtraNotes[x] = extra;
+                    },
+                    extraNotes: widget.appointment.teethExtraNotes,
+                    notation: (isoString) => isoToTextualNotation(isoString),
+                    rightString: txt("right"),
+                    leftString: txt("left"),
+                    currentNotes: widget.appointment.teeth,
+                    oldNotes: (widget
+                            .appointment.patient?.allAppointmentsDentalNotes ??
+                        {})
+                      ..removeWhere((key, val) =>
+                          widget.appointment.teeth.containsKey(key)),
+                    showPrimary: (widget.appointment.patient?.age ?? 18) < 14,
+                  ),
+                  if (widget.appointment.patient?.allAppointmentsDentalNotes
+                          .isNotEmpty ==
+                      true) ...[
+                    const SizedBox(height: 10),
+                    AppointmentExtraNotes(
+                      patient: widget.appointment.patient!,
+                      initiallyExpanded: false,
+                      excludedAppointment: widget.appointment,
+                      title: txt("otherAppointmentsNotes"),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),

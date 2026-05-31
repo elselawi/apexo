@@ -180,13 +180,6 @@ class _TeethSelectorState extends State<TeethSelector> {
               (i) => _legendItem(allNotes[i], labelToIcon(allNotes[i]),
                   labelToColor(allNotes[i]), Colors.white, context),
             ),
-            if (widget.oldNotes.isNotEmpty)
-              _legendItem(
-                  "pastAppointments",
-                  WindowsIcons.history,
-                  Colors.transparent,
-                  FluentTheme.of(context).inactiveColor,
-                  context)
           ],
         ),
         if (widget.currentNotes.isNotEmpty) ...[

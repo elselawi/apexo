@@ -267,6 +267,7 @@ class Ar implements En {
     "postOperativeNotes": "ملاحظات ما بعد العملية",
     "extraInfoPlaceholder": "معلومات إضافية",
     "extraNotesFromAppointments": "ملاحظات إضافية من المواعيد:",
+    "otherAppointmentsNotes": "ملاحظات مواعيد أخرى:",
     "printPrescription": "طباعة الوصفة الطبية",
     "priceIn": "السعر بـ",
     "paidIn": "مدفوع بـ",

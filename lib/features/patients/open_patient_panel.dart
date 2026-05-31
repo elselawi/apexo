@@ -3,11 +3,10 @@ import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
+import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
@@ -19,7 +18,6 @@ import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
-import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -94,12 +92,17 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
                         showPrimary: editingCopy.age < 14,
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    const Divider(),
-                    const SizedBox(height: 12),
-                    _AppointmentExtraNotes(
-                      editingCopy: editingCopy,
-                    ),
+                    if (editingCopy.allAppointmentsDentalNotes.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      const Divider(),
+                      const SizedBox(height: 12),
+                      AppointmentExtraNotes(
+                        patient: editingCopy,
+                        initiallyExpanded: true,
+                        bottomMargin: true,
+                        title: txt("extraNotesFromAppointments"),
+                      ),
+                    ]
                   ],
                 ),
               );
@@ -594,161 +597,5 @@ class PhoneTextEditingController extends TextEditingController {
     }
 
     return TextSpan(children: children, style: style);
-  }
-}
-
-class _AppointmentExtraNotes extends StatefulWidget {
-  const _AppointmentExtraNotes({required this.editingCopy});
-
-  final Patient editingCopy;
-
-  @override
-  State<_AppointmentExtraNotes> createState() => _AppointmentExtraNotesState();
-}
-
-class _AppointmentExtraNotesState extends State<_AppointmentExtraNotes> {
-  final Map<String, TextEditingController> _controllers = {};
-
-  Patient get _patient => widget.editingCopy;
-
-  @override
-  void dispose() {
-    for (final c in _controllers.values) {
-      c.dispose();
-    }
-    _controllers.clear();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final allAppts = _patient.allAppointments;
-    // Collect all extra notes from appointments grouped by tooth ISO
-    final Map<String, List<(Appointment appt, String note)>> grouped = {};
-    for (final appt in allAppts) {
-      for (final entry in appt.teethExtraNotes.entries) {
-        if (entry.value.isNotEmpty) {
-          grouped.putIfAbsent(entry.key, () => []);
-          grouped[entry.key]!.add((appt, entry.value));
-        }
-      }
-
-      for (final entry in appt.teeth.entries) {
-        if (entry.value.isNotEmpty &&
-            !_patient.teethExtraNotes.containsKey(entry.key)) {
-          // Only include dental notes that don't have a corresponding extra note
-          grouped.putIfAbsent(entry.key, () => []);
-          if (grouped[entry.key]!.where((e) => e.$1.id == appt.id).isEmpty) {
-            grouped[entry.key]!.add((appt, entry.value));
-          }
-        }
-      }
-    }
-
-    if (grouped.isEmpty) return const SizedBox.shrink();
-
-    final sortedIsos = grouped.keys.toList()
-      ..sort((a, b) => int.parse(a).compareTo(int.parse(b)));
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8),
-          child: Row(
-            children: [
-              const Icon(WindowsIcons.history, size: 16, color: Colors.grey),
-              const SizedBox(width: 10),
-              Txt(
-                txt("extraNotesFromAppointments"),
-                style: FluentTheme.of(context).typography.caption!.copyWith(
-                    fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
-              ),
-            ],
-          ),
-        ),
-        ...sortedIsos.map((iso) {
-          final entries = grouped[iso]!;
-          String treatmentLabel = _patient.teeth[iso] ?? '';
-          if (treatmentLabel.isEmpty && entries.isNotEmpty) {
-            treatmentLabel = entries.first.$1.teeth[iso] ?? '';
-          }
-          final color = labelToColor(treatmentLabel);
-          final icon = labelToIcon(treatmentLabel);
-
-          return GestureDetector(
-            onTap: () {
-              openAppointment(entries.first.$1, 1);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                color: FluentTheme.of(context)
-                    .resources
-                    .solidBackgroundFillColorBase,
-                border: Border.all(color: color.withValues(alpha: 0.6)),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      DentalNotation(
-                          iso: iso, color: color, withTooltip: false),
-                      const SizedBox(width: 6),
-                      Icon(icon, size: 14, color: color),
-                      const SizedBox(width: 4),
-                      Txt(
-                        txt(treatmentLabel.isEmpty ? "other" : treatmentLabel),
-                        style: FluentTheme.of(context)
-                            .typography
-                            .caption!
-                            .copyWith(fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  ...entries.map((entry) {
-                    final appt = entry.$1;
-                    final note = entry.$2;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 3, left: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(width: 4),
-                          Txt(
-                            DF.commonDate(appt.date),
-                            style: FluentTheme.of(context)
-                                .typography
-                                .caption!
-                                .copyWith(
-                                    color:
-                                        FluentTheme.of(context).inactiveColor),
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Txt(
-                              txt(note),
-                              style: FluentTheme.of(context).typography.caption,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          );
-        }),
-      ],
-    );
   }
 }

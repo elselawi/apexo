@@ -276,6 +276,7 @@ class Es implements En {
     "postOperativeNotes": "Notas postoperatorias",
     "extraInfoPlaceholder": "Info adicional",
     "extraNotesFromAppointments": "Notas adicionales de citas:",
+    "otherAppointmentsNotes": "Notas de otras citas:",
     "printPrescription": "Imprimir receta",
     "priceIn": "Precio en",
     "paidIn": "Pagado en",

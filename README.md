@@ -53,12 +53,12 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 - For MacOS
    - build with: `shorebird release --platforms macos -- --release`
-   - then run: `pod install`
+   - then run: `cd macos && pod install`
    - then `open with xcode` this should open `Runner.xcworkspace` not `Runner.xcodeproj`
    - then go to product -> archive
-   - after build finishes -> direct distribute (for notarization)
+   - after build finishes it will open a new window -> Distribute -> direct distribute (for notarization)
    - wait for the notification
-   - export it
+   - export it (from the same window of "archives")
    - staple: `xcrun stapler staple apexo.app`
    - make sure it was successful: `spctl --assess --verbose apexo.app`
    - create a dmg: `create-dmg --volname "Apexo Installer" --window-pos 200 120 --window-size 800 400 --icon-size 100 --icon "Apexo.app" 200 190 --hide-extension "Apexo.app" --app-drop-link 600 185 "apexo-installer.dmg" "apexo.app"`
@@ -74,7 +74,7 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
    
 - For iOS:
    - build with `flutter build ipa --release --export-method app-store`
-   - upload with transporter
+   - upload with transporter (build/ios/ipa) and deliver
    - continue on appstoreconnect `https://appstoreconnect.apple.com/apps/6767690393/distribution/ios/version/inflight`
 
 

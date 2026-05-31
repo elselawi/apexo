@@ -292,11 +292,26 @@ class ApexoApp extends StatelessWidget {
           ? const SizedBox()
           : SafeArea(
               top: minimized ? false : true,
-              child: PanelScreen(
-                key: Key(routes.panels().last.identifier),
-                layoutHeight: constraints.maxHeight,
-                layoutWidth: constraints.maxWidth,
-                panel: routes.panels().last,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.easeInCubic,
+                switchOutCurve: Curves.easeOutCubic,
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  final slideAnimation = Tween<Offset>(
+                    begin: const Offset(0.25, 0),
+                    end: Offset.zero,
+                  ).animate(animation);
+                  return SlideTransition(
+                    position: slideAnimation,
+                    child: child,
+                  );
+                },
+                child: PanelScreen(
+                  key: Key(routes.panels().last.identifier),
+                  layoutHeight: constraints.maxHeight,
+                  layoutWidth: constraints.maxWidth,
+                  panel: routes.panels().last,
+                ),
               ),
             ),
     );

@@ -86,7 +86,6 @@ class AppointmentExtraNotes extends StatelessWidget {
                     treatmentLabel = entries.first.$1.teeth[iso] ?? '';
                   }
                   final color = labelToColor(treatmentLabel);
-                  final icon = labelToIcon(treatmentLabel);
 
                   return Container(
                     decoration: BoxDecoration(
@@ -131,6 +130,8 @@ class AppointmentExtraNotes extends StatelessWidget {
                         ...entries.map((entry) {
                           final appt = entry.$1;
                           final note = entry.$2;
+                          final color = labelToColor(appt.teeth[iso] ?? '');
+                          final icon = labelToIcon(appt.teeth[iso] ?? '');
                           return Padding(
                             padding: EdgeInsets.only(
                                 bottom: entries.last == entry ? 0 : 8),

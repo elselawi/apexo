@@ -534,61 +534,64 @@ class ClickableBottomLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        if (label.title == txt("phone")) {
-          phoneButtonKey.currentState?.showMenu();
-        } else {
-          openPatient(patient, targetTab);
-        }
-      },
-      child: Container(
-        width: cW,
-        padding: const EdgeInsets.symmetric(horizontal: 2),
-        decoration:
-            searchStringLowerCased == label.searchableString.toLowerCase() &&
-                    searchStringLowerCased.isNotEmpty
-                ? BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    color: color.withValues(alpha: .1))
-                : BoxDecoration(
-                    color: Colors.transparent,
-                    border: BorderDirectional(
-                        end: BorderSide(
-                            color: FluentTheme.of(context)
-                                .resources
-                                .dividerStrokeColorDefault)),
-                  ),
-        child: Row(
-          spacing: 5,
-          children: [
-            if (label.title == txt("phone") && label.color == null)
-              PhoneNumberButton(
-                  phoneNumbers: label.content
-                      .split(" ")
-                      .map((e) => ParsedPhoneNumber(e))
-                      .toList(),
-                  key: phoneButtonKey)
-            else
-              IconButton(
-                icon: Icon(label.icon,
-                    color: label.color == null ? null : Colors.white),
-                style: darkIconButtonStyle(context, label.color),
-                onPressed: () {
-                  openPatient(patient, targetTab);
-                },
+    return Tooltip(
+      message: "${label.title}: ${label.content}",
+      child: GestureDetector(
+        onTap: () {
+          if (label.title == txt("phone")) {
+            phoneButtonKey.currentState?.showMenu();
+          } else {
+            openPatient(patient, targetTab);
+          }
+        },
+        child: Container(
+          width: cW,
+          padding: const EdgeInsets.symmetric(horizontal: 2),
+          decoration:
+              searchStringLowerCased == label.searchableString.toLowerCase() &&
+                      searchStringLowerCased.isNotEmpty
+                  ? BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      color: color.withValues(alpha: .1))
+                  : BoxDecoration(
+                      color: Colors.transparent,
+                      border: BorderDirectional(
+                          end: BorderSide(
+                              color: FluentTheme.of(context)
+                                  .resources
+                                  .dividerStrokeColorDefault)),
+                    ),
+          child: Row(
+            spacing: 5,
+            children: [
+              if (label.title == txt("phone") && label.color == null)
+                PhoneNumberButton(
+                    phoneNumbers: label.content
+                        .split(" ")
+                        .map((e) => ParsedPhoneNumber(e))
+                        .toList(),
+                    key: phoneButtonKey)
+              else
+                IconButton(
+                  icon: Icon(label.icon,
+                      color: label.color == null ? null : Colors.white),
+                  style: darkIconButtonStyle(context, label.color),
+                  onPressed: () {
+                    openPatient(patient, targetTab);
+                  },
+                ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildTitle(),
+                  label.content.contains(".")
+                      ? _buildMoneyContent()
+                      : _buildRegularContent(),
+                ],
               ),
-            Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildTitle(),
-                label.content.contains(".")
-                    ? _buildMoneyContent()
-                    : _buildRegularContent(),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

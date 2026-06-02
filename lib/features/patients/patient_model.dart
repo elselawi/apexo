@@ -157,6 +157,34 @@ class Patient extends Model {
     return DateTime.now().difference(doneAppointments.last.date).inDays;
   }
 
+  /// Returns a human-readable string like "2 years, 3 months, 10 days"
+  String? get lastVisitDuration {
+    if (doneAppointments.isEmpty) return null;
+    final date = doneAppointments.last.date;
+    final now = DateTime.now();
+
+    int years = now.year - date.year;
+    int months = now.month - date.month;
+    int days = now.day - date.day;
+
+    if (days < 0) {
+      months--;
+      final prevMonth = DateTime(now.year, now.month - 1, 0);
+      days += prevMonth.day;
+    }
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+
+    final parts = <String>[];
+    if (years > 0) parts.add("$years ${txt("year")}");
+    if (months > 0) parts.add("$months ${txt("month")}");
+    if (days > 0 || parts.isEmpty) parts.add("$days ${txt("day")}");
+
+    return parts.join(", ").toLowerCase();
+  }
+
   @override
   bool get locked {
     // lock if only personal patients are permissible
@@ -270,7 +298,7 @@ class Patient extends Model {
     // last visit
     final lastVisitContent = daysSinceLastAppointment == null
         ? txt("noVisits")
-        : "$daysSinceLastAppointment ${txt("daysAgo")}";
+        : "$lastVisitDuration ${txt("daysAgo").split(" ").last}";
     _.add(PatientTableLabel(
       icon: WindowsIcons.calendar,
       title: txt("lastVisit"),

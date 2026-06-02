@@ -448,6 +448,16 @@ class AppointmentCalendarTile<Item extends Appointment>
       child: ListTile(
         margin: EdgeInsets.zero,
         shape: listDividerBorder(context),
+        tileColor: WidgetStateColor.resolveWith((states) {
+          if (item.isDone) {
+            return Colors.blue.withAlpha(10);
+          } else if (states.contains(WidgetState.hovered)) {
+            return FluentTheme.of(context)
+                .resources
+                .controlAltFillColorTertiary;
+          }
+          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
+        }),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -493,9 +503,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                   scale: 1.25,
                   child: Checkbox(
                       style: CheckboxThemeData(
-                        icon: item.isDone
-                            ? WindowsIcons.completed
-                            : FluentIcons.hour_glass,
+                        icon: WindowsIcons.completed,
                         uncheckedIconColor: WidgetStatePropertyAll(
                             FluentTheme.of(context).inactiveColor),
                       ),

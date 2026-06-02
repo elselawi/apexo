@@ -288,10 +288,10 @@ class _PatientsPageState extends State<_PatientsPage> {
       margin: const EdgeInsets.only(bottom: 0),
       shape: listDividerBorder(context),
       tileColor: WidgetStateColor.resolveWith((states) {
-        if (states.contains(WidgetState.hovered)) {
+        if (selected.contains(patient.id)) {
           return Colors.blue.withAlpha(20);
-        } else if (selected.contains(patient.id)) {
-          return Colors.blue.withAlpha(20);
+        } else if (states.contains(WidgetState.hovered)) {
+          return FluentTheme.of(context).resources.controlAltFillColorTertiary;
         }
         return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
       }),

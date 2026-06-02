@@ -255,13 +255,8 @@ class _PatientAppointments extends StatelessWidget {
                       final appointment = apts[index];
                       String? difference;
                       if (apts.last != appointment) {
-                        int differenceInDays = appointment.date
-                            .difference(apts[index + 1].date)
-                            .inDays
-                            .abs();
-
                         difference =
-                            "${txt("after")} $differenceInDays ${txt("day${(differenceInDays > 1) ? "s" : ""}")}";
+                            "${txt("after")} ${Patient.formatDuration(appointment.date, apts[index + 1].date)}";
                       }
                       return AppointmentCard(
                         key: Key(appointment.id),

@@ -160,16 +160,19 @@ class Patient extends Model {
   /// Returns a human-readable string like "2 years, 3 months, 10 days"
   String? get lastVisitDuration {
     if (doneAppointments.isEmpty) return null;
-    final date = doneAppointments.last.date;
-    final now = DateTime.now();
+    return Patient.formatDuration(doneAppointments.last.date, DateTime.now());
+  }
 
-    int years = now.year - date.year;
-    int months = now.month - date.month;
-    int days = now.day - date.day;
+  /// Formats the duration between two dates as a human-readable string.
+  /// e.g. "2 years, 3 months, 10 days"
+  static String formatDuration(DateTime from, DateTime to) {
+    int years = to.year - from.year;
+    int months = to.month - from.month;
+    int days = to.day - from.day;
 
     if (days < 0) {
       months--;
-      final prevMonth = DateTime(now.year, now.month - 1, 0);
+      final prevMonth = DateTime(to.year, to.month - 1, 0);
       days += prevMonth.day;
     }
     if (months < 0) {
@@ -178,9 +181,15 @@ class Patient extends Model {
     }
 
     final parts = <String>[];
-    if (years > 0) parts.add("$years ${txt("year")}");
-    if (months > 0) parts.add("$months ${txt("month")}");
-    if (days > 0 || parts.isEmpty) parts.add("$days ${txt("day")}");
+    if (years > 0) {
+      parts.add("$years ${txt("year${years > 1 ? "s" : ""}")}");
+    }
+    if (months > 0) {
+      parts.add("$months ${txt("month${months > 1 ? "s" : ""}")}");
+    }
+    if (days > 0 || parts.isEmpty) {
+      parts.add("$days ${txt("day${days > 1 ? "s" : ""}")}");
+    }
 
     return parts.join(", ").toLowerCase();
   }

@@ -403,6 +403,7 @@ class Es implements En {
     "months": "Meses",
     "quarters": "Trimestres",
     "years": "Años",
+    "year": "Año",
     "appointmentsPer": "Citas por",
     "paymentsAndExpensesPer": "Pagos y gastos por",
     "newPatientsPer": "Nuevos pacientes por",

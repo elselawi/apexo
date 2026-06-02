@@ -398,6 +398,7 @@ class Ar implements En {
     "months": "أشهر",
     "quarters": "ربع سنوي",
     "years": "سنوات",
+    "year": "سنة",
     "appointmentsPer": "المواعيد بحسب",
     "paymentsAndExpensesPer": "المدفوعات والمصاريف بحسب",
     "newPatientsPer": "المرضى الجدد بحسب",

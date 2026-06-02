@@ -401,6 +401,7 @@ class En {
     "months": "Months",
     "quarters": "Quarters",
     "years": "Years",
+    "year": "Year",
     "appointmentsPer": "Appointments per",
     "paymentsAndExpensesPer": "Payments and expenses per",
     "newPatientsPer": "New patients per",

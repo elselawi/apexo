@@ -1,3 +1,11 @@
+### [0.12.1]
+- Improvement: More readable duration since last appointment in the patients screen and between appointment cards
+- Fixed: Added tooltips for patients screen bottom labels
+- Fixed: inconsistent hover color between patients page and other pages
+- Fixed: extra notes icon and color should be based on the entry itself not the fist item.
+- Fixed: calendar screen not listening to archive toggle.
+- an animation on opening a new panel (or switching) from inside another panel.
+
 ### [0.12.0]
 - New Features & Enhancements
     - In-App Settings Management: Configure 99% of relevant settings directly within the app—no more constant trips to the PocketBase dashboard.

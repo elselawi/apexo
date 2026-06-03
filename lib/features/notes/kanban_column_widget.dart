@@ -218,9 +218,14 @@ class _KanbanColumnState extends State<KanbanColumn> {
                                 text: Text(txt("edit")),
                                 leading: const Icon(FluentIcons.edit),
                                 onPressed: () {
-                                  moreMenuFlyout.close();
-                                  showColumnEditDialog(context,
-                                      column: widget.column);
+                                  if (moreMenuFlyout.isOpen) {
+                                    moreMenuFlyout.close();
+                                  }
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    showColumnEditDialog(context,
+                                        column: widget.column);
+                                  });
                                 },
                               ),
                               const MenuFlyoutSeparator(),

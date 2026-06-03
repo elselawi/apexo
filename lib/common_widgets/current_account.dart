@@ -44,7 +44,9 @@ class LogoutButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Button(
       key: WK.btnLogout,
-      onPressed: login.logout,
+      onPressed: () {
+        login.logout(false);
+      },
       child: ButtonContent(FluentIcons.sign_out, txt("logout")),
     );
   }

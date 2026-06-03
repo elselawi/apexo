@@ -627,6 +627,7 @@ class Ar implements En {
 
     // login
     "login": "تسجيل الدخول",
+    "clear": "مسح",
     "resetPassword": "إعادة تعيين كلمة المرور",
     "serverUrl": "رابط الخادم",
     "proceedOffline": "بدون اتصال",

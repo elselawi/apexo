@@ -120,7 +120,7 @@ class PatientSide extends ObservablePersistingObject {
     }
   }
 
-  logout() {
+  logoutPatientSide() {
     launch.open(Open.login);
     server = "";
     name = "";

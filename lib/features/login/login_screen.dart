@@ -137,7 +137,10 @@ class _LoginScreenState extends State<LoginScreen> {
               passwordField(),
             ], [
               _buildLoginBtn(),
-              if (loginCtrl.loginError().isNotEmpty) _buildOfflineBtn(),
+              if (loginCtrl.loginError().isNotEmpty)
+                _buildOfflineBtn()
+              else
+                _buildClearButton(),
             ]),
           ),
           Tab(
@@ -210,6 +213,15 @@ class _LoginScreenState extends State<LoginScreen> {
         const SizedBox(width: 10),
         Txt(txt("login"))
       ]),
+    );
+  }
+
+  Widget _buildClearButton() {
+    return Button(
+      child: ButtonContent(FluentIcons.delete, txt("clear"), size: 16),
+      onPressed: () {
+        login.logout(true);
+      },
     );
   }
 

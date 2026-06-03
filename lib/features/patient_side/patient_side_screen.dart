@@ -316,7 +316,7 @@ class _HeroHeaderState extends State<_HeroHeader> {
                       child: IconButton(
                         icon: const Icon(FluentIcons.power_button,
                             color: Colors.white, size: 18),
-                        onPressed: patientSide.logout,
+                        onPressed: patientSide.logoutPatientSide,
                       ),
                     ),
                   ],

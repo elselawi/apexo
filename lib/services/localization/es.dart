@@ -640,6 +640,7 @@ class Es implements En {
 
     // login
     "login": "Iniciar sesión",
+    "clear": "Limpiar",
     "resetPassword": "Restablecer contraseña",
     "serverUrl": "URL del servidor",
     "proceedOffline": "Proceder fuera de línea",

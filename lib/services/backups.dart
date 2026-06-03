@@ -53,7 +53,7 @@ class _Backups {
     await login.pb!.backups.restore(key);
     await Future.wait(removeAllLocalData.map((e) => e()));
     restoring(restoring()..remove(key));
-    login.logout();
+    login.logout(false);
   }
 
   Future<void> pickAndUpload() async {

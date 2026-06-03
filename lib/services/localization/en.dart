@@ -631,6 +631,7 @@ class En {
 
     // login
     "login": "Login",
+    "clear": "Clear",
     "resetPassword": "Reset password",
     "serverUrl": "Server URL",
     "proceedOffline": "Proceed offline",

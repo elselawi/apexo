@@ -678,6 +678,9 @@ class Ar implements En {
     "createNewServer": "إنشاء خادم جديد",
 
     // when errors
+    "errors": "أخطاء",
+    "reconnect": "إعادة الاتصال",
+    "uploadingAttachment": "رفع المرفق",
     "errorHappenedWhen": "حدث خطأ أثناء",
     "deletingPatientImageFromServer": "حذف صورة المريض من الخادم",
     "openingPatientImage": "فتح صورة المريض",

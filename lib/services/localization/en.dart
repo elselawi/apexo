@@ -682,7 +682,10 @@ class En {
         "A server enables your data to be stored securely, backed up, synchronized across devices, and more.",
     "createNewServer": "Create new server",
 
-    // when errors
+    // errors
+    "errors": "Errors",
+    "reconnect": "Reconnect",
+    "uploadingAttachment": "uploading attachment",
     "errorHappenedWhen": "Error happened when",
     "deletingPatientImageFromServer": "deleting patient image from server",
     "openingPatientImage": "opening patient image",

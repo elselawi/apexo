@@ -1,6 +1,8 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
+import 'package:apexo/features/network_actions/errors_list_widget.dart';
+import 'package:apexo/common_widgets/transitions/pulse.dart';
 import 'package:apexo/common_widgets/transitions/rotate.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
@@ -19,7 +21,9 @@ class NetworkActions extends StatelessWidget {
             loginCtrl.proceededOffline.stream,
             network.isOnline.stream,
             localSettings.stream,
-            launch.open.stream
+            launch.open.stream,
+            networkActions.hasErrors.stream,
+            networkActions.errorPulse.stream,
           ],
           builder: (context, _) {
             return Row(
@@ -29,18 +33,45 @@ class NetworkActions extends StatelessWidget {
                 ...networkActions.actions
                     .where((action) => action.hidden != true)
                     .map(
-                      (action) => Stack(
-                        alignment: Alignment.center,
-                        clipBehavior: Clip.none,
-                        children: [
-                          _buildActionIcon(action),
-                          if (action.badge != null) _buildBadge(action),
-                        ],
-                      ),
+                      (action) => _buildActionItem(action),
                     )
               ],
             );
           }),
+    );
+  }
+
+  Widget _buildActionItem(NetworkAction action) {
+    // Check if this is the error/reconnect action with active errors
+    final isErrorAction =
+        networkActions.hasErrors() && action.activeColor == Colors.red;
+
+    Widget iconWidget = _buildActionIcon(action);
+
+    // Wrap with pulse animation for the error action
+    if (isErrorAction) {
+      iconWidget = PulseWrapper(
+        key: ValueKey("errorPulse_${networkActions.errorPulse()}"),
+        pulse: true,
+        child: iconWidget,
+      );
+    }
+
+    // Wrap with FlyoutTarget for the error action
+    if (isErrorAction) {
+      iconWidget = FlyoutTarget(
+        controller: errorsFlyoutController,
+        child: iconWidget,
+      );
+    }
+
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        iconWidget,
+        if (action.badge != null) _buildBadge(action),
+      ],
     );
   }
 

@@ -1,13 +1,22 @@
 import 'package:apexo/common_widgets/static_notifications_widget.dart';
 import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/features/network_actions/errors_list_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/services/patient_side.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../services/login.dart';
 import '../../core/observable.dart';
+
+class ErrorItem {
+  final String message;
+  final String when;
+  int count;
+  ErrorItem({required this.message, required this.when, this.count = 1});
+}
 
 class NetworkAction {
   String tooltip;
@@ -37,6 +46,46 @@ class _NetworkActions {
 
   Map<String, void Function()> syncCallbacks = {};
   Map<String, void Function()> reconnectCallbacks = {};
+
+  // Error tracking
+  final List<ErrorItem> _errors = [];
+  final hasErrors = ObservableState(false);
+  final errorPulse = ObservableState(0);
+
+  List<ErrorItem> get errors => List.unmodifiable(_errors);
+
+  /// Returns true if it's a new unique error (caller should show dialog),
+  /// false if it's a duplicate (caller should skip dialog, we already pulse).
+  bool addError(Object message, String when) {
+    final msg = message.toString();
+    final existing = _errors.where((e) => e.message == msg && e.when == when);
+    if (existing.isNotEmpty) {
+      existing.first.count++;
+      errorPulse(errorPulse() + 1);
+      return false; // repeated error, just pulse
+    }
+
+    _errors.add(ErrorItem(message: msg, when: when));
+    hasErrors(true);
+    errorPulse(errorPulse() + 1);
+    return true; // new error, show dialog
+  }
+
+  Future<void> performReconnect() async {
+    if (launch.isDemo) return;
+    if (launch.open() == Open.patient) {
+      await patientSide.activate();
+      return;
+    }
+    await login.activate(login.url, [login.token], true);
+    for (var callback in reconnectCallbacks.values) {
+      callback();
+    }
+    if (network.isOnline()) {
+      _errors.clear();
+      hasErrors(false);
+    }
+  }
 
   Future<void> resync() async {
     if (launch.open() == Open.patient) {
@@ -111,25 +160,23 @@ class _NetworkActions {
         activeColor: Colors.blue,
       ),
       NetworkAction(
-        tooltip: "Reconnect",
+        tooltip: hasErrors() ? txt("errors") : txt("reconnect"),
         icon: Icon((network.isOnline() && !loginCtrl.proceededOffline())
             ? FluentIcons.streaming
             : FluentIcons.streaming_off),
-        onPressed: () async {
-          if (launch.isDemo) return;
-          if (launch.open() == Open.patient) {
-            await patientSide.activate();
-            return;
-          }
-          await login.activate(login.url, [login.token], true);
-          for (var callback in reconnectCallbacks.values) {
-            callback();
-          }
-        },
-        disabled: (network.isOnline() && !loginCtrl.proceededOffline()),
-        processing: (network.isOnline() && !loginCtrl.proceededOffline()),
+        onPressed: hasErrors()
+            ? () => showErrorsFlyout()
+            : () async {
+                await performReconnect();
+              },
+        badge: hasErrors() ? "${_errors.length}" : null,
+        disabled: hasErrors()
+            ? false
+            : (network.isOnline() && !loginCtrl.proceededOffline()),
+        processing: hasErrors() ||
+            (network.isOnline() && !loginCtrl.proceededOffline()),
         animate: false,
-        activeColor: Colors.teal,
+        activeColor: hasErrors() ? Colors.red : Colors.teal,
       ),
     ];
   }

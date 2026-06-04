@@ -2,14 +2,22 @@ import 'package:apexo/app/app.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
+import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-bool errorShown = false;
+bool errorDialogShown = false;
 
 void showErrorMessage(Object message, String when) {
-  if (errorShown) return;
-  errorShown = true;
+  // Add to the error list in the network actions controller.
+  // Returns true if it's a new unique error, false if duplicate.
+  final isNewError = networkActions.addError(message, when);
+
+  if (!isNewError)
+    return; // duplicate error — already handled by controller (pulse)
+
+  if (errorDialogShown) return;
+  errorDialogShown = true;
   showDialog(
       barrierDismissible: true,
       dismissWithEsc: true,
@@ -38,5 +46,5 @@ void showErrorMessage(Object message, String when) {
             ),
           ],
         );
-      }).then((_) => errorShown = false);
+      }).then((_) => errorDialogShown = false);
 }

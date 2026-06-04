@@ -692,6 +692,9 @@ class Es implements En {
     "createNewServer": "Crear nuevo servidor",
 
     // when errors:
+    "errors": "Errores",
+    "reconnect": "Reconectar",
+    "uploadingAttachment": "subiendo archivo adjunto",
     "errorHappenedWhen": "Ocurrió un error al",
     "deletingPatientImageFromServer":
         "eliminar la imagen del paciente del servidor",

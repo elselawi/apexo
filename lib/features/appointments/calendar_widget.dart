@@ -446,6 +446,7 @@ class AppointmentCalendarTile<Item extends Appointment>
         color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
       ),
       child: ListTile(
+        key: ValueKey(item.id),
         margin: EdgeInsets.zero,
         shape: listDividerBorder(context),
         tileColor: WidgetStateColor.resolveWith((states) {

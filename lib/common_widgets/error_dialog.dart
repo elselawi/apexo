@@ -5,7 +5,11 @@ import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
+bool errorShown = false;
+
 void showErrorMessage(Object message, String when) {
+  if (errorShown) return;
+  errorShown = true;
   showDialog(
       barrierDismissible: true,
       dismissWithEsc: true,
@@ -30,11 +34,9 @@ void showErrorMessage(Object message, String when) {
             Button(
               style: filledButtonStyle(Colors.grey),
               child: ButtonContent(WindowsIcons.cancel, txt("close")),
-              onPressed: () {
-                Navigator.pop(ctx);
-              },
+              onPressed: () => Navigator.pop(ctx),
             ),
           ],
         );
-      });
+      }).then((_) => errorShown = false);
 }

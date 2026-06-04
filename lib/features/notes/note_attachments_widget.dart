@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -12,7 +13,8 @@ class NoteAttachmentsWidget extends StatefulWidget {
   final Note note;
   final bool canUpload;
 
-  const NoteAttachmentsWidget({super.key, required this.note, this.canUpload = true});
+  const NoteAttachmentsWidget(
+      {super.key, required this.note, this.canUpload = true});
 
   @override
   State<NoteAttachmentsWidget> createState() => _NoteAttachmentsWidgetState();
@@ -37,28 +39,29 @@ class _NoteAttachmentsWidgetState extends State<NoteAttachmentsWidget> {
             },
           ),
         ),
-        if(widget.canUpload) Button(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _uploadingAttachment
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: ProgressRing(),
-                    )
-                  : const Icon(WindowsIcons.attach),
-              const SizedBox(width: 5),
-              Txt(txt("addAttachment")),
-            ],
-          ),
-          onPressed: () async {
-            final file = await pickAndUpload();
-            if (file != null) {
-              notes.set(widget.note..attachments.add(file));
-            }
-          },
-        )
+        if (widget.canUpload)
+          Button(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _uploadingAttachment
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: ProgressRing(),
+                      )
+                    : const Icon(WindowsIcons.attach),
+                const SizedBox(width: 5),
+                Txt(txt("addAttachment")),
+              ],
+            ),
+            onPressed: () async {
+              final file = await pickAndUpload();
+              if (file != null) {
+                notes.set(widget.note..attachments.add(file));
+              }
+            },
+          )
       ],
     );
   }
@@ -76,7 +79,8 @@ class _NoteAttachmentsWidgetState extends State<NoteAttachmentsWidget> {
           padding: const EdgeInsets.all(1),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(5),
-            border: Border.all(color: theme.inactiveColor.withValues(alpha: 0.6)),
+            border:
+                Border.all(color: theme.inactiveColor.withValues(alpha: 0.6)),
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -130,6 +134,9 @@ class _NoteAttachmentsWidgetState extends State<NoteAttachmentsWidget> {
           )
           .toString();
       return url;
+    } catch (e) {
+      showErrorMessage(e, txt("uploadingAttachment"));
+      return null;
     } finally {
       setState(() {
         _uploadingAttachment = false;

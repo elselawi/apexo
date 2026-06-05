@@ -57,8 +57,18 @@ class MoneyDisplay extends StatelessWidget {
       textDirection: TextDirection.ltr,
       children: [
         Text(integerPart, style: integerStyle),
-        if (decimalPart.isNotEmpty) Text(".", style: decimalStyle),
-        if (decimalPart.isNotEmpty) Text(decimalPart, style: decimalStyle),
+        if (decimalPart.isNotEmpty)
+          Text(
+            ".",
+            style: decimalStyle,
+            textDirection: TextDirection.ltr,
+          ),
+        if (decimalPart.isNotEmpty)
+          Text(
+            decimalPart,
+            style: decimalStyle,
+            textDirection: TextDirection.ltr,
+          ),
       ],
     );
   }

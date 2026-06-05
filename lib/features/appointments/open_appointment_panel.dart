@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
+import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
@@ -8,10 +9,13 @@ import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
+import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/services/ai_services/post_op_notes.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/logger.dart';
@@ -47,6 +51,8 @@ void closeAppointmentsPanels() {
     routes.closePanel(identifier);
   }
 }
+
+final transcriptionEditCounter = ObservableState(0);
 
 void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
   closeLabworksPanels();
@@ -86,6 +92,56 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
         title: txt("operativeDetails"),
         icon: FluentIcons.medical_care,
         body: _OperativeDetails(editingCopy),
+        footer: AudioRecorderButton(
+          label: txt("TranscribeYourAudio"),
+          onRecordingComplete: (bytes, mimeType) async {
+            try {
+              final existing = PostOpData(
+                postOpNotes: editingCopy.postOpNotes,
+                prescriptions: editingCopy.prescriptions,
+                price: editingCopy.price,
+                paid: editingCopy.paid,
+                teeth: editingCopy.teeth,
+                teethExtraNotes: editingCopy.teethExtraNotes,
+                hasLabwork: editingCopy.hasLabwork,
+                labName: editingCopy.labName,
+                labworkNotes: editingCopy.labworkNotes,
+              );
+              final result = await PostOpNotes.processAudioBytes(
+                bytes,
+                mimeType,
+                existingFields: existing,
+                lang: locale.s.$code,
+              );
+              if (result.postOpNotes.isNotEmpty) {
+                editingCopy.postOpNotes = result.postOpNotes;
+              }
+              if (result.prescriptions.isNotEmpty) {
+                editingCopy.prescriptions = result.prescriptions;
+              }
+              if (result.price != 0) editingCopy.price = result.price;
+              if (result.paid != 0) editingCopy.paid = result.paid;
+              if (result.teeth.isNotEmpty) {
+                editingCopy.teeth.addAll(result.teeth);
+              }
+              if (result.teethExtraNotes.isNotEmpty) {
+                editingCopy.teethExtraNotes.addAll(result.teethExtraNotes);
+              }
+              editingCopy.hasLabwork = result.hasLabwork;
+              if (result.labName.isNotEmpty) {
+                editingCopy.labName = result.labName;
+              }
+              if (result.labworkNotes.isNotEmpty) {
+                editingCopy.labworkNotes = result.labworkNotes;
+              }
+
+              transcriptionEditCounter(transcriptionEditCounter() + 1);
+            } catch (e, s) {
+              showErrorMessage(e, "processingPostOpNotes");
+              logger("Error processing post-op notes audio: $e", s);
+            }
+          },
+        ),
       ),
     PanelTab(
       title: txt("gallery"),
@@ -465,6 +521,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   final TextEditingController postOpNotesController = TextEditingController();
   final MoneyEditingController priceController = MoneyEditingController();
   final MoneyEditingController paidController = MoneyEditingController();
+  final FlyoutController otherAppointmentsFlyout = FlyoutController();
   bool didNotEditPaidYet = true;
 
   void setToDone() {
@@ -473,16 +530,26 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
+  void _fillControllers() {
     postOpNotesController.text = widget.appointment.postOpNotes;
-
     priceController.text =
         moneyInputFormatter.formatDouble(widget.appointment.price);
     paidController.text =
         moneyInputFormatter.formatDouble(widget.appointment.paid);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fillControllers();
     if (widget.appointment.paid != 0) didNotEditPaidYet = false;
+    transcriptionEditCounter.observe(_updateWhenTranscriptionOccurs);
+  }
+
+  void _updateWhenTranscriptionOccurs(_) {
+    if (mounted) {
+      setState(_fillControllers);
+    }
   }
 
   @override
@@ -490,6 +557,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     postOpNotesController.dispose();
     priceController.dispose();
     paidController.dispose();
+    transcriptionEditCounter.unObserve(_updateWhenTranscriptionOccurs);
     super.dispose();
   }
 
@@ -528,6 +596,10 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               child: Column(
                 children: [
                   TeethSelector(
+                    key: ValueKey(jsonEncode({
+                      ...widget.appointment.teeth,
+                      ...widget.appointment.teethExtraNotes
+                    })),
                     type: StateType.treatment,
                     onNote: (x, y) {
                       if (y != null) {
@@ -860,14 +932,26 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
   void dispose() {
     labNameController.dispose();
     labOrderNotesController.dispose();
+    transcriptionEditCounter.unObserve(_updateWhenTranscriptionOccurs);
     super.dispose();
+  }
+
+  void _fillControllers() {
+    labNameController.text = widget.appointment.labName;
+    labOrderNotesController.text = widget.appointment.labworkNotes;
+  }
+
+  void _updateWhenTranscriptionOccurs(_) {
+    if (mounted) {
+      setState(_fillControllers);
+    }
   }
 
   @override
   void initState() {
     super.initState();
-    labNameController.text = widget.appointment.labName;
-    labOrderNotesController.text = widget.appointment.labworkNotes;
+    _fillControllers();
+    transcriptionEditCounter.observe(_updateWhenTranscriptionOccurs);
   }
 
   @override

@@ -614,7 +614,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
       child: BorderColorTransition(
         animate: backups.deleting().containsKey(element.key),
         child: IconButton(
-          icon: const Icon(FluentIcons.delete),
+          icon: const Icon(WindowsIcons.delete),
           onPressed: () {
             if (backups.deleting().containsKey(element.key)) return;
             showDeleteDialog(context, element);

@@ -7,7 +7,7 @@ class ConfirmDeleteFlyout extends StatelessWidget {
     required this.onConfirm,
     required this.controller,
     this.actionText = "delete",
-    this.actionIcon = FluentIcons.delete,
+    this.actionIcon = WindowsIcons.delete,
   });
 
   final VoidCallback onConfirm;

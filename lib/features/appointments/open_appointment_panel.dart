@@ -988,7 +988,7 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
                 Tooltip(
                   message: txt("delete"),
                   child: IconButton(
-                    icon: const Icon(FluentIcons.delete),
+                    icon: const Icon(WindowsIcons.delete),
                     onPressed: () {
                       widget.onDelete!();
                     },

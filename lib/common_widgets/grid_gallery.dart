@@ -278,7 +278,7 @@ class _ImageDeleteButtonState extends State<ImageDeleteButton> {
         style: ButtonStyle(
             backgroundColor:
                 WidgetStatePropertyAll(FluentTheme.of(context).menuColor)),
-        icon: const Icon(FluentIcons.delete),
+        icon: const Icon(WindowsIcons.delete),
         onPressed: () async {
           await flyoutFocusFix(context);
           deleteConfirmationFlyout.showFlyout(builder: (context) {

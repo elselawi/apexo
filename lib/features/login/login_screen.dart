@@ -218,7 +218,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _buildClearButton() {
     return Button(
-      child: ButtonContent(FluentIcons.delete, txt("clear"), size: 16),
+      child: ButtonContent(WindowsIcons.delete, txt("clear"), size: 16),
       onPressed: () {
         login.logout(true);
       },

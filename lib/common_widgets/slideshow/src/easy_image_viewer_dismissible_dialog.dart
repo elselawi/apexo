@@ -318,7 +318,7 @@ class _EasyImageViewerDismissibleDialogState
                             child: IconButton(
                               icon: Row(
                                 children: [
-                                  const Icon(FluentIcons.delete,
+                                  const Icon(WindowsIcons.delete,
                                       color: Colors.white, size: 18),
                                   const SizedBox(width: 4),
                                   Txt(

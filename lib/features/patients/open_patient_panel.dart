@@ -96,7 +96,12 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
           ),
         ),
         body: MStreamBuilder(
-            streams: [appointments.observableMap.stream, showArchived.stream],
+            streams: [
+              patients.observableMap.stream,
+              appointments.observableMap.stream,
+              showArchived.stream,
+              transcriptionEditCounter.stream
+            ],
             builder: (context, asyncSnapshot) {
               return InfoLabel(
                 label: "${txt("dentalNotes")}:",
@@ -113,6 +118,10 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
                               Border.all(color: Colors.grey.withAlpha(100))),
                       padding: const EdgeInsets.all(4),
                       child: TeethSelector(
+                        key: ValueKey(jsonEncode({
+                          ...editingCopy.teeth,
+                          ...editingCopy.teethExtraNotes
+                        })),
                         type: StateType.state,
                         onNote: (x, y) {
                           if (y != null) {
@@ -325,82 +334,82 @@ class PatientAppointments extends StatelessWidget {
                     }),
                     const Divider(),
                     if (!hide.contains(AppointmentSections.paymentSummary))
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
-                      child: Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(5),
-                          boxShadow: [
-                            BoxShadow(
-                              offset: const Offset(0.0, 6.0),
-                              blurRadius: 30.0,
-                              spreadRadius: 5.0,
-                              color: Colors.grey.withAlpha(50),
-                            )
-                          ],
-                          border: Border(
-                              top: BorderSide(
-                            color: (colorBasedOnPayments(patient.paymentsMade,
-                                        patient.pricesGiven) ??
-                                    FluentTheme.of(context).cardColor)
-                                .withValues(alpha: 0.3),
-                            width: 5,
-                          )),
-                        ),
-                        child: Column(
-                          children: [
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 5),
-                              child: Txt(
-                                  "${txt("paymentSummary")} (${currency()})",
-                                  style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey)),
-                            ),
-                            const SizedBox(height: 10),
-                            const Divider(),
-                            const SizedBox(height: 15),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 10,
-                              runSpacing: 10,
-                              children: [
-                                PaymentPill(
-                                  finalTextColor: Colors.grey,
-                                  title: txt("cost"),
-                                  amount:
-                                      patient.pricesGiven.toStringAsFixed(2),
-                                  color: Colors.white,
-                                ),
-                                PaymentPill(
-                                  finalTextColor: Colors.grey,
-                                  title: txt("paid"),
-                                  amount:
-                                      patient.paymentsMade.toStringAsFixed(2),
-                                  color: Colors.white,
-                                ),
-                                PaymentPill(
-                                  finalTextColor: Colors.grey,
-                                  title: patient.overPaid
-                                      ? txt("overpaid")
-                                      : patient.underPaid
-                                          ? txt("underpaid")
-                                          : txt("fullyPaid"),
-                                  amount: (patient.paymentsMade -
-                                          patient.pricesGiven)
-                                      .abs()
-                                      .toStringAsFixed(2),
-                                )
-                              ],
-                            ),
-                          ],
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(5),
+                            boxShadow: [
+                              BoxShadow(
+                                offset: const Offset(0.0, 6.0),
+                                blurRadius: 30.0,
+                                spreadRadius: 5.0,
+                                color: Colors.grey.withAlpha(50),
+                              )
+                            ],
+                            border: Border(
+                                top: BorderSide(
+                              color: (colorBasedOnPayments(patient.paymentsMade,
+                                          patient.pricesGiven) ??
+                                      FluentTheme.of(context).cardColor)
+                                  .withValues(alpha: 0.3),
+                              width: 5,
+                            )),
+                          ),
+                          child: Column(
+                            children: [
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 5),
+                                child: Txt(
+                                    "${txt("paymentSummary")} (${currency()})",
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.grey)),
+                              ),
+                              const SizedBox(height: 10),
+                              const Divider(),
+                              const SizedBox(height: 15),
+                              Wrap(
+                                alignment: WrapAlignment.center,
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: [
+                                  PaymentPill(
+                                    finalTextColor: Colors.grey,
+                                    title: txt("cost"),
+                                    amount:
+                                        patient.pricesGiven.toStringAsFixed(2),
+                                    color: Colors.white,
+                                  ),
+                                  PaymentPill(
+                                    finalTextColor: Colors.grey,
+                                    title: txt("paid"),
+                                    amount:
+                                        patient.paymentsMade.toStringAsFixed(2),
+                                    color: Colors.white,
+                                  ),
+                                  PaymentPill(
+                                    finalTextColor: Colors.grey,
+                                    title: patient.overPaid
+                                        ? txt("overpaid")
+                                        : patient.underPaid
+                                            ? txt("underpaid")
+                                            : txt("fullyPaid"),
+                                    amount: (patient.paymentsMade -
+                                            patient.pricesGiven)
+                                        .abs()
+                                        .toStringAsFixed(2),
+                                  )
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
                   ],
           );
         });

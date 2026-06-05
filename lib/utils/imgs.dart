@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:apexo/core/store.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/que.dart';
@@ -45,6 +46,7 @@ Future<String> handleNewImage({
   required String rowID,
   required String sourcePath,
   XFile? sourceFile,
+  Store? targetStore,
 }) async {
   final bool fromLink = sourcePath.startsWith("http");
   String extension;
@@ -87,7 +89,8 @@ Future<String> handleNewImage({
   }
 
   // uploading
-  await appointments.uploadImg(
+  final store = targetStore ?? appointments;
+  await store.uploadImg(
       rowID: rowID, filename: imgName, path: savedFile?.path, file: sourceFile);
 
   // returning the imgName which is the hashed name + extension

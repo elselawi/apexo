@@ -178,6 +178,7 @@ class SettingsScreen extends StatelessWidget {
                 ComboBoxItem(value: "1", child: Txt(txt("on"))),
                 ComboBoxItem(value: "0", child: Txt(txt("off"))),
               ],
+              footer: InfoBar(title: Txt(txt("no_training_privacy_info"))),
               initValue: globalSettings.get("ai_services_ena").value,
               apply: (newVal) => globalSettings.set(
                   Setting.fromJson({"id": "ai_services_ena", "value": newVal})),

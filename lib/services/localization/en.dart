@@ -642,6 +642,8 @@ class En {
     "audioTranscriptionLocale": "Audio transcription language",
     "audioTranscriptionLocale_desc":
         "By default, audio transcriptions are translated to the current app language. You can choose a different language if needed.",
+    "no_training_privacy_info":
+        "When you enable these features, your files are processed privately. We never store them after processing — they're read in memory only for your request (as streamed bytes) and discarded immediately after. Your data is never used for AI training.",
 
     // Receipt scanner
     "scanReceipt": "Scan Receipt",

@@ -655,6 +655,8 @@ class Es implements En {
     "audioTranscriptionLocale": "Idioma de transcripción de audio",
     "audioTranscriptionLocale_desc":
         "Por defecto, las transcripciones de audio se traducen al idioma actual de la aplicación. Puedes elegir un idioma diferente si lo necesitas.",
+    "no_training_privacy_info":
+        "Cuando activas estas funciones, tus archivos se procesan de forma privada. Nunca los almacenamos después del procesamiento — se leen solo en memoria para tu solicitud (como bytes en flujo) y se descartan inmediatamente. Tus datos nunca se usan para entrenar IA.",
 
     // Receipt scanner
     "scanReceipt": "Escanear Recibo",

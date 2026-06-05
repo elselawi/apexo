@@ -181,6 +181,53 @@ class SettingsScreen extends StatelessWidget {
               apply: (newVal) => globalSettings.set(
                   Setting.fromJson({"id": "ai_services_ena", "value": newVal})),
             ),
+          if (globalSettings.get("ai_services_ena").value == "1")
+            SettingsItem(
+              title: txt("audioTranscriptionLocale"),
+              identifier: "audioTranscriptionLocale",
+              description: txt("audioTranscriptionLocale_desc"),
+              icon: WindowsIcons.microphone,
+              inputType: InputType.dropDown,
+              scope: Scope.device,
+              options: [
+                ComboBoxItem(value: "", child: Txt(txt("sameAsAppLanguage"))),
+                const ComboBoxItem(value: "en", child: Txt("English")),
+                const ComboBoxItem(value: "ar", child: Txt("العربية")),
+                const ComboBoxItem(value: "fa", child: Txt("فارسی")),
+                const ComboBoxItem(value: "es", child: Txt("Español")),
+                const ComboBoxItem(value: "fr", child: Txt("Français")),
+                const ComboBoxItem(value: "de", child: Txt("Deutsch")),
+                const ComboBoxItem(value: "pt", child: Txt("Português")),
+                const ComboBoxItem(value: "tr", child: Txt("Türkçe")),
+                const ComboBoxItem(value: "it", child: Txt("Italiano")),
+                const ComboBoxItem(value: "ru", child: Txt("Русский")),
+                const ComboBoxItem(value: "nl", child: Txt("Nederlands")),
+                const ComboBoxItem(value: "pl", child: Txt("Polski")),
+                const ComboBoxItem(value: "ro", child: Txt("Română")),
+                const ComboBoxItem(value: "hu", child: Txt("Magyar")),
+                const ComboBoxItem(value: "cs", child: Txt("Čeština")),
+                const ComboBoxItem(value: "sk", child: Txt("Slovenčina")),
+                const ComboBoxItem(value: "uk", child: Txt("Українська")),
+                const ComboBoxItem(value: "bg", child: Txt("Български")),
+                const ComboBoxItem(value: "hr", child: Txt("Hrvatski")),
+                const ComboBoxItem(value: "sr", child: Txt("Српски")),
+                const ComboBoxItem(value: "el", child: Txt("Ελληνικά")),
+                const ComboBoxItem(value: "hi", child: Txt("हिन्दी")),
+                const ComboBoxItem(value: "zh", child: Txt("中文")),
+                const ComboBoxItem(value: "kr", child: Txt("한국어")),
+                const ComboBoxItem(value: "ja", child: Txt("日本語")),
+                const ComboBoxItem(value: "bn", child: Txt("বাংলা")),
+                const ComboBoxItem(value: "ms", child: Txt("Bahasa Melayu")),
+                const ComboBoxItem(value: "th", child: Txt("ไทย")),
+                const ComboBoxItem(value: "vi", child: Txt("Tiếng Việt")),
+                const ComboBoxItem(value: "sw", child: Txt("Kiswahili")),
+              ],
+              initValue: localSettings.transcriptionLocale,
+              apply: (newVal) {
+                localSettings.transcriptionLocale = newVal;
+                localSettings.notifyAndPersist();
+              },
+            ),
           if (network.isOnline())
             SettingsItem(
               title: txt("cacheReset"),

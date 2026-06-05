@@ -715,6 +715,10 @@ class En {
         "Enable or disable AI-powered features such as receipt scanning, voice notes, and dental history extraction.",
     "on": "On",
     "off": "Off",
+    "sameAsAppLanguage": "Same as app language",
+    "audioTranscriptionLocale": "Audio transcription language",
+    "audioTranscriptionLocale_desc":
+        "By default, audio transcriptions are translated to the current app language. You can choose a different language if needed.",
     "noCameraOrGallery": "No camera or gallery available",
 
     // Receipt scanner

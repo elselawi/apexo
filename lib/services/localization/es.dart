@@ -731,6 +731,10 @@ class Es implements En {
         "Activar o desactivar funciones impulsadas por IA como escaneo de recibos, notas de voz y extracción de historial dental.",
     "on": "Activado",
     "off": "Desactivado",
+    "sameAsAppLanguage": "Igual que el idioma de la app",
+    "audioTranscriptionLocale": "Idioma de transcripción de audio",
+    "audioTranscriptionLocale_desc":
+        "Por defecto, las transcripciones de audio se traducen al idioma actual de la aplicación. Puedes elegir un idioma diferente si lo necesitas.",
     "noCameraOrGallery": "No hay cámara ni galería disponible",
 
     // Receipt scanner

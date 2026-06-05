@@ -131,6 +131,7 @@ class LocalSettings extends ObservablePersistingObject {
     }
   }
 
+  String transcriptionLocale = "";
   String dateFormat = "dd/MM/yyyy";
   ThemeMode selectedTheme = ThemeMode.light;
   int selectedLocale = 0;
@@ -139,6 +140,14 @@ class LocalSettings extends ObservablePersistingObject {
   DateTime? aiTokenExpiry;
 
   static const _aiTokenSafetyMargin = Duration(hours: 2);
+
+  String get transcriptionOutputLocale {
+    if (transcriptionLocale.isNotEmpty) {
+      return transcriptionLocale;
+    } else {
+      return locale.s.$code;
+    }
+  }
 
   bool get hasValidAiToken =>
       aiToken != null &&
@@ -149,6 +158,7 @@ class LocalSettings extends ObservablePersistingObject {
   fromJson(Map<String, dynamic> json) {
     selectedLocale = json["selectedLocale"] ?? selectedLocale;
     dateFormat = json["dateFormat"] ?? dateFormat;
+    transcriptionLocale = json["transcriptionLocale"] ?? transcriptionLocale;
     dentalNotation = json["dentalNotation"] ?? dentalNotation;
     selectedTheme =
         json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
@@ -164,6 +174,7 @@ class LocalSettings extends ObservablePersistingObject {
       "selectedLocale": selectedLocale,
       "dateFormat": dateFormat,
       "dentalNotation": dentalNotation,
+      "transcriptionLocale": transcriptionLocale,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
       if (aiToken != null) "aiToken": aiToken,
       if (aiTokenExpiry != null)

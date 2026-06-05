@@ -78,7 +78,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
                   final result = await DentalHistory.processAudioBytes(
                     bytes,
                     mimeType,
-                    lang: locale.s.$code,
+                    lang: localSettings.transcriptionLocale,
                   );
                   if (result.teeth.isNotEmpty) {
                     editingCopy.teeth.addAll(result.teeth);

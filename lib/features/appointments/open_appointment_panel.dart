@@ -111,7 +111,7 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
                 bytes,
                 mimeType,
                 existingFields: existing,
-                lang: locale.s.$code,
+                lang: localSettings.transcriptionLocale,
               );
               if (result.postOpNotes.isNotEmpty) {
                 editingCopy.postOpNotes = result.postOpNotes;

@@ -33,16 +33,8 @@ class Ar implements En {
     "newAppointment": "موعد جديد",
     "newLabwork": "عمل مخبري جديد",
     "newNote": "ملاحظة جديدة",
-    "newSupplier": "مزود جديد",
-    "newOrder": "طلبية جديدة",
     "newUser": "مستخدم جديد",
     "newAdmin": "مدير جديد",
-
-    // call
-    "callLaboratory": "اتصل بالمختبر",
-    "callPatient": "اتصل بالمريض",
-    "emailDoctor": "ارسال بريد الكتروني",
-    "callIssuer": "اتصل بالبائع",
 
     // screens
     "settings": "إعدادات",
@@ -55,7 +47,6 @@ class Ar implements En {
 
     // dashboard
     "admin": "مدير",
-    "fullStats": "إحصائيات كاملة",
     "payments": "مدفوعات",
     "appointmentsToday": "المواعيد اليوم",
     "patientsToday": "المرضى اليوم",
@@ -81,26 +72,16 @@ class Ar implements En {
     "showMore": "إظهار المزيد",
     "by": "بحسب",
     "byName": "بحسب الإسم",
-    "byDate": "بحسب التاريخ",
     "noItemsFound": "لم يتم العثور على عناصر",
     "filter": "تصفية",
 
     // doctors
     "doctor": "طبيب",
-    "newDoctor": "طبيب جديد",
-    "doctorDetails": "تفاصيل الطبيب",
     "pastAppointments": "المواعيد السابقة",
     "upcomingAppointments": "المواعيد القادمة",
     "viewAllAppointments": "عرض جميع المواعيد",
     "otherAppointments": "مواعيد أخرى",
-    "doctorName": "اسم الطبيب",
-    "doctorEmail": "بريد الطبيب الإلكتروني",
-    "dutyDays": "أيام العمل",
     "addAppointment": "إضافة موعد",
-    "lockToUsers":
-        "يمكن فقط للمستخدمين التاليين الوصول لمعلومات ومواعيد الطبيب وتعديلها",
-    "noUpcomingAppointmentsForThisDoctor":
-        "لا يوجد مواعيد قادمة مسجلة لهذا الطبيب، استخدم الزر ادناه لتسجيل موعد جديد",
 
     // days and months
     "monday": "الاثنين",
@@ -110,18 +91,6 @@ class Ar implements En {
     "friday": "الجمعة",
     "saturday": "السبت",
     "sunday": "الأحد",
-    "january": "يناير",
-    "february": "فبراير",
-    "march": "مارس",
-    "april": "أبريل",
-    "may": "مايو",
-    "june": "يونيو",
-    "july": "يوليو",
-    "august": "أغسطس",
-    "september": "سبتمبر",
-    "october": "أكتوبر",
-    "november": "نوفمبر",
-    "december": "ديسمبر",
 
     // appointment card
     "appointment": "موعد",
@@ -139,7 +108,6 @@ class Ar implements En {
     "includesOtherAppointments":
         "هذا الإجمالي يعكس أيضًا المدفوعات الخاصة بمواعيد أخرى.",
     "paymentSummary": "ملخص الدفع",
-    "editingAppointment": "تعديل الموعد",
     "after": "بعد",
     "days": "أيام",
     "day": "يوم",
@@ -156,7 +124,6 @@ class Ar implements En {
     "totalPayments": "إجمالي المدفوعات",
     "daysAgo": "أيام مضت",
     "noVisits": "لا توجد زيارات",
-    "addNewPatient": "إضافة مريض جديد",
     "name": "الاسم",
     "birthYear": "سنة الميلاد",
     "phone": "الهاتف",
@@ -170,8 +137,6 @@ class Ar implements En {
     "female": "أنثى",
     "noAppointmentsFound":
         "لم يتم العثور على مواعيد لهذا المريض، استخدم الزر أدناه لإضافة موعد جديد.",
-    "editPatient": "تعديل المريض",
-    "editAppointment": "تعديل الموعد",
     "patientPage": "صفحة ويب المريض",
     "patientCanUseTheFollowing":
         "يمكن للمريض استخدام الرابط التالي للوصول إلى مواعيده ومدفوعاته وصوره.",
@@ -201,7 +166,6 @@ class Ar implements En {
         "لنقل بيانات المرضى والمواعيد المحددة بين الخوادم أو التطبيقات الأخرى، قم بتصدير CSV من الخادم المصدر واستيراده إلى الخادم أو التطبيق الهدف.",
     "qrCode": "رمز المريض",
     "share": "مشاركة",
-    "noPatientsSelected": "لم يتم اختيار أي مرضى",
 
     // communication
     "contact": "اتصال",
@@ -258,9 +222,6 @@ class Ar implements En {
     "date": "التاريخ",
     "changeDate": "تغيير التاريخ",
     "changeTime": "تغيير الوقت",
-    "attention": "انتباه",
-    "doctorNotAvailable":
-        "قد لا يكون أحد الأطباء المحددين متاحًا في التاريخ المحدد.",
     "time": "الوقت",
     "preOperativeNotes": "ملاحظات ما قبل العملية",
     "selectDoctors": "اختيار الأطباء",
@@ -294,9 +255,7 @@ class Ar implements En {
     "laboratory": "مختبر",
     "month": "شهر",
     "labwork": "عمل المختبر",
-    "labworkTitle": "عنوان عمل المختبر",
     "orderNotes": "ملاحظات الطلب",
-    "unpaid": "غير مدفوع",
     "noSuggestions": "لا توجد اقتراحات",
     "received": "تم الاستلام من المختبر",
     "showDone": "إظهار المكتمل",
@@ -314,22 +273,16 @@ class Ar implements En {
     "receipt": "وصل",
     "title": "العنوان",
     "cost": "التكلفة",
-    "issuer": "البائع",
     "amount": "القيمة",
-    "amountIn": "المبلغ بـ",
     "status": "الحالة",
     "due": "مستحق",
     "open": "فتح",
     "rename": "إعادة تسمية",
     "addSupplier": "إضافة مزود",
-    "archiveSupplier": "أرشفة المزود",
     "items": "العناصر",
     "markAsPaid": "تسجيل كمدفوع",
     "markAsDue": "تسجيل كمستحق الدفع",
-    "unpaidOrders": "طلبات مستحقة",
-    "paymentHistory": "طلبات مدفوعة",
     "addOrder": "إضافة طلبية",
-    "filterByItems": "تصفية حسب العناصر",
     "new": "جديد",
     "thisMonth": "هذا الشهر",
     "addPhoto": "إضافة صورة",
@@ -338,7 +291,6 @@ class Ar implements En {
     "totalDue": "المجموع المستحق",
     "notSet": "غير محدد",
     "photo": "صورة",
-    "pickASupplier": "اختر مزود",
     "viewAllOrders": "عرض جميع الطلبيات",
     "lastOrder": "اخر طلبية",
     "supplier": "المزود",
@@ -389,7 +341,6 @@ class Ar implements En {
     "ascending": "تصاعدي",
     "descending": "تنازلي",
     "showAll": "عرض الكل",
-    "showOnlyMine": "عرض ما يخصني فقط",
     "allAccounts": "جميع الحسابات",
 
     // stats
@@ -517,8 +468,6 @@ class Ar implements En {
 
     // advanced settings: Admins
     "admins": "المدراء",
-    "accountCreated": "تم إنشاء الحساب",
-    "editAdmin": "تعديل المدير",
     "validEmailMustBeProvided": "يجب تقديم بريد إلكتروني صالح",
     "password": "كلمة المرور",
     "leaveBlankToKeepUnchanged": "اتركه فارغًا للإبقاء عليه دون تغيير",
@@ -528,13 +477,9 @@ class Ar implements En {
 
     // advanced settings: Users
     "users": "المستخدمين",
-    "editUser": "تعديل المستخدم",
 
     // advanced settings: Permissions
     "permissions": "أذونات المستخدم",
-    "usersCanAccess": "يمكن للمستخدمين الوصول إلى",
-    "permissionsNotice":
-        "تنطبق الأذونات التالية على المستخدمين المدرجين أعلاه والوصول غير المتصل. ومع ذلك، يتمتع المسؤولون مثلك بوصول غير مقيد في التطبيق، ما لم يكن غير متصل.",
     "restricted": "مقيد",
     "view": "عرض",
     "personal": "شخصي",
@@ -546,15 +491,6 @@ class Ar implements En {
     "account": "حساب",
     "user": "مستخدم",
     "operatesOnPatients": "يعمل على المرضى",
-
-    // advanced settings: prod tests
-    "prodTests": "اختبارات الإنتاج",
-    "fileStorageTest": "اختبار تخزين الملفات",
-    "fileStorageTestDesc":
-        "استخدم الزر التالي لاختبار ما إذا كان تخزين S3 يعمل بشكل صحيح.",
-    "fileStorageButton": "اختبار إعداد S3",
-    "fileStorageFail": "فشل إعداد S3",
-    "fileStorageSuccess": "إعداد S3 يعمل بشكل صحيح",
 
     // S3 settings
     "s3_settings": "إعدادات تخزين S3",
@@ -616,14 +552,6 @@ class Ar implements En {
     "smtp_save_success": "تم حفظ إعدادات SMTP بنجاح",
     "smtp_save_fail": "فشل حفظ إعدادات SMTP",
 
-    "emailTest": "اختبار البريد الإلكتروني",
-    "emailTestDesc":
-        "استخدم الزر التالي لاختبار ما إذا كان خادمك يمكنه إرسال البريد الإلكتروني بشكل صحيح. يجب تسليم بريد إلكتروني يشبه إعادة تعيين كلمة المرور إلى عنوان البريد الإلكتروني المستهدف.",
-    "targetEmail": "البريد الإلكتروني المستهدف",
-    "emailTestButton": "إرسال بريد إلكتروني تجريبي",
-    "emailTestFail": "فشل اختبار البريد الإلكتروني",
-    "emailTestSuccess":
-        "تم إرسال البريد الإلكتروني بنجاح، يرجى التحقق من بريدك الوارد.",
     "fail": "فشل",
     "success": "نجاح",
 
@@ -655,9 +583,6 @@ class Ar implements En {
     "patientSide": "صفحة المراجع",
 
     // other
-    "otherNotesPerAppointment":
-        "هنالك ملاحظات اخرى مسجلة ضمن مواعيد محددة، تظهر في صفحة المواعيد ولا تظهر هنا.",
-    "sureArchiveSelected": "هل انت متأكد من حذف العناصر المحددة؟",
     "sureClosePanel":
         "هل انت متأكد من اغلاق هذه النافذة؟ سيتم الغاء جميع التغييرات التي قمت بها",
     "sure": "متأكد",
@@ -685,12 +610,9 @@ class Ar implements En {
     "uploadingAttachment": "رفع المرفق",
     "errorHappenedWhen": "حدث خطأ أثناء",
     "deletingPatientImageFromServer": "حذف صورة المريض من الخادم",
-    "openingPatientImage": "فتح صورة المريض",
     "importingRemoteImages": "استيراد الصور عن بعد",
     "creatingNewAccount": "إنشاء حساب جديد",
     "updatingAccounts": "تحديث الحسابات",
-    "loadingAccounts": "تحميل الحسابات",
-    "openingFullPatientImage": "فتح صورة المريض الكاملة",
     "deletingAccount": "حذف الحساب",
     "uploadingPatientImageFromCamera": "رفع صورة المريض من الكاميرا",
     "uploadingPatientImageFromGallery": "رفع صورة المريض من المعرض",
@@ -715,31 +637,14 @@ class Ar implements En {
     "audioTranscriptionLocale": "لغة التحويل الصوتي",
     "audioTranscriptionLocale_desc":
         "بشكل افتراضي، يتم ترجمة التحويلات الصوتية إلى لغة التطبيق الحالية. يمكنك اختيار لغة مختلفة إذا لزم الأمر.",
-    "noCameraOrGallery": "لا توجد كاميرا أو معرض صور",
 
     // Receipt scanner
-    "receipt_scanner_settings": "مسح الفواتير",
-    "receipt_scanner_info_title": "مسح الفواتير بالذكاء الاصطناعي",
-    "receipt_scanner_info_desc":
-        "التقط صورة للفاتورة وسيقوم الذكاء الاصطناعي باستخراج الأصناف والأسعار وتفاصيل المورد.",
-    "receipt_scanner_worker_url": "رابط الخدمة",
-    "receipt_scanner_worker_url_hint":
-        "نقطة نهاية ثابتة. تتم معالجة صور الفواتير بشكل آمن عبر Cloudflare Workers.",
-    "receipt_scanner_auth_server": "خادم المصادقة",
-    "receipt_scanner_auth_server_hint":
-        "رابط خادم PocketBase المستخدم للمصادقة.",
-    "receipt_scanner_test_success": "تم الاتصال بنجاح! تم الحصول على الرمز.",
-    "receipt_scanner_test_fail": "فشل الاتصال",
     "scanReceipt": "مسح الفاتورة",
     "readFromPhoto": "قراءة من الصورة",
     "readingItemsFromPhoto": "قراءة الأصناف من الصورة",
-    "scanningReceipt": "جاري مسح الفاتورة...",
     "receiptScanFailed": "فشل مسح الفاتورة",
     "testing": "جاري اختبار الاتصال...",
-    "newSupplierWillBeAdded": "هذا المورد غير موجود وسيتم إضافته تلقائياً.",
     "unknown": "غير معروف",
-    "scan_receipt_save_success": "تم حفظ الفاتورة بنجاح",
-    "scan_receipt_save_fail": "فشل حفظ الفاتورة",
 
     // Dental history recording
     "TranscribeYourAudio": "تسجيل صوتي",

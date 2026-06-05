@@ -35,16 +35,8 @@ class Es implements En {
     "newAppointment": "Nueva cita",
     "newLabwork": "Nuevo caso",
     "newNote": "Nueva nota",
-    "newSupplier": "Nuevo proveedor",
-    "newOrder": "Nuevo pedido",
     "newUser": "Nuevo usuario",
     "newAdmin": "Nuevo administrador",
-
-    // call
-    "callLaboratory": "Llamar al Laboratorio",
-    "callPatient": "Llamar al Paciente",
-    "emailDoctor": "Enviar correo al Doctor",
-    "callIssuer": "Llamar al Emisor",
 
     // screens
     "settings": "Configuraciones",
@@ -57,7 +49,6 @@ class Es implements En {
 
     // dashboard
     "admin": "Admin",
-    "fullStats": "Estadísticas completas",
     "payments": "Pagos",
     "appointmentsToday": "Citas hoy",
     "patientsToday": "Pacientes hoy",
@@ -84,26 +75,16 @@ class Es implements En {
     "showMore": "Ver más",
     "by": "Por",
     "byName": "Por nombre",
-    "byDate": "Por fecha",
     "noItemsFound": "No se encontraron elementos",
     "filter": "Filtrar",
 
     // doctors
     "doctor": "Doctor",
-    "newDoctor": "Nuevo doctor",
-    "doctorDetails": "Detalles del doctor",
     "pastAppointments": "Citas pasadas",
     "upcomingAppointments": "Próximas citas",
     "viewAllAppointments": "Ver todas las citas",
     "otherAppointments": "Otras citas",
-    "doctorName": "Nombre del doctor",
-    "doctorEmail": "Correo del doctor",
-    "dutyDays": "Días de servicio",
     "addAppointment": "Añadir cita",
-    "lockToUsers":
-        "Solo los siguientes usuarios pueden ver/editar los datos y citas de este doctor",
-    "noUpcomingAppointmentsForThisDoctor":
-        "No se econtraron citas próximas. Use el botón abajo para añadir una nueva cita.",
 
     // days and months
     "monday": "Lunes",
@@ -113,18 +94,6 @@ class Es implements En {
     "friday": "Viernes",
     "saturday": "Sábado",
     "sunday": "Domingo",
-    "january": "Enero",
-    "february": "Febrero",
-    "march": "Marzo",
-    "april": "Abril",
-    "may": "Mayo",
-    "june": "Junio",
-    "july": "Julio",
-    "august": "Agosto",
-    "september": "Septiembre",
-    "october": "Octubre",
-    "november": "Noviembre",
-    "december": "Diciembre",
 
     // appointment card
     "appointment": "Cita",
@@ -142,7 +111,6 @@ class Es implements En {
     "includesOtherAppointments":
         "Este total también refleja los pagos de otras citas.",
     "paymentSummary": "Resumen de pagos",
-    "editingAppointment": "Editando cita",
     "after": "Después",
     "days": "días",
     "day": "día",
@@ -160,7 +128,6 @@ class Es implements En {
     "totalPayments": "Pagos totales",
     "daysAgo": "días atrás",
     "noVisits": "Sin visitas",
-    "addNewPatient": "Añadir nuevo paciente",
     "name": "Nombre",
     "birthYear": "Año de nacimiento",
     "phone": "Teléfono",
@@ -175,8 +142,6 @@ class Es implements En {
     "female": "Femenino",
     "noAppointmentsFound":
         "No se encontraron citas para este paciente, utiliza el botón de abajo para agregar una nueva cita.",
-    "editPatient": "Editar paciente",
-    "editAppointment": "Editar cita",
     "patientPage": "Página web del paciente",
     "patientCanUseTheFollowing":
         "El paciente puede usar el siguiente enlace para acceder a sus citas, pagos y fotos.",
@@ -206,7 +171,6 @@ class Es implements En {
         "Para mover los datos seleccionados de pacientes y citas entre servidores u otras aplicaciones, exporta un CSV desde el servidor de origen e impórtalo al servidor o aplicación de destino.",
     "qrCode": "Código QR",
     "share": "Compartir",
-    "noPatientsSelected": "No se han seleccionado pacientes",
     "otherPhotos": "Fotos de otras citas",
     "draw": "Dibujar",
     "erase": "Borrar",
@@ -267,9 +231,6 @@ class Es implements En {
     "date": "Fecha",
     "changeDate": "Cambiar fecha",
     "changeTime": "Cambiar hora",
-    "attention": "Atención",
-    "doctorNotAvailable":
-        "Uno de los doctores seleccionados podría no estar disponible en la fecha seleccionada.",
     "time": "Hora",
     "preOperativeNotes": "Notas preoperatorias",
     "selectDoctors": "Seleccionar doctores",
@@ -299,9 +260,7 @@ class Es implements En {
     "laboratory": "Laboratorio",
     "month": "mes",
     "labwork": "trabajo de laboratorio",
-    "labworkTitle": "Título del trabajo de laboratorio",
     "orderNotes": "Notas del pedido",
-    "unpaid": "No pagado",
     "noSuggestions": "Sin sugerencias",
     "received": "Recibido del laboratorio",
     "showDone": "Mostrar completados",
@@ -319,22 +278,16 @@ class Es implements En {
     "receipt": "Recibo",
     "title": "Título",
     "cost": "Costo",
-    "issuer": "Emisor",
     "amount": "Cantidad",
-    "amountIn": "Cantidad entrando",
     "status": "Estado",
     "due": "Vencido",
     "open": "Abrir",
     "rename": "Cambiar nombre",
     "addSupplier": "Agregar proveedor",
-    "archiveSupplier": "Archivar proveedor",
     "items": "Ítems",
     "markAsPaid": "Marcar como pagado",
     "markAsDue": "Marcar como pendiente",
-    "unpaidOrders": "Pedidos no pagados",
-    "paymentHistory": "Historial de pagos",
     "addOrder": "Agregar pedido",
-    "filterByItems": "Filtrar por artículos",
     "new": "Nuevo",
     "thisMonth": "Este mes",
     "addPhoto": "Agregar foto",
@@ -343,7 +296,6 @@ class Es implements En {
     "totalDue": "Total pendiente",
     "notSet": "No establecido",
     "photo": "Foto",
-    "pickASupplier": "Seleccionar proveedor",
     "viewAllOrders": "Ver todos los pedidos",
     "lastOrder": "Ultimo pedido",
     "supplier": "Proveedor",
@@ -394,7 +346,6 @@ class Es implements En {
     "ascending": "ascendente",
     "descending": "descendente",
     "showAll": "Mostrar todo",
-    "showOnlyMine": "Mostrar solo los míos",
     "allAccounts": "Todas las cuentas",
 
     // stats
@@ -526,8 +477,6 @@ class Es implements En {
 
     // advanced settings: Admins
     "admins": "Administradores",
-    "accountCreated": "Cuenta creada",
-    "editAdmin": "Editar administrador",
     "validEmailMustBeProvided":
         "Debe proporcionarse un correo electrónico válido",
     "password": "Contraseña",
@@ -538,13 +487,9 @@ class Es implements En {
 
     // advanced settings: Users
     "users": "Usuarios",
-    "editUser": "Editar usuario",
 
     // advanced settings: Permissions
     "permissions": "Permisos de usuario",
-    "usersCanAccess": "Los usuarios pueden acceder a",
-    "permissionsNotice":
-        "Los siguientes permisos se aplican a los usuarios listados arriba y al acceso fuera de línea. Sin embargo, los administradores como tú, tienen acceso sin restricciones en la aplicación, a menos que estén fuera de línea.",
     "restricted": "Restringido",
     "view": "Ver",
     "personal": "Personal",
@@ -556,16 +501,6 @@ class Es implements En {
     "account": "Cuenta",
     "user": "Usuario",
     "operatesOnPatients": "Opera a pacientes",
-
-    // advanced settings: prod tests
-    "prodTests": "Pruebas de producción",
-    "fileStorageTest": "Prueba de almacenamiento de archivos",
-    "fileStorageTestDesc":
-        "Usa el siguiente botón para probar si el almacenamiento S3 está funcionando correctamente.",
-    "fileStorageButton": "Probar configuración S3",
-    "fileStorageFail": "La configuración de S3 falló",
-    "fileStorageSuccess":
-        "La configuración de S3 está funcionando correctamente",
 
     // S3 settings
     "s3_settings": "Configuración de almacenamiento S3",
@@ -629,14 +564,6 @@ class Es implements En {
     "smtp_save_success": "Configuración SMTP guardada correctamente",
     "smtp_save_fail": "Error al guardar la configuración SMTP",
 
-    "emailTest": "Prueba de correo",
-    "emailTestDesc":
-        "Usa el siguiente botón para probar si tu servidor puede enviar correos electrónicos correctamente. Un correo parecido a una reestablecimiento de contraseña debería ser entregado a la dirección de correo objetivo.",
-    "targetEmail": "Correo objetivo",
-    "emailTestButton": "Enviar correo de prueba",
-    "emailTestFail": "La prueba de correo falló",
-    "emailTestSuccess":
-        "Correo enviado exitosamente, por favor revisa tu bandeja de entrada.",
     "fail": "Fallar",
     "success": "Éxito",
 
@@ -668,10 +595,6 @@ class Es implements En {
     "patientSide": "Panel del paciente",
 
     // other
-    "otherNotesPerAppointment":
-        "Hay otras notas registradas en el panel de citas que no aparecen aquí.",
-    "sureArchiveSelected":
-        "¿Estás seguro de que deseas archivar los elementos seleccionados?",
     "sureClosePanel":
         "¿Estás seguro de que deseas cerrar el panel? Todos los cambios no guardados se perderán.",
     "sure": "Seguro",
@@ -700,12 +623,9 @@ class Es implements En {
     "errorHappenedWhen": "Ocurrió un error al",
     "deletingPatientImageFromServer":
         "eliminar la imagen del paciente del servidor",
-    "openingPatientImage": "abrir la imagen del paciente",
     "importingRemoteImages": "importar imágenes remotas",
     "creatingNewAccount": "crear una nueva cuenta",
     "updatingAccounts": "actualizar cuentas",
-    "loadingAccounts": "cargar cuentas",
-    "openingFullPatientImage": "abrir la imagen completa del paciente",
     "deletingAccount": "eliminar la cuenta",
     "uploadingPatientImageFromCamera":
         "subir la imagen del paciente desde la cámara",
@@ -735,32 +655,14 @@ class Es implements En {
     "audioTranscriptionLocale": "Idioma de transcripción de audio",
     "audioTranscriptionLocale_desc":
         "Por defecto, las transcripciones de audio se traducen al idioma actual de la aplicación. Puedes elegir un idioma diferente si lo necesitas.",
-    "noCameraOrGallery": "No hay cámara ni galería disponible",
 
     // Receipt scanner
-    "receipt_scanner_settings": "Escáner de Recibos",
-    "receipt_scanner_info_title": "Escáner de Recibos con IA",
-    "receipt_scanner_info_desc":
-        "Tome una foto de un recibo y la IA extraerá los artículos, precios y detalles del proveedor.",
-    "receipt_scanner_worker_url": "URL del Worker",
-    "receipt_scanner_worker_url_hint":
-        "Punto final fijo. Las imágenes de recibos se procesan de forma segura a través de Cloudflare Workers.",
-    "receipt_scanner_auth_server": "Servidor de Autenticación",
-    "receipt_scanner_auth_server_hint":
-        "La URL de su servidor PocketBase utilizada para la autenticación.",
-    "receipt_scanner_test_success": "¡Conexión exitosa! Token obtenido.",
-    "receipt_scanner_test_fail": "Conexión fallida",
     "scanReceipt": "Escanear Recibo",
     "readFromPhoto": "Leer desde foto",
     "readingItemsFromPhoto": "leyendo artículos desde la foto",
-    "scanningReceipt": "Escaneando recibo...",
     "receiptScanFailed": "Error al escanear recibo",
     "testing": "Probando conexión...",
-    "newSupplierWillBeAdded":
-        "Este proveedor no existe y se agregará automáticamente.",
     "unknown": "Desconocido",
-    "scan_receipt_save_success": "Recibo guardado exitosamente",
-    "scan_receipt_save_fail": "Error al guardar el recibo",
 
     // Dental history recording
     "TranscribeYourAudio": "Transcribir tu audio",

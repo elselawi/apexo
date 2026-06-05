@@ -34,16 +34,8 @@ class En {
     "newAppointment": "New appointment",
     "newLabwork": "New labwork",
     "newNote": "New note",
-    "newSupplier": "New supplier",
-    "newOrder": "newOrder",
     "newUser": "New user",
     "newAdmin": "New admin",
-
-    // call
-    "callLaboratory": "Call Laboratory",
-    "callPatient": "Call Patient",
-    "emailDoctor": "Email Doctor",
-    "callIssuer": "Call Issuer",
 
     // screens
     "settings": "Settings",
@@ -56,7 +48,6 @@ class En {
 
     // dashboard
     "admin": "Admin",
-    "fullStats": "Full stats",
     "payments": "Payments",
     "appointmentsToday": "Appointments today",
     "patientsToday": "Patients today",
@@ -83,26 +74,16 @@ class En {
     "showMore": "Show more",
     "by": "By",
     "byName": "By name",
-    "byDate": "By Date",
     "noItemsFound": "No items found",
     "filter": "Filter",
 
     // doctors
     "doctor": "Doctor",
-    "newDoctor": "New Doctor",
-    "doctorDetails": "Doctor Details",
     "pastAppointments": "Past appointments",
     "upcomingAppointments": "Upcoming appointments",
     "viewAllAppointments": "View all appointments",
     "otherAppointments": "Other appointments",
-    "doctorName": "Doctor name",
-    "doctorEmail": "Doctor email",
-    "dutyDays": "Duty days",
     "addAppointment": "Add Appointment",
-    "lockToUsers":
-        "Only the following users can view/edit this doctor's data and appointments",
-    "noUpcomingAppointmentsForThisDoctor":
-        "No upcoming appointments found. Use the button below to register new one",
 
     // days and months
     "monday": "Monday",
@@ -112,18 +93,6 @@ class En {
     "friday": "Friday",
     "saturday": "Saturday",
     "sunday": "Sunday",
-    "january": "January",
-    "february": "February",
-    "march": "March",
-    "april": "April",
-    "may": "May",
-    "june": "June",
-    "july": "July",
-    "august": "August",
-    "september": "September",
-    "october": "October",
-    "november": "November",
-    "december": "December",
 
     // appointment card
     "appointment": "Appointment",
@@ -141,7 +110,6 @@ class En {
     "includesOtherAppointments":
         "This total also reflects payments from other appointments.",
     "paymentSummary": "Payment summary",
-    "editingAppointment": "Editing Appointment",
     "after": "After",
     "days": "days",
     "day": "day",
@@ -158,7 +126,6 @@ class En {
     "totalPayments": "Total payments",
     "daysAgo": "days ago",
     "noVisits": "No visits",
-    "addNewPatient": "Add new patient",
     "name": "Name",
     "birthYear": "Birth year",
     "phone": "Phone",
@@ -173,8 +140,6 @@ class En {
     "female": "Female",
     "noAppointmentsFound":
         "No appointments found for this patient, use the button below to add new appointment.",
-    "editPatient": "Edit Patient",
-    "editAppointment": "Edit Appointment",
     "patientPage": "Patient Web Page",
     "patientCanUseTheFollowing":
         "Patient can use the following link to access his appointments, payments and photos.",
@@ -204,7 +169,6 @@ class En {
         "To move selected patient and appointment data between servers or other apps, export a CSV from the source server and import it into the destination server or app.",
     "qrCode": "QR Code",
     "share": "Share",
-    "noPatientsSelected": "No patients selected",
 
     // communication
     "contact": "Contact",
@@ -261,9 +225,6 @@ class En {
     "date": "Date",
     "changeDate": "Change Date",
     "changeTime": "Change Time",
-    "attention": "Attention",
-    "doctorNotAvailable":
-        "One of the selected doctors might not be available on the selected date.",
     "time": "Time",
     "preOperativeNotes": "Pre-operative notes",
     "selectDoctors": "Select Doctors",
@@ -297,9 +258,7 @@ class En {
     "laboratory": "Laboratory",
     "month": "month",
     "labwork": "labwork",
-    "labworkTitle": "Labwork title",
     "orderNotes": "Order notes",
-    "unpaid": "Unpaid",
     "noSuggestions": "No suggestions",
     "received": "Labwork received",
     "showDone": "Show done",
@@ -317,22 +276,16 @@ class En {
     "receipt": "Receipt",
     "title": "Title",
     "cost": "Cost",
-    "issuer": "Issuer",
     "amount": "Amount",
-    "amountIn": "Amount in",
     "status": "Status",
     "due": "Due",
     "open": "Open",
     "rename": "Rename",
     "addSupplier": "Add Supplier",
-    "archiveSupplier": "Archive Supplier",
     "items": "Items",
     "markAsPaid": "Mark as paid",
     "markAsDue": "Mark as due",
-    "unpaidOrders": "Unpaid orders",
-    "paymentHistory": "Payment history",
     "addOrder": "Add order",
-    "filterByItems": "Filter by items",
     "new": "New",
     "thisMonth": "This month",
     "addPhoto": "Add photo",
@@ -341,7 +294,6 @@ class En {
     "totalDue": "Total due",
     "notSet": "Not set",
     "photo": "Photo",
-    "pickASupplier": "Pick a supplier",
     "viewAllOrders": "View all orders",
     "lastOrder": "Last order",
     "supplier": "Supplier",
@@ -392,7 +344,6 @@ class En {
     "ascending": "ascending",
     "descending": "descending",
     "showAll": "Show all",
-    "showOnlyMine": "Show only mine",
     "allAccounts": "All accounts",
 
     // stats
@@ -521,8 +472,6 @@ class En {
 
     // advanced settings: Admins
     "admins": "Administrators",
-    "accountCreated": "Account created",
-    "editAdmin": "Edit admin",
     "validEmailMustBeProvided": "A valid email must be provided",
     "password": "Password",
     "leaveBlankToKeepUnchanged": "Leave blank to keep unchanged",
@@ -533,13 +482,9 @@ class En {
 
     // advanced settings: Users
     "users": "Users",
-    "editUser": "Edit user",
 
     // advanced settings: Permissions
     "permissions": "User Permissions",
-    "usersCanAccess": "Users can access",
-    "permissionsNotice":
-        "The following permissions apply to the users listed above and offline access. However, administrators like you, have unrestricted access in the application, unless you're offline.",
     "restricted": "Restricted",
     "personal": "Personal",
     "full": "Full",
@@ -551,15 +496,6 @@ class En {
     "account": "Account",
     "user": "User",
     "operatesOnPatients": "Operates on patients",
-
-    // advanced settings: prod tests
-    "prodTests": "Production tests",
-    "fileStorageTest": "File storage test",
-    "fileStorageTestDesc":
-        "Use the following button to test whether S3 storage is working properly.",
-    "fileStorageButton": "Test S3 setup",
-    "fileStorageFail": "S3 setup failed",
-    "fileStorageSuccess": "S3 setup is working properly",
 
     // S3 settings
     "s3_settings": "S3 Storage Settings",
@@ -621,13 +557,6 @@ class En {
     "smtp_save_success": "SMTP settings saved successfully",
     "smtp_save_fail": "Failed to save SMTP settings",
 
-    "emailTest": "Email test",
-    "emailTestDesc":
-        "Use the following button to test whether your server can send emails properly. A password-reset-like email should be delivered to the target email address.",
-    "targetEmail": "Target email",
-    "emailTestButton": "Send test email",
-    "emailTestFail": "Email test failed",
-    "emailTestSuccess": "Email sent successfully, please check your inbox.",
     "fail": "Fail",
     "success": "Success",
 
@@ -659,10 +588,6 @@ class En {
     "patientSide": "Patient Side",
 
     // other
-    "otherNotesPerAppointment":
-        "There are other notes registered in the appointments panel that do not appear here.",
-    "sureArchiveSelected":
-        "Are you sure you want to archive the selected items?",
     "sureClosePanel":
         "Are you sure you want to close this panel? Any unsaved changes will be lost.",
     "sure": "Sure",
@@ -690,11 +615,9 @@ class En {
     "uploadingAttachment": "uploading attachment",
     "errorHappenedWhen": "Error happened when",
     "deletingPatientImageFromServer": "deleting patient image from server",
-    "openingPatientImage": "opening patient image",
     "importingRemoteImages": "importing remote images",
     "creatingNewAccount": "creating new account",
     "updatingAccounts": "updating accounts",
-    "openingFullPatientImage": "opening full patient image",
     "deletingAccount": "deleting account",
     "uploadingPatientImageFromCamera": "uploading patient image from camera",
     "uploadingPatientImageFromGallery": "uploading patient image from gallery",
@@ -719,32 +642,14 @@ class En {
     "audioTranscriptionLocale": "Audio transcription language",
     "audioTranscriptionLocale_desc":
         "By default, audio transcriptions are translated to the current app language. You can choose a different language if needed.",
-    "noCameraOrGallery": "No camera or gallery available",
 
     // Receipt scanner
-    "receipt_scanner_settings": "Receipt Scanner",
-    "receipt_scanner_info_title": "AI Receipt Scanner",
-    "receipt_scanner_info_desc":
-        "Take a photo of a receipt and the AI will extract items, prices, and supplier details. The photo is sent to a secure Cloudflare Worker for processing.",
-    "receipt_scanner_worker_url": "Worker URL",
-    "receipt_scanner_worker_url_hint":
-        "Fixed endpoint. Receipt images are processed securely via Cloudflare Workers.",
-    "receipt_scanner_auth_server": "Auth Server",
-    "receipt_scanner_auth_server_hint":
-        "Your PocketBase server URL used for authentication.",
-    "receipt_scanner_test_success": "Connection successful! Token obtained.",
-    "receipt_scanner_test_fail": "Connection failed",
     "scanReceipt": "Scan Receipt",
     "readFromPhoto": "Read from photo",
     "readingItemsFromPhoto": "reading items from photo",
-    "scanningReceipt": "Scanning receipt...",
     "receiptScanFailed": "Receipt scan failed",
     "testing": "Testing connection...",
-    "newSupplierWillBeAdded":
-        "This supplier doesn't exist yet and will be added automatically.",
     "unknown": "Unknown",
-    "scan_receipt_save_success": "Receipt saved successfully",
-    "scan_receipt_save_fail": "Failed to save receipt",
 
     // Dental history recording
     "TranscribeYourAudio": "Transcribe your audio",

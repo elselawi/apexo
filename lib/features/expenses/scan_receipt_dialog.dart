@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
+import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/order_row.dart';
@@ -109,44 +110,46 @@ class _ScanReceiptDialogContentState extends State<_ScanReceiptDialogContent> {
 
   @override
   Widget build(BuildContext context) {
-    return ContentDialog(
-      style: dialogStyling(context, false, true),
-      title: Txt(txt("scanReceipt")),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: OrderRow(
-            order: transientOrder,
-            additionalSupplier: transientSupplier,
-            editableSupplier: true,
-            strictSupplierInput: false,
-            justCreated: false,
-            showContextMenu: false,
-            showPhotosSection: false,
-            supplierNameError: _supplierNameError,
+    return KeyboardAwareView(
+      child: ContentDialog(
+        style: dialogStyling(context, false, true),
+        title: Txt(txt("scanReceipt")),
+        content: SizedBox(
+          width: 420,
+          child: SingleChildScrollView(
+            child: OrderRow(
+              order: transientOrder,
+              additionalSupplier: transientSupplier,
+              editableSupplier: true,
+              strictSupplierInput: false,
+              justCreated: false,
+              showContextMenu: false,
+              showPhotosSection: false,
+              supplierNameError: _supplierNameError,
+            ),
           ),
         ),
+        actions: [
+          Button(
+            onPressed: _saving ? null : () => Navigator.pop(context),
+            child: Txt(txt("cancel")),
+          ),
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(WindowsIcons.save),
+                      const SizedBox(width: 8),
+                      Txt(txt("save")),
+                    ],
+                  ),
+          ),
+        ],
       ),
-      actions: [
-        Button(
-          onPressed: _saving ? null : () => Navigator.pop(context),
-          child: Txt(txt("cancel")),
-        ),
-        FilledButton(
-          onPressed: _saving ? null : _save,
-          child: _saving
-              ? const SizedBox(
-                  width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(WindowsIcons.save),
-                    const SizedBox(width: 8),
-                    Txt(txt("save")),
-                  ],
-                ),
-        ),
-      ],
     );
   }
 

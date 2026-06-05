@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
+import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -48,83 +49,86 @@ class _ColumnEditingWidgetState extends State<_ColumnEditingWidget> {
 
   @override
   Widget build(BuildContext context) {
-    return ContentDialog(
-      style: dialogStyling(context, false, true),
-      title: Row(
-        spacing: 8,
-        children: [
-          Icon(widget.column == null ? FluentIcons.add : FluentIcons.rename),
-          Txt(widget.column == null ? txt("addColumn") : txt("editColumn")),
-        ],
-      ),
-      content: SizedBox(
-        width: 312,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return KeyboardAwareView(
+      child: ContentDialog(
+        style: dialogStyling(context, false, true),
+        title: Row(
+          spacing: 8,
           children: [
-            InfoLabel(
-              label: txt("columnTitle"),
-              isHeader: true,
-              child: CupertinoTextField(
-                controller: controller,
-                placeholder: "${txt("columnTitle")}...",
-                autofocus: true,
-              ),
-            ),
-            if (widget.column != null) ...[
-              const SizedBox(height: 10),
-              const Divider(),
-              const SizedBox(height: 10),
-              InfoLabel(
-                label: txt("columnColor"),
-                isHeader: true,
-                child: ColorPicker(
-                  color: selectedColor ?? widget.column!.computedTint,
-                  onChanged: (color) => selectedColor = color,
-                  isAlphaEnabled: false,
-                  isMoreButtonVisible: false,
-                  colorSpectrumShape: ColorSpectrumShape.ring,
-                  isHexInputVisible: false,
-                  isAlphaSliderVisible: false,
-                  isColorSliderVisible: false,
-                  isAlphaTextInputVisible: false,
-                  isColorChannelTextInputVisible: false,
-                  minSaturation: 40,
-                ),
-              )
-            ]
+            Icon(widget.column == null ? FluentIcons.add : FluentIcons.rename),
+            Txt(widget.column == null ? txt("addColumn") : txt("editColumn")),
           ],
         ),
-      ),
-      actions: [
-        FilledButton(
-          style: filledButtonStyle(Colors.grey),
-          child: ButtonContent(WindowsIcons.cancel, txt("cancel")),
-          onPressed: () => Navigator.pop(context),
+        content: SizedBox(
+          width: 312,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InfoLabel(
+                label: txt("columnTitle"),
+                isHeader: true,
+                child: CupertinoTextField(
+                  controller: controller,
+                  placeholder: "${txt("columnTitle")}...",
+                  autofocus: true,
+                ),
+              ),
+              if (widget.column != null) ...[
+                const SizedBox(height: 10),
+                const Divider(),
+                const SizedBox(height: 10),
+                InfoLabel(
+                  label: txt("columnColor"),
+                  isHeader: true,
+                  child: ColorPicker(
+                    color: selectedColor ?? widget.column!.computedTint,
+                    onChanged: (color) => selectedColor = color,
+                    isAlphaEnabled: false,
+                    isMoreButtonVisible: false,
+                    colorSpectrumShape: ColorSpectrumShape.ring,
+                    isHexInputVisible: false,
+                    isAlphaSliderVisible: false,
+                    isColorSliderVisible: false,
+                    isAlphaTextInputVisible: false,
+                    isColorChannelTextInputVisible: false,
+                    minSaturation: 40,
+                  ),
+                )
+              ]
+            ],
+          ),
         ),
-        if (widget.column != null) _ArchiveColumnButton(column: widget.column!),
-        FilledButton(
-          style: filledButtonStyle(Colors.blue),
-          child: ButtonContent(WindowsIcons.save,
-              widget.column == null ? txt("add") : txt("save")),
-          onPressed: () {
-            if (controller.text.isNotEmpty) {
-              if (widget.column == null) {
-                final newColumn = Note.fromJson({})
-                  ..columnName = controller.text
-                  ..isColumn = true
-                  ..order = notes.columns.length.toDouble();
-                notes.set(newColumn);
-              } else {
-                widget.column!.columnName = controller.text;
-                widget.column!.tint = selectedColor;
-                notes.set(widget.column!);
+        actions: [
+          FilledButton(
+            style: filledButtonStyle(Colors.grey),
+            child: ButtonContent(WindowsIcons.cancel, txt("cancel")),
+            onPressed: () => Navigator.pop(context),
+          ),
+          if (widget.column != null)
+            _ArchiveColumnButton(column: widget.column!),
+          FilledButton(
+            style: filledButtonStyle(Colors.blue),
+            child: ButtonContent(WindowsIcons.save,
+                widget.column == null ? txt("add") : txt("save")),
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                if (widget.column == null) {
+                  final newColumn = Note.fromJson({})
+                    ..columnName = controller.text
+                    ..isColumn = true
+                    ..order = notes.columns.length.toDouble();
+                  notes.set(newColumn);
+                } else {
+                  widget.column!.columnName = controller.text;
+                  widget.column!.tint = selectedColor;
+                  notes.set(widget.column!);
+                }
+                Navigator.pop(context);
               }
-              Navigator.pop(context);
-            }
-          },
-        ),
-      ],
+            },
+          ),
+        ],
+      ),
     );
   }
 }

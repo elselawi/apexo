@@ -1,6 +1,7 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
+import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -56,67 +57,69 @@ class _ImportPatientsDialogState extends State<ImportPatientsDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return ContentDialog(
-      style: dialogStyling(context, false, true),
-      actions: [
-        FilledButton(
-          style:
-              (patientsController.text.isEmpty && aptsController.text.isEmpty)
-                  ? filledButtonStyle(Colors.grey.withAlpha(100))
-                  : null,
-          onPressed: import,
-          child: ButtonContent(WindowsIcons.copy, txt("import")),
+    return KeyboardAwareView(
+      child: ContentDialog(
+        style: dialogStyling(context, false, true),
+        actions: [
+          FilledButton(
+            style:
+                (patientsController.text.isEmpty && aptsController.text.isEmpty)
+                    ? filledButtonStyle(Colors.grey.withAlpha(100))
+                    : null,
+            onPressed: import,
+            child: ButtonContent(WindowsIcons.copy, txt("import")),
+          ),
+          const CloseButtonInDialog(buttonText: "close")
+        ],
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Txt(txt("import")),
+            FlyoutTarget(
+              controller: controller,
+              child: Button(
+                  child: ButtonContent(WindowsIcons.info, txt("howToUse")),
+                  onPressed: () {
+                    showHowTo(controller);
+                  }),
+            ),
+            IconButton(
+                icon: const Icon(WindowsIcons.cancel),
+                onPressed: () => Navigator.pop(context))
+          ],
         ),
-        const CloseButtonInDialog(buttonText: "close")
-      ],
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Txt(txt("import")),
-          FlyoutTarget(
-            controller: controller,
-            child: Button(
-                child: ButtonContent(WindowsIcons.info, txt("howToUse")),
-                onPressed: () {
-                  showHowTo(controller);
-                }),
-          ),
-          IconButton(
-              icon: const Icon(WindowsIcons.cancel),
-              onPressed: () => Navigator.pop(context))
-        ],
-      ),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        spacing: 5,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            spacing: 5,
-            children: [
-              const Icon(FluentIcons.medication_admin),
-              Txt("${txt("patients")}:"),
-            ],
-          ),
-          CupertinoTextField(
-            maxLines: 3,
-            controller: patientsController,
-            placeholder: txt("patients"),
-          ),
-          const SizedBox.shrink(),
-          Row(
-            spacing: 5,
-            children: [
-              const Icon(WindowsIcons.calendar),
-              Txt("${txt("appointments")}:"),
-            ],
-          ),
-          CupertinoTextField(
-            maxLines: 3,
-            controller: aptsController,
-            placeholder: txt("appointments"),
-          )
-        ],
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 5,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              spacing: 5,
+              children: [
+                const Icon(FluentIcons.medication_admin),
+                Txt("${txt("patients")}:"),
+              ],
+            ),
+            CupertinoTextField(
+              maxLines: 3,
+              controller: patientsController,
+              placeholder: txt("patients"),
+            ),
+            const SizedBox.shrink(),
+            Row(
+              spacing: 5,
+              children: [
+                const Icon(WindowsIcons.calendar),
+                Txt("${txt("appointments")}:"),
+              ],
+            ),
+            CupertinoTextField(
+              maxLines: 3,
+              controller: aptsController,
+              placeholder: txt("appointments"),
+            )
+          ],
+        ),
       ),
     );
   }

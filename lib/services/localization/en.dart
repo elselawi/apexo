@@ -741,5 +741,13 @@ class En {
     "unknown": "Unknown",
     "scan_receipt_save_success": "Receipt saved successfully",
     "scan_receipt_save_fail": "Failed to save receipt",
+
+    // Dental history recording
+    "TranscribeYourAudio": "Transcribe your audio",
+    "transcribingYourAudio": "Transcribing your audio...",
+    "recording": "Recording",
+    "paused": "Paused",
+    "processingDentalHistory": "processing dental history audio",
+    "processingPostOpNotes": "processing post-op notes audio",
   };
 }

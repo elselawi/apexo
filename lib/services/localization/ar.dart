@@ -736,5 +736,13 @@ class Ar implements En {
     "unknown": "غير معروف",
     "scan_receipt_save_success": "تم حفظ الفاتورة بنجاح",
     "scan_receipt_save_fail": "فشل حفظ الفاتورة",
+
+    // Dental history recording
+    "TranscribeYourAudio": "تسجيل صوتي",
+    "transcribingYourAudio": "جاري تحويل الصوت إلى نص...",
+    "recording": "تسجيل",
+    "paused": "متوقف مؤقتاً",
+    "processingDentalHistory": "معالجة الصوت لاستخراج تاريخ الأسنان",
+    "processingPostOpNotes": "معالجة الصوت لاستخراج ملاحظات ما بعد العملية",
   };
 }

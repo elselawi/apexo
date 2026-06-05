@@ -757,5 +757,13 @@ class Es implements En {
     "unknown": "Desconocido",
     "scan_receipt_save_success": "Recibo guardado exitosamente",
     "scan_receipt_save_fail": "Error al guardar el recibo",
+
+    // Dental history recording
+    "TranscribeYourAudio": "Transcribir tu audio",
+    "transcribingYourAudio": "Transcribiendo tu audio...",
+    "recording": "Grabando",
+    "paused": "Pausado",
+    "processingDentalHistory": "procesando historial dental",
+    "processingPostOpNotes": "procesando notas post-operatorias",
   };
 }

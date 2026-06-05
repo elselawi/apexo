@@ -11,6 +11,10 @@ Apexo is application intended for simple and easy management of dental clinics. 
 
 All contribution are welcome, whether as a PR or issue. All I ask is to adhere to Github community standards.
 
+### Members contributed
+- [sealine 150, Greek localization](https://github.com/sealine150).
+- [Sammy Habta, Spanish localization](https://github.com/dojosgithub)
+
 ## Technology stack
 
 This project uses [Dart](https://github.com/dart-lang/sdk) and [Flutter](https://github.com/flutter/flutter) to be able to run on multiple platforms from a single codebase. The design language is [Microsoft FluentUI](https://developer.microsoft.com/en-us/fluentui#/), as implemented thankfully [by Bruno D'Luka](https://github.com/bdlukaa).

@@ -116,7 +116,7 @@ class _NetworkActions {
       // ),
       if (launch.open() != Open.login)
         NetworkAction(
-          tooltip: "Notifications",
+          tooltip: txt("notifications"),
           activeColor: Colors.blue,
           badge: staticNotifications.notifications.isNotEmpty
               ? staticNotifications.notifications.length.toString()
@@ -141,7 +141,7 @@ class _NetworkActions {
         activeColor: Colors.transparent,
       ),
       NetworkAction(
-        tooltip: "Synchronize",
+        tooltip: txt("synchronizing"),
         icon: const Icon(FluentIcons.sync),
         onPressed: () async {
           if (launch.isDemo) return;

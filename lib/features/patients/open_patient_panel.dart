@@ -15,6 +15,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/ai_services/dental_history.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/constants.dart';
@@ -58,43 +59,48 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
       PanelTab(
         title: txt("dentalNotes"),
         icon: FluentIcons.teeth,
-        footer: Builder(
-          builder: (context) => Container(
-            decoration: BoxDecoration(
-              color: FluentTheme.of(context)
-                  .resources
-                  .solidBackgroundFillColorBase,
-              border: Border(
-                top: BorderSide(
-                  color:
-                      FluentTheme.of(context).resources.cardStrokeColorDefault,
+        footer: network.isOnline()
+            ? Builder(
+                builder: (context) => Container(
+                  decoration: BoxDecoration(
+                    color: FluentTheme.of(context)
+                        .resources
+                        .solidBackgroundFillColorBase,
+                    border: Border(
+                      top: BorderSide(
+                        color: FluentTheme.of(context)
+                            .resources
+                            .cardStrokeColorDefault,
+                      ),
+                    ),
+                  ),
+                  child: AudioRecorderButton(
+                    label: txt("TranscribeYourAudio"),
+                    onRecordingComplete: (bytes, mimeType) async {
+                      try {
+                        final result = await DentalHistory.processAudioBytes(
+                          bytes,
+                          mimeType,
+                          lang: localSettings.transcriptionLocale,
+                        );
+                        if (result.teeth.isNotEmpty) {
+                          editingCopy.teeth.addAll(result.teeth);
+                        }
+                        if (result.teethExtraNotes.isNotEmpty) {
+                          editingCopy.teethExtraNotes
+                              .addAll(result.teethExtraNotes);
+                        }
+                        transcriptionEditCounter(
+                            transcriptionEditCounter() + 1);
+                      } catch (e, s) {
+                        showErrorMessage(e, "processingDentalHistory");
+                        logger("Error processing dental history audio: $e", s);
+                      }
+                    },
+                  ),
                 ),
-              ),
-            ),
-            child: AudioRecorderButton(
-              label: txt("TranscribeYourAudio"),
-              onRecordingComplete: (bytes, mimeType) async {
-                try {
-                  final result = await DentalHistory.processAudioBytes(
-                    bytes,
-                    mimeType,
-                    lang: localSettings.transcriptionLocale,
-                  );
-                  if (result.teeth.isNotEmpty) {
-                    editingCopy.teeth.addAll(result.teeth);
-                  }
-                  if (result.teethExtraNotes.isNotEmpty) {
-                    editingCopy.teethExtraNotes.addAll(result.teethExtraNotes);
-                  }
-                  transcriptionEditCounter(transcriptionEditCounter() + 1);
-                } catch (e, s) {
-                  showErrorMessage(e, "processingDentalHistory");
-                  logger("Error processing dental history audio: $e", s);
-                }
-              },
-            ),
-          ),
-        ),
+              )
+            : null,
         body: MStreamBuilder(
             streams: [
               patients.observableMap.stream,

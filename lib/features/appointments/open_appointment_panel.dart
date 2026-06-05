@@ -14,6 +14,7 @@ import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/ai_services/post_op_notes.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
@@ -92,56 +93,59 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
         title: txt("operativeDetails"),
         icon: FluentIcons.medical_care,
         body: _OperativeDetails(editingCopy),
-        footer: AudioRecorderButton(
-          label: txt("TranscribeYourAudio"),
-          onRecordingComplete: (bytes, mimeType) async {
-            try {
-              final existing = PostOpData(
-                postOpNotes: editingCopy.postOpNotes,
-                prescriptions: editingCopy.prescriptions,
-                price: editingCopy.price,
-                paid: editingCopy.paid,
-                teeth: editingCopy.teeth,
-                teethExtraNotes: editingCopy.teethExtraNotes,
-                hasLabwork: editingCopy.hasLabwork,
-                labName: editingCopy.labName,
-                labworkNotes: editingCopy.labworkNotes,
-              );
-              final result = await PostOpNotes.processAudioBytes(
-                bytes,
-                mimeType,
-                existingFields: existing,
-                lang: localSettings.transcriptionLocale,
-              );
-              if (result.postOpNotes.isNotEmpty) {
-                editingCopy.postOpNotes = result.postOpNotes;
-              }
-              if (result.prescriptions.isNotEmpty) {
-                editingCopy.prescriptions = result.prescriptions;
-              }
-              if (result.price != 0) editingCopy.price = result.price;
-              if (result.paid != 0) editingCopy.paid = result.paid;
-              if (result.teeth.isNotEmpty) {
-                editingCopy.teeth.addAll(result.teeth);
-              }
-              if (result.teethExtraNotes.isNotEmpty) {
-                editingCopy.teethExtraNotes.addAll(result.teethExtraNotes);
-              }
-              editingCopy.hasLabwork = result.hasLabwork;
-              if (result.labName.isNotEmpty) {
-                editingCopy.labName = result.labName;
-              }
-              if (result.labworkNotes.isNotEmpty) {
-                editingCopy.labworkNotes = result.labworkNotes;
-              }
+        footer: network.isOnline()
+            ? AudioRecorderButton(
+                label: txt("TranscribeYourAudio"),
+                onRecordingComplete: (bytes, mimeType) async {
+                  try {
+                    final existing = PostOpData(
+                      postOpNotes: editingCopy.postOpNotes,
+                      prescriptions: editingCopy.prescriptions,
+                      price: editingCopy.price,
+                      paid: editingCopy.paid,
+                      teeth: editingCopy.teeth,
+                      teethExtraNotes: editingCopy.teethExtraNotes,
+                      hasLabwork: editingCopy.hasLabwork,
+                      labName: editingCopy.labName,
+                      labworkNotes: editingCopy.labworkNotes,
+                    );
+                    final result = await PostOpNotes.processAudioBytes(
+                      bytes,
+                      mimeType,
+                      existingFields: existing,
+                      lang: localSettings.transcriptionLocale,
+                    );
+                    if (result.postOpNotes.isNotEmpty) {
+                      editingCopy.postOpNotes = result.postOpNotes;
+                    }
+                    if (result.prescriptions.isNotEmpty) {
+                      editingCopy.prescriptions = result.prescriptions;
+                    }
+                    if (result.price != 0) editingCopy.price = result.price;
+                    if (result.paid != 0) editingCopy.paid = result.paid;
+                    if (result.teeth.isNotEmpty) {
+                      editingCopy.teeth.addAll(result.teeth);
+                    }
+                    if (result.teethExtraNotes.isNotEmpty) {
+                      editingCopy.teethExtraNotes
+                          .addAll(result.teethExtraNotes);
+                    }
+                    editingCopy.hasLabwork = result.hasLabwork;
+                    if (result.labName.isNotEmpty) {
+                      editingCopy.labName = result.labName;
+                    }
+                    if (result.labworkNotes.isNotEmpty) {
+                      editingCopy.labworkNotes = result.labworkNotes;
+                    }
 
-              transcriptionEditCounter(transcriptionEditCounter() + 1);
-            } catch (e, s) {
-              showErrorMessage(e, "processingPostOpNotes");
-              logger("Error processing post-op notes audio: $e", s);
-            }
-          },
-        ),
+                    transcriptionEditCounter(transcriptionEditCounter() + 1);
+                  } catch (e, s) {
+                    showErrorMessage(e, "processingPostOpNotes");
+                    logger("Error processing post-op notes audio: $e", s);
+                  }
+                },
+              )
+            : null,
       ),
     PanelTab(
       title: txt("gallery"),

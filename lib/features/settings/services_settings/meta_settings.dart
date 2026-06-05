@@ -32,6 +32,7 @@ class _MetaSettingsState extends State<MetaSettings> {
     } catch (e) {
       // Controllers remain empty on error
     }
+    if (!mounted) return;
     bool emptyFields = false;
     if (_appNameController.text.isEmpty) {
       _appNameController.text = "Apexo";

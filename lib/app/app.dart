@@ -279,9 +279,9 @@ class ApexoApp extends StatelessWidget {
       width: (constraints.maxWidth < 490 && minimized)
           ? constraints.maxWidth
           : 350,
-      height: minimized ? 56 : constraints.maxHeight,
+      height: minimized ? 100 : constraints.maxHeight,
       top: minimized ? null : 0,
-      bottom: minimized ? 0 : null,
+      bottom: minimized ? -20 : null,
       left: locale.s.$direction == Direction.ltr
           ? null
           : (hideSidePanel ? -400 : 0),

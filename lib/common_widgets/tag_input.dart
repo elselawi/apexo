@@ -58,7 +58,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
 
     // Force the text field to clear by updating the text field directly
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _controller.text = '';
+      if (mounted) _controller.text = '';
     });
 
     widget.onChanged(_tags);

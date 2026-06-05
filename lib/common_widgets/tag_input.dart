@@ -216,7 +216,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         return FlyoutTarget(
           controller: _hiddenTappedFlyoutController,
           child: Container(
-            height: widget.multiline ? visibleTags.length * 35 + 40 : 40,
+            height: widget.multiline ? visibleTags.length * 40 + 40 : 40,
             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
             decoration: BoxDecoration(
               color: FluentTheme.of(context).cardColor,
@@ -233,7 +233,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                           curve: Curves.easeInOut,
                           child: _tags.isEmpty
                               ? const SizedBox.shrink()
-                              : (_isFocused
+                              : ((_isFocused && !widget.multiline)
                                   ? _buildHiddenTagsIndicator(
                                       tokenSpacing, _tags)
                                   : _buildVisibleTags(
@@ -395,6 +395,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
 
   Widget _buildTag(TagInputItem tag) {
     return Container(
+      height: widget.multiline ? 36 : null,
       padding: const EdgeInsets.only(right: 2, bottom: 2),
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.withAlpha(100)),

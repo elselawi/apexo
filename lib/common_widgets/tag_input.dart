@@ -70,15 +70,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   @override
   void initState() {
     super.initState();
-    _tags = widget.initialValue;
-    if (widget.strict == false) {
-      _suggestions = [
-        TagInputItem(value: "", label: ""),
-        ...widget.suggestions
-      ];
-    } else {
-      _suggestions = widget.suggestions;
-    }
+    _tags = List.of(widget.initialValue);
+    _updateSuggestions();
 
     _focusNode = FocusNode(onKeyEvent: (node, event) {
       if (event is KeyDownEvent &&
@@ -90,6 +83,40 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     });
 
     _focusNode.addListener(_onFocusChanged);
+  }
+
+  @override
+  void didUpdateWidget(TagInputWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sync internal _tags when the parent updates initialValue externally
+    // (e.g. after AI receipt scanning populates items).
+    if (oldWidget.initialValue != widget.initialValue &&
+        !_listEquals(_tags, widget.initialValue)) {
+      _tags = List.of(widget.initialValue);
+      _updateSuggestions();
+      // Don't mark dirty if the widget is no longer mounted
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _updateSuggestions() {
+    if (widget.strict == false) {
+      _suggestions = [
+        TagInputItem(value: "", label: ""),
+        ...widget.suggestions
+      ];
+    } else {
+      _suggestions = widget.suggestions;
+    }
+  }
+
+  /// Shallow comparison — sufficient since TagInputItems are value objects.
+  bool _listEquals(List<TagInputItem> a, List<TagInputItem> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].value != b[i].value || a[i].label != b[i].label) return false;
+    }
+    return true;
   }
 
   void _onFocusChanged() {

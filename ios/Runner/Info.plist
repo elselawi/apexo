@@ -74,7 +74,7 @@
 	<key>NSCameraUsageDescription</key>
 	<string>Apexo uses the camera when you choose to capture patient photos, dental images, and treatment documents to attach to patient records stored on your clinic's server.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Apexo uses the microphone only when you record videos with sound, such as documenting patient conditions and treatment progress, to attach to patient records stored on your clinic's server.</string>
+	<string>Apexo uses the microphone only when you record audio or videos with sound, such as documenting patient conditions and treatment progress, to attach to patient records stored on your clinic's server.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Apexo accesses your location only when you choose to capture photos or videos so GPS coordinates can be included in the file metadata (EXIF) for clinical documentation.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

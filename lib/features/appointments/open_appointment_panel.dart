@@ -381,7 +381,9 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                 else
                   FilledButton(
                     child: ButtonContent(FluentIcons.go, txt("open")),
-                    onPressed: () {},
+                    onPressed: () {
+                      openPatient(widget.appointment.patient!);
+                    },
                   )
               ]),
         ),

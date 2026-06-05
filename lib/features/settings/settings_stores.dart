@@ -28,6 +28,7 @@ class GlobalSettings extends Store<Setting> {
   String get prescriptionFooter => get("prescriptionFot").value;
   String get startDayOfWeek => get("start_day_of_wk").value;
   String get isoCountryCode => get("ISO_country____").value;
+  bool get aiServicesEnabled => get("ai_services_ena").value == "1";
 
   Map<String, String> defaults = {
     "currency_______": "USD",
@@ -35,6 +36,7 @@ class GlobalSettings extends Store<Setting> {
     "prescriptionFot": "",
     "start_day_of_wk": "monday",
     "ISO_country____": "",
+    "ai_services_ena": "0",
   };
 
   @override
@@ -133,6 +135,15 @@ class LocalSettings extends ObservablePersistingObject {
   ThemeMode selectedTheme = ThemeMode.light;
   int selectedLocale = 0;
   String dentalNotation = "p";
+  String? aiToken;
+  DateTime? aiTokenExpiry;
+
+  static const _aiTokenSafetyMargin = Duration(hours: 2);
+
+  bool get hasValidAiToken =>
+      aiToken != null &&
+      aiTokenExpiry != null &&
+      DateTime.now().isBefore(aiTokenExpiry!.subtract(_aiTokenSafetyMargin));
 
   @override
   fromJson(Map<String, dynamic> json) {
@@ -141,6 +152,10 @@ class LocalSettings extends ObservablePersistingObject {
     dentalNotation = json["dentalNotation"] ?? dentalNotation;
     selectedTheme =
         json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
+    aiToken = json["aiToken"] as String?;
+    aiTokenExpiry = json["aiTokenExpiry"] != null
+        ? DateTime.fromMillisecondsSinceEpoch(json["aiTokenExpiry"] as int)
+        : null;
   }
 
   @override
@@ -150,6 +165,9 @@ class LocalSettings extends ObservablePersistingObject {
       "dateFormat": dateFormat,
       "dentalNotation": dentalNotation,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
+      if (aiToken != null) "aiToken": aiToken,
+      if (aiTokenExpiry != null)
+        "aiTokenExpiry": aiTokenExpiry!.millisecondsSinceEpoch,
     };
   }
 }

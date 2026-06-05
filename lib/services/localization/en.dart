@@ -706,5 +706,38 @@ class En {
     "sendingUpdatesToServer": "sending updates to server",
     "deletingFile": "deleting file",
     "uploadingFile": "uploading file",
+
+    // AI services
+    "ai_services": "AI Services",
+    "ai_services_desc":
+        "Enable or disable AI-powered features such as receipt scanning, voice notes, and dental history extraction.",
+    "on": "On",
+    "off": "Off",
+    "noCameraOrGallery": "No camera or gallery available",
+
+    // Receipt scanner
+    "receipt_scanner_settings": "Receipt Scanner",
+    "receipt_scanner_info_title": "AI Receipt Scanner",
+    "receipt_scanner_info_desc":
+        "Take a photo of a receipt and the AI will extract items, prices, and supplier details. The photo is sent to a secure Cloudflare Worker for processing.",
+    "receipt_scanner_worker_url": "Worker URL",
+    "receipt_scanner_worker_url_hint":
+        "Fixed endpoint. Receipt images are processed securely via Cloudflare Workers.",
+    "receipt_scanner_auth_server": "Auth Server",
+    "receipt_scanner_auth_server_hint":
+        "Your PocketBase server URL used for authentication.",
+    "receipt_scanner_test_success": "Connection successful! Token obtained.",
+    "receipt_scanner_test_fail": "Connection failed",
+    "scanReceipt": "Scan Receipt",
+    "readFromPhoto": "Read from photo",
+    "readingItemsFromPhoto": "reading items from photo",
+    "scanningReceipt": "Scanning receipt...",
+    "receiptScanFailed": "Receipt scan failed",
+    "testing": "Testing connection...",
+    "newSupplierWillBeAdded":
+        "This supplier doesn't exist yet and will be added automatically.",
+    "unknown": "Unknown",
+    "scan_receipt_save_success": "Receipt saved successfully",
+    "scan_receipt_save_fail": "Failed to save receipt",
   };
 }

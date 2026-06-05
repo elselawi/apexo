@@ -702,5 +702,37 @@ class Ar implements En {
     "sendingUpdatesToServer": "ارسال التحديثات للخادم",
     "deletingFile": "حذف الملف",
     "uploadingFile": "رفع الملف",
+
+    // AI services
+    "ai_services": "الخدمات الذكية",
+    "ai_services_desc":
+        "تفعيل أو تعطيل الميزات المدعومة بالذكاء الاصطناعي مثل مسح الفواتير والملاحظات الصوتية واستخراج تاريخ الأسنان.",
+    "on": "تشغيل",
+    "off": "إيقاف",
+    "noCameraOrGallery": "لا توجد كاميرا أو معرض صور",
+
+    // Receipt scanner
+    "receipt_scanner_settings": "مسح الفواتير",
+    "receipt_scanner_info_title": "مسح الفواتير بالذكاء الاصطناعي",
+    "receipt_scanner_info_desc":
+        "التقط صورة للفاتورة وسيقوم الذكاء الاصطناعي باستخراج الأصناف والأسعار وتفاصيل المورد.",
+    "receipt_scanner_worker_url": "رابط الخدمة",
+    "receipt_scanner_worker_url_hint":
+        "نقطة نهاية ثابتة. تتم معالجة صور الفواتير بشكل آمن عبر Cloudflare Workers.",
+    "receipt_scanner_auth_server": "خادم المصادقة",
+    "receipt_scanner_auth_server_hint":
+        "رابط خادم PocketBase المستخدم للمصادقة.",
+    "receipt_scanner_test_success": "تم الاتصال بنجاح! تم الحصول على الرمز.",
+    "receipt_scanner_test_fail": "فشل الاتصال",
+    "scanReceipt": "مسح الفاتورة",
+    "readFromPhoto": "قراءة من الصورة",
+    "readingItemsFromPhoto": "قراءة الأصناف من الصورة",
+    "scanningReceipt": "جاري مسح الفاتورة...",
+    "receiptScanFailed": "فشل مسح الفاتورة",
+    "testing": "جاري اختبار الاتصال...",
+    "newSupplierWillBeAdded": "هذا المورد غير موجود وسيتم إضافته تلقائياً.",
+    "unknown": "غير معروف",
+    "scan_receipt_save_success": "تم حفظ الفاتورة بنجاح",
+    "scan_receipt_save_fail": "فشل حفظ الفاتورة",
   };
 }

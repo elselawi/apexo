@@ -7,9 +7,11 @@ import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/services/ai_services/receipt_scanner.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
@@ -24,12 +26,22 @@ class OrderRow extends StatefulWidget {
   const OrderRow({
     super.key,
     required this.order,
-    this.supplier,
     this.justCreated = false,
+    this.editableSupplier = false,
+    this.showContextMenu = true,
+    this.showPhotosSection = true,
+    this.strictSupplierInput = false,
+    this.additionalSupplier,
+    this.supplierNameError = false,
   });
   final Expense order;
-  final Expense? supplier;
   final bool justCreated;
+  final bool editableSupplier;
+  final bool strictSupplierInput;
+  final bool showContextMenu;
+  final bool showPhotosSection;
+  final Expense? additionalSupplier;
+  final bool supplierNameError;
 
   @override
   State<OrderRow> createState() => OrderRowState();
@@ -94,9 +106,9 @@ class OrderRowState extends State<OrderRow>
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final supplier = widget.supplier ??
-        expenses.suppliers.firstWhere((s) => s.id == widget.order.supplierId,
-            orElse: () => Expense.fromJson({"supplierName": "Unknown"}));
+    final supplier = expenses.suppliers.firstWhere(
+        (s) => s.id == widget.order.supplierId,
+        orElse: () => Expense.fromJson({"supplierName": "Unknown"}));
 
     final card = Container(
       decoration: BoxDecoration(
@@ -226,17 +238,11 @@ class OrderRowState extends State<OrderRow>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Expanded(
-                child: Text(
-                  supplier.supplierName.toUpperCase(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    letterSpacing: 1.2,
-                    color: theme.typography.body?.color,
-                  ),
-                ),
+                child: widget.editableSupplier
+                    ? _buildEditableSupplier()
+                    : _buildSupplierName(supplier, theme),
               ),
-              if (canEdit) _buildMoreButton(),
+              if (canEdit && widget.showContextMenu) _buildMoreButton(),
             ],
           ),
           const SizedBox(height: 8),
@@ -255,6 +261,92 @@ class OrderRowState extends State<OrderRow>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEditableSupplier() {
+    if (widget.strictSupplierInput) {
+      return _comboBoxSupplier();
+    } else {
+      return Container(
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: widget.supplierNameError ? Colors.red : Colors.transparent,
+          ),
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: TagInputWidget(
+          limit: 1,
+          multiline: false,
+          enabled: !inProgress && canEdit,
+          strict: false,
+          initialValue: [
+            ...expenses.suppliers,
+            if (widget.additionalSupplier != null) widget.additionalSupplier!
+          ]
+              .where((s) => s.id == widget.order.supplierId)
+              .map((s) => TagInputItem(value: s.id, label: s.supplierName))
+              .toList(),
+          onChanged: (suppliers) {
+            setState(() {
+              if (suppliers.isEmpty) {
+                widget.order.supplierId = '';
+              } else {
+                widget.order.supplierId = suppliers.first.value ?? "";
+              }
+            });
+          },
+          placeholder: txt("supplier"),
+          suggestions: _supplierSuggestions(),
+        ),
+      );
+    }
+  }
+
+  List<TagInputItem> _supplierSuggestions() {
+    final existingIds = expenses.suppliers.map((s) => s.id).toSet();
+    final items = expenses.suppliers
+        .map((s) => TagInputItem(value: s.id, label: s.supplierName))
+        .toList();
+
+    if (widget.additionalSupplier != null &&
+        !existingIds.contains(widget.additionalSupplier!.id)) {
+      items.insert(
+          0,
+          TagInputItem(
+              value: widget.additionalSupplier!.id,
+              label: widget.additionalSupplier!.supplierName));
+    }
+
+    return items;
+  }
+
+  Widget _comboBoxSupplier() {
+    return ComboBox<String>(
+      value: widget.order.supplierId,
+      onChanged: (newValue) {
+        setState(() {
+          widget.order.supplierId = newValue ?? '';
+        });
+      },
+      items: expenses.suppliers
+          .map((s) => ComboBoxItem(
+                value: s.id,
+                child: Text(s.supplierName),
+              ))
+          .toList(),
+    );
+  }
+
+  Text _buildSupplierName(Expense supplier, FluentThemeData theme) {
+    return Text(
+      supplier.supplierName.toUpperCase(),
+      style: TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 14,
+        letterSpacing: 1.2,
+        color: theme.typography.body?.color,
       ),
     );
   }
@@ -293,6 +385,20 @@ class OrderRowState extends State<OrderRow>
           ),
           const SizedBox(height: 8),
           _buildItemsInput(),
+          if ((canEdit && !inProgress) &&
+              network.isOnline() &&
+              globalSettings.aiServicesEnabled &&
+              widget.order.photos.isNotEmpty &&
+              widget.order.items.isEmpty) ...[
+            const SizedBox(height: 3),
+            Button(
+              onPressed: _readFromPhoto,
+              child: ButtonContent(
+                WindowsIcons.lightbulb,
+                txt("readFromPhoto"),
+              ),
+            )
+          ],
           const SizedBox(height: 8),
           Text(
             txt("notes").toUpperCase(),
@@ -310,8 +416,10 @@ class OrderRowState extends State<OrderRow>
               widget.order.notes = value;
             },
           ),
-          const SizedBox(height: 12),
-          _buildPhotosSection(),
+          if (widget.showPhotosSection) ...[
+            const SizedBox(height: 12),
+            _buildPhotosSection(),
+          ]
         ],
       ),
     );
@@ -496,7 +604,9 @@ class OrderRowState extends State<OrderRow>
                   fontSize: 14,
                 ),
               ),
-              if (canEdit && !inProgress) _buildAddPhotoButton(),
+              if (canEdit && !inProgress) ...[
+                _buildAddPhotoButton(),
+              ]
             ],
           ),
           const SizedBox(height: 8),
@@ -601,6 +711,7 @@ class OrderRowState extends State<OrderRow>
           rowID: widget.order.id,
           sourcePath: img.path,
           sourceFile: img,
+          targetStore: expenses,
         );
         if (!widget.order.photos.contains(imgName)) {
           widget.order.photos.add(imgName);
@@ -625,6 +736,7 @@ class OrderRowState extends State<OrderRow>
         rowID: widget.order.id,
         sourcePath: res.path,
         sourceFile: res,
+        targetStore: expenses,
       );
       if (!widget.order.photos.contains(imgName)) {
         widget.order.photos.add(imgName);
@@ -633,6 +745,27 @@ class OrderRowState extends State<OrderRow>
       showErrorMessage(e, "uploadingOrderImageFromCamera");
       login.askForLoginAgain(e);
       logger("Error during camera upload: $e", s);
+    }
+    if (mounted) setState(() => inProgress = false);
+  }
+
+  void _readFromPhoto() async {
+    if (widget.order.photos.isEmpty || !mounted) return;
+    setState(() => inProgress = true);
+    try {
+      final imgName = widget.order.photos.first;
+      final imgUrl =
+          await expenses.remote?.getImageLink(widget.order.id, imgName);
+      if (imgUrl == null) throw Exception("Could not retrieve image URL");
+      final items = await ReceiptScanner.extractItemsFromUrl(imgUrl);
+      if (items.isNotEmpty && mounted) {
+        setState(() {
+          widget.order.items = items;
+        });
+      }
+    } catch (e, s) {
+      showErrorMessage(e, "readingItemsFromPhoto");
+      logger("Error reading items from photo: $e", s);
     }
     if (mounted) setState(() => inProgress = false);
   }
@@ -664,6 +797,7 @@ class OrderRowState extends State<OrderRow>
                       : FluentIcons.accept),
                   onPressed: () {
                     widget.order.processed = !widget.order.processed;
+                    setState(() {});
                   },
                 ),
                 MenuFlyoutItem(

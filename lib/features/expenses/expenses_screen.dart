@@ -6,15 +6,17 @@ import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
+import 'package:apexo/features/expenses/scan_receipt_dialog.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:image_picker/image_picker.dart';
 
 class ExpensesScreen extends StatelessWidget {
   const ExpensesScreen({super.key});
@@ -38,9 +40,12 @@ class SuppliersList extends StatefulWidget {
 
 class _SuppliersListState extends State<SuppliersList> {
   final TextEditingController _searchController = TextEditingController();
+  final FlyoutController _scanFlyout = FlyoutController();
+  bool _scanning = false;
 
   @override
   void dispose() {
+    _scanFlyout.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -54,9 +59,89 @@ class _SuppliersListState extends State<SuppliersList> {
           children: [
             ScreenCommandBar(
                 mainButton: IconButton(
-              icon: ButtonContent(WindowsIcons.add, txt("addSupplier")),
-              onPressed: _showAddSupplierDialog,
-            )),
+                  icon: ButtonContent(WindowsIcons.add, txt("addSupplier")),
+                  onPressed: _showAddSupplierDialog,
+                ),
+                otherButtons: globalSettings.aiServicesEnabled &&
+                        network.isOnline()
+                    ? [
+                        FlyoutTarget(
+                          controller: _scanFlyout,
+                          child: IconButton(
+                            style: _scanning
+                                ? ButtonStyle(
+                                    backgroundColor: WidgetStatePropertyAll(
+                                        FluentTheme.of(context)
+                                            .resources
+                                            .dividerStrokeColorDefault),
+                                  )
+                                : null,
+                            icon: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (_scanning)
+                                  const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: ProgressRing(strokeWidth: 2),
+                                  )
+                                else
+                                  const Icon(FluentIcons.generic_scan),
+                                const SizedBox(width: 8),
+                                Txt(txt("scanReceipt")),
+                              ],
+                            ),
+                            onPressed: _scanning
+                                ? null
+                                : () async {
+                                    final suppGallery = ImagePicker()
+                                        .supportsImageSource(
+                                            ImageSource.gallery);
+                                    final suppCamera = ImagePicker()
+                                        .supportsImageSource(
+                                            ImageSource.camera);
+
+                                    if (suppGallery && !suppCamera) {
+                                      _scanReceipt(
+                                          context, ImageSource.gallery);
+                                      return;
+                                    }
+                                    if (!suppGallery && suppCamera) {
+                                      _scanReceipt(context, ImageSource.camera);
+                                      return;
+                                    }
+
+                                    await flyoutFocusFix(context);
+                                    _scanFlyout.showFlyout(
+                                        builder: (ctx) => MenuFlyout(
+                                              items: [
+                                                if (suppGallery)
+                                                  MenuFlyoutItem(
+                                                    text: Txt(txt("upload")),
+                                                    leading: const Icon(
+                                                        FluentIcons.upload),
+                                                    onPressed: () =>
+                                                        _scanReceipt(
+                                                            context,
+                                                            ImageSource
+                                                                .gallery),
+                                                  ),
+                                                if (suppCamera)
+                                                  MenuFlyoutItem(
+                                                    text: Txt(txt("camera")),
+                                                    leading: const Icon(
+                                                        FluentIcons.camera),
+                                                    onPressed: () =>
+                                                        _scanReceipt(context,
+                                                            ImageSource.camera),
+                                                  ),
+                                              ],
+                                            ));
+                                  },
+                          ),
+                        ),
+                      ]
+                    : []),
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Row(
@@ -151,6 +236,15 @@ class _SuppliersListState extends State<SuppliersList> {
         icon: FluentIcons.shop,
       ),
     );
+  }
+
+  void _scanReceipt(BuildContext outerContext, ImageSource source) async {
+    setState(() => _scanning = true);
+    try {
+      await showScanReceiptDialog(outerContext, source);
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
   }
 }
 

@@ -165,6 +165,22 @@ class SettingsScreen extends StatelessWidget {
               localSettings.notifyAndPersist();
             },
           ),
+          if (login.isAdmin)
+            SettingsItem(
+              title: txt("ai_services"),
+              identifier: "ai_services_ena",
+              description: txt("ai_services_desc"),
+              icon: FluentIcons.lightbulb,
+              inputType: InputType.dropDown,
+              scope: Scope.app,
+              options: [
+                ComboBoxItem(value: "1", child: Txt(txt("on"))),
+                ComboBoxItem(value: "0", child: Txt(txt("off"))),
+              ],
+              initValue: globalSettings.get("ai_services_ena").value,
+              apply: (newVal) => globalSettings.set(
+                  Setting.fromJson({"id": "ai_services_ena", "value": newVal})),
+            ),
           if (network.isOnline())
             SettingsItem(
               title: txt("cacheReset"),

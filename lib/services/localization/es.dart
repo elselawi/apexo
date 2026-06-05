@@ -718,9 +718,42 @@ class Es implements En {
     "openingImageFromGrid": "abrir la imagen desde la cuadrícula",
     "openingMultipleImagesFromGrid": "abrir las imágenes desde la cuadrícula",
     "generatingPatientLink": "generando enlace del paciente",
-    "gettingRemoteImagesList": "obtener la lista de imágenes remotas",
-    "sendingUpdatesToServer": "enviar actualizaciones al servidor",
-    "deletingFile": "eliminar archivo",
-    "uploadingFile": "subir archivo",
+    "gettingRemoteImagesList": "obteniendo lista de imágenes remotas",
+    "sendingUpdatesToServer": "enviando actualizaciones al servidor",
+    "deletingFile": "eliminando archivo",
+    "uploadingFile": "subiendo archivo",
+
+    // AI services
+    "ai_services": "Servicios de IA",
+    "ai_services_desc":
+        "Activar o desactivar funciones impulsadas por IA como escaneo de recibos, notas de voz y extracción de historial dental.",
+    "on": "Activado",
+    "off": "Desactivado",
+    "noCameraOrGallery": "No hay cámara ni galería disponible",
+
+    // Receipt scanner
+    "receipt_scanner_settings": "Escáner de Recibos",
+    "receipt_scanner_info_title": "Escáner de Recibos con IA",
+    "receipt_scanner_info_desc":
+        "Tome una foto de un recibo y la IA extraerá los artículos, precios y detalles del proveedor.",
+    "receipt_scanner_worker_url": "URL del Worker",
+    "receipt_scanner_worker_url_hint":
+        "Punto final fijo. Las imágenes de recibos se procesan de forma segura a través de Cloudflare Workers.",
+    "receipt_scanner_auth_server": "Servidor de Autenticación",
+    "receipt_scanner_auth_server_hint":
+        "La URL de su servidor PocketBase utilizada para la autenticación.",
+    "receipt_scanner_test_success": "¡Conexión exitosa! Token obtenido.",
+    "receipt_scanner_test_fail": "Conexión fallida",
+    "scanReceipt": "Escanear Recibo",
+    "readFromPhoto": "Leer desde foto",
+    "readingItemsFromPhoto": "leyendo artículos desde la foto",
+    "scanningReceipt": "Escaneando recibo...",
+    "receiptScanFailed": "Error al escanear recibo",
+    "testing": "Probando conexión...",
+    "newSupplierWillBeAdded":
+        "Este proveedor no existe y se agregará automáticamente.",
+    "unknown": "Desconocido",
+    "scan_receipt_save_success": "Recibo guardado exitosamente",
+    "scan_receipt_save_fail": "Error al guardar el recibo",
   };
 }

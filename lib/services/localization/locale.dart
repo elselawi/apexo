@@ -1,11 +1,12 @@
 import "package:apexo/features/settings/settings_stores.dart";
 import "package:apexo/services/localization/ar.dart";
+import "package:apexo/services/localization/el.dart";
 import "package:apexo/services/localization/en.dart";
 import "package:apexo/services/localization/es.dart";
 import "package:fluent_ui/fluent_ui.dart";
 
 class _Localization {
-  List<En> list = [En(), Ar(), Es()];
+  List<En> list = [En(), Ar(), Es(), El()];
   En get s => list[localSettings.selectedLocale];
   bool get isRtl => s.$direction == Direction.rtl; // Arabic is RTL
 }

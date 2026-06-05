@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
+import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
@@ -32,6 +35,8 @@ import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
+final transcriptionEditCounter = ObservableState(0);
+
 Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
   final panel = Panel<Patient>(
@@ -53,6 +58,43 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
       PanelTab(
         title: txt("dentalNotes"),
         icon: FluentIcons.teeth,
+        footer: Builder(
+          builder: (context) => Container(
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context)
+                  .resources
+                  .solidBackgroundFillColorBase,
+              border: Border(
+                top: BorderSide(
+                  color:
+                      FluentTheme.of(context).resources.cardStrokeColorDefault,
+                ),
+              ),
+            ),
+            child: AudioRecorderButton(
+              label: txt("TranscribeYourAudio"),
+              onRecordingComplete: (bytes, mimeType) async {
+                try {
+                  final result = await DentalHistory.processAudioBytes(
+                    bytes,
+                    mimeType,
+                    lang: locale.s.$code,
+                  );
+                  if (result.teeth.isNotEmpty) {
+                    editingCopy.teeth.addAll(result.teeth);
+                  }
+                  if (result.teethExtraNotes.isNotEmpty) {
+                    editingCopy.teethExtraNotes.addAll(result.teethExtraNotes);
+                  }
+                  transcriptionEditCounter(transcriptionEditCounter() + 1);
+                } catch (e, s) {
+                  showErrorMessage(e, "processingDentalHistory");
+                  logger("Error processing dental history audio: $e", s);
+                }
+              },
+            ),
+          ),
+        ),
         body: MStreamBuilder(
             streams: [appointments.observableMap.stream, showArchived.stream],
             builder: (context, asyncSnapshot) {
@@ -115,7 +157,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
         PanelTab(
           title: txt("appointments"),
           icon: WindowsIcons.calendar,
-          body: _PatientAppointments(editingCopy),
+          body: PatientAppointments(editingCopy),
           footer: AppointmentsListFooter(forPatientID: editingCopy.id),
           onlyIfSaved: true,
           padding: 0,

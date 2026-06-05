@@ -93,6 +93,8 @@ class En {
     "doctorDetails": "Doctor Details",
     "pastAppointments": "Past appointments",
     "upcomingAppointments": "Upcoming appointments",
+    "viewAllAppointments": "View all appointments",
+    "otherAppointments": "Other appointments",
     "doctorName": "Doctor name",
     "doctorEmail": "Doctor email",
     "dutyDays": "Duty days",

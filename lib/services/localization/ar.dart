@@ -91,6 +91,8 @@ class Ar implements En {
     "doctorDetails": "تفاصيل الطبيب",
     "pastAppointments": "المواعيد السابقة",
     "upcomingAppointments": "المواعيد القادمة",
+    "viewAllAppointments": "عرض جميع المواعيد",
+    "otherAppointments": "مواعيد أخرى",
     "doctorName": "اسم الطبيب",
     "doctorEmail": "بريد الطبيب الإلكتروني",
     "dutyDays": "أيام العمل",

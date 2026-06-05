@@ -155,25 +155,23 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                           children: [
                             if (_selectedLabel != null)
                               FilledButton(
-                                style: const ButtonStyle(
-                                    backgroundColor: WidgetStatePropertyAll(
-                                        Colors.errorPrimaryColor)),
+                                style:
+                                    filledButtonStyle(Colors.errorPrimaryColor),
                                 child: ButtonContent(
-                                    FluentIcons.delete, txt("delete")),
+                                    WindowsIcons.delete, txt("delete")),
                                 onPressed: () => _select(null),
                               ),
                             const SizedBox(width: 5),
                             if (_isOtherMode)
                               FilledButton(
+                                style: filledButtonStyle(Colors.blue),
                                 child: ButtonContent(
                                     WindowsIcons.save, txt("save")),
                                 onPressed: () => _select(_otherController.text),
                               )
                             else
                               FilledButton(
-                                style: const ButtonStyle(
-                                    backgroundColor:
-                                        WidgetStatePropertyAll(Colors.grey)),
+                                style: filledButtonStyle(Colors.grey),
                                 onPressed: widget.onTapClose,
                                 child: ButtonContent(
                                     WindowsIcons.cancel, txt("close")),

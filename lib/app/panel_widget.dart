@@ -504,6 +504,7 @@ class _PanelScreenState extends State<PanelScreen> {
       await flyoutFocusFix(context);
       confirmCancelController.showFlyout(builder: (context) {
         return FlyoutContent(
+          constraints: const BoxConstraints(maxWidth: 350),
           child: Column(
             spacing: 12,
             mainAxisSize: MainAxisSize.min,
@@ -514,9 +515,7 @@ class _PanelScreenState extends State<PanelScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   FilledButton(
-                    style: const ButtonStyle(
-                        backgroundColor:
-                            WidgetStatePropertyAll(Colors.warningPrimaryColor)),
+                    style: filledButtonStyle(Colors.warningPrimaryColor),
                     onPressed: () {
                       Flyout.of(context).close();
                       routes.closePanel(widget.panel.item.id);

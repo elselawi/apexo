@@ -596,8 +596,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
             actions: [
               const CloseButtonInDialog(),
               FilledButton(
-                style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Colors.red)),
+                style: filledButtonStyle(Colors.red),
                 child: Txt(txt("restore")),
                 onPressed: () async {
                   Navigator.pop(context);
@@ -645,8 +644,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
             actions: [
               const CloseButtonInDialog(),
               FilledButton(
-                style: ButtonStyle(
-                    backgroundColor: WidgetStatePropertyAll(Colors.red)),
+                style: filledButtonStyle(Colors.red),
                 child: Txt(txt("delete")),
                 onPressed: () async {
                   Navigator.pop(context);

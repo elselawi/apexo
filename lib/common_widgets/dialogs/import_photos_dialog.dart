@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
@@ -68,8 +69,7 @@ class _ImportDialogState extends State<ImportDialog> {
         if (status.length == 1) const ProgressBar(),
         const CloseButtonInDialog(),
         FilledButton(
-          style:
-              ButtonStyle(backgroundColor: WidgetStatePropertyAll(Colors.blue)),
+          style: filledButtonStyle(Colors.blue),
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(WindowsIcons.save),
             const SizedBox(width: 5),

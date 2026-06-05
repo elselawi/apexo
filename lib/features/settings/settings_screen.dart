@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/observable.dart';
@@ -435,8 +436,7 @@ class SettingsItemState extends State<SettingsItem> {
         ),
         const SizedBox(width: 10),
         FilledButton(
-          style: const ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(Colors.grey)),
+          style: greyButtonStyle,
           onPressed: () {
             setState(() {
               _controller.text = widget.initValue;

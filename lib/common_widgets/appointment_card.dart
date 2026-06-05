@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -441,9 +442,7 @@ class AppointmentCard extends StatelessWidget {
             icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
             onPressed: () => openAppointment(appointment),
             iconButtonMode: IconButtonMode.large,
-            style: ButtonStyle(
-              backgroundColor: WidgetStatePropertyAll(openButtonColor),
-            ),
+            style: filledButtonStyle(openButtonColor),
           )
       ],
     );

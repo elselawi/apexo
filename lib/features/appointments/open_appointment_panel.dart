@@ -690,7 +690,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         ),
         if (widget.appointment.prescriptions.isNotEmpty)
           FilledButton(
-              style: const ButtonStyle(elevation: WidgetStatePropertyAll(2)),
+              style: filledButtonStyle(Colors.grey),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

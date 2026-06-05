@@ -29,6 +29,9 @@ enum AppointmentSections {
   labworks,
   pay,
   appointmentNumber,
+  timeDifference,
+  openAppointmentButton,
+  paymentSummary,
 }
 
 class AppointmentCard extends StatelessWidget {
@@ -433,14 +436,15 @@ class AppointmentCard extends StatelessWidget {
             _buildFormattedDate(color),
           ],
         ),
-        IconButton(
-          icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
-          onPressed: () => openAppointment(appointment),
-          iconButtonMode: IconButtonMode.large,
-          style: ButtonStyle(
-            backgroundColor: WidgetStatePropertyAll(openButtonColor),
-          ),
-        )
+        if (!hide.contains(AppointmentSections.openAppointmentButton))
+          IconButton(
+            icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
+            onPressed: () => openAppointment(appointment),
+            iconButtonMode: IconButtonMode.large,
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(openButtonColor),
+            ),
+          )
       ],
     );
   }

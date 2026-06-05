@@ -7,6 +7,9 @@ import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/core/observable.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/services/ai_services/dental_history.dart';
 import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
@@ -236,9 +239,16 @@ class _PatientWebPage extends StatelessWidget {
   }
 }
 
-class _PatientAppointments extends StatelessWidget {
+class PatientAppointments extends StatelessWidget {
   final Patient patient;
-  const _PatientAppointments(this.patient);
+  final List<AppointmentSections> hide;
+  final Appointment? excludedAppointment;
+  final bool readOnly;
+  const PatientAppointments(this.patient,
+      {super.key,
+      this.readOnly = false,
+      this.excludedAppointment,
+      this.hide = const [AppointmentSections.patient]});
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
@@ -254,19 +264,25 @@ class _PatientAppointments extends StatelessWidget {
                     ...List.generate(apts.length, (index) {
                       final appointment = apts[index];
                       String? difference;
-                      if (apts.last != appointment) {
+                      if (apts.last != appointment &&
+                          !hide.contains(AppointmentSections.timeDifference)) {
                         difference =
                             "${txt("after")} ${Patient.formatDuration(appointment.date, apts[index + 1].date)}";
+                      }
+                      if (appointment.id == excludedAppointment?.id) {
+                        return const SizedBox.shrink();
                       }
                       return AppointmentCard(
                         key: Key(appointment.id),
                         appointment: appointment,
                         difference: difference,
-                        hide: const [AppointmentSections.patient],
+                        hide: hide,
                         number: index + 1,
+                        readOnly: readOnly,
                       );
                     }),
                     const Divider(),
+                    if (!hide.contains(AppointmentSections.paymentSummary))
                     Padding(
                       padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
                       child: Container(

@@ -574,6 +574,10 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             expands: true,
             maxLines: null,
             controller: postOpNotesController,
+            suffix: widget.appointment.patient != null &&
+                    widget.appointment.patient!.allAppointments.length > 1
+                ? _buildOtherAppointmentsFlyout(context)
+                : null,
             onChanged: (v) {
               setState(() {
                 widget.appointment.postOpNotes = v;
@@ -721,6 +725,111 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 ),
               ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
+    );
+  }
+
+  FlyoutTarget _buildOtherAppointmentsFlyout(BuildContext context) {
+    return FlyoutTarget(
+      controller: otherAppointmentsFlyout,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(end: 2),
+        child: IconButton(
+          style: filledButtonStyle(Colors.grey),
+          icon: const Icon(WindowsIcons.history),
+          onPressed: () async {
+            await flyoutFocusFix(context);
+            otherAppointmentsFlyout.showFlyout(
+              barrierDismissible: true,
+              dismissWithEsc: true,
+              builder: (context) {
+                return FlyoutContent(
+                    useAcrylic: false,
+                    elevation: 15,
+                    padding: EdgeInsetsGeometry.zero,
+                    constraints:
+                        const BoxConstraints(maxHeight: 300, maxWidth: 340),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(WindowsIcons.history,
+                                  size: 16,
+                                  color: FluentTheme.of(context)
+                                      .typography
+                                      .bodyStrong!
+                                      .color),
+                              const SizedBox(width: 8),
+                              Txt("${txt("otherAppointments")} (${widget.appointment.patient!.allAppointments.length - 1})",
+                                  style: FluentTheme.of(context)
+                                      .typography
+                                      .bodyStrong),
+                            ],
+                          ),
+                        ),
+                        const Divider(),
+                        Flexible(
+                          child: SingleChildScrollView(
+                            child: PatientAppointments(
+                                widget.appointment.patient!,
+                                readOnly: true,
+                                excludedAppointment: widget.appointment,
+                                hide: const [
+                                  AppointmentSections.doctors,
+                                  AppointmentSections.appointmentNumber,
+                                  AppointmentSections.patient,
+                                  AppointmentSections.pay,
+                                  AppointmentSections.timeDifference,
+                                  AppointmentSections.openAppointmentButton,
+                                  AppointmentSections.paymentSummary,
+                                ]),
+                          ),
+                        ),
+                        const Divider(),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          child: Row(
+                            spacing: 5,
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              FilledButton(
+                                style: filledButtonStyle(Colors.blue),
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    openPatient(widget.appointment.patient, 2);
+                                  });
+                                },
+                                child: ButtonContent(
+                                  WindowsIcons.calendar,
+                                  txt("viewAllAppointments"),
+                                  size: 13,
+                                ),
+                              ),
+                              FilledButton(
+                                style: filledButtonStyle(Colors.grey),
+                                onPressed: () => Navigator.pop(context),
+                                child: ButtonContent(
+                                  WindowsIcons.cancel,
+                                  txt("close"),
+                                  size: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ));
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 

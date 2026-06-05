@@ -94,6 +94,8 @@ class Es implements En {
     "doctorDetails": "Detalles del doctor",
     "pastAppointments": "Citas pasadas",
     "upcomingAppointments": "Próximas citas",
+    "viewAllAppointments": "Ver todas las citas",
+    "otherAppointments": "Otras citas",
     "doctorName": "Nombre del doctor",
     "doctorEmail": "Correo del doctor",
     "dutyDays": "Días de servicio",

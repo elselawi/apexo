@@ -1,6 +1,17 @@
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
+/// Top-level ISO country code override for use inside compute isolates
+/// where the reactive [globalSettings] store is not available.
+String? _overrideIsoCountryCode;
+
+/// Call this before spawning a compute isolate that will invoke
+/// [PhoneNumberExtractor] so that `_parseNumber` can use the real
+/// ISO country code instead of falling back to `isoCC()`.
+void setIsoCountryCodeForIsolate(String code) {
+  _overrideIsoCountryCode = code;
+}
+
 /// Extracts valid phone numbers from any text.
 class PhoneNumberExtractor {
   /// Synchronously finds all valid phone numbers in [text].
@@ -81,10 +92,12 @@ class PhoneNumberExtractor {
         // International format – no region hint needed
         return PhoneNumber.parse(trimmed);
       } else {
-        // National format – use the provided default region via enum lookup
+        // National format – use the override (set before compute) or fall back
+        // to the reactive store for main-isolate calls.
+        final region = _overrideIsoCountryCode ?? defaultRegion;
         return PhoneNumber.parse(
           trimmed,
-          destinationCountry: IsoCode.values.byName(isoCC()),
+          destinationCountry: IsoCode.values.byName(region),
         );
       }
     } catch (_) {

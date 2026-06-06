@@ -182,6 +182,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
       return;
     }
 
+    if (!mounted) return;
     setState(() => _processing = true);
 
     try {

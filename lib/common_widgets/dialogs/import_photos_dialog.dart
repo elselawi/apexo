@@ -93,12 +93,14 @@ class _ImportDialogState extends State<ImportDialog> {
                 if (response.statusCode != 200) {
                   throw Exception(response.body);
                 } else {
+                  if (!mounted) return;
                   setState(() {
                     status = "";
                   });
                   res = List<String>.from(jsonDecode(response.body));
                 }
               } catch (e) {
+                if (!mounted) return;
                 setState(() {
                   status = e.toString();
                 });

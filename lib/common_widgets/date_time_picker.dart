@@ -93,6 +93,7 @@ class DateTimePickerState extends State<DateTimePicker> {
           selected;
     }
 
+    if (!mounted) return;
     setState(() {
       widget.onChange(selected);
       value = selected;

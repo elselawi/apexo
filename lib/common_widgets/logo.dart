@@ -18,20 +18,24 @@ class _AppLogoState extends State<AppLogo> {
   @override
   void initState() {
     if (version.isEmpty) {
-      PackageInfo.fromPlatform()
-          .then((p) => setState(() {
-                version = p.version;
-                savedVersion = p.version;
-              }))
-          .ignore();
+      PackageInfo.fromPlatform().then((p) {
+        if (mounted) {
+          setState(() {
+            version = p.version;
+            savedVersion = p.version;
+          });
+        }
+      }).ignore();
     }
     super.initState();
   }
 
   @override
   Widget build(BuildContext context) {
-    final textStyle =
-        TextStyle(color: (FluentTheme.of(context).iconTheme.color ?? Colors.grey).withValues(alpha: 0.4), fontSize: 12);
+    final textStyle = TextStyle(
+        color: (FluentTheme.of(context).iconTheme.color ?? Colors.grey)
+            .withValues(alpha: 0.4),
+        fontSize: 12);
     return Center(
       key: WK.appLogo,
       child: Padding(

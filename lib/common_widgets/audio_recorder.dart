@@ -233,8 +233,11 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
       decoration: BoxDecoration(
         color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
         borderRadius: BorderRadius.circular(100),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, blurRadius: 300, spreadRadius: 200),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withValues(alpha: 0.7),
+              blurRadius: 300,
+              spreadRadius: 200),
         ],
       ),
       child: _processing ? _buildProcessing() : _buildControls(),

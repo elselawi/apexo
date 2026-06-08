@@ -1,4 +1,5 @@
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 /// Represents a phone number parsed from any input (national or international).
@@ -35,7 +36,7 @@ class ParsedPhoneNumber {
         parsed = PhoneNumber.parse(
           cleaned,
           destinationCountry: IsoCode.values.byName(
-            isoCC(),
+            overrideIsoCountryCode ?? isoCC(),
           ),
         );
       }

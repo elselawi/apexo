@@ -19,7 +19,7 @@ import 'observable.dart';
 import 'save_local.dart';
 import 'save_remote.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/features/settings/settings_model.dart';
+import 'package:apexo/utils/phone_numbers_extractor.dart';
 
 typedef ModellingFunc<G> = G Function(Map<String, dynamic> input);
 
@@ -100,24 +100,15 @@ class Store<G extends Model> {
     final Map<String, Map<String, dynamic>> decoded =
         await compute(_decodeAllDocs, all);
 
-    // Get current global settings data to pass to the background isolate
-    Map<String, Map<String, dynamic>>? globalSettingsData;
-    try {
-      globalSettingsData = globalSettings.observableMap.docs.map(
-        (key, setting) => MapEntry(key, setting.toJson()),
-      );
-    } catch (_) {
-      // Ignore if globalSettings hasn't been initialized or is empty
-    }
+    // Capture the ISO country code so the compute isolate can use it
+    // for phone-number parsing (isolates don't share memory with main).
+    final capturedIsoCC = isoCC();
 
     // model json maps to document in a background isolate
     final Map<String, G> modeled = await compute(
         _modelAllDocs<G>,
         _ModelAllDocsParams(
-          modeling: modeling,
-          decoded: decoded,
-          globalSettingsData: globalSettingsData,
-        ));
+            modeling: modeling, decoded: decoded, isoCC: capturedIsoCC));
     // silent for persistence; use the optimized setAllWithJson
     observableMap.silently(() {
       observableMap.clear();
@@ -772,20 +763,19 @@ Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
 class _ModelAllDocsParams<G extends Model> {
   final ModellingFunc<G> modeling;
   final Map<String, Map<String, dynamic>> decoded;
-  final Map<String, Map<String, dynamic>>? globalSettingsData;
+  final String isoCC;
   _ModelAllDocsParams({
     required this.modeling,
     required this.decoded,
-    this.globalSettingsData,
+    required this.isoCC,
   });
 }
 
 Map<String, G> _modelAllDocs<G extends Model>(_ModelAllDocsParams<G> params) {
-  if (params.globalSettingsData != null) {
-    params.globalSettingsData!.forEach((key, value) {
-      globalSettings.set(Setting.fromJson(value));
-    });
-  }
+  // Make the ISO country code available to PhoneNumberExtractor inside
+  // this compute isolate (the reactive globalSettings store is not
+  // accessible here).
+  setIsoCountryCodeForIsolate(params.isoCC);
   return Map<String, G>.fromEntries(params.decoded.entries
       .map((entry) => MapEntry(entry.key, params.modeling(entry.value))));
 }

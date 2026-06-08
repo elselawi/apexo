@@ -128,6 +128,83 @@ In apexo, each user can have its own account. Account can be for an operator (do
 
 - Finally, for each patient, the application would generate a link that the patient can use to see their appointments and photos stores to on their appointments.
 
+#### Importing & exporting patients
+
+You can import and export patient and appointment data using the CSV format. This is useful for migrating data from another system, creating backups, or sharing data between clinics.
+
+##### Importing data
+
+1. From the **Patients** screen, click the import button (copy icon labeled "Import") in the top toolbar.
+
+2. A dialog will appear with two text fields:
+   - **Patients**: Paste CSV data for patient records.
+   - **Appointments**: Paste CSV data for appointment records.
+
+3. The CSV data must have a header row with field names matching the application's field names. The **order of columns does not matter** — the application matches data by header names. The easiest way to get the correct format is to **export a sample first** and use that as a template.
+
+   ##### Patient CSV fields
+
+   | Field | Format | Description |
+   |-------|--------|-------------|
+   | `id` | text (UUID) | Unique identifier. If omitted, one is auto-generated. |
+   | `title` | text | Patient's full name. |
+   | `birth` | integer | Birth year (e.g., `1985`). Defaults to current year minus 18. |
+   | `gender` | `0` or `1` | `0` = female, `1` = male. |
+   | `phone` | text | Phone numbers in E.164 format, space-separated (e.g., `+1234567890 +9876543210`). |
+   | `email` | text | Email address. |
+   | `address` | text | Physical address. |
+   | `notes` | text | Free-text medical notes. |
+   | `tags/0`, `tags/1`, … | text | Patient tags. Each tag gets its own column (e.g., `tags/0` for the first tag, `tags/1` for the second). |
+   | `teeth/11`, `teeth/12`, … | text | Dental chart notes per tooth. The number after `/` is the ISO 3950 tooth code (e.g., `teeth/11` for upper right central incisor). |
+   | `archived` | `true` / `false` | Whether the patient is archived. |
+
+   ##### Appointment CSV fields
+
+   | Field | Format | Description |
+   |-------|--------|-------------|
+   | `id` | text (UUID) | Unique identifier. If omitted, one is auto-generated. |
+   | `patientID` | text (UUID) | **Required.** The `id` of the patient this appointment belongs to. Must match an existing or imported patient. |
+   | `date` | integer | **Minutes since Unix epoch** (not milliseconds). Example: `27213120` for Jan 1, 2022. |
+   | `price` | decimal | Total price of the appointment (e.g., `150.00`). |
+   | `paid` | decimal | Amount already paid (e.g., `50.00`). |
+   | `preOpNotes` | text | Pre-operative notes. |
+   | `postOpNotes` | text | Post-operative notes. |
+   | `isDone` | `true` / `false` | Whether the appointment is completed. |
+   | `operatorsIDs/0`, `operatorsIDs/1`, … | text (UUID) | IDs of the doctors/operators assigned. |
+   | `prescriptions/0`, `prescriptions/1`, … | text | Prescriptions. |
+   | `teeth/11`, `teeth/12`, … | text | Dental chart per tooth (ISO 3950 codes). |
+   | `imgs/0`, `imgs/1`, … | text (URL) | Image URLs for the appointment. |
+   | `hasLabwork` | `true` / `false` | Whether a lab case is associated. |
+   | `labName` | text | Name of the lab. |
+   | `labworkNotes` | text | Notes about the lab work. |
+   | `labworkReceived` | `true` / `false` | Whether the lab work was received. |
+   | `archived` | `true` / `false` | Whether the appointment is archived. |
+
+   > **Important note about the date field**: Appointment dates are stored as integer minutes since January 1, 1970 (Unix epoch). To convert a date, use an online converter or calculate: `(date in milliseconds) / 60000`. For example, `2025-01-01 00:00 UTC` = `28877760`.
+
+4. You can fill one or both fields — they are independent. For example, you can import only patients, only appointments, or both at once.
+
+5. Click **Import** to add the records to the application.
+
+> **Tip**: Click the info button (ℹ️) in the dialog for additional guidance on the expected CSV format. The fastest way to build a valid import file is to first export an existing patient, then follow the same column layout.
+
+##### Exporting data
+
+1. On the **Patients** screen, select one or more patients by clicking on their rows. Selected rows will be highlighted.
+
+2. Once at least one patient is selected, an export button (copy icon with a count) will appear in the top toolbar. Click it.
+
+3. The export dialog shows two tabs:
+   - **Patients**: CSV data for the selected patients.
+   - **Appointments**: CSV data for all appointments belonging to the selected patients.
+
+4. You can customize the export output using the checkboxes at the top:
+   - **Title**: Include/exclude the CSV header row.
+   - **All**: Export all available columns, or pick specific columns individually.
+   - Individual column checkboxes: Select which columns to include in the export.
+
+5. Click the copy button at the bottom-right of the CSV preview to copy the data to your clipboard. You can then paste it into a spreadsheet application (like Excel or Google Sheets) or a text file.
+
 ### Appointment
 
 After creating a patient, you can create an appointment for them. The appointment is divided to three sections:

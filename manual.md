@@ -50,39 +50,70 @@ While your application is now ready and working there are further steps to take 
 
 Setting up email is useful for sending login alert notifications, password reset email, and other emails.
 
-From the left sidebar go to "settings" and the "mail settings". 
+Go to the settings screen and find the **SMTP Settings** section. Expand it to see the configuration panel.
 
-The following values are for gmail:
-- Sender name: _your name_
-- Sender email: _your email_
-- SMTP host: __smtp.gmail.com__
-- SMTP port: __587__
-- SMTP username: _your email_
-- SMTP password: _password_
+First, enable the toggle **SMTP enabled** to activate email sending.
 
-The password field is the same password you use to login to your email account. However if you use 2-step verification you must generate an app password for this field [from your google account settings](https://myaccount.google.com/apppasswords).
+You can use the **preset buttons** (Gmail / Outlook) to quickly fill in the correct host and port values, or enter them manually:
 
+| Field | Description |
+|-------|-------------|
+| **SMTP host** | Your email provider's SMTP server (e.g., `smtp.gmail.com`) |
+| **SMTP port** | Typically `587` for TLS |
+| **TLS mode** | Choose _Auto_ to let the server negotiate, or _Always_ to force TLS |
+| **SMTP username** | Your email address (e.g., `you@gmail.com`) |
+| **SMTP password** | Your email password or app-specific password (use the eye icon to toggle visibility) |
 
-The following values are for outlook:
-- Sender name: _your name_
-- Sender email: _your email_
-- SMTP host: __smtp-mail.outlook.com__
-- SMTP port: __587__
-- SMTP username: _your email_
-- SMTP password: _password_
+> If you use 2‑step verification, you must generate an **app password** instead of your normal password:
+> - [Gmail app passwords](https://myaccount.google.com/apppasswords)
+> - [Outlook app passwords](https://account.live.com/proofs/Manage/additional)
 
-The password field is the same password you use to login to your email account. However if you use 2-step verification you must generate an app password for this field [from your outlook account settings](https://account.live.com/proofs/Manage/additional).
+Fill in the sender details that will appear on outgoing emails:
 
+| Field | Description |
+|-------|-------------|
+| **Sender name** | The display name recipients will see (e.g., "My Clinic") |
+| **Sender email** | The address emails will come from (e.g., `noreply@example.com`) |
+| **Local name** | The local hostname used in SMTP EHLO (e.g., `mine.apexo.app`) |
 
-For other email providers, you can find the SMTP settings in their documentation.
+Click **Save** to persist your settings. You can also click **Test** to send a test email to your own address and verify the configuration works.
+
+> **Note:** Some hosting providers block port 25 and other common SMTP ports. The settings panel will show a warning if this may be an issue.
 
 #### Setting up backups
 
-Setting up backups is useful for making sure you don't lose your data in case of a server crash or a hacker attack. You can set up a backup schedule to run every day, week, month, or year.
+Setting up backups is useful for making sure you don't lose your data in case of a server crash or a hacker attack. You can set up a backup schedule to run automatically, and also create manual backups at any time.
 
-From the left sidebar go to "settings" and the "backups".
+Go to the settings screen and find the **Backups** section. Expand it to see the full panel.
 
-The following image shows how to setup a backup schedule every day, or every week, bi-weekly, or every month. You can also setup how many backups to keep.
+##### Managing existing backups
+
+The top portion of the panel lists all existing backup files, each showing its date and file size. For each backup you can:
+
+- **Download** — Get a shareable download link to save the backup file locally
+- **Delete** — Remove a backup you no longer need
+- **Restore** — Replace all current data with the data from this backup (⚠️ this cannot be undone)
+
+Use the toolbar buttons to:
+- **Create new** — Generate a fresh backup immediately
+- **Upload** — Select a backup file from your device to upload to the server
+- **Refresh** — Reload the backup list from the server
+
+##### Configuring automatic backups
+
+Below the backup list, the **Backup configuration** panel lets you schedule automatic backups:
+
+1. Enable the toggle **Auto backup enabled** to activate scheduled backups.
+
+2. Choose a **schedule preset** from the dropdown, or type a custom [cron expression](https://en.wikipedia.org/wiki/Cron):
+   - Every hour · Every 6 hours · Every 12 hours
+   - Daily (midnight) · Daily (3 AM) · Weekly (Sunday) · Monthly (1st)
+
+3. Set **Max backups to keep** — older backups beyond this count will be automatically deleted.
+
+4. Optionally enable **S3 storage for backups** to store backup files on your S3 provider instead of the server's local storage. When enabled, fill in your S3 credentials (endpoint, bucket, region, access key, secret key, and force path style).
+
+Click **Save** to persist your schedule, and **Test** to verify the S3 connection if configured.
 
 ![Backups](https://raw.githubusercontent.com/elselawi/apexo/master/docs/manual_imgs/backups.png)
 
@@ -106,33 +137,103 @@ To setup S3, first you'll have to register with an S3 provider. The following ar
 - [iDrive](https://www.idrive.com/s3-storage-e2/) _No free tier_, ~$1.5 for 250GB
 - [Cloudflare R2](https://www.cloudflare.com/products/r2/) __Free for 10GB__, ~$3.5 for 250GB
 
+Once you've registered with an S3 provider, you'll have to create a bucket and get the following information. You can find the documentation for each provider on how to create a bucket and obtain the credentials.
 
-Once you've registered with an S3 provider, you'll have to create a bucket and get the following information: endpoint, bucket name, region, access key, and secret key. You can find the documentation for each provider on how to create a bucket and get the information.
+Go to the settings screen and find the **S3 Settings** section. Expand it and enable the **S3 enabled** toggle, then fill in your credentials:
 
-Once you have the information, go to the "settings" page and then "Files storage". enable S3 storage, enter the information and save.
+| Field | Description |
+|-------|-------------|
+| **Endpoint** | Your S3 provider's endpoint URL (e.g., `https://s3.amazonaws.com`) |
+| **Bucket** | The name of your S3 bucket (e.g., `my-bucket`) |
+| **Region** | Your bucket's region (e.g., `us-east-1`) |
+| **Access key** | Your S3 access key (e.g., `AKIA...`) |
+| **Secret key** | Your S3 secret key (use the eye icon to toggle visibility) |
+| **Force path style** | Enable if your S3 provider requires path-style URLs instead of virtual-hosted–style |
+
+Click **Save** to persist the configuration, then click **Test** to verify the connection. A success or error message will appear at the bottom of the panel.
 
 ## How to use
 
 ### Accounts
 
-In apexo, each user can have its own account. Account can be for an operator (doctor, hygienist, etc.) or for a non-operator (accountant, administrator, secretary, etc.). An account can be either an admin (where it has access to all features) or a regular user (where it has access to specific features based on permissions).
+In Apexo, each staff member can have their own account. Accounts are managed from the **Accounts** screen.
 
+There are two account types:
+
+| Type | Badge | Description |
+|------|-------|-------------|
+| **Admin** | Red "Admin" badge | Full access to all features and settings |
+| **User** | Teal "User" badge | Access controlled by permissions assigned to the account |
+
+Use the toolbar buttons to create a **New User** or **New Admin**. The screen header shows the current count of admins and users, and a **Refresh** button keeps the list in sync with the server.
+
+You can search accounts by name or email using the search bar. Click any account row to open its detail panel where you can edit the name, email, password, permissions, and whether the account can operate on patients.
+
+> **Permissions:** User accounts have granular permission levels (0 = no access, 1 = own records only, 2 = all records) for patients, appointments, pre‑op notes, post‑op notes, photos, expenses, notes, and labworks.
+
+---
 
 ### Patients
 
-- Create a record for each patient in the clinic. Each patient can have their basic information like name, phone number, address, medical history etc. You can also add specific tags to each patient to make it easier to filter them.
+The **Patients** screen is your main patient directory. Each row shows a patient's name, treatment labels (visual indicators of dental work), and sortable bottom labels for phone, last visit date, payment status, and more.
 
-- Each patient also have "Dental chart" where you can store notes specific to a tooth of this patient. This chart usually can be used to register dental history, **not** treatments that has been done in your clinic, for your clinic's treatments, you should use appointments.
+#### Toolbar
 
-- Each patient would also have a list of appointments, where you can see each appointment details, notes, payment status, photos, prescriptions and more.
+| Button | Action |
+|--------|--------|
+| **New Patient** | Create a new patient record |
+| **Import** | Paste CSV data to bulk-import patients and appointments |
+| **Export (n)** | Export selected patients and their appointments as CSV |
 
-- Finally, for each patient, the application would generate a link that the patient can use to see their appointments and photos stores to on their appointments.
+Select patients by clicking their rows (multi‑select is supported). The export button appears once at least one patient is selected.
+
+#### Filters and sorting
+
+- **Treatment filter** — Filter patients by a specific dental treatment (e.g., extraction, filling, crown)
+- **by Name** — Toggle to sort alphabetically (tap again to reverse direction)
+- **Column toggles** — Sort by any visible column (phone, last visit, payments, etc.)
+
+The search bar filters patients in real time as you type. Use the **Show More** button at the bottom to load additional results.
+
+#### Patient detail panel
+
+Clicking a patient opens a multi‑tab panel:
+
+##### Tab 1 — Patient Details
+
+| Field | Description |
+|-------|-------------|
+| **Name** | Patient's full name |
+| **Birth year** | Year of birth (used to calculate age) |
+| **Gender** | Male ♂️ or Female ♀️ (dropdown) |
+| **Email** | Email address with a quick‑action contact button |
+| **Phone** | Phone numbers — the app automatically detects and validates numbers in international format. Detected numbers appear as clickable contact buttons. Invalid numbers show a warning. |
+| **Address** | Physical address |
+| **Notes** | Free‑text medical notes |
+| **Tags** | Custom tags for filtering and categorization (type and press Enter to add) |
+
+##### Tab 2 — Dental Notes
+
+A visual teeth chart where you can record dental history for each tooth (ISO 3950 notation). This is for the patient's **permanent dental record**, not treatment‑specific notes.
+
+- Tap a tooth to add or edit its note
+- The chart shows both current notes and historical notes from past appointments
+- For patients under 14, primary teeth are shown
+- An **AI transcription** button at the bottom lets you dictate dental history from an audio recording
+
+##### Tab 3 — Appointments
+
+Lists all appointments for this patient, each shown as a card with pre‑op notes, post‑op notes, dental work, prescriptions, photos, and payment status. A **payment summary** at the bottom shows total cost, total paid, and whether the patient is fully paid, underpaid, or overpaid.
+
+##### Tab 4 — Patient Page
+
+Generate a secure web link that the patient can use to view their own appointments, payments, and photos. Click **Generate QR Link** to create the link, then share it or print a QR code for the patient.
 
 #### Importing & exporting patients
 
-You can import and export patient and appointment data using the CSV format. This is useful for migrating data from another system, creating backups, or sharing data between clinics.
+You can bulk‑import and export patient and appointment data using CSV. This is useful for migrating from another system or creating backups.
 
-##### Importing data
+##### Importing
 
 1. From the **Patients** screen, click the import button (copy icon labeled "Import") in the top toolbar.
 
@@ -225,63 +326,108 @@ After creating a patient, you can create an appointment for them. The appointmen
 
 ### Labworks
 
-Labworks are used to track labwork orders, their date, and whether they are delivered or not. They can only be registered from the appointment page by clicking on "Add labwork for this appointment" at the bottom of the "operative details" page.
+The **Labworks** screen tracks all lab cases across the clinic in a table view.
 
-### Statistics
+| Column | Description |
+|--------|-------------|
+| ☑️ **Checkbox** | Mark as received — toggles between pending (⏳) and received (✅) |
+| **Patient** | The patient this lab case belongs to |
+| **Date** | Appointment date |
+| **Doctors** | Assigned operators |
+| **Laboratory** | Lab name |
+| **Notes** | Order notes |
+| **Status** | Current status with emoji indicator |
 
-After creating some patients and appointments, you can see some statistics about the clinic. You can see the number of patients, appointments, payments, and more.
+Click any column header to sort by that column. Use the **Show Done** toggle to include or hide received lab cases. The search bar filters by patient name, date, lab name, or notes.
 
-### Manage labworks
+Labworks can only be created from within an appointment — open the appointment, go to the **Operative Details** tab, and click "Add labwork for this appointment" at the bottom.
 
-This screen has been designed to track labworks, their date, and whether they are delivered or not, paid or not.
+---
 
-Each labwork can be tied to a specific patient, and specific doctor.
+### Notes
 
-### Manage expenses and receipts
+The **Notes** screen uses a **Kanban board** layout for organizing clinic notes visually.
 
-To begin resitering expenses and receipts, go to the "expenses" page and add "supplier" first. Then you can add expenses and receipts under this supplier. Each supplier will appear as a folder icon, and when you open it a new window would open that contains two categories:
+- Each **column** represents a category or workflow stage
+- Each **card** is a note with a title and body text
+- Drag cards between columns to reorganize them
+- Click **Add Column** to create a new category
 
-- Unpaid orders
-- Paid orders
+#### Toolbar
 
-Each order can be marked as paid or unpaid, and each receipt can be attached to an order as an image.
+| Control | Action |
+|---------|--------|
+| **New Note** | Create a new note card |
+| **Account filter** | Show notes for a specific staff member or all accounts |
+| **Sort** | Toggle between ascending and descending order |
+| **Personal** | Filter to show only your own notes |
+| **Incoming** | Show notes assigned to you from other accounts |
 
+The search bar filters notes by title and content.
 
-### Setting
+---
 
-You can set the following settings:
+### Expenses
 
-#### Currency
+The **Expenses** screen helps you track clinic spending organized by supplier.
 
-Set the currency code to be used in the application.
+#### Supplier list
 
-#### Prescription footer
+Each supplier appears as a folder. The list shows:
 
-This is a piece of text that will be added to the bottom of each prescription.
+- Supplier name with a folder icon
+- **Last order** — how many days ago the most recent order was placed
+- **Due payment** — outstanding amount highlighted in orange with a warning icon
+- Archived suppliers show an "Archived" badge
 
-#### Phone number
+Right‑click or use the **⋯** menu on any supplier to **Open**, **Rename**, or **Archive/Restore** it.
 
-The phone number would be displayed in the patients web page and in the prescriptions.
+The screen header shows the **total due** across all suppliers, and the **View All Orders** button opens a combined view of every order regardless of supplier.
 
-#### Language
+#### Toolbar
 
-The language would be used in the application for menus, buttons and other text.
+| Button | Action |
+|--------|--------|
+| **Add Supplier** | Create a new supplier folder |
+| **Scan Receipt** | Use AI to scan a receipt photo — the app extracts supplier name, items, prices, and dates automatically. Choose between camera capture or gallery upload. |
 
-This setting would only be saved on the device that you're using. It would not be synced with the server.
+#### Supplier detail panel
 
-#### Starting day of week
+Clicking a supplier opens its order list, divided into two sections:
 
-Set the starting day of the week. This would affect the way the calendar is displayed in the "appointments" page.
+- **Unpaid orders** — Orders that still have an outstanding balance
+- **Paid orders** — Fully settled orders
 
-#### Date format
+Each order can be marked as paid or unpaid, and receipt images can be attached to any order.
 
-Set the date format to be used in the application. It can be "day/month/year" or "month/day/year".
+---
 
-This setting would only be saved on the device that you're using. It would not be synced with the server.
+### Settings
 
-#### Dental notation
+The **Settings** screen contains all configurable options for the application. Each setting is displayed as an expandable card showing its icon, title, and an indicator of whether it applies to the whole clinic (🌐 App) or only your device (📱 Device).
 
-Set the dental notation system to be used in the application. It can be "ISO", "Palmer", or "Universal".
+#### General settings
+
+| Setting | Scope | Description |
+|---------|-------|-------------|
+| **Currency** | 🌐 App | Currency code used for all prices and payments |
+| **Country code** | 🌐 App | ISO country code used for phone number validation |
+| **Prescription footer** | 🌐 App | Text appended to the bottom of every printed prescription |
+| **Phone number** | 🌐 App | Clinic phone number shown on prescriptions and the patient web page |
+| **Language** | 📱 Device | Interface language — does not sync to other devices |
+| **Starting day of week** | 🌐 App | First day shown on the calendar (Monday, Sunday, etc.) |
+| **Date format** | 📱 Device | Month/day/year or day/month/year — device‑specific |
+| **Dental notation** | 📱 Device | Tooth numbering system: ISO, Palmer, or Universal |
+
+#### AI & advanced
+
+| Setting | Scope | Description |
+|---------|-------|-------------|
+| **AI services** | 🌐 App | Enable or disable AI‑powered features (voice transcription, receipt scanning). A privacy notice confirms your data is not used for training. |
+| **Audio transcription locale** | 📱 Device | Language for voice‑to‑text transcription. Choose "Same as app language" or pick from 30+ supported languages. |
+| **Cache reset** | 📱 Device | Clears all local data and re‑syncs from the server. Useful for troubleshooting. A progress dialog guides you through the process. |
+
+> Service‑specific settings (SMTP, Backups, S3, Authentication, Meta) are documented in the [Best practices](#best-practices) section above.
 
 #### Backups/Restore
 

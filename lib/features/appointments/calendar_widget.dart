@@ -6,6 +6,7 @@ import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -532,6 +533,11 @@ class AppointmentCalendarTile<Item extends Appointment>
                       PhoneNumberButton(phoneNumbers: item.patient!.phone),
                     if ((item.patient?.email ?? '').isNotEmpty)
                       EmailButton(email: item.patient!.email),
+                    if ((item.patient?.allAppointments ?? []).length > 1)
+                      AppointmentsHistoryFlyout(
+                        patient: item.patient!,
+                        exclude: item,
+                      ),
                   ],
                 ),
                 IconButton(

@@ -6,7 +6,7 @@ const greyButtonStyle = ButtonStyle(
   foregroundColor: WidgetStatePropertyAll(Colors.white),
 );
 
-filledButtonStyle(Color color) => ButtonStyle(
+ButtonStyle filledButtonStyle(Color color) => ButtonStyle(
       backgroundColor: WidgetStatePropertyAll(color),
       foregroundColor: const WidgetStatePropertyAll(Colors.white),
     );

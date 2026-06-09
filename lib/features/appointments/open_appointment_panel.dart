@@ -525,7 +525,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   final TextEditingController postOpNotesController = TextEditingController();
   final MoneyEditingController priceController = MoneyEditingController();
   final MoneyEditingController paidController = MoneyEditingController();
-  final FlyoutController otherAppointmentsFlyout = FlyoutController();
   bool didNotEditPaidYet = true;
 
   void setToDone() {
@@ -804,13 +803,59 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     );
   }
 
-  FlyoutTarget _buildOtherAppointmentsFlyout(BuildContext context) {
+  Widget _buildOtherAppointmentsFlyout(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 2),
+      child: AppointmentsHistoryFlyout(
+        exclude: widget.appointment,
+        patient: widget.appointment.patient!,
+      ),
+    );
+  }
+
+  Widget _buildLabworkSection() {
+    return LabWorkEditor(
+        appointment: widget.appointment,
+        onDelete: () {
+          setState(() {
+            widget.appointment.hasLabwork = false;
+          });
+        });
+  }
+}
+
+class AppointmentsHistoryFlyout extends StatefulWidget {
+  const AppointmentsHistoryFlyout(
+      {super.key, required this.patient, required this.exclude});
+
+  final Patient patient;
+  final Appointment exclude;
+
+  @override
+  State<AppointmentsHistoryFlyout> createState() =>
+      _AppointmentsHistoryFlyoutState();
+}
+
+class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
+  final otherAppointmentsFlyout = FlyoutController();
+
+  @override
+  void dispose() {
+    otherAppointmentsFlyout.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FlyoutTarget(
       controller: otherAppointmentsFlyout,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(end: 2),
+      child: Tooltip(
+        message: txt("otherAppointments"),
         child: IconButton(
-          style: filledButtonStyle(Colors.grey),
+          style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(
+            FluentTheme.of(context).inactiveColor.withAlpha(30),
+          )),
           icon: const Icon(WindowsIcons.history),
           onPressed: () async {
             await flyoutFocusFix(context);
@@ -831,28 +876,36 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Icon(WindowsIcons.history,
-                                  size: 16,
-                                  color: FluentTheme.of(context)
-                                      .typography
-                                      .bodyStrong!
-                                      .color),
-                              const SizedBox(width: 8),
-                              Txt("${txt("otherAppointments")} (${widget.appointment.patient!.allAppointments.length - 1})",
-                                  style: FluentTheme.of(context)
-                                      .typography
-                                      .bodyStrong),
+                              Row(
+                                spacing: 5,
+                                children: [
+                                  Icon(WindowsIcons.history,
+                                      size: 16,
+                                      color: FluentTheme.of(context)
+                                          .typography
+                                          .bodyStrong!
+                                          .color),
+                                  Txt("${txt("otherAppointments")} (${widget.patient.allAppointments.length - 1})",
+                                      style: FluentTheme.of(context)
+                                          .typography
+                                          .bodyStrong),
+                                ],
+                              ),
+                              Text(
+                                widget.patient.title,
+                                style: const TextStyle(fontSize: 11),
+                              )
                             ],
                           ),
                         ),
                         const Divider(),
                         Flexible(
                           child: SingleChildScrollView(
-                            child: PatientAppointments(
-                                widget.appointment.patient!,
+                            child: PatientAppointments(widget.patient,
                                 readOnly: true,
-                                excludedAppointment: widget.appointment,
+                                excludedAppointment: widget.exclude,
                                 hide: const [
                                   AppointmentSections.doctors,
                                   AppointmentSections.appointmentNumber,
@@ -878,7 +931,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                                   Navigator.pop(context);
                                   WidgetsBinding.instance
                                       .addPostFrameCallback((_) {
-                                    openPatient(widget.appointment.patient, 2);
+                                    openPatient(widget.patient, 2);
                                   });
                                 },
                                 child: ButtonContent(
@@ -907,16 +960,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
         ),
       ),
     );
-  }
-
-  Widget _buildLabworkSection() {
-    return LabWorkEditor(
-        appointment: widget.appointment,
-        onDelete: () {
-          setState(() {
-            widget.appointment.hasLabwork = false;
-          });
-        });
   }
 }
 

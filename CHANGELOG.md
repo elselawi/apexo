@@ -1,4 +1,4 @@
-### [0.12.1]
+### [0.13.0]
 - Improvement: More readable duration since last appointment in the patients screen and between appointment cards
 - Fixed: Added tooltips for patients screen bottom labels
 - Fixed: inconsistent hover color between patients page and other pages

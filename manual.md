@@ -90,14 +90,14 @@ Go to the settings screen and find the **Backups** section. Expand it to see the
 
 The top portion of the panel lists all existing backup files, each showing its date and file size. For each backup you can:
 
-- **Download** — Get a shareable download link to save the backup file locally
-- **Delete** — Remove a backup you no longer need
-- **Restore** — Replace all current data with the data from this backup (⚠️ this cannot be undone)
+- **Download**: Get a shareable download link to save the backup file locally
+- **Delete**: Remove a backup you no longer need
+- **Restore**: Replace all current data with the data from this backup (⚠️ this cannot be undone)
 
 Use the toolbar buttons to:
-- **Create new** — Generate a fresh backup immediately
-- **Upload** — Select a backup file from your device to upload to the server
-- **Refresh** — Reload the backup list from the server
+- **Create new**: Generate a fresh backup immediately
+- **Upload**: Select a backup file from your device to upload to the server
+- **Refresh**: Reload the backup list from the server
 
 ##### Configuring automatic backups
 
@@ -109,7 +109,7 @@ Below the backup list, the **Backup configuration** panel lets you schedule auto
    - Every hour · Every 6 hours · Every 12 hours
    - Daily (midnight) · Daily (3 AM) · Weekly (Sunday) · Monthly (1st)
 
-3. Set **Max backups to keep** — older backups beyond this count will be automatically deleted.
+3. Set **Max backups to keep**, older backups beyond this count will be automatically deleted.
 
 4. Optionally enable **S3 storage for backups** to store backup files on your S3 provider instead of the server's local storage. When enabled, fill in your S3 credentials (endpoint, bucket, region, access key, secret key, and force path style).
 
@@ -169,13 +169,15 @@ Use the toolbar buttons to create a **New User** or **New Admin**. The screen he
 
 You can search accounts by name or email using the search bar. Click any account row to open its detail panel where you can edit the name, email, password, permissions, and whether the account can operate on patients.
 
-> **Permissions:** User accounts have granular permission levels (0 = no access, 1 = own records only, 2 = all records) for patients, appointments, pre‑op notes, post‑op notes, photos, expenses, notes, and labworks.
+> Accounts that operates on patients can be used to as appointment operators. Accounts that do not (checkbox clear) will not show up when selecting the operator.
+
+> **Permissions:** User accounts have granular permission levels for patients, appointments, pre‑op notes, post‑op notes, photos, expenses, notes, and labworks.
 
 ---
 
 ### Patients
 
-The **Patients** screen is your main patient directory. Each row shows a patient's name, treatment labels (visual indicators of dental work), and sortable bottom labels for phone, last visit date, payment status, and more.
+The **Patients** screen is your main patient directory. Each row shows a patient's name, treatment labels (visual indicators of dental work), phone, last visit date, payment status, and more.
 
 #### Toolbar
 
@@ -207,7 +209,7 @@ Clicking a patient opens a multi‑tab panel:
 | **Birth year** | Year of birth (used to calculate age) |
 | **Gender** | Male ♂️ or Female ♀️ (dropdown) |
 | **Email** | Email address with a quick‑action contact button |
-| **Phone** | Phone numbers — the app automatically detects and validates numbers in international format. Detected numbers appear as clickable contact buttons. Invalid numbers show a warning. |
+| **Phone** | Phone numbers, the app automatically detects and validates numbers in international format. Detected numbers appear as clickable contact buttons. Invalid numbers show a warning. |
 | **Address** | Physical address |
 | **Notes** | Free‑text medical notes |
 | **Tags** | Custom tags for filtering and categorization (type and press Enter to add) |
@@ -229,11 +231,11 @@ Lists all appointments for this patient, each shown as a card with pre‑op note
 
 Generate a secure web link that the patient can use to view their own appointments, payments, and photos. Click **Generate QR Link** to create the link, then share it or print a QR code for the patient.
 
-#### Importing & exporting patients
+### Importing & exporting patients
 
 You can bulk‑import and export patient and appointment data using CSV. This is useful for migrating from another system or creating backups.
 
-##### Importing
+#### Importing
 
 1. From the **Patients** screen, click the import button (copy icon labeled "Import") in the top toolbar.
 
@@ -287,13 +289,13 @@ You can bulk‑import and export patient and appointment data using CSV. This is
 
 5. Click **Import** to add the records to the application.
 
-> **Tip**: Click the info button (ℹ️) in the dialog for additional guidance on the expected CSV format. The fastest way to build a valid import file is to first export an existing patient, then follow the same column layout.
+> **Tip**: The fastest way to build a valid import file is to first export an existing patient, then follow the same column layout.
 
 ##### Exporting data
 
 1. On the **Patients** screen, select one or more patients by clicking on their rows. Selected rows will be highlighted.
 
-2. Once at least one patient is selected, an export button (copy icon with a count) will appear in the top toolbar. Click it.
+2. Once at least one patient is selected, an export button (with a count) will appear in the top toolbar. Click it.
 
 3. The export dialog shows two tabs:
    - **Patients**: CSV data for the selected patients.
@@ -314,33 +316,25 @@ After creating a patient, you can create an appointment for them. The appointmen
     - Doctor
     - Date
     - Time
-    - Pre-operative notes
+    - Pre-operative notes (this is typically where your staff enter their notes regarding the appointment)
 - Post-op
-    - Post-operative notes
     - Dental notes on a dental chart
+    - Post-operative notes
     - Prescriptions
     - Price & payment status
     - Labwork related to this appointment
 - Photos
     - Photos of the appointment (before and after)
 
+> You can also use the AI-based voice to note. Where what you say can be processed by AI and used to fill all the forms above.
+
 ### Labworks
 
 The **Labworks** screen tracks all lab cases across the clinic in a table view.
 
-| Column | Description |
-|--------|-------------|
-| ☑️ **Checkbox** | Mark as received — toggles between pending (⏳) and received (✅) |
-| **Patient** | The patient this lab case belongs to |
-| **Date** | Appointment date |
-| **Doctors** | Assigned operators |
-| **Laboratory** | Lab name |
-| **Notes** | Order notes |
-| **Status** | Current status with emoji indicator |
+Click any column header to sort by that column. Use the **Show Done** toggle to include or hide received and delivered lab cases. The search bar filters by patient name, date, lab name, or notes.
 
-Click any column header to sort by that column. Use the **Show Done** toggle to include or hide received lab cases. The search bar filters by patient name, date, lab name, or notes.
-
-Labworks can only be created from within an appointment — open the appointment, go to the **Operative Details** tab, and click "Add labwork for this appointment" at the bottom.
+> Labworks are tightly coupled with appointments. Each labwork record live inside an appointment data in your clinic.
 
 ---
 
@@ -353,17 +347,15 @@ The **Notes** screen uses a **Kanban board** layout for organizing clinic notes 
 - Drag cards between columns to reorganize them
 - Click **Add Column** to create a new category
 
-#### Toolbar
+Notes can be assigned to account, when an account is assigned to a new a note, they will receive a notification.
+Notes can also have attachments as files.
+Notes can also be recurring each specific amount of days.
 
-| Control | Action |
-|---------|--------|
-| **New Note** | Create a new note card |
-| **Account filter** | Show notes for a specific staff member or all accounts |
-| **Sort** | Toggle between ascending and descending order |
-| **Personal** | Filter to show only your own notes |
-| **Incoming** | Show notes assigned to you from other accounts |
+#### When to use notes?
 
-The search bar filters notes by title and content.
+- To-dos in clinic that are not patient or appointment-related
+- You have scheduled maintence of clinic (e.g. change AC filters)
+- You want to send a file or a message for an account
 
 ---
 
@@ -377,19 +369,15 @@ Each supplier appears as a folder. The list shows:
 
 - Supplier name with a folder icon
 - **Last order** — how many days ago the most recent order was placed
-- **Due payment** — outstanding amount highlighted in orange with a warning icon
+- **Due payment** — outstanding amount highlighted in orange
 - Archived suppliers show an "Archived" badge
 
-Right‑click or use the **⋯** menu on any supplier to **Open**, **Rename**, or **Archive/Restore** it.
+Use the **⋯** menu on any supplier to **Open**, **Rename**, or **Archive/Restore** it.
 
-The screen header shows the **total due** across all suppliers, and the **View All Orders** button opens a combined view of every order regardless of supplier.
+The screen header shows the **total due** across all suppliers, and the **View All Orders** button opens a combined view of all orders regardless of supplier.
 
-#### Toolbar
 
-| Button | Action |
-|--------|--------|
-| **Add Supplier** | Create a new supplier folder |
-| **Scan Receipt** | Use AI to scan a receipt photo — the app extracts supplier name, items, prices, and dates automatically. Choose between camera capture or gallery upload. |
+You can use **Scan Receipt** to scan a receipt photo, the app extracts supplier name, items, prices, and dates automatically. Choose between camera capture or gallery upload.
 
 #### Supplier detail panel
 
@@ -400,35 +388,33 @@ Clicking a supplier opens its order list, divided into two sections:
 
 Each order can be marked as paid or unpaid, and receipt images can be attached to any order.
 
+If you have an order, and uploaded a receipt image, yet you still haven't added items to the order, you can use "read from photo" to use the AI-based scanner and extract items from the receipt.
+
 ---
 
 ### Settings
 
-The **Settings** screen contains all configurable options for the application. Each setting is displayed as an expandable card showing its icon, title, and an indicator of whether it applies to the whole clinic (🌐 App) or only your device (📱 Device).
+The **Settings** screen contains all configurable options for the application. Each setting is displayed as an expandable card showing its icon, title, and an indicator of whether it applies to the whole clinic or only your device.
 
 #### General settings
 
 | Setting | Scope | Description |
 |---------|-------|-------------|
-| **Currency** | 🌐 App | Currency code used for all prices and payments |
-| **Country code** | 🌐 App | ISO country code used for phone number validation |
-| **Prescription footer** | 🌐 App | Text appended to the bottom of every printed prescription |
-| **Phone number** | 🌐 App | Clinic phone number shown on prescriptions and the patient web page |
-| **Language** | 📱 Device | Interface language — does not sync to other devices |
-| **Starting day of week** | 🌐 App | First day shown on the calendar (Monday, Sunday, etc.) |
-| **Date format** | 📱 Device | Month/day/year or day/month/year — device‑specific |
-| **Dental notation** | 📱 Device | Tooth numbering system: ISO, Palmer, or Universal |
+| **Currency** | 🌐 Whole clinic | Currency code used for all prices and payments |
+| **Country code** | 🌐 Whole clinic | ISO country code used for phone number validation |
+| **Prescription footer** | 🌐 Whole clinic | Text appended to the bottom of every printed prescription |
+| **Phone number** | 🌐 Whole clinic | Clinic phone number shown on prescriptions and the patient web page |
+| **Language** | 📱 Your device only | Interface language — does not sync to other devices |
+| **Starting day of week** | 🌐 Whole clinic | First day shown on the calendar (Monday, Sunday, etc.) |
+| **Date format** | 📱 Your device only | Month/day/year or day/month/year — device‑specific |
+| **Dental notation** | 📱 Your device only | Tooth numbering system: ISO, Palmer, or Universal |
 
 #### AI & advanced
 
 | Setting | Scope | Description |
 |---------|-------|-------------|
-| **AI services** | 🌐 App | Enable or disable AI‑powered features (voice transcription, receipt scanning). A privacy notice confirms your data is not used for training. |
-| **Audio transcription locale** | 📱 Device | Language for voice‑to‑text transcription. Choose "Same as app language" or pick from 30+ supported languages. |
-| **Cache reset** | 📱 Device | Clears all local data and re‑syncs from the server. Useful for troubleshooting. A progress dialog guides you through the process. |
+| **AI services** | 🌐 Whole clinic | Enable or disable AI‑powered features (voice transcription, receipt scanning). A privacy notice confirms your data is not used for training. |
+| **Audio transcription locale** | 📱 Your device only | Language for voice‑to‑text transcription. Choose "Same as app language" or pick from 30+ supported languages. |
+| **Cache reset** | 📱 Your device only | Clears all local data and re‑syncs from the server. Useful for troubleshooting. A progress dialog guides you through the process. |
 
 > Service‑specific settings (SMTP, Backups, S3, Authentication, Meta) are documented in the [Best practices](#best-practices) section above.
-
-#### Backups/Restore
-
-You can use this section to see the backups that have been made and restore them. You can also create a new backup, and upload a backup from your device.

@@ -115,8 +115,6 @@ Below the backup list, the **Backup configuration** panel lets you schedule auto
 
 Click **Save** to persist your schedule, and **Test** to verify the S3 connection if configured.
 
-![Backups](https://raw.githubusercontent.com/elselawi/apexo/master/docs/manual_imgs/backups.png)
-
 #### Setting up S3
 
 What's S3? S3 is cloud storage specifically designed for storing files. Think of it as yet-another-server that you'll setup specifically for storing the photos you upload to the application.

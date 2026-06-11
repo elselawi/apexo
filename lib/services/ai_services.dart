@@ -13,6 +13,9 @@ class AIService {
   /// The fixed Worker endpoint for all AI features.
   static const String workerUrl = 'https://dataextraction.apexo.app';
 
+  // Keep track of any in-flight authentication request to deduplicate concurrent calls
+  static Future<String>? _authFuture;
+
   // ---------------------------------------------------------------------------
   //  Token management (shared across all AI services)
   // ---------------------------------------------------------------------------
@@ -37,11 +40,25 @@ class AIService {
     if (localSettings.hasValidAiToken) {
       return localSettings.aiToken!;
     }
-    final token = await _authenticate();
-    localSettings.aiToken = token;
-    localSettings.aiTokenExpiry = DateTime.now().add(const Duration(hours: 24));
-    localSettings.notifyAndPersist();
-    return token;
+
+    if (_authFuture != null) {
+      return _authFuture!;
+    }
+    final future = _authenticate();
+    _authFuture = future;
+
+    try {
+      final token = await future;
+      localSettings.aiToken = token;
+      localSettings.aiTokenExpiry =
+          DateTime.now().add(const Duration(hours: 24));
+      localSettings.notifyAndPersist();
+      return token;
+    } finally {
+      if (_authFuture == future) {
+        _authFuture = null;
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------

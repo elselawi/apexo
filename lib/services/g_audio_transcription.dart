@@ -342,8 +342,8 @@ class GeminiVoiceTranscriptionService {
 
       debugPrint('[GeminiVoice] ✅ setupComplete received — recording started.');
 
-      // Hard limit: stop transcription after 60 seconds.
-      _maxTimer = Timer(const Duration(seconds: 60), stopTranscription);
+      // Hard limit: stop transcription after 30 seconds.
+      _maxTimer = Timer(const Duration(seconds: 30), stopTranscription);
 
       // Tick every second so the UI can display elapsed time.
       _tickTimer = Timer.periodic(const Duration(seconds: 1), (_) {

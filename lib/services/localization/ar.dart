@@ -650,7 +650,11 @@ class Ar implements En {
     "unknown": "غير معروف",
 
     // Dental history recording
-    "TranscribeYourAudio": "تسجيل صوتي",
+    "VoiceAutoFill": "ادخال تلقائي بالصوت",
+    "dentalHistoryVoiceAutoFillHint":
+        "تحدث عن وضع الاسنان والعلاجات السابقة، بشكل طبيعي لتحديث مخطط المريض تلقائياً.",
+    "postOperativeVoiceAutoFillHint":
+        "لخّص الزيارة. تحدث عن الاسنان، وملاحظات ما بعد العملية، والوصفات، والرسوم، أو الأعمال المخبرية لتعبئة كل نموذج تلقائياً.",
     "transcribingYourAudio": "جاري تحويل الصوت إلى نص...",
     "recording": "تسجيل",
     "paused": "متوقف مؤقتاً",

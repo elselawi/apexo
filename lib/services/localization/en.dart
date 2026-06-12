@@ -655,7 +655,11 @@ class En {
     "unknown": "Unknown",
 
     // Dental history recording
-    "TranscribeYourAudio": "Transcribe your audio",
+    "VoiceAutoFill": "Voice Auto-Fill",
+    "dentalHistoryVoiceAutoFillHint":
+        "Speak tooth numbers and conditions naturally to update the patient's chart automatically.",
+    "postOperativeVoiceAutoFillHint":
+        "Summarize the visit. Speak your charting, post-op notes, prescriptions, fees, or labwork to automatically fill out each form.",
     "transcribingYourAudio": "Transcribing your audio...",
     "recording": "Recording",
     "paused": "Paused",

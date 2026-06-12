@@ -96,7 +96,8 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
         body: _OperativeDetails(editingCopy),
         footer: network.isOnline()
             ? AudioRecorderButton(
-                label: txt("TranscribeYourAudio"),
+                hint: txt("postOperativeVoiceAutoFillHint"),
+                label: txt("VoiceAutoFill"),
                 onRecordingComplete: (bytes, mimeType) async {
                   try {
                     final existing = PostOpData(

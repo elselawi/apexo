@@ -19,7 +19,11 @@ class AudioRecorderButton extends StatelessWidget {
     this.buttonColor,
     required this.onRecordingComplete,
     this.processingMessage,
+    required this.hint,
   });
+
+  /// text shown on top of the hint bubble.
+  final String hint;
 
   /// Button label text (e.g. "Transcribe your audio").
   final String label;
@@ -78,6 +82,7 @@ class AudioRecorderButton extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(12, 0, 12, 24),
           child: _AudioRecorderDialog(
+            hint: hint,
             onRecordingComplete: onRecordingComplete,
             processingMessage:
                 processingMessage ?? txt("transcribingYourAudio"),
@@ -98,8 +103,10 @@ class _AudioRecorderDialog extends StatefulWidget {
   const _AudioRecorderDialog({
     required this.onRecordingComplete,
     required this.processingMessage,
+    required this.hint,
   });
 
+  final String hint;
   final Future<void> Function(List<int> audioBytes, String mimeType)
       onRecordingComplete;
   final String processingMessage;
@@ -227,20 +234,41 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 300),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
-        borderRadius: BorderRadius.circular(100),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.7),
-              blurRadius: 300,
-              spreadRadius: 200),
-        ],
-      ),
-      child: _processing ? _buildProcessing() : _buildControls(),
+    return Column(
+      spacing: 25,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(100),
+          ),
+          child: Text(
+            widget.hint,
+            style: const TextStyle(
+              color: Colors.black,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        Container(
+          constraints: const BoxConstraints(maxWidth: 300),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          decoration: BoxDecoration(
+            color:
+                FluentTheme.of(context).resources.solidBackgroundFillColorBase,
+            borderRadius: BorderRadius.circular(100),
+            boxShadow: [
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.7),
+                  blurRadius: 300,
+                  spreadRadius: 200),
+            ],
+          ),
+          child: _processing ? _buildProcessing() : _buildControls(),
+        ),
+      ],
     );
   }
 

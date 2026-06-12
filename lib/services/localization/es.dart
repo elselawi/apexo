@@ -668,7 +668,11 @@ class Es implements En {
     "unknown": "Desconocido",
 
     // Dental history recording
-    "TranscribeYourAudio": "Transcribir tu audio",
+    "VoiceAutoFill": "Autocompletar por voz",
+    "dentalHistoryVoiceAutoFillHint":
+        "Dicta los números y condiciones dentales de forma natural para actualizar la ficha del paciente automáticamente.",
+    "postOperativeVoiceAutoFillHint":
+        "Resume la visita. Dicta tu registro, notas post-operatorias, recetas, honorarios o trabajos de laboratorio para completar cada formulario automáticamente.",
     "transcribingYourAudio": "Transcribiendo tu audio...",
     "recording": "Grabando",
     "paused": "Pausado",

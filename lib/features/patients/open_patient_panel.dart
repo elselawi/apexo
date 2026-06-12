@@ -76,7 +76,8 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
                     ),
                   ),
                   child: AudioRecorderButton(
-                    label: txt("TranscribeYourAudio"),
+                    hint: txt("dentalHistoryVoiceAutoFillHint"),
+                    label: txt("VoiceAutoFill"),
                     onRecordingComplete: (bytes, mimeType) async {
                       try {
                         final result = await DentalHistory.processAudioBytes(

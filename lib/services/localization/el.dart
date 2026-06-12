@@ -22,6 +22,7 @@ class El implements En {
     "archive": "Αρχειοθέτηση",
     "restore": "Επαναφορά",
     "logout": "Αποσύνδεση",
+    "VoiceInput": "Φωνητική εισαγωγή",
     "noResultsFound": "Δεν βρέθηκαν αποτελέσματα",
     "startTyping": "Ξεκινήστε να πληκτρολογείτε",
     "home": "Αρχική",

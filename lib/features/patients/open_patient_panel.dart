@@ -7,6 +7,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/extra_notes_expander.dart';
+import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -587,7 +588,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
         InfoLabel(
           label: "${txt("notes")}:",
           isHeader: true,
-          child: CupertinoTextField(
+          child: LiveTranscribingTextField(
             key: WK.fieldPatientNotes,
             controller: notesController,
             onChanged: (value) => widget.patient.notes = value,

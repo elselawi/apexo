@@ -20,6 +20,7 @@ class Ar implements En {
     "archive": "أرشفة",
     "restore": "استعادة",
     "logout": "خروج",
+    "VoiceInput": "إدخال صوتي",
     "noResultsFound": "لم يتم العثور على نتائج",
     "startTyping": "اكتب هنا",
     "home": "الرئيسية",

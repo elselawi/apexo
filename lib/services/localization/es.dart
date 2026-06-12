@@ -22,6 +22,7 @@ class Es implements En {
     "archive": "Archivar",
     "restore": "Restaurar",
     "logout": "Cerrar sesión",
+    "VoiceInput": "Entrada de voz",
     "noResultsFound": "No se encontraron resultados",
     "startTyping": "Empieza a escribir",
     "home": "Inicio",

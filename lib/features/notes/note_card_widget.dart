@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -572,7 +573,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       Row(
         children: [
           Flexible(
-            child: CupertinoTextField(
+            child: LiveTranscribingTextField(
               controller: _commentController,
               maxLines: null,
               placeholder: txt("addComment"),

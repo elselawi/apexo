@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/svg.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
@@ -548,7 +549,7 @@ class _ExtraNotesSectionState extends State<_ExtraNotesSection> {
               ),
               const SizedBox(height: 4),
               SizedBox(
-                child: CupertinoTextField(
+                child: LiveTranscribingTextField(
                   controller: ctrl,
                   placeholder: txt("extraInfoPlaceholder"),
                   maxLines: null,

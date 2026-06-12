@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -121,7 +122,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                       ),
                       const SizedBox(height: 10),
                       _isOtherMode
-                          ? CupertinoTextField(
+                          ? LiveTranscribingTextField(
                               controller: _otherController,
                               autofocus: true,
                               style: theme.typography.bodyStrong!,

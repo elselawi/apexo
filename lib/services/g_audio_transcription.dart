@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/services/ai_services.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:record/record.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // ---------------------------------------------------------------------------
@@ -43,13 +46,12 @@ class TranscriptionSession {
 // Service
 // ---------------------------------------------------------------------------
 
-/// Real-time voice transcription via the Gemini Live API using raw WebSockets.
+/// Real-time voice transcription via the WS Live API, proxied through
+/// the Apexo AI Worker at `/live-ws` (authenticated WebSocket).
 ///
-/// Follows the official API documentation:
-/// https://ai.google.dev/gemini-api/docs/live
 ///
 /// Usage:
-///   final svc = GeminiVoiceTranscriptionService(apiKey: '…', controller: _ctrl);
+///   final svc = WSVoiceTranscriptionService(controller: _ctrl);
 ///   await svc.startTranscription();
 ///   await svc.stopTranscription();
 ///   svc.dispose();
@@ -58,24 +60,18 @@ class TranscriptionSession {
 ///   • Setup → { setup: { model, generation_config: { response_modalities }, … } }
 ///   • Audio → { realtime_input: { audio: { data, mime_type } } }
 ///   • Reply → { serverContent: { inputTranscription, outputTranscription, … } }
-class GeminiVoiceTranscriptionService {
-  GeminiVoiceTranscriptionService({
-    required String apiKey,
+class WSVoiceTranscriptionService extends AIService {
+  WSVoiceTranscriptionService({
     required TextEditingController controller,
     bool clearOnStart = true,
     void Function(String transcript)? onDone,
-    String model = 'models/gemini-3.1-flash-live-preview',
-  })  : _apiKey = apiKey,
-        _controller = controller,
+  })  : _controller = controller,
         _clearOnStart = clearOnStart,
-        _onDone = onDone,
-        _model = model;
+        _onDone = onDone;
 
-  final String _apiKey;
   final TextEditingController _controller;
   final bool _clearOnStart;
   final void Function(String transcript)? _onDone;
-  final String _model;
 
   // Stream that consumers subscribe to for live state updates.
   final _streamCtrl = StreamController<TranscriptionSession>.broadcast();
@@ -96,10 +92,7 @@ class GeminiVoiceTranscriptionService {
   Timer? _maxTimer;
   Timer? _tickTimer;
   bool _disposed = false;
-
-  static const _wsUrl =
-      'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage'
-      '.v1beta.GenerativeService.BidiGenerateContent?key=';
+  int _sessionId = 0;
 
   // -------------------------------------------------------------------------
   // Public
@@ -109,8 +102,19 @@ class GeminiVoiceTranscriptionService {
     if (_disposed) throw StateError('Service has been disposed.');
     if (isActive) return;
 
-    if (_clearOnStart) _controller.clear();
-    _emit(state: TranscriptionState.connecting, transcript: '');
+    // If a previous session is still in its grace period, cut it short
+    // and fully clean up before starting a new one.
+    if (_session.state == TranscriptionState.stopping) {
+      await _cleanup();
+    }
+    _sessionId++;
+
+    if (_clearOnStart) {
+      _controller.clear();
+    }
+    _emit(
+        state: TranscriptionState.connecting,
+        transcript: _clearOnStart ? '' : _controller.text);
 
     try {
       if (!await _recorder.hasPermission()) {
@@ -126,7 +130,30 @@ class GeminiVoiceTranscriptionService {
 
   Future<void> stopTranscription() async {
     if (!isActive) return;
+    final id = _sessionId;
     _emit(state: TranscriptionState.stopping);
+
+    // Stop capturing audio immediately — no new chunks go out.
+    _maxTimer?.cancel();
+    _maxTimer = null;
+    _tickTimer?.cancel();
+    _tickTimer = null;
+    try {
+      if (await _recorder.isRecording()) await _recorder.stop();
+    } catch (_) {}
+    await _audioSub?.cancel();
+    _audioSub = null;
+
+    // Keep the WebSocket open for a short grace period so WS can
+    // finish transcribing the last audio it already received.
+    // Only wait if the socket is still healthy (skip if it closed on us).
+    if (_ws?.closeCode == null) {
+      await Future.delayed(const Duration(seconds: 3));
+    }
+
+    // Bail if a new session was started while we were waiting.
+    if (_sessionId != id) return;
+
     final transcript = _session.transcript;
     await _cleanup();
     _emit(state: TranscriptionState.idle, elapsedSeconds: 0);
@@ -146,7 +173,18 @@ class GeminiVoiceTranscriptionService {
   // -------------------------------------------------------------------------
 
   Future<void> _openWebSocket() async {
-    _ws = WebSocketChannel.connect(Uri.parse('$_wsUrl$_apiKey'));
+    final token = await AIService.getToken();
+    final wssUrl = AIService.workerUrl.replaceFirst('https://', 'wss://');
+    final uri =
+        '$wssUrl/live-ws?lang=${Uri.encodeQueryComponent(localSettings.transcriptionOutputLocale)}';
+    _ws = IOWebSocketChannel.connect(
+      uri,
+      headers: {'Authorization': 'Bearer $token'},
+    );
+
+    // Create the completer before subscribing to messages so we don't
+    // miss setupComplete (which the Worker sends on our behalf).
+    _setupCompleter = Completer<void>();
 
     _wsSub = _ws!.stream.listen(
       _onMessage,
@@ -157,43 +195,16 @@ class GeminiVoiceTranscriptionService {
 
     await _ws!.ready;
 
-    debugPrint('[GeminiVoice] 🔌 WebSocket connected. Sending setup...');
+    debugPrint('[WSVoice] 🔌 Connected via worker. '
+        'Waiting for server-side setup...');
 
-    _setupCompleter = Completer<void>();
-
-    // Send setup — the first message MUST be a BidiGenerateContentSetup.
-    // All JSON keys use snake_case (the server's protobuf wire format).
-    // This model only supports AUDIO response modality in live mode.
-    // We tell the model to stay silent so it doesn't waste time speaking
-    // back the transcription — inputTranscription gives us the text anyway.
-    _wsSend({
-      'setup': {
-        'model': _model,
-        'generation_config': {
-          'response_modalities': ['AUDIO'],
-        },
-        'system_instruction': {
-          'parts': [
-            {
-              'text': 'You are a speech-to-text engine. '
-                  'Transcribe the user\'s speech verbatim into text. '
-                  'Do NOT speak or generate audio — remain completely silent. '
-                  'Output the transcription only via the text channel. '
-                  'Support all languages automatically.',
-            }
-          ],
-        },
-        'input_audio_transcription': {},
-      },
-    });
-
-    // Wait for setupComplete before starting the mic.
-    // Audio sent before this arrives is rejected, closing the socket.
-    debugPrint('[GeminiVoice] ⏳ Waiting for setupComplete (up to 15s)...');
+    // The Worker handles the entire ws session setup (model,
+    // generation_config, system_instruction, etc.) and forwards
+    // setupComplete back to us. No setup payload sent from the client.
     await _setupCompleter!.future.timeout(
-      const Duration(seconds: 15),
+      const Duration(seconds: 30),
       onTimeout: () => throw TimeoutException(
-          'Gemini setup took too long. Check your API key and network.'),
+          'WS setup took too long. Check your API key and network.'),
     );
   }
 
@@ -221,7 +232,7 @@ class GeminiVoiceTranscriptionService {
       audioChunksSent++;
       if (audioChunksSent % 50 == 1) {
         debugPrint(
-            '[GeminiVoice] 🎙️ Sent $audioChunksSent audio chunks so far...');
+            '[WSVoice] 🎙️ Sent $audioChunksSent audio chunks so far...');
       }
 
       // Each chunk is sent as a BidiGenerateContentRealtimeInput with
@@ -259,7 +270,7 @@ class GeminiVoiceTranscriptionService {
       return;
     }
 
-    debugPrint('[GeminiVoice] 📩 Received: $text');
+    debugPrint('[WSVoice] 📩 Received: $text');
 
     // --- setupComplete -------------------------------------------------
     // Server confirms the session is ready. Only now is it safe to begin
@@ -281,7 +292,7 @@ class GeminiVoiceTranscriptionService {
       final inputTrans = content['inputTranscription'] as Map<String, dynamic>?;
       final userText = inputTrans?['text'] as String? ?? '';
       if (userText.isNotEmpty) {
-        debugPrint('[GeminiVoice] 🎤 inputTranscription: "$userText"');
+        debugPrint('[WSVoice] 🎤 inputTranscription: "$userText"');
         _appendText(userText);
       }
 
@@ -292,8 +303,7 @@ class GeminiVoiceTranscriptionService {
           content['outputTranscription'] as Map<String, dynamic>?;
       final modelText = outputTrans?['text'] as String? ?? '';
       if (modelText.isNotEmpty) {
-        debugPrint(
-            '[GeminiVoice] 🤖 outputTranscription (ignored): "$modelText"');
+        debugPrint('[WSVoice] 🤖 outputTranscription (ignored): "$modelText"');
       }
 
       // Append a space after each completed turn to separate sentences.
@@ -317,8 +327,8 @@ class GeminiVoiceTranscriptionService {
     // --- error ---------------------------------------------------------
     if (msg.containsKey('error')) {
       final err = msg['error'] as Map<String, dynamic>? ?? {};
-      final detail = 'Gemini error ${err['code']}: ${err['message']}';
-      debugPrint('[GeminiVoice] $detail');
+      final detail = 'WS error ${err['code']}: ${err['message']}';
+      debugPrint('[WSVoice] $detail');
       if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
         _setupCompleter!.completeError(Exception(detail));
       } else {
@@ -340,7 +350,7 @@ class GeminiVoiceTranscriptionService {
       _emit(state: TranscriptionState.recording);
       final start = DateTime.now();
 
-      debugPrint('[GeminiVoice] ✅ setupComplete received — recording started.');
+      debugPrint('[WSVoice] ✅ setupComplete received — recording started.');
 
       // Hard limit: stop transcription after 30 seconds.
       _maxTimer = Timer(const Duration(seconds: 30), stopTranscription);
@@ -372,7 +382,7 @@ class GeminiVoiceTranscriptionService {
       try {
         result = _executeTool(name, args);
       } catch (e) {
-        debugPrint('[GeminiVoice] Tool error ($name): $e');
+        debugPrint('[WSVoice] Tool error ($name): $e');
         result = {'error': e.toString()};
       }
 
@@ -395,7 +405,7 @@ class GeminiVoiceTranscriptionService {
   /// Execute a tool function locally.
   /// Override or extend for custom tool implementations.
   Map<String, dynamic> _executeTool(String name, Map<String, dynamic> args) {
-    debugPrint('[GeminiVoice] Unknown tool call: $name($args)');
+    debugPrint('[WSVoice] Unknown tool call: $name($args)');
     return {'status': 'unknown tool: $name'};
   }
 
@@ -404,7 +414,7 @@ class GeminiVoiceTranscriptionService {
   // ---------------------------------------------------------------------
 
   void _onWsError(Object error) {
-    debugPrint('[GeminiVoice] WS error: $error');
+    debugPrint('[WSVoice] WS error: $error');
     if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
       _setupCompleter!.completeError(error);
       return;
@@ -418,7 +428,7 @@ class GeminiVoiceTranscriptionService {
   void _onWsDone() {
     final code = _ws?.closeCode;
     final reason = _ws?.closeReason;
-    debugPrint('[GeminiVoice] WS closed. code=$code reason="$reason"');
+    debugPrint('[WSVoice] WS closed. code=$code reason="$reason"');
 
     if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
       _setupCompleter!.completeError(
@@ -437,9 +447,12 @@ class GeminiVoiceTranscriptionService {
   // -------------------------------------------------------------------------
 
   void _appendText(String token) {
-    debugPrint('[GeminiVoice] ✏️ Appending: "$token"');
-    final next = _session.transcript + token;
-    debugPrint('[GeminiVoice] 📝 Full transcript now: "$next"');
+    debugPrint('[WSVoice] ✏️ Appending: "$token"');
+    final base = _session.transcript;
+    // Insert a space between pre-existing content and the new transcription
+    final sep = base.isNotEmpty && !base.endsWith(' ') ? ' ' : '';
+    final next = '$base$sep$token';
+    debugPrint('[WSVoice] 📝 Full transcript now: "$next"');
     _controller.value = TextEditingValue(
       text: next,
       selection: TextSelection.collapsed(offset: next.length),

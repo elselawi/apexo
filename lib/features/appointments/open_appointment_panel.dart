@@ -13,6 +13,7 @@ import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/ai_services/post_op_notes.dart';
+import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
@@ -499,12 +500,12 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
         ),
         InfoLabel(
           label: "${txt("preOperativeNotes")}:",
-          child: CupertinoTextField(
+          child: LiveTranscribingTextField(
             key: WK.fieldAppointmentPreOpNotes,
             expands: true,
             maxLines: null,
             controller: noteController,
-            onChanged: (v) => widget.appointment.preOpNotes = v,
+            onChanged: (v) => setState(() => widget.appointment.preOpNotes = v),
             placeholder: "${txt("preOperativeNotes")}...",
           ),
         )
@@ -597,6 +598,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               ),
               padding: const EdgeInsets.all(8),
               child: Column(
+                spacing: 10,
                 children: [
                   TeethSelector(
                     key: ValueKey(jsonEncode({
@@ -630,7 +632,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                   if (widget.appointment.patient?.allAppointmentsDentalNotes
                           .isNotEmpty ==
                       true) ...[
-                    const SizedBox(height: 10),
                     AppointmentExtraNotes(
                       patient: widget.appointment.patient!,
                       initiallyExpanded: false,
@@ -642,25 +643,33 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
               ),
             ),
           ),
-        InfoLabel(
-          label: "${txt("postOperativeNotes")}:",
-          child: CupertinoTextField(
-            key: WK.fieldAppointmentPostOpNotes,
-            expands: true,
-            maxLines: null,
-            controller: postOpNotesController,
-            suffix: widget.appointment.patient != null &&
-                    widget.appointment.patient!.allAppointments.length > 1
-                ? _buildOtherAppointmentsFlyout(context)
-                : null,
-            onChanged: (v) {
-              setState(() {
-                widget.appointment.postOpNotes = v;
-                widget.appointment.isDone = true;
-              });
-            },
-            placeholder: "${txt("postOperativeNotes")}...",
-          ),
+        Column(
+          spacing: 5,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            InfoLabel(
+              label: "${txt("postOperativeNotes")}:",
+              child: LiveTranscribingTextField(
+                key: WK.fieldAppointmentPostOpNotes,
+                controller: postOpNotesController,
+                placeholder: "${txt("postOperativeNotes")}...",
+                onChanged: (v) {
+                  setState(() {
+                    widget.appointment.postOpNotes = v;
+                    widget.appointment.isDone = true;
+                  });
+                },
+                onTranscriptionDone: (v) {
+                  setState(() {
+                    widget.appointment.postOpNotes = v;
+                    widget.appointment.isDone = true;
+                  });
+                },
+              ),
+            ),
+            if ((widget.appointment.patient?.allAppointments.length ?? 0) > 1)
+              _buildOtherAppointmentsFlyout(context),
+          ],
         ),
         InfoLabel(
           label: "${txt("prescription")}:",
@@ -807,6 +816,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
     return Padding(
       padding: const EdgeInsetsDirectional.only(end: 2),
       child: AppointmentsHistoryFlyout(
+        title: txt("otherAppointments"),
         exclude: widget.appointment,
         patient: widget.appointment.patient!,
       ),
@@ -826,10 +836,11 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
 
 class AppointmentsHistoryFlyout extends StatefulWidget {
   const AppointmentsHistoryFlyout(
-      {super.key, required this.patient, required this.exclude});
+      {super.key, required this.patient, required this.exclude, this.title});
 
   final Patient patient;
   final Appointment exclude;
+  final String? title;
 
   @override
   State<AppointmentsHistoryFlyout> createState() =>
@@ -856,7 +867,14 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
               backgroundColor: WidgetStatePropertyAll(
             FluentTheme.of(context).inactiveColor.withAlpha(30),
           )),
-          icon: const Icon(WindowsIcons.history),
+          icon: Row(
+            spacing: 10,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(WindowsIcons.history),
+              if (widget.title != null) Txt(widget.title!),
+            ],
+          ),
           onPressed: () async {
             await flyoutFocusFix(context);
             otherAppointmentsFlyout.showFlyout(

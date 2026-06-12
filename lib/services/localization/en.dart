@@ -21,6 +21,7 @@ class En {
     "archive": "Archive",
     "restore": "Restore",
     "logout": "Logout",
+    "VoiceInput": "Voice Input",
     "noResultsFound": "No results found",
     "startTyping": "Start typing",
     "home": "Home",

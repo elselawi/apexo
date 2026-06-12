@@ -47,22 +47,31 @@ class AudioRecorderButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: () => _openRecorder(context),
-      icon: Row(
-        spacing: 8,
-        children: [
-          Container(
-            width: 35,
-            height: 35,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: buttonColor ?? Colors.red,
-            ),
-            child: Icon(icon, color: Colors.white, size: 18),
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: FluentTheme.of(context).resources.controlStrokeColorDefault,
           ),
-          Txt(label),
-        ],
+        ),
+      ),
+      child: IconButton(
+        onPressed: () => _openRecorder(context),
+        icon: Row(
+          spacing: 8,
+          children: [
+            Container(
+              width: 35,
+              height: 35,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: buttonColor ?? Colors.red,
+              ),
+              child: Icon(icon, color: Colors.white, size: 18),
+            ),
+            Txt(label),
+          ],
+        ),
       ),
     );
   }

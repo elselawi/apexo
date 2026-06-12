@@ -62,44 +62,29 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
         icon: FluentIcons.teeth,
         footer: network.isOnline()
             ? Builder(
-                builder: (context) => Container(
-                  decoration: BoxDecoration(
-                    color: FluentTheme.of(context)
-                        .resources
-                        .solidBackgroundFillColorBase,
-                    border: Border(
-                      top: BorderSide(
-                        color: FluentTheme.of(context)
-                            .resources
-                            .cardStrokeColorDefault,
-                      ),
-                    ),
-                  ),
-                  child: AudioRecorderButton(
-                    hint: txt("dentalHistoryVoiceAutoFillHint"),
-                    label: txt("VoiceAutoFill"),
-                    onRecordingComplete: (bytes, mimeType) async {
-                      try {
-                        final result = await DentalHistory.processAudioBytes(
-                          bytes,
-                          mimeType,
-                          lang: localSettings.transcriptionLocale,
-                        );
-                        if (result.teeth.isNotEmpty) {
-                          editingCopy.teeth.addAll(result.teeth);
-                        }
-                        if (result.teethExtraNotes.isNotEmpty) {
-                          editingCopy.teethExtraNotes
-                              .addAll(result.teethExtraNotes);
-                        }
-                        transcriptionEditCounter(
-                            transcriptionEditCounter() + 1);
-                      } catch (e, s) {
-                        showErrorMessage(e, "processingDentalHistory");
-                        logger("Error processing dental history audio: $e", s);
+                builder: (context) => AudioRecorderButton(
+                  hint: txt("dentalHistoryVoiceAutoFillHint"),
+                  label: txt("VoiceAutoFill"),
+                  onRecordingComplete: (bytes, mimeType) async {
+                    try {
+                      final result = await DentalHistory.processAudioBytes(
+                        bytes,
+                        mimeType,
+                        lang: localSettings.transcriptionLocale,
+                      );
+                      if (result.teeth.isNotEmpty) {
+                        editingCopy.teeth.addAll(result.teeth);
                       }
-                    },
-                  ),
+                      if (result.teethExtraNotes.isNotEmpty) {
+                        editingCopy.teethExtraNotes
+                            .addAll(result.teethExtraNotes);
+                      }
+                      transcriptionEditCounter(transcriptionEditCounter() + 1);
+                    } catch (e, s) {
+                      showErrorMessage(e, "processingDentalHistory");
+                      logger("Error processing dental history audio: $e", s);
+                    }
+                  },
                 ),
               )
             : null,

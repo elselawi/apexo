@@ -94,7 +94,7 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
         title: txt("operativeDetails"),
         icon: FluentIcons.medical_care,
         body: _OperativeDetails(editingCopy),
-        footer: network.isOnline()
+        footer: (network.isOnline() && globalSettings.aiServicesEnabled)
             ? AudioRecorderButton(
                 hint: txt("postOperativeVoiceAutoFillHint"),
                 label: txt("VoiceAutoFill"),
@@ -115,7 +115,6 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
                       bytes,
                       mimeType,
                       existingFields: existing,
-                      lang: localSettings.transcriptionLocale,
                     );
                     if (result.postOpNotes.isNotEmpty) {
                       editingCopy.postOpNotes = result.postOpNotes;

@@ -60,7 +60,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
       PanelTab(
         title: txt("dentalNotes"),
         icon: FluentIcons.teeth,
-        footer: network.isOnline()
+        footer: (network.isOnline() && globalSettings.aiServicesEnabled)
             ? Builder(
                 builder: (context) => AudioRecorderButton(
                   hint: txt("dentalHistoryVoiceAutoFillHint"),
@@ -70,7 +70,6 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
                       final result = await DentalHistory.processAudioBytes(
                         bytes,
                         mimeType,
-                        lang: localSettings.transcriptionLocale,
                       );
                       if (result.teeth.isNotEmpty) {
                         editingCopy.teeth.addAll(result.teeth);

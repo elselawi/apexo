@@ -130,6 +130,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
   Timer? _ampTimer;
   final ValueNotifier<Duration> _elapsed = ValueNotifier(Duration.zero);
   final ValueNotifier<double> _amplitude = ValueNotifier(0);
+  static const _maxDuration = Duration(minutes: 3);
   bool _processing = false;
   bool _paused = false;
 
@@ -220,6 +221,10 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
     _timer?.cancel();
     _timer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       _elapsed.value += const Duration(milliseconds: 100);
+      if (_elapsed.value >= _maxDuration) {
+        _timer?.cancel();
+        _stopAndSubmit();
+      }
     });
   }
 
@@ -233,6 +238,14 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
     });
   }
 
+  bool get _isWarning =>
+      _elapsed.value.inSeconds >= _maxDuration.inSeconds - 20;
+  bool get _isCritical =>
+      _elapsed.value.inSeconds >= _maxDuration.inSeconds - 10;
+  double get _progress =>
+      ((_elapsed.value.inMilliseconds / _maxDuration.inMilliseconds) * 100)
+          .clamp(0.0, 100);
+
   String _formatTime(Duration d) {
     final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
     final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
@@ -243,40 +256,42 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      spacing: 25,
-      mainAxisSize: MainAxisSize.min,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(100),
-          ),
-          child: Text(
-            widget.hint,
-            style: const TextStyle(
-              color: Colors.black,
+        // Recording container — renders first (bottom layer, shadow included).
+        Padding(
+          padding: const EdgeInsets.only(top: 92),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 300),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context)
+                  .resources
+                  .solidBackgroundFillColorBase,
+              borderRadius: BorderRadius.circular(100),
+              boxShadow: [
+                BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.7),
+                    blurRadius: 300,
+                    spreadRadius: 200),
+              ],
             ),
-            textAlign: TextAlign.center,
+            child: _processing ? _buildProcessing() : _buildControls(),
           ),
         ),
-        Container(
-          constraints: const BoxConstraints(maxWidth: 300),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          decoration: BoxDecoration(
-            color:
-                FluentTheme.of(context).resources.solidBackgroundFillColorBase,
-            borderRadius: BorderRadius.circular(100),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  blurRadius: 300,
-                  spreadRadius: 200),
-            ],
+        // Hint — renders second (top layer, above the shadow).
+        if (!_processing)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Text(
+              widget.hint,
+              style: const TextStyle(color: Colors.white),
+              textAlign: TextAlign.center,
+            ),
           ),
-          child: _processing ? _buildProcessing() : _buildControls(),
-        ),
       ],
     );
   }
@@ -395,6 +410,14 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
     );
   }
 
+  get barColor {
+    return _isCritical
+        ? Colors.red
+        : _isWarning
+            ? Colors.orange
+            : Colors.black.withAlpha(150);
+  }
+
   Widget _buildWaveform() {
     return ValueListenableBuilder<Duration>(
       valueListenable: _elapsed,
@@ -407,11 +430,36 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
               crossAxisAlignment: CrossAxisAlignment.center,
               spacing: 5,
               children: [
-                Txt(_formatTime(dur),
-                    style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w300,
-                        fontFamily: 'monospace')),
+                Row(
+                  spacing: 10,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Txt(_formatTime(dur),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'monospace',
+                          color: barColor,
+                        )),
+                    Builder(builder: (_) {
+                      return SizedBox(
+                        width: 150,
+                        height: 9,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: ProgressBar(
+                            value: _progress,
+                            backgroundColor: barColor.withAlpha(30),
+                            activeColor: barColor,
+                            strokeWidth: 4,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+
                 SizedBox(
                   height: 32,
                   child: Row(
@@ -426,13 +474,14 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
                         height: h.clamp(4.0, 32.0),
                         margin: const EdgeInsets.symmetric(horizontal: 1.5),
                         decoration: BoxDecoration(
-                          color: Colors.red.withAlpha(_paused ? 60 : 180),
+                          color: barColor.withAlpha(_paused ? 60 : 180),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       );
                     }),
                   ),
                 ),
+                // Progress bar — fills left to right as time passes.
               ],
             );
           },

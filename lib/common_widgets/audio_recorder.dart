@@ -410,7 +410,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
     );
   }
 
-  get barColor {
+  Color get barColor {
     return _isCritical
         ? Colors.red
         : _isWarning
@@ -459,7 +459,6 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
                     }),
                   ],
                 ),
-
                 SizedBox(
                   height: 32,
                   child: Row(
@@ -481,7 +480,6 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
                     }),
                   ),
                 ),
-                // Progress bar — fills left to right as time passes.
               ],
             );
           },

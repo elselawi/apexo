@@ -3,10 +3,10 @@ import 'dart:convert';
 
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/ai_services.dart';
+import 'package:apexo/utils/ws_platform/ws_platform.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:record/record.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
 // ---------------------------------------------------------------------------
@@ -175,11 +175,11 @@ class WSVoiceTranscriptionService extends AIService {
   Future<void> _openWebSocket() async {
     final token = await AIService.getToken();
     final wssUrl = AIService.workerUrl.replaceFirst('https://', 'wss://');
-    final uri =
-        '$wssUrl/live-ws?lang=${Uri.encodeQueryComponent(localSettings.transcriptionOutputLocale)}';
-    _ws = IOWebSocketChannel.connect(
+    final uri = Uri.parse(
+        '$wssUrl/live-ws?lang=${Uri.encodeQueryComponent(localSettings.transcriptionOutputLocale)}');
+    _ws = connectWebSocket(
       uri,
-      headers: {'Authorization': 'Bearer $token'},
+      {'Authorization': 'Bearer $token'},
     );
 
     // Create the completer before subscribing to messages so we don't

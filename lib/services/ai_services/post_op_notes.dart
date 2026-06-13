@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/ai_services.dart';
 import 'package:http/http.dart' as http;
 
@@ -72,15 +73,14 @@ class PostOpNotes extends AIService {
     List<int> audioBytes,
     String filename, {
     PostOpData? existingFields,
-    String? lang,
   }) async {
     final r = await AIService.createMultipartRequest('post-op-notes');
     if (existingFields != null) {
       r.fields['existingFields'] = jsonEncode(existingFields.toJson());
     }
-    if (lang != null) {
-      r.fields['lang'] = lang;
-    }
+
+    r.fields['lang'] = localSettings.transcriptionOutputLocale;
+
     r.files.add(
       http.MultipartFile.fromBytes('audio', audioBytes, filename: filename),
     );
@@ -92,12 +92,10 @@ class PostOpNotes extends AIService {
   static Future<PostOpData> processAudioFile(
     String path, {
     PostOpData? existingFields,
-    String? lang,
   }) async =>
       processAudioBytes(
         await File(path).readAsBytes(),
         path.split('/').last,
         existingFields: existingFields,
-        lang: lang,
       );
 }

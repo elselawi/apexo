@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/ai_services.dart';
 import 'package:http/http.dart' as http;
 
@@ -31,13 +32,10 @@ class DentalHistory extends AIService {
   /// Processes an audio recording from raw bytes.
   static Future<DentalHistoryData> processAudioBytes(
     List<int> audioBytes,
-    String filename, {
-    String? lang,
-  }) async {
+    String filename,
+  ) async {
     final r = await AIService.createMultipartRequest('dental-history');
-    if (lang != null) {
-      r.fields['lang'] = lang;
-    }
+    r.fields['lang'] = localSettings.transcriptionOutputLocale;
     r.files.add(
       http.MultipartFile.fromBytes('audio', audioBytes, filename: filename),
     );
@@ -46,13 +44,9 @@ class DentalHistory extends AIService {
   }
 
   /// Processes an audio file from disk (native only).
-  static Future<DentalHistoryData> processAudioFile(
-    String path, {
-    String? lang,
-  }) async =>
+  static Future<DentalHistoryData> processAudioFile(String path) async =>
       processAudioBytes(
         await File(path).readAsBytes(),
         path.split('/').last,
-        lang: lang,
       );
 }

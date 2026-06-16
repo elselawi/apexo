@@ -141,6 +141,29 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           SettingsItem(
+            title: txt("calendarSystem"),
+            identifier: "calendarSystem",
+            description: txt("calendarSystem_desc"),
+            icon: FluentIcons.calendar,
+            inputType: InputType.dropDown,
+            scope: Scope.device,
+            options: [
+              ComboBoxItem(
+                value: "gregorian",
+                child: Txt(txt("gregorian")),
+              ),
+              ComboBoxItem(
+                value: "persian",
+                child: Txt(txt("persian")),
+              ),
+            ],
+            initValue: localSettings.calendarSystem,
+            apply: (newVal) {
+              localSettings.calendarSystem = newVal;
+              localSettings.notifyAndPersist();
+            },
+          ),
+          SettingsItem(
             title: txt("dentalNotation"),
             identifier: "dentalNotation",
             description: txt("dentalNotation_desc"),

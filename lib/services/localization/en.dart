@@ -665,5 +665,25 @@ class En {
     "paused": "Paused",
     "processingDentalHistory": "processing dental history audio",
     "processingPostOpNotes": "processing post-op notes audio",
+
+    // calendar system
+    "calendarSystem": "Calendar system",
+    "calendarSystem_desc": "Choose the calendar system for displaying dates in the calendar view",
+    "gregorian": "Gregorian",
+    "persian": "Persian (Jalali / Shamsi)",
+
+    // Jalali month names
+    "farvardin": "Farvardin",
+    "ordibehesht": "Ordibehesht",
+    "khordad": "Khordad",
+    "tir": "Tir",
+    "mordad": "Mordad",
+    "shahrivar": "Shahrivar",
+    "mehr": "Mehr",
+    "aban": "Aban",
+    "azar": "Azar",
+    "dey": "Dey",
+    "bahman": "Bahman",
+    "esfand": "Esfand",
   };
 }

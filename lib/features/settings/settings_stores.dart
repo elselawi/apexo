@@ -12,6 +12,7 @@ import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:apexo/utils/jalali_utils.dart';
 import '../../core/save_local.dart';
 import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
@@ -133,6 +134,7 @@ class LocalSettings extends ObservablePersistingObject {
 
   String transcriptionLocaleNonFinal = "";
   String dateFormat = "dd/MM/yyyy";
+  String calendarSystem = "gregorian";
   ThemeMode selectedTheme = ThemeMode.light;
   int selectedLocale = 0;
   String dentalNotation = "p";
@@ -158,6 +160,7 @@ class LocalSettings extends ObservablePersistingObject {
   fromJson(Map<String, dynamic> json) {
     selectedLocale = json["selectedLocale"] ?? selectedLocale;
     dateFormat = json["dateFormat"] ?? dateFormat;
+    calendarSystem = json["calendarSystem"] ?? calendarSystem;
     transcriptionLocaleNonFinal =
         json["transcriptionLocale"] ?? transcriptionLocaleNonFinal;
     dentalNotation = json["dentalNotation"] ?? dentalNotation;
@@ -174,6 +177,7 @@ class LocalSettings extends ObservablePersistingObject {
     return {
       "selectedLocale": selectedLocale,
       "dateFormat": dateFormat,
+      "calendarSystem": calendarSystem,
       "dentalNotation": dentalNotation,
       "transcriptionLocale": transcriptionLocaleNonFinal,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
@@ -219,6 +223,56 @@ abstract class DF {
 
   static String time(date) {
     return DateFormat("🕒 hh:mm a", locale.s.$code).format(date);
+  }
+
+  static bool get isPersianCalendar => localSettings.calendarSystem == "persian";
+
+  static String _persianOrGregorian(String persian, String gregorian) {
+    return isPersianCalendar ? persian : gregorian;
+  }
+
+  static String jalaliDate(date) {
+    if (isPersianCalendar) {
+      return JalaliUtils.formatJalaliDMY(date);
+    }
+    return allNumbers(date);
+  }
+
+  static String jalaliDay(date) {
+    if (isPersianCalendar) {
+      return JalaliUtils.formatDay(date);
+    }
+    return DateFormat("d", locale.s.$code).format(date);
+  }
+
+  static String jalaliMonthYear(date) {
+    if (isPersianCalendar) {
+      return JalaliUtils.formatMonthYear(date);
+    }
+    return DateFormat('MMMM yyyy', locale.s.$code).format(date);
+  }
+
+  static String jalaliDayOfWeek(date) {
+    if (isPersianCalendar) {
+      return JalaliUtils.dayOfWeekName(date.weekday);
+    }
+    return DateFormat("EE", locale.s.$code).format(date);
+  }
+
+  static String jalaliDayOfWeekAbbr(date) {
+    if (isPersianCalendar) {
+      return JalaliUtils.dayOfWeekAbbr(date.weekday);
+    }
+    return DateFormat("EE", locale.s.$code).format(date);
+  }
+
+  static String jalaliCommonDate(date) {
+    if (isPersianCalendar) {
+      final jDate = JalaliUtils.formatJalaliDMY(date);
+      final dayName = JalaliUtils.dayOfWeekAbbr(date.weekday);
+      return "📅 $dayName $jDate";
+    }
+    return commonDate(date);
   }
 }
 

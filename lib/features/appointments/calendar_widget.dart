@@ -20,6 +20,7 @@ import '../../utils/round.dart';
 import '../../common_widgets/item_title.dart';
 import 'appointments_store.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:apexo/utils/jalali_utils.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 
 class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
@@ -177,7 +178,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
       calendarBuilders: CalendarBuilders(
         dowBuilder: (context, day) => Center(
           child: Txt(
-            intl.DateFormat("EE", locale.s.$code).format(day),
+            DF.jalaliDayOfWeekAbbr(day),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
         ),
@@ -187,7 +188,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
             children: [
               Center(
                 child: Txt(
-                  intl.DateFormat('MMMM yyyy', locale.s.$code).format(day),
+                  DF.jalaliMonthYear(day),
                 ),
               ),
               const Divider(size: 20, direction: Axis.vertical),
@@ -293,7 +294,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Txt(
-            " ${DF.commonDate(selectedDate)}",
+            " ${DF.jalaliCommonDate(selectedDate)}",
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
           if (login.isAdmin)
@@ -415,7 +416,7 @@ class DayCell extends StatelessWidget {
         boxShadow: type == DayCellType.selected ? kElevationToShadow[2] : null,
       ),
       child: Center(
-        child: Txt(intl.DateFormat("d", locale.s.$code).format(day),
+        child: Txt(DF.jalaliDay(day),
             style: type == DayCellType.normal
                 ? null
                 : const TextStyle(color: Colors.white)),

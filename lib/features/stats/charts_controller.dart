@@ -6,6 +6,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/utils/jalali_utils.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart' show showDateRangePicker;
@@ -272,14 +273,31 @@ class _ChartsController {
   String _getLabel(DateTime start) {
     switch (interval()) {
       case StatsInterval.days:
-        return DF.allNumbers(start);
+        return DF.jalaliDate(start);
       case StatsInterval.weeks:
+        if (DF.isPersianCalendar) {
+          final j = JalaliUtils.fromGregorian(start);
+          return "W${j.day} ${JalaliUtils.monthName(j.month)}/${j.year.toString().substring(2)}";
+        }
         return "W${DateFormat("${_weekOfMonth(start)} MM/yy", locale.s.$code).format(start)}";
       case StatsInterval.months:
+        if (DF.isPersianCalendar) {
+          final j = JalaliUtils.fromGregorian(start);
+          return "${JalaliUtils.monthName(j.month)}/${j.year.toString().substring(2)}";
+        }
         return DateFormat("MMM/yy", locale.s.$code).format(start);
       case StatsInterval.quarters:
+        if (DF.isPersianCalendar) {
+          final j = JalaliUtils.fromGregorian(start);
+          int q = ((j.month - 1) ~/ 3) + 1;
+          return "Q$q ${j.year}";
+        }
         return "Q${DateFormat("Q yyyy", locale.s.$code).format(start)}";
       default:
+        if (DF.isPersianCalendar) {
+          final j = JalaliUtils.fromGregorian(start);
+          return j.year.toString();
+        }
         return DateFormat("yyyy", locale.s.$code).format(start);
     }
   }

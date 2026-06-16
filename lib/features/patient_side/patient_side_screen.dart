@@ -617,7 +617,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
     final isPaid = apt.price == 0 || apt.paid >= apt.price;
     final payColor =
         isPaid ? Colors.successPrimaryColor : Colors.warningPrimaryColor;
-    final dateStr = DateFormat("d MMM yyyy", locale.s.$code).format(apt.date);
+    final dateStr = DF.jalaliDate(apt.date);
 
     return Column(
       children: [
@@ -824,9 +824,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    DateFormat.yMMMMEEEEd(locale.s.$code)
-                                        .add_jm()
-                                        .format(apt.date),
+                                    DF.jalaliCommonDate(apt.date),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: theme

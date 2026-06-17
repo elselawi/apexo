@@ -43,10 +43,10 @@ class _LiveTranscriptionButtonState extends State<LiveTranscriptionButton> {
       message: txt("VoiceInput"),
       child: StreamBuilder<TranscriptionSession>(
           stream: liveTranscriptionService.stream,
-          builder: (context, snapshot) {
-            final session = snapshot.data;
-            final state = session?.state ?? TranscriptionState.idle;
-            final elapsed = session?.elapsedSeconds ?? 0;
+          builder: (context, _) {
+            final session = liveTranscriptionService.session;
+            final state = session.state;
+            final elapsed = session.elapsedSeconds;
 
             // ── Idle / Error / Stopping: grey mic ────────────────
             if (state == TranscriptionState.idle ||

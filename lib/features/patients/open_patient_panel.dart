@@ -576,7 +576,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
           child: LiveTranscribingTextField(
             key: WK.fieldPatientNotes,
             controller: notesController,
-            onChanged: (value) => widget.patient.notes = value,
+            onChanged: (value) => setState(() => widget.patient.notes = value),
             maxLines: null,
             placeholder: "${txt("notes")}...",
           ),

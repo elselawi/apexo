@@ -659,12 +659,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                     widget.appointment.isDone = true;
                   });
                 },
-                onTranscriptionDone: (v) {
-                  setState(() {
-                    widget.appointment.postOpNotes = v;
-                    widget.appointment.isDone = true;
-                  });
-                },
               ),
             ),
             if ((widget.appointment.patient?.allAppointments.length ?? 0) > 1)

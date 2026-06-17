@@ -1,4 +1,3 @@
-import 'dart:io' show File, Platform;
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/language_picker.dart';
@@ -7,14 +6,11 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/patient_side.dart';
+import 'package:apexo/utils/save_file_multiplatform.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
-import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:apexo/utils/save_file/save_file_platform.dart';
 
 class PatientSideScreen extends StatefulWidget {
   const PatientSideScreen({super.key});
@@ -1103,53 +1099,10 @@ class _PhotoTile extends StatelessWidget {
   }
 
   Future<void> _saveImage(String url, BuildContext context) async {
-    try {
-      final fileName = "ap_img_${DateTime.now().millisecondsSinceEpoch}.jpg";
-      final response = await http.get(Uri.parse(url));
-      final bytes = response.bodyBytes;
+    final fileName = "ap_img_${DateTime.now().millisecondsSinceEpoch}.jpg";
+    final response = await http.get(Uri.parse(url));
+    final bytes = response.bodyBytes;
 
-      if (kIsWeb) {
-        SaveFilePlatform.saveFileWeb(bytes, fileName);
-      } else if (!kIsWeb && Platform.isWindows) {
-        String? outputFile = await FilePicker.saveFile(
-          dialogTitle: 'Save Photo',
-          fileName: fileName,
-        );
-        if (outputFile != null) {
-          final file = File(outputFile);
-          await file.writeAsBytes(bytes);
-        }
-      } else if (!kIsWeb) {
-        // Android / iOS
-        final directory = await getExternalStorageDirectory() ??
-            await getApplicationDocumentsDirectory();
-        final file = File("${directory.path}/$fileName");
-        await file.writeAsBytes(bytes);
-
-        if (context.mounted) {
-          displayInfoBar(
-            context,
-            builder: (context, close) => InfoBar(
-              title: const Text('Saved!'),
-              content: Text('Photo saved to ${file.path}'),
-              severity: InfoBarSeverity.success,
-              onClose: close,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        displayInfoBar(
-          context,
-          builder: (context, close) => InfoBar(
-            title: const Text('Error saving photo'),
-            content: Text(e.toString()),
-            severity: InfoBarSeverity.error,
-            onClose: close,
-          ),
-        );
-      }
-    }
+    await saveFileUtility(fileName: fileName, bytes: bytes);
   }
 }

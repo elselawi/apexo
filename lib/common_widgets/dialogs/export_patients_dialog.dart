@@ -1,3 +1,4 @@
+import 'dart:convert' show utf8;
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
@@ -10,6 +11,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/json_to_csv.dart';
 import 'package:apexo/utils/csv_to_json.dart';
+import 'package:apexo/utils/save_file_multiplatform.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -342,11 +344,13 @@ class _ExporterState extends State<_Exporter> {
           ),
         ),
         StyledSelectableText(
-            text: jsonListToCsv(
-          widget.data,
-          includeColumns: exportAllFields ? null : selectedFields,
-          withHeader: exportHeader,
-        )),
+          text: jsonListToCsv(
+            widget.data,
+            includeColumns: exportAllFields ? null : selectedFields,
+            withHeader: exportHeader,
+          ),
+          storeName: widget.store.local!.name,
+        ),
       ],
     );
   }
@@ -356,11 +360,13 @@ class StyledSelectableText extends StatefulWidget {
   final String text;
   final double height;
   final double width;
+  final String? storeName;
   const StyledSelectableText({
     super.key,
     required this.text,
     this.height = 150,
     this.width = double.infinity,
+    this.storeName,
   });
 
   @override
@@ -369,6 +375,25 @@ class StyledSelectableText extends StatefulWidget {
 
 class _StyledSelectableTextState extends State<StyledSelectableText> {
   bool didCopy = false;
+  bool didSave = false;
+
+  Future<void> _saveFile() async {
+    final bytes = utf8.encode(widget.text);
+    final sanitized =
+        widget.storeName?.replaceAll(RegExp(r'[^\w\s-]'), '').trim() ??
+            'export';
+    final fileName =
+        'apexo_${sanitized}_${DateTime.now().millisecondsSinceEpoch}.csv';
+
+    final filePath = await saveFileUtility(fileName: fileName, bytes: bytes);
+
+    if (mounted && filePath != null) {
+      setState(() => didSave = true);
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted) setState(() => didSave = false);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -392,24 +417,43 @@ class _StyledSelectableTextState extends State<StyledSelectableText> {
             PositionedDirectional(
               end: 0,
               bottom: 0,
-              child: IconButton(
-                style: filledButtonStyle(Colors.grey),
-                icon: Row(
-                  children: [
-                    const Icon(WindowsIcons.copy),
-                    if (didCopy) ...[
-                      const SizedBox(width: 5),
-                      const Icon(WindowsIcons.check_mark),
-                    ],
-                  ],
-                ),
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: widget.text));
-                  setState(() => didCopy = true);
-                  Future.delayed(const Duration(seconds: 2), () {
-                    if (context.mounted) setState(() => didCopy = false);
-                  });
-                },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    style: filledButtonStyle(Colors.grey),
+                    icon: Row(
+                      children: [
+                        const Icon(WindowsIcons.save),
+                        if (didSave) ...[
+                          const SizedBox(width: 5),
+                          const Icon(WindowsIcons.check_mark),
+                        ],
+                      ],
+                    ),
+                    onPressed: _saveFile,
+                  ),
+                  const SizedBox(width: 5),
+                  IconButton(
+                    style: filledButtonStyle(Colors.grey),
+                    icon: Row(
+                      children: [
+                        const Icon(WindowsIcons.copy),
+                        if (didCopy) ...[
+                          const SizedBox(width: 5),
+                          const Icon(WindowsIcons.check_mark),
+                        ],
+                      ],
+                    ),
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: widget.text));
+                      setState(() => didCopy = true);
+                      Future.delayed(const Duration(seconds: 2), () {
+                        if (context.mounted) setState(() => didCopy = false);
+                      });
+                    },
+                  ),
+                ],
               ),
             ),
           ],

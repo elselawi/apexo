@@ -196,6 +196,7 @@ class _LabworksTableState extends State<LabworksTable> {
   Expanded _buildTableItems() {
     return Expanded(
       child: ListView.builder(
+        controller: _scrollController,
         padding: EdgeInsets.zero,
         itemCount: truncated.length,
         itemBuilder: (context, index) {

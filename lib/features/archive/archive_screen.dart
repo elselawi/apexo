@@ -206,7 +206,8 @@ class _ArchivedPageState extends State<_ArchivedPage> {
             '${n.date.year}-${n.date.month.toString().padLeft(2, '0')}-${n.date.day.toString().padLeft(2, '0')}';
         return _ArchivedRow(
           item: n.isColumn
-              ? Model.fromJson({"title": n.columnName, "archived": true})
+              ? Model.fromJson(
+                  {"title": n.columnName, "archived": true, "id": n.id})
               : n,
           storeLabel: txt("notes"),
           storeColor: Colors.purple,

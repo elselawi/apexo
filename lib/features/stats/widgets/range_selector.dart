@@ -57,28 +57,28 @@ class ChartsRangeSelector extends StatelessWidget {
                   ),
                 ),
                 if (!isPhone)
-                IconButton(
-                  onPressed: chartsCtrl.toggleInterval,
-                  icon: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Icon(
-                            _icons[StatsInterval.values
-                                .indexOf(chartsCtrl.interval())],
-                            size: 20,
-                            color: _color,
-                          ),
-                          const SizedBox(width: 5),
-                          Txt("${txt("periodicity")}: ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString)}",
-                              style: _textStyle)
-                        ],
-                      ),
-                    ],
+                  IconButton(
+                    onPressed: chartsCtrl.toggleInterval,
+                    icon: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(
+                              _icons[StatsInterval.values
+                                  .indexOf(chartsCtrl.interval())],
+                              size: 20,
+                              color: _color,
+                            ),
+                            const SizedBox(width: 5),
+                            Txt("${txt("periodicity")}: ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString)}",
+                                style: _textStyle)
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
                 IconButton(
                   onPressed: () => chartsCtrl.rangePicker(context),
                   icon: Row(

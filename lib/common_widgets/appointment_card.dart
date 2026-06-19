@@ -224,7 +224,7 @@ class AppointmentCard extends StatelessWidget {
                                 style: const TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w500),
                               ),
-                              FluentIcons.quick_note,
+                              WindowsIcons.quick_note,
                               color,
                               context),
                         ],
@@ -240,7 +240,7 @@ class AppointmentCard extends StatelessWidget {
                                 style: const TextStyle(
                                     fontSize: 12, fontWeight: FontWeight.w500),
                               ),
-                              FluentIcons.quick_note,
+                              WindowsIcons.quick_note,
                               color,
                               context),
                         ],

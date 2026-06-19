@@ -58,7 +58,7 @@ class _LabworksTableState extends State<LabworksTable> {
 
   bool canEdit(List<String> operatorIDs) {
     if (login.isAdmin) return true;
-    if (login.permissions[PInt.appointments] > 1) return true;
+    if (login.perm(Perm.appointments).full) return true;
     if (operatorIDs.contains(login.currentAccountID)) return true;
     return false;
   }
@@ -188,8 +188,8 @@ class _LabworksTableState extends State<LabworksTable> {
   }
 
   bool canEditLabwork(Appointment? appointment) {
-    return login.permissions[PInt.postOp] == 2 ||
-        (login.permissions[PInt.postOp] == 1 &&
+    return login.perm(Perm.postOp).exact(2) ||
+        (login.perm(Perm.postOp).exact(1) &&
             appointment?.operatorsIDs.contains(login.currentAccountID) == true);
   }
 
@@ -300,8 +300,8 @@ class _LabworksTableState extends State<LabworksTable> {
 
   Widget _buildCommandBar() {
     return ScreenCommandBar(
-      mainButton: (login.permissions[PInt.postOp] == 0 ||
-              login.permissions[PInt.appointments] == 0)
+      mainButton: (login.perm(Perm.postOp).none ||
+              login.perm(Perm.appointments).none)
           ? const SizedBox.shrink()
           : IconButton(
               icon: ButtonContent(WindowsIcons.add, txt("newLabwork")),

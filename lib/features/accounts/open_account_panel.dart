@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -21,7 +20,7 @@ class AccountModel extends Model {
   String email = "";
   String password = "";
   String name = "";
-  List<int> permissions = [0, 0, 0, 0, 0, 0, 0, 0];
+  List<int> permissions = List.filled(Perm.count, 0);
   bool operates = false;
   bool isAdmin = false;
 
@@ -29,19 +28,7 @@ class AccountModel extends Model {
     email = json["email"] ?? email;
     password = json["password"] ?? password;
     name = json["name"] ?? name;
-    if (json["permissions"] != null) {
-      if (json["permissions"] is String) {
-        permissions = List<int>.from(jsonDecode(json["permissions"]));
-      } else {
-        permissions = List<int>.from(json["permissions"]);
-      }
-    }
-    if (permissions.length < 12) {
-      permissions = [
-        ...permissions,
-        ...List.filled(12 - permissions.length, 0)
-      ];
-    }
+    permissions = Perm.parse(json["permissions"]);
     operates = json["operate"] == 1 ||
         json["operate"] == true ||
         json["operates"] == true;
@@ -261,91 +248,18 @@ class _AccountDetailsState extends State<_AccountDetails> {
                       ?.copyWith(fontSize: 16),
                 ),
                 const SizedBox(height: 10),
-                PermissionSelector(
-                  title: txt("patients"),
-                  initialSelected: widget.account.permissions[PInt.patients],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("restricted")),
-                    PermissionLevel(value: 1, label: txt("personal")),
-                    PermissionLevel(value: 2, label: txt("full"))
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.patients] = level,
-                ),
-                PermissionSelector(
-                  title: txt("appointments"),
-                  initialSelected:
-                      widget.account.permissions[PInt.appointments],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("restricted")),
-                    PermissionLevel(value: 1, label: txt("personal")),
-                    PermissionLevel(value: 2, label: txt("full"))
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.appointments] = level,
-                ),
-                PermissionSelector(
-                  title: txt("post-opNotes"),
-                  initialSelected: widget.account.permissions[PInt.postOp],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("restricted")),
-                    PermissionLevel(value: 1, label: txt("personal")),
-                    PermissionLevel(value: 2, label: txt("full"))
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.postOp] = level,
-                ),
-                PermissionSelector(
-                  title: txt("insights"),
-                  initialSelected: widget.account.permissions[PInt.stats],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("restricted")),
-                    PermissionLevel(value: 1, label: txt("personal")),
-                    PermissionLevel(value: 2, label: txt("full"))
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.stats] = level,
-                ),
-                PermissionSelector(
-                  title: txt("expenses"),
-                  initialSelected: widget.account.permissions[PInt.expenses],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("restricted")),
-                    PermissionLevel(value: 1, label: txt("view")),
-                    PermissionLevel(value: 2, label: txt("full"))
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.expenses] = level,
-                ),
-                PermissionSelector(
-                  title: txt("notes"),
-                  initialSelected: widget.account.permissions[PInt.notes],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("personal")),
-                    PermissionLevel(value: 1, label: txt("all")),
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.notes] = level,
-                ),
-                PermissionSelector(
-                  title: txt("settings"),
-                  initialSelected: widget.account.permissions[PInt.setting],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("local")),
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.setting] = level,
-                ),
-                PermissionSelector(
-                  title: txt("photos"),
-                  initialSelected: widget.account.permissions[PInt.photos],
-                  levels: [
-                    PermissionLevel(value: 0, label: txt("cantUpload")),
-                    PermissionLevel(value: 1, label: txt("canUpload")),
-                  ],
-                  onChanged: (level) =>
-                      widget.account.permissions[PInt.photos] = level,
-                ),
+                ..._permissionDefs.map((def) => PermissionSelector(
+                      title: txt(def.titleKey),
+                      initialSelected: widget.account.permissions[def.index],
+                      levels: def.levels
+                          .map((l) => PermissionLevel(
+                                value: l.value,
+                                label: txt(l.labelKey),
+                              ))
+                          .toList(),
+                      onChanged: (level) =>
+                          widget.account.permissions[def.index] = level,
+                    )),
                 const SizedBox(height: 25)
               ],
             );
@@ -391,6 +305,56 @@ class _OperatesToggleState extends State<_OperatesToggle> {
     );
   }
 }
+
+/// Lightweight descriptor for a single permission level option (const-safe).
+class _PermLevelDef {
+  final int value;
+  final String labelKey;
+  const _PermLevelDef(this.value, this.labelKey);
+}
+
+/// Lightweight descriptor for a permission slot (const-safe).
+class _PermDef {
+  final int index;
+  final String titleKey;
+  final List<_PermLevelDef> levels;
+  const _PermDef(this.index, this.titleKey, this.levels);
+}
+
+const _threeLevel = [
+  _PermLevelDef(0, "restricted"),
+  _PermLevelDef(1, "personal"),
+  _PermLevelDef(2, "full"),
+];
+
+/// Central registry of all permission selectors. Add a new entry here to
+/// add a permission slot everywhere (UI, padding, defaults, etc.).
+const _permissionDefs = [
+  _PermDef(Perm.patients, "patients", _threeLevel),
+  _PermDef(Perm.appointments, "appointments", _threeLevel),
+  _PermDef(Perm.postOp, "post-opNotes", _threeLevel),
+  _PermDef(Perm.revenue, "revenue", [
+    _PermLevelDef(0, "canNotSee"),
+    _PermLevelDef(1, "canSee"),
+  ]),
+  _PermDef(Perm.stats, "insights", _threeLevel),
+  _PermDef(Perm.expenses, "expenses", [
+    _PermLevelDef(0, "restricted"),
+    _PermLevelDef(1, "view"),
+    _PermLevelDef(2, "full"),
+  ]),
+  _PermDef(Perm.notes, "notes", [
+    _PermLevelDef(0, "personal"),
+    _PermLevelDef(1, "all"),
+  ]),
+  _PermDef(Perm.setting, "settings", [
+    _PermLevelDef(0, "local"),
+  ]),
+  _PermDef(Perm.photos, "photos", [
+    _PermLevelDef(0, "cantUpload"),
+    _PermLevelDef(1, "canUpload"),
+  ]),
+];
 
 class PermissionLevel {
   const PermissionLevel({required this.value, required this.label});

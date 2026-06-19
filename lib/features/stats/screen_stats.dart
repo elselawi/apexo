@@ -125,7 +125,7 @@ class StatsScreen extends StatelessWidget {
                         FluentIcons.date_time,
                       );
                     }
-                    if (index == 1) {
+                    if (index == 1 && login.perm(Perm.revenue).read) {
                       return _buildSingleChart(
                         "${txt("paymentsAndExpensesPer")} ${txt(chartsCtrl.intervalString.toLowerCase())}",
                         "${txt("total")}: ${txt("payments")} ${formatMoneyInText(chartsCtrl.groupedPayments.reduce((v, e) => v += e).toStringAsFixed(2))} ${currency()}\n${txt("expenses")} ${formatMoneyInText(chartsCtrl.groupedExpenses.reduce((v, e) => v += e).toStringAsFixed(2))} ${currency()} ${txt("in_Duration_")} ${chartsCtrl.periods.length} ${txt(chartsCtrl.intervalString.toLowerCase())}",
@@ -355,8 +355,8 @@ class StatsScreen extends StatelessWidget {
                 return ComboBoxItem(value: account.id, child: Txt(name));
               }),
             ],
-            onChanged: (login.permissions[PInt.appointments] != 2 ||
-                    login.permissions[PInt.stats] != 2)
+            onChanged: (login.perm(Perm.appointments).not(2) ||
+                    login.perm(Perm.stats).not(2))
                 ? null
                 : chartsCtrl.filterByOperator,
             value: chartsCtrl.filterByOperatorID(),

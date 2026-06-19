@@ -14,7 +14,7 @@ class OperatorsPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TagInputWidget(
-      enabled: login.permissions[PInt.appointments] == 1 || login.permissions[PInt.patients] == 1 ? false : true,
+      enabled: login.perm(Perm.appointments).exact(1) || login.perm(Perm.patients).exact(1) ? false : true,
       key: WK.fieldOperators,
       suggestions: accounts.operators.map((account) => TagInputItem(value: account.id, label: accounts.name(account))).toList(),
       onChanged: (s) {

@@ -9,9 +9,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-const zeroPermissions = [0, 0, 0, 0, 0, 0, 0, 0];
-const fullPermissions = [2, 2, 2, 2, 2, 1, 1, 1];
-
 class AccountsScreen extends StatefulWidget {
   const AccountsScreen({super.key});
 

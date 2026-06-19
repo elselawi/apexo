@@ -79,7 +79,7 @@ class Notes extends Store<Note> {
     return docs.values.where((n) {
       if (n.columnID != columnID) return false;
       if (!n.deservesRecurrence) return false;
-      if (login.permissions[PInt.notes] == 0 &&
+      if (login.perm(Perm.notes).none &&
           !login.isAdmin &&
           n.createdBy != login.currentAccountID &&
           n.assignedTo != login.currentAccountID) {
@@ -94,7 +94,7 @@ class Notes extends Store<Note> {
   final sortDirection = ObservableState(1);
 
   Map<String, Note> get filtered {
-    if (login.permissions[PInt.notes] == 0 && !login.isAdmin) {
+    if (login.perm(Perm.notes).none && !login.isAdmin) {
       filterByAccountId(login.currentAccountID);
     }
     if (filterByAccountId().isEmpty && showIncoming() == false) return present;

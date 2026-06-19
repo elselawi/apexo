@@ -1,10 +1,10 @@
 import 'dart:math';
 
-import 'package:apexo/features/accounts/accounts_screen.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -439,7 +439,7 @@ RecordModel _demoAccount() {
     "email": _generateEmail(name),
     "name": name,
     "operate": 1,
-    "permissions": fullPermissions,
+    "permissions": Perm.full,
     "type": "admin"
   });
 }

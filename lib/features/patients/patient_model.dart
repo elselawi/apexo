@@ -190,7 +190,7 @@ class Patient extends Model {
     // lock if only personal patients are permissible
     // and the patient DO have appointments
     // but those appointments doesn't have the current user as operator
-    return login.permissions[PInt.patients] != 2 &&
+    return login.perm(Perm.patients).not(2) &&
         (allAppointments.isNotEmpty &&
             allAppointments
                 .where((appointment) =>

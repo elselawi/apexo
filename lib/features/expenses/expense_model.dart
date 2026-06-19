@@ -8,7 +8,7 @@ import 'package:apexo/utils/constants.dart';
 class Expense extends Model {
   @override
   bool get locked {
-    return login.permissions[PInt.expenses] == 0;
+    return login.perm(Perm.expenses).none;
   }
 
   bool get isOrder {

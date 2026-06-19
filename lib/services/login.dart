@@ -6,7 +6,6 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/login/login_controller.dart';
-import 'package:apexo/features/accounts/accounts_screen.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
@@ -27,7 +26,7 @@ class _LoginService extends ObservablePersistingObject {
 
   String url = "";
   String email = "";
-  List<int> savedPermissions = zeroPermissions;
+  List<int> savedPermissions = Perm.zeroes;
   String token = "";
   String adminCollectionId = "__UNDEFINED__";
   String pushNotificationsToken = "";
@@ -60,23 +59,29 @@ class _LoginService extends ObservablePersistingObject {
   }
 
   List<int> get _permissions {
-    if (launch.isDemo) return fullPermissions;
-    if (isAdmin) return fullPermissions;
+    if (launch.isDemo) return Perm.full;
+    if (isAdmin) return Perm.full;
     if (network.isOnline()) {
       final currentAccountCandidates =
           accounts.list().where((r) => r.id == currentAccountID);
-      if (currentAccountCandidates.isEmpty) return savedPermissions;
-      return accounts.parsePermissions(
+      if (currentAccountCandidates.isEmpty) return Perm.pad(savedPermissions);
+      return Perm.parse(
           currentAccountCandidates.first.getStringValue("permissions"));
-    } else {
-      return savedPermissions;
     }
+    return Perm.pad(savedPermissions);
   }
 
-  List<int> get permissions {
-    // this is to avoid errors when adding new features that would add new slots in the permissions array
-    return [..._permissions, 0, 0, 0, 0, 0];
-  }
+  /// Fluent permission check — preferred over `permissions[index]`.
+  ///
+  /// ```dart
+  /// login.perm(Perm.photos).none       // == 0
+  /// login.perm(Perm.photos).some       // > 0
+  /// login.perm(Perm.photos).full       // >= 2
+  /// login.perm(Perm.expenses).exact(1) // == 1
+  /// login.perm(Perm.patients).min(2)   // >= 2
+  /// login.perm(Perm.appointments).not(2) // != 2
+  /// ```
+  PermLevel perm(int slot) => _permissions.perm(slot);
 
   bool get currentLoginIsOperator {
     final findByEmail =
@@ -165,8 +170,7 @@ class _LoginService extends ObservablePersistingObject {
     } catch (e) {
       final auth =
           await pb!.collection("users").authWithPassword(email, password);
-      savedPermissions =
-          accounts.parsePermissions(auth.record.getStringValue("permissions"));
+      savedPermissions = Perm.parse(auth.record.getStringValue("permissions"));
       return auth.token;
     }
   }
@@ -178,8 +182,7 @@ class _LoginService extends ObservablePersistingObject {
       return auth.token;
     } catch (e) {
       final auth = await pb!.collection("users").authRefresh();
-      savedPermissions =
-          accounts.parsePermissions(auth.record.getStringValue("permissions"));
+      savedPermissions = Perm.parse(auth.record.getStringValue("permissions"));
       return auth.token;
     }
   }

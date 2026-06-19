@@ -103,7 +103,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
                       notes.sortDirection(notes.sortDirection() * -1);
                     },
                   ),
-                  if (login.permissions[PInt.notes] == 1 || login.isAdmin)
+                  if (login.perm(Perm.notes).exact(1) || login.isAdmin)
                     ToggleButton(
                       checked: notes.filterByAccountId().isNotEmpty,
                       child:
@@ -198,7 +198,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
           return ComboBoxItem(value: account.id, child: Text(name));
         }),
       ],
-      onChanged: (login.permissions[PInt.notes] == 0 && !login.isAdmin)
+      onChanged: (login.perm(Perm.notes).none && !login.isAdmin)
           ? null
           : (id) => notes.filterByAccountId(id ?? ""),
       value: notes.filterByAccountId(),

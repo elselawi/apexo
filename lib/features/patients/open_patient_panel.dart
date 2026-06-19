@@ -152,7 +152,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
               );
             }),
       ),
-      if (login.permissions[PInt.appointments] > 0)
+      if (login.perm(Perm.appointments).some)
         PanelTab(
           title: txt("appointments"),
           icon: WindowsIcons.calendar,

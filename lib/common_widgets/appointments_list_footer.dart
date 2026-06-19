@@ -28,8 +28,8 @@ class AppointmentsListFooter extends StatelessWidget {
           onPressed: () {
             openAppointment(Appointment.fromJson({
               if (forPatientID != null) "patientID": forPatientID,
-              if (login.permissions[PInt.patients] == 1 ||
-                  login.permissions[PInt.appointments] == 1 ||
+              if (login.perm(Perm.patients).exact(1) ||
+                  login.perm(Perm.appointments).exact(1) ||
                   login.currentLoginIsOperator)
                 "operatorsIDs": [login.currentAccountID]
             }));

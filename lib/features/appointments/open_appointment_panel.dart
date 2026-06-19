@@ -59,8 +59,8 @@ final transcriptionEditCounter = ObservableState(0);
 void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
   closeLabworksPanels();
 
-  final canViewPostOp = login.permissions[PInt.postOp] == 2 ||
-      (login.permissions[PInt.postOp] == 1 &&
+  final canViewPostOp = login.perm(Perm.postOp).exact(2) ||
+      (login.perm(Perm.postOp).exact(1) &&
           appointment?.operatorsIDs.contains(login.currentAccountID) == true);
 
   if (appointment != null &&
@@ -273,8 +273,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
         Column(
           children: [
             _buildCurrentAppointmentPhotos(),
-            if (login.permissions[PInt.photos] == 1)
-              _UploadButtons(widget.panel),
+            if (login.perm(Perm.photos).exact(1)) _UploadButtons(widget.panel),
           ],
         ),
         if (otherImages.isNotEmpty)
@@ -299,7 +298,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                   stream: widget.panel.inProgress.stream,
                   builder: (context, snapshot) {
                     return GridGallery(
-                      canDelete: login.permissions[PInt.photos] == 1,
+                      canDelete: login.perm(Perm.photos).exact(1),
                       rowId: widget.panel.item.id,
                       imgs: widget.panel.item.imgs,
                       progress: widget.panel.inProgress(),
@@ -759,10 +758,20 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
             ),
           ],
         ),
-        if (paymentDifference != 0)
+        if (paymentDifference != 0 &&
+            (login.perm(Perm.revenue).read ||
+                widget.appointment.userIsOperator))
           InfoBar(
-            title: MoneyDisplay(
-                "${paymentDifference > 0 ? txt("underpaid") : txt("overpaid")} ${paymentDifference.abs().toStringAsFixed(2)} ${currency()}"),
+            title: Row(
+              spacing: 5,
+              children: [
+                Txt(txt(paymentDifference > 0
+                    ? txt("underpaid")
+                    : txt("overpaid"))),
+                MoneyDisplay(
+                    "${paymentDifference.abs().toStringAsFixed(2)} ${currency()}"),
+              ],
+            ),
             content: Txt(txt("includesOtherAppointments")),
             severity: InfoBarSeverity.warning,
             isLong: true,

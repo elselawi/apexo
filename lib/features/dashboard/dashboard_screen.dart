@@ -77,8 +77,8 @@ class DashboardScreen extends StatelessWidget {
                   width: constraints.maxWidth,
                   height: height,
                   child: ListView(scrollDirection: Axis.horizontal, children: [
-                    if (login.permissions[PInt.patients] > 0 &&
-                        login.permissions[PInt.appointments] > 0)
+                    if (login.perm(Perm.patients).some &&
+                        login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
                         icon: WindowsIcons.contact,
@@ -96,8 +96,8 @@ class DashboardScreen extends StatelessWidget {
                                 ))
                             .toList(),
                       ),
-                    if (login.permissions[PInt.patients] > 0 &&
-                        login.permissions[PInt.appointments] > 0)
+                    if (login.perm(Perm.patients).some &&
+                        login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
                         height: height,
@@ -114,8 +114,8 @@ class DashboardScreen extends StatelessWidget {
                           );
                         }).toList(),
                       ),
-                    if (login.permissions[PInt.patients] > 0 &&
-                        login.permissions[PInt.appointments] > 0)
+                    if (login.perm(Perm.patients).some &&
+                        login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
                         height: height,
@@ -131,8 +131,8 @@ class DashboardScreen extends StatelessWidget {
                                 ))
                             .toList(),
                       ),
-                    if (login.permissions[PInt.patients] > 0 &&
-                        login.permissions[PInt.appointments] > 0)
+                    if (login.perm(Perm.patients).some &&
+                        login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
                         height: height,
@@ -148,7 +148,7 @@ class DashboardScreen extends StatelessWidget {
                                 ))
                             .toList(),
                       ),
-                    if (login.permissions[PInt.expenses] > 0)
+                    if (login.perm(Perm.expenses).some)
                       _buildDashboardList(
                         context: context,
                         height: height,
@@ -287,21 +287,21 @@ class DashboardScreen extends StatelessWidget {
         padding: const EdgeInsets.all(15.0),
         child: Row(
           children: [
-            if (login.permissions[PInt.appointments] > 0)
+            if (login.perm(Perm.appointments).some)
               dashboardSquare(
                 Colors.purple,
                 FluentIcons.goto_today,
                 dashboardCtrl.todayAppointments.length.toString(),
                 txt("appointmentsToday"),
               ),
-            if (login.permissions[PInt.patients] > 0)
+            if (login.perm(Perm.patients).some)
               dashboardSquare(
                 Colors.blue,
                 FluentIcons.people,
                 dashboardCtrl.newPatientsToday.length.toString(),
                 txt("newPatientsToday"),
               ),
-            if (login.permissions[PInt.postOp] > 1)
+            if (login.perm(Perm.revenue).read)
               dashboardSquare(
                 Colors.teal,
                 WindowsIcons.payment_card,
@@ -355,17 +355,19 @@ class DashboardScreen extends StatelessWidget {
                         MoneyDisplay(
                           title,
                           style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: color.dark),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: color.dark,
+                          ),
                         )
                       else
                         Text(
                           title,
                           style: TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.bold,
-                              color: color.dark),
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: color.dark,
+                          ),
                         ),
                       Txt(
                         subtitle,

@@ -266,7 +266,7 @@ class SupplierListTile extends StatefulWidget {
 class _SupplierListTileState extends State<SupplierListTile> {
   final FlyoutController menuController = FlyoutController();
   final FlyoutController archiveConfirmationController = FlyoutController();
-  final bool canEdit = login.permissions[PInt.expenses] == 2;
+  final bool canEdit = login.perm(Perm.expenses).exact(2);
 
   @override
   void dispose() {

@@ -176,21 +176,21 @@ class _Routes {
             appointments.synchronize();
           },
         ),
-        if (login.permissions[PInt.patients] > 0 || login.isAdmin)
+        if (login.perm(Perm.patients).some || login.isAdmin)
           Route(
             title: txt("patients"),
             identifier: "patients",
             navbarTitle: txt("patients"),
             icon: FluentIcons.medication_admin,
             screen: PatientsScreen.new,
-            accessible: login.permissions[PInt.patients] > 0 || login.isAdmin,
+            accessible: login.perm(Perm.patients).some || login.isAdmin,
             onSelect: () async {
               await accounts.reloadFromRemote();
               await patients.synchronize();
               appointments.synchronize();
             },
           ),
-        if (login.permissions[PInt.appointments] > 0 || login.isAdmin)
+        if (login.perm(Perm.appointments).some || login.isAdmin)
           Route(
             title: txt("appointments"),
             identifier: "calendar",
@@ -198,9 +198,9 @@ class _Routes {
             icon: WindowsIcons.calendar,
             screen: CalendarScreen.new,
             accessible:
-                login.permissions[PInt.appointments] > 0 || login.isAdmin,
+                login.perm(Perm.appointments).some || login.isAdmin,
             onSelect: () async {
-              if (login.permissions[PInt.appointments] != 2) {
+              if (login.perm(Perm.appointments).not(2)) {
                 appointments.filterByOperatorID(login.currentAccountID);
               }
               await accounts.reloadFromRemote();
@@ -208,7 +208,7 @@ class _Routes {
               appointments.synchronize();
             },
           ),
-        if (login.permissions[PInt.appointments] > 0 || login.isAdmin)
+        if (login.perm(Perm.appointments).some || login.isAdmin)
           Route(
             title: txt("labworks"),
             identifier: "labworks",
@@ -216,7 +216,7 @@ class _Routes {
             icon: FluentIcons.manufacturing,
             screen: LabworksScreen.new,
             accessible:
-                login.permissions[PInt.appointments] > 0 || login.isAdmin,
+                login.perm(Perm.appointments).some || login.isAdmin,
             onSelect: () async {
               await accounts.reloadFromRemote();
               await patients.synchronize();
@@ -236,32 +236,32 @@ class _Routes {
             await notes.synchronize();
           },
         ),
-        if (login.permissions[PInt.expenses] > 0 || login.isAdmin)
+        if (login.perm(Perm.expenses).some || login.isAdmin)
           Route(
             title: txt("expenses"),
             identifier: "expenses",
             navbarTitle: txt("expenses"),
             icon: FluentIcons.receipt_processing,
             screen: ExpensesScreen.new,
-            accessible: login.permissions[PInt.expenses] > 0 || login.isAdmin,
+            accessible: login.perm(Perm.expenses).some || login.isAdmin,
             onSelect: () async {
               await accounts.reloadFromRemote();
               await patients.synchronize();
               expenses.synchronize();
             },
           ),
-        if (login.permissions[PInt.stats] > 0 || login.isAdmin)
+        if (login.perm(Perm.stats).some || login.isAdmin)
           Route(
             title: txt("insights"),
             identifier: "insights",
             navbarTitle: txt("insights"),
             icon: FluentIcons.chart,
             screen: StatsScreen.new,
-            accessible: login.permissions[PInt.stats] > 0 || login.isAdmin,
+            accessible: login.perm(Perm.stats).some || login.isAdmin,
             onSelect: () async {
               chartsCtrl.resetSelected();
-              if (login.permissions[PInt.appointments] != 2 ||
-                  login.permissions[PInt.stats] != 2) {
+              if (login.perm(Perm.appointments).not(2) ||
+                  login.perm(Perm.stats).not(2)) {
                 chartsCtrl.filterByOperatorID(login.currentAccountID);
               }
               await accounts.reloadFromRemote();

@@ -36,7 +36,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
 
   bool get canEdit {
     if (login.isAdmin) return true;
-    if (login.permissions[PInt.notes] == 2) return true;
+    if (login.perm(Perm.notes).exact(2)) return true;
     return false;
   }
 

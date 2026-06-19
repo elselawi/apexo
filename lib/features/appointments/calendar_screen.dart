@@ -40,7 +40,7 @@ class CalendarScreen extends StatelessWidget {
                     return ComboBoxItem(value: account.id, child: Text(name));
                   }),
                 ],
-                onChanged: login.permissions[PInt.appointments] == 1
+                onChanged: login.perm(Perm.appointments).exact(1)
                     ? null
                     : (id) => appointments.filterByOperatorID(id ?? ""),
                 value: appointments.filterByOperatorID(),
@@ -57,8 +57,8 @@ class CalendarScreen extends StatelessWidget {
             onAddNew: (selectedDate) {
               openAppointment(Appointment.fromJson({
                 "date": selectedDate.millisecondsSinceEpoch / 60000,
-                if (login.permissions[PInt.patients] == 1 ||
-                    login.permissions[PInt.appointments] == 1 ||
+                if (login.perm(Perm.patients).exact(1) ||
+                    login.perm(Perm.appointments).exact(1) ||
                     login.currentLoginIsOperator)
                   "operatorsIDs": [login.currentAccountID]
               }));

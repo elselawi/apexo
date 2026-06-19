@@ -94,7 +94,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
   final _searchOrderController = TextEditingController();
   final _scrollController = ScrollController();
   final pickSupplierForAdditionFlyout = FlyoutController();
-  final bool canEdit = login.permissions[PInt.expenses] == 2;
+  final bool canEdit = login.perm(Perm.expenses).exact(2);
   String? justCreatedId;
 
   addOrderForSupplier(String supplierId) async {

@@ -11,6 +11,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show Card, TimeOfDay, showTimePicker;
@@ -296,7 +297,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
             " ${DF.commonDate(selectedDate)}",
             style: const TextStyle(fontWeight: FontWeight.w500),
           ),
-          if (login.isAdmin)
+          if (login.perm(Perm.revenue).read)
             Row(
               children: [
                 if (showPayments)
@@ -574,7 +575,9 @@ class AppointmentCalendarTile<Item extends Appointment>
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(fontSize: 12),
                       )),
-                if (item.paid > 0 && login.isAdmin && showPayments)
+                if (item.paid > 0 &&
+                    login.perm(Perm.revenue).read &&
+                    showPayments)
                   MoneyDisplay(
                     "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
                     style: const TextStyle(fontSize: 12),

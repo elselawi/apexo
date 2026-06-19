@@ -1,19 +1,9 @@
 import 'package:pocketbase/pocketbase.dart';
+export 'package:apexo/services/perm.dart';
 
 /// shared constants
 
 const shorteningServer = "https://p.apexo.app";
-
-class PInt {
-  static const int patients = 0;
-  static const int appointments = 1;
-  static const int postOp = 2;
-  static const int stats = 3;
-  static const int expenses = 4;
-  static const int setting = 5;
-  static const int photos = 6;
-  static const int notes = 7;
-}
 
 const String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
 const String dataCollectionName = "data";

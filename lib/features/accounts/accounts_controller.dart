@@ -139,11 +139,6 @@ class _Accounts extends ObservablePersistingObject {
     notifyAndPersist();
   }
 
-  List<int> parsePermissions(String str) {
-    if (str.isEmpty) str = "[0,0,0,0,0,0,0,0]";
-    return List<int>.from(jsonDecode(str))..addAll([0, 0, 0, 0]);
-  }
-
   String name(RecordModel account) {
     final name = account.getStringValue("name");
     if (name.isNotEmpty) {

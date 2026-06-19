@@ -56,7 +56,7 @@ class OrderRowState extends State<OrderRow>
   final FlyoutController moreOptionsCtrl = FlyoutController();
   final FlyoutController photoAddMenu = FlyoutController();
   final FlyoutController deleteConfirmCtrl = FlyoutController();
-  final bool canEdit = login.permissions[PInt.expenses] == 2;
+  final bool canEdit = login.perm(Perm.expenses).exact(2);
 
   bool inProgress = false;
 

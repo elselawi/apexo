@@ -176,7 +176,7 @@ class AppointmentCard extends StatelessWidget {
                           _buildSection(
                               txt("photos"),
                               GridGallery(
-                                canDelete: login.permissions[PInt.photos] == 1,
+                                canDelete: login.perm(Perm.photos).exact(1),
                                 rowId: appointment.id,
                                 imgs: appointment.imgs,
                                 countPerLine: 4,
@@ -303,16 +303,19 @@ class AppointmentCard extends StatelessWidget {
                               context),
                         ],
                         if ((appointment.price != 0 || appointment.paid != 0) &&
-                            !hide.contains(AppointmentSections.pay)) ...[
+                            !hide.contains(AppointmentSections.pay) &&
+                            (login.perm(Perm.revenue).read ||
+                                appointment.userIsOperator)) ...[
                           const Divider(
                             direction: Axis.horizontal,
                           ),
                           _buildSection(
-                              "${txt("pay")}\n${currency()}",
-                              _paymentPills(context),
-                              FluentIcons.money,
-                              color,
-                              context),
+                            "${txt("pay")}\n${currency()}",
+                            _paymentPills(context),
+                            FluentIcons.money,
+                            color,
+                            context,
+                          ),
                         ],
                       ],
                     ),

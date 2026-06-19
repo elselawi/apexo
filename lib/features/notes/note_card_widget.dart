@@ -134,7 +134,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
 
   bool get canEdit {
     if (login.isAdmin) return true;
-    if (login.permissions[PInt.notes] > 0) return true;
+    if (login.perm(Perm.notes).some) return true;
     if (widget.note.createdBy == login.currentAccountID) return true;
     return false;
   }

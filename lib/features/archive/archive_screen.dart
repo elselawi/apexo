@@ -117,7 +117,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
   bool _storeVisible(String key) => _activeStore == null || _activeStore == key;
 
   bool _canAccess(int permissionIndex) {
-    return login.permissions[permissionIndex] > 0 || login.isAdmin;
+    return login.perm(permissionIndex).some || login.isAdmin;
   }
 
   bool _matchesSearch(String text) {
@@ -147,12 +147,12 @@ class _ArchivedPageState extends State<_ArchivedPage> {
   List<List<String>> get _sortKeys {
     final keys = <List<String>>[];
 
-    if (_canAccess(PInt.patients)) keys.addAll(_collect("patients", patients));
-    if (_canAccess(PInt.appointments)) {
+    if (_canAccess(Perm.patients)) keys.addAll(_collect("patients", patients));
+    if (_canAccess(Perm.appointments)) {
       keys.addAll(_collect("appointments", appointments));
     }
-    if (_canAccess(PInt.expenses)) keys.addAll(_collect("expenses", expenses));
-    if (_canAccess(PInt.notes)) keys.addAll(_collect("notes", notes));
+    if (_canAccess(Perm.expenses)) keys.addAll(_collect("expenses", expenses));
+    if (_canAccess(Perm.notes)) keys.addAll(_collect("notes", notes));
 
     keys.sort((a, b) => a[2].compareTo(b[2]) * _sortDirection);
     return keys;
@@ -324,7 +324,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         child: Txt(txt("showAll")),
       ),
     ];
-    if (_canAccess(PInt.patients)) {
+    if (_canAccess(Perm.patients)) {
       items.add(ComboBoxItem(
         value: "patients",
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
@@ -333,7 +333,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         ]),
       ));
     }
-    if (_canAccess(PInt.appointments)) {
+    if (_canAccess(Perm.appointments)) {
       items.add(ComboBoxItem(
         value: "appointments",
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
@@ -342,7 +342,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         ]),
       ));
     }
-    if (_canAccess(PInt.expenses)) {
+    if (_canAccess(Perm.expenses)) {
       items.add(ComboBoxItem(
         value: "expenses",
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
@@ -351,7 +351,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         ]),
       ));
     }
-    if (_canAccess(PInt.notes)) {
+    if (_canAccess(Perm.notes)) {
       items.add(ComboBoxItem(
         value: "notes",
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [

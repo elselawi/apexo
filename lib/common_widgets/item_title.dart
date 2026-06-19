@@ -148,6 +148,7 @@ class TreatmentLabels extends StatelessWidget {
       height: showPalmer ? labels.length * 35 : 25,
       child: ListView(
         scrollDirection: showPalmer ? Axis.vertical : Axis.horizontal,
+        physics: showPalmer ? const NeverScrollableScrollPhysics() : null,
         children: List.generate(
             labels.length,
             (i) => Padding(

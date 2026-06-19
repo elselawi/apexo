@@ -38,7 +38,7 @@ class Appointments extends Store<Appointment> {
 
     final today = DateTime(now.year, now.month, now.day);
 
-    for (var appointment in observableMap.values) {
+    for (var appointment in present.values) {
       final patientID = appointment.patientID ?? "";
       final isDone = appointment.isDone;
       final isUpcoming = appointment.date.isAfter(now);

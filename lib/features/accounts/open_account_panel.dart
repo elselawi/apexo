@@ -8,6 +8,7 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -247,7 +248,7 @@ class _AccountDetailsState extends State<_AccountDetails> {
         if (widget.account.isAdmin == false)
           Builder(builder: (context) {
             return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 20),
                 const Divider(),
@@ -417,6 +418,7 @@ class PermissionSelector extends StatefulWidget {
 
 class _PermissionSelectorState extends State<PermissionSelector> {
   late int selected;
+  final FlyoutController _flyoutCtrl = FlyoutController();
 
   @override
   void initState() {
@@ -425,36 +427,72 @@ class _PermissionSelectorState extends State<PermissionSelector> {
   }
 
   @override
+  void dispose() {
+    _flyoutCtrl.dispose();
+    super.dispose();
+  }
+
+  String get _selectedLabel =>
+      widget.levels.firstWhere((l) => l.value == selected).label;
+
+  @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Txt(widget.title,
-              style: FluentTheme.of(context)
-                  .typography
-                  .bodyStrong
-                  ?.copyWith(fontSize: 13)),
-          Row(
-            children: [
-              ...widget.levels.map((l) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: ToggleButton(
-                        checked: l.value == selected,
-                        child: Txt(l.label),
-                        onChanged: (checked) {
-                          if (checked == true) {
-                            setState(() {
-                              selected = l.value;
-                              widget.onChanged(l.value);
-                            });
-                          }
-                        }),
-                  ))
-            ],
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: FlyoutTarget(
+        controller: _flyoutCtrl,
+        child: Button(
+          onPressed: () async {
+            await flyoutFocusFix(context);
+            _flyoutCtrl.showFlyout(builder: (ctx) {
+              return MenuFlyout(items: [
+                MenuFlyoutItem(
+                  leading: const Icon(FluentIcons.settings, size: 16),
+                  text: Txt(widget.title),
+                  onPressed: null,
+                ),
+                const MenuFlyoutSeparator(),
+                ...widget.levels.map((l) => MenuFlyoutItem(
+                      leading: l.value == selected
+                          ? const Icon(FluentIcons.accept, size: 16)
+                          : const SizedBox(width: 16),
+                      text: Txt(l.label),
+                      onPressed: () {
+                        setState(() {
+                          selected = l.value;
+                          widget.onChanged(l.value);
+                        });
+                      },
+                    )),
+              ]);
+            });
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: Row(
+              spacing: 5,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  spacing: 5,
+                  children: [
+                    Txt("${widget.title}:",
+                        style: FluentTheme.of(context)
+                            .typography
+                            .bodyStrong
+                            ?.copyWith(fontSize: 14)),
+                    Txt(_selectedLabel,
+                        style: FluentTheme.of(context)
+                            .typography
+                            .body
+                            ?.copyWith(fontSize: 12))
+                  ],
+                ),
+                const Icon(FluentIcons.chevron_down, size: 12),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }

@@ -241,7 +241,7 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                   selectedAppointment.hasLabwork == true)
                 FlyoutTarget(
                   controller: confirmDeleteFlyoutController,
-                  child: FilledButton(
+                  child: IconButton(
                     style: filledButtonStyle(Colors.errorPrimaryColor),
                     onPressed: () async {
                       await flyoutFocusFix(context);
@@ -266,17 +266,22 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                         );
                       });
                     },
-                    child: ButtonContent(
+                    icon: ButtonContent(
                       WindowsIcons.delete,
                       "${txt("delete")} ${txt("labwork")}",
+                      size: 13,
                     ),
                   ),
                 ),
               if (selectedAppointment != null)
-                FilledButton(
+                IconButton(
                   style: filledButtonStyle(
                       _hasEdited() ? Colors.blue : Colors.grey.withAlpha(100)),
-                  child: ButtonContent(WindowsIcons.save, txt("save")),
+                  icon: ButtonContent(
+                    WindowsIcons.save,
+                    txt("save"),
+                    size: 13,
+                  ),
                   onPressed: () {
                     if (!_hasEdited()) {
                       return;

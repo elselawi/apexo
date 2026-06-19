@@ -128,8 +128,8 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                       ? FluentIcons.contact_lock
                                       : FluentIcons.contact),
                               trailing: Container(
-                                width: 110,
-                                padding: const EdgeInsets.all(5),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 5, horizontal: 10),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
                                   color:
@@ -137,18 +137,10 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                           ? Colors.red.withValues(alpha: 0.3)
                                           : Colors.teal.withValues(alpha: 0.3),
                                 ),
-                                child: Row(
-                                  spacing: 5,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    if (account.getStringValue("type") ==
-                                        "admin")
-                                      Txt(txt("modeAdmin"))
-                                    else
-                                      Txt(txt("modeUser")),
-                                  ],
-                                ),
+                                child:
+                                    (account.getStringValue("type") == "admin")
+                                        ? Txt(txt("admin"))
+                                        : Txt(txt("user")),
                               ),
                               title: Txt(
                                   filteredList[index].getStringValue("name")),

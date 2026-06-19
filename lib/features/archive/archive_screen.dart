@@ -455,20 +455,14 @@ class _ArchivedPageState extends State<_ArchivedPage> {
       }),
       contentPadding:
           const EdgeInsetsDirectional.only(top: 0, bottom: 0, start: 4, end: 4),
-      title: Row(
-        children: [
-          Expanded(
-            child: ItemTitle(
-              item: row.item,
-              radius: 13,
-              maxWidth: 160,
-              fontSize: 13,
-              icon: row.storeIcon,
-              archivedStyling: false,
-            ),
-          ),
-          _buildStoreTag(context, row),
-        ],
+      leading: _buildStoreTag(context, row),
+      title: ItemTitle(
+        item: row.item,
+        radius: 13,
+        maxWidth: 160,
+        fontSize: 13,
+        icon: row.storeIcon,
+        archivedStyling: false,
       ),
       subtitle: Text(
         row.subtitle,
@@ -490,11 +484,11 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         mainAxisSize: MainAxisSize.min,
         spacing: 3,
         children: [
-          Icon(row.storeIcon, size: 11, color: row.storeColor),
+          Icon(row.storeIcon, size: 13, color: row.storeColor),
           Text(
             row.storeLabel,
             style: TextStyle(
-              fontSize: 10,
+              fontSize: 13,
               fontWeight: FontWeight.w600,
               color: row.storeColor,
             ),

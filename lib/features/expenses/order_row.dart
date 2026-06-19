@@ -662,7 +662,7 @@ class OrderRowState extends State<OrderRow>
     return FlyoutTarget(
       controller: photoAddMenu,
       child: Button(
-        child: ButtonContent(FluentIcons.photo2_add, txt("addPhoto")),
+        child: ButtonContent(WindowsIcons.photo, txt("add")),
         onPressed: () async {
           if (inProgress) return;
           final bool suppGallery =

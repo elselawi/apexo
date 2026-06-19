@@ -46,7 +46,7 @@ class StatsScreen extends StatelessWidget {
               builder: (context, asyncSnapshot) {
                 return Row(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  spacing: 3,
+                  spacing: 2,
                   children: [
                     ToggleButton(
                         checked: chartsCtrl.interval() == StatsInterval.days,

@@ -61,9 +61,9 @@ class DateTimePickerState extends State<DateTimePicker> {
                   style: widget.textStyle,
                 ))),
             if (widget.showButton && widget.enabled)
-              Button(
+              IconButton(
                 onPressed: pick,
-                child: ButtonContent(widget.buttonIcon, txt(widget.buttonText)),
+                icon: ButtonContent(widget.buttonIcon, txt(widget.buttonText)),
               )
           ],
         ),

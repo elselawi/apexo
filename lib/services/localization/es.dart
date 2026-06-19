@@ -262,7 +262,7 @@ class Es implements En {
     // labworks
     "laboratory": "Laboratorio",
     "month": "mes",
-    "labwork": "trabajo de laboratorio",
+    "labwork": "Trabajo",
     "orderNotes": "Notas del pedido",
     "noSuggestions": "Sin sugerencias",
     "received": "Recibido del laboratorio",

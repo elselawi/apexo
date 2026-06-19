@@ -327,7 +327,7 @@ class PatientAppointments extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
                         child: Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(5),

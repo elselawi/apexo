@@ -210,7 +210,7 @@ class _LabworksTableState extends State<LabworksTable> {
             builder: (context, states) {
               return Container(
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 12),
                 decoration: BoxDecoration(
                   color: states.isHovered
                       ? FluentTheme.of(context)
@@ -262,7 +262,7 @@ class _LabworksTableState extends State<LabworksTable> {
   Container _buildTableHeader(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 8,
+        horizontal: 0,
         vertical: 8,
       ),
       decoration: topBarDecoration(context, Colors.grey),
@@ -346,12 +346,12 @@ class _LabworksTableState extends State<LabworksTable> {
   Widget _buildDataCell(String text,
       {double width = 150, bool cross = false, String? tooltip}) {
     final textWidget = Text(
-        text,
-        style: FluentTheme.of(context)
-            .typography
-            .body
-            ?.copyWith(decoration: cross ? TextDecoration.lineThrough : null),
-        overflow: TextOverflow.ellipsis,
+      text,
+      style: FluentTheme.of(context)
+          .typography
+          .body
+          ?.copyWith(decoration: cross ? TextDecoration.lineThrough : null),
+      overflow: TextOverflow.ellipsis,
     );
     return SizedBox(
       width: width,

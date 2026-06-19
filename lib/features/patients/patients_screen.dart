@@ -61,7 +61,7 @@ class _PatientsPageState extends State<_PatientsPage> {
   final archiveSelectedFlyout = FlyoutController();
 
   double calSpacing(double x) => (((3 / 205) * x) - (87 / 41)).clamp(5.0, 15.0);
-  double calWidth(double x) => ((2 / 41) * x + (2580 / 41)).clamp(120, 130.0);
+  double calWidth(double x) => ((2 / 41) * x + (2580 / 41)).clamp(125, 145.0);
 
   @override
   void didUpdateWidget(covariant _PatientsPage oldWidget) {
@@ -374,7 +374,7 @@ class _PatientsPageState extends State<_PatientsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5),
       width: constraints.maxWidth - 52,
-      height: 43,
+      height: 45,
       child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -595,13 +595,17 @@ class ClickableBottomLabel extends StatelessWidget {
     );
   }
 
-  Txt _buildTitle() {
-    return Txt(
-      label.title,
-      style: TextStyle(
-        fontWeight: FontWeight.bold,
-        fontSize: 11,
-        color: color,
+  Widget _buildTitle() {
+    return SizedBox(
+      width: 89,
+      child: Txt(
+        label.title,
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 11,
+          color: color,
+        ),
+        overflow: TextOverflow.ellipsis,
       ),
     );
   }

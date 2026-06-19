@@ -56,128 +56,63 @@ class _SuppliersListState extends State<SuppliersList> {
     return Stack(
       children: [
         Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ScreenCommandBar(
-                mainButton: IconButton(
-                  icon: ButtonContent(WindowsIcons.add, txt("addSupplier")),
-                  onPressed: _showAddSupplierDialog,
-                ),
-                otherButtons: globalSettings.aiServicesEnabled &&
-                        network.isOnline()
-                    ? [
-                        FlyoutTarget(
-                          controller: _scanFlyout,
-                          child: IconButton(
-                            style: _scanning
-                                ? ButtonStyle(
-                                    backgroundColor: WidgetStatePropertyAll(
-                                        FluentTheme.of(context)
-                                            .resources
-                                            .dividerStrokeColorDefault),
-                                  )
-                                : null,
-                            icon: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (_scanning)
-                                  const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: ProgressRing(strokeWidth: 2),
-                                  )
-                                else
-                                  const Icon(FluentIcons.generic_scan),
-                                const SizedBox(width: 8),
-                                Txt(txt("scanReceipt")),
-                              ],
-                            ),
-                            onPressed: _scanning
-                                ? null
-                                : () async {
-                                    final suppGallery = ImagePicker()
-                                        .supportsImageSource(
-                                            ImageSource.gallery);
-                                    final suppCamera = ImagePicker()
-                                        .supportsImageSource(
-                                            ImageSource.camera);
-
-                                    if (suppGallery && !suppCamera) {
-                                      _scanReceipt(
-                                          context, ImageSource.gallery);
-                                      return;
-                                    }
-                                    if (!suppGallery && suppCamera) {
-                                      _scanReceipt(context, ImageSource.camera);
-                                      return;
-                                    }
-
-                                    await flyoutFocusFix(context);
-                                    _scanFlyout.showFlyout(
-                                        builder: (ctx) => MenuFlyout(
-                                              items: [
-                                                if (suppGallery)
-                                                  MenuFlyoutItem(
-                                                    text: Txt(txt("upload")),
-                                                    leading: const Icon(
-                                                        FluentIcons.upload),
-                                                    onPressed: () =>
-                                                        _scanReceipt(
-                                                            context,
-                                                            ImageSource
-                                                                .gallery),
-                                                  ),
-                                                if (suppCamera)
-                                                  MenuFlyoutItem(
-                                                    text: Txt(txt("camera")),
-                                                    leading: const Icon(
-                                                        FluentIcons.camera),
-                                                    onPressed: () =>
-                                                        _scanReceipt(context,
-                                                            ImageSource.camera),
-                                                  ),
-                                              ],
-                                            ));
-                                  },
-                          ),
-                        ),
-                      ]
-                    : []),
+              mainButton: IconButton(
+                icon: ButtonContent(WindowsIcons.add, txt("addSupplier")),
+                onPressed: _showAddSupplierDialog,
+              ),
+              otherButtons:
+                  globalSettings.aiServicesEnabled && network.isOnline()
+                      ? [_buildScanButton(context)]
+                      : [],
+            ),
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [_buildSearch()],
-              ),
+              child: _buildSearch(),
             ),
-            Container(
-              decoration: topBarDecoration(context, Colors.grey),
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Button(
-                    child: ButtonContent(WindowsIcons.text_bullet_list_square,
-                        txt("viewAllOrders")),
-                    onPressed: () {
-                      openExpenses(
-                        expenses.allOrders,
-                        txt("viewAllOrders"),
-                        null,
-                      );
-                    },
+            LayoutBuilder(
+              builder: (context, constraints) => Container(
+                decoration: topBarDecoration(context, Colors.grey),
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(8),
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(minWidth: constraints.maxWidth - 16),
+                    child: Row(
+                      spacing: 10,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Button(
+                          child: ButtonContent(
+                              WindowsIcons.text_bullet_list_square,
+                              txt("viewAllOrders")),
+                          onPressed: () {
+                            openExpenses(
+                              expenses.allOrders,
+                              txt("viewAllOrders"),
+                              null,
+                            );
+                          },
+                        ),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Txt("${txt("total")}: ",
+                                style: FluentTheme.of(context)
+                                    .typography
+                                    .caption
+                                    ?.copyWith(fontWeight: FontWeight.w500)),
+                            _DuePaymentAmount(due: expenses.totalDue),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Txt("${txt("total")}: ",
-                          style: FluentTheme.of(context)
-                              .typography
-                              .caption
-                              ?.copyWith(fontWeight: FontWeight.w500)),
-                      _DuePaymentAmount(due: expenses.totalDue),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
             Expanded(
@@ -186,6 +121,74 @@ class _SuppliersListState extends State<SuppliersList> {
           ],
         ),
       ],
+    );
+  }
+
+  FlyoutTarget _buildScanButton(BuildContext context) {
+    return FlyoutTarget(
+      controller: _scanFlyout,
+      child: IconButton(
+        style: _scanning
+            ? ButtonStyle(
+                backgroundColor: WidgetStatePropertyAll(FluentTheme.of(context)
+                    .resources
+                    .dividerStrokeColorDefault),
+              )
+            : null,
+        icon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_scanning)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: ProgressRing(strokeWidth: 2),
+              )
+            else
+              const Icon(FluentIcons.generic_scan),
+            const SizedBox(width: 8),
+            Txt(txt("scanReceipt")),
+          ],
+        ),
+        onPressed: _scanning
+            ? null
+            : () async {
+                final suppGallery =
+                    ImagePicker().supportsImageSource(ImageSource.gallery);
+                final suppCamera =
+                    ImagePicker().supportsImageSource(ImageSource.camera);
+
+                if (suppGallery && !suppCamera) {
+                  _scanReceipt(context, ImageSource.gallery);
+                  return;
+                }
+                if (!suppGallery && suppCamera) {
+                  _scanReceipt(context, ImageSource.camera);
+                  return;
+                }
+
+                await flyoutFocusFix(context);
+                _scanFlyout.showFlyout(
+                    builder: (ctx) => MenuFlyout(
+                          items: [
+                            if (suppGallery)
+                              MenuFlyoutItem(
+                                text: Txt(txt("upload")),
+                                leading: const Icon(FluentIcons.upload),
+                                onPressed: () =>
+                                    _scanReceipt(context, ImageSource.gallery),
+                              ),
+                            if (suppCamera)
+                              MenuFlyoutItem(
+                                text: Txt(txt("camera")),
+                                leading: const Icon(FluentIcons.camera),
+                                onPressed: () =>
+                                    _scanReceipt(context, ImageSource.camera),
+                              ),
+                          ],
+                        ));
+              },
+      ),
     );
   }
 
@@ -214,10 +217,8 @@ class _SuppliersListState extends State<SuppliersList> {
     );
   }
 
-  Expanded _buildSearch() {
-    return Expanded(
-      child: TopSearch(controller: _searchController, setState: setState),
-    );
+  Widget _buildSearch() {
+    return TopSearch(controller: _searchController, setState: setState);
   }
 
   void _showAddSupplierDialog() {
@@ -402,8 +403,11 @@ class _DuePaymentAmount extends StatelessWidget {
           ? Row(
               spacing: 5,
               children: [
-                const Icon(WindowsIcons.warning),
-                MoneyDisplay("${due.toStringAsFixed(2)} ${currency()}"),
+                //const Icon(WindowsIcons.warning),
+                MoneyDisplay(
+                  "${due.toStringAsFixed(2)} ${currency()}",
+                  style: const TextStyle(fontSize: 12),
+                ),
               ],
             )
           : const SizedBox.shrink(),

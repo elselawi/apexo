@@ -29,6 +29,7 @@ class ChartsRangeSelector extends StatelessWidget {
             chartsCtrl.interval.stream
           ],
           builder: (context, snapshot) {
+            final isPhone = MediaQuery.of(context).size.width < 600;
             return Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -55,6 +56,7 @@ class ChartsRangeSelector extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (!isPhone)
                 IconButton(
                   onPressed: chartsCtrl.toggleInterval,
                   icon: Column(

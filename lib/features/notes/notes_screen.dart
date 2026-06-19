@@ -83,45 +83,51 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
             children: [_buildSearch()],
           ),
         ),
-        Container(
-          decoration: topBarDecoration(context, Colors.grey),
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            spacing: 5,
-            children: [
-              Button(
-                child: ButtonContent(
-                  notes.sortDirection() == 1
-                      ? FluentIcons.sort_up
-                      : FluentIcons.sort_down,
-                  "${txt("sort")} ${txt(notes.sortDirection() == 1 ? "ascending" : "descending")}",
-                ),
-                onPressed: () {
-                  notes.sortDirection(notes.sortDirection() * -1);
-                },
+        Builder(builder: (context) {
+          return Container(
+            decoration: topBarDecoration(context, Colors.grey),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(8),
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                spacing: 5,
+                children: [
+                  Button(
+                    child: ButtonContent(
+                      notes.sortDirection() == 1
+                          ? FluentIcons.sort_up
+                          : FluentIcons.sort_down,
+                      "${txt("sort")} ${txt(notes.sortDirection() == 1 ? "ascending" : "descending")}",
+                    ),
+                    onPressed: () {
+                      notes.sortDirection(notes.sortDirection() * -1);
+                    },
+                  ),
+                  if (login.permissions[PInt.notes] == 1 || login.isAdmin)
+                    ToggleButton(
+                      checked: notes.filterByAccountId().isNotEmpty,
+                      child:
+                          ButtonContent(FluentIcons.contact, txt("personal")),
+                      onChanged: (value) {
+                        if (value) {
+                          notes.filterByAccountId(login.currentAccountID);
+                        } else {
+                          notes.filterByAccountId('');
+                        }
+                      },
+                    ),
+                  ToggleButton(
+                    checked: notes.showIncoming(),
+                    child: ButtonContent(FluentIcons.reply, txt("incoming")),
+                    onChanged: (value) {
+                      notes.showIncoming(value);
+                    },
+                  )
+                ],
               ),
-              if (login.permissions[PInt.notes] == 1 || login.isAdmin)
-                ToggleButton(
-                  checked: notes.filterByAccountId().isNotEmpty,
-                  child: ButtonContent(FluentIcons.contact, txt("personal")),
-                  onChanged: (value) {
-                    if (value) {
-                      notes.filterByAccountId(login.currentAccountID);
-                    } else {
-                      notes.filterByAccountId('');
-                    }
-                  },
-                ),
-              ToggleButton(
-                checked: notes.showIncoming(),
-                child: ButtonContent(FluentIcons.reply, txt("incoming")),
-                onChanged: (value) {
-                  notes.showIncoming(value);
-                },
-              )
-            ],
-          ),
-        ),
+            ),
+          );
+        }),
         _buildKanabanBoard(),
       ],
     );

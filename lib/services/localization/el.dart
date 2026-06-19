@@ -18,7 +18,7 @@ class El implements En {
     "continue": "Συνέχεια",
     "add": "Προσθήκη",
     "edit": "Επεξεργασία",
-    "delete": "Διαγραφή",
+    "delete": "Σβήσε",
     "deletedItems": "Διαγραμμένα",
     "deleted": "Διαγράφηκε",
     "archive": "Αρχειοθέτηση",
@@ -261,7 +261,7 @@ class El implements En {
     // labworks
     "laboratory": "Εργαστήριο",
     "month": "μήνας",
-    "labwork": "εργαστηριακή εργασία",
+    "labwork": "εργασία",
     "orderNotes": "Σημειώσεις παραγγελίας",
     "noSuggestions": "Καμία πρόταση",
     "received": "Η εργασία παραλήφθηκε",

@@ -9,7 +9,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/services/launch.dart';
-import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -428,17 +427,19 @@ class _PermissionSelectorState extends State<PermissionSelector> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Txt(widget.title,
-              style: FluentTheme.of(context).typography.bodyStrong),
+              style: FluentTheme.of(context)
+                  .typography
+                  .bodyStrong
+                  ?.copyWith(fontSize: 13)),
           Row(
             children: [
-              const SizedBox(width: 10),
               ...widget.levels.map((l) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
                     child: ToggleButton(
                         checked: l.value == selected,
                         child: Txt(l.label),

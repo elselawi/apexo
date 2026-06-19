@@ -411,16 +411,19 @@ class AppointmentCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 7),
             child: Row(
+              spacing: 5,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Icon(icon, size: 16),
-                const SizedBox(width: 7),
-                Txt(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    fontStyle: FontStyle.italic,
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 95),
+                  child: Txt(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      fontStyle: FontStyle.italic,
+                    ),
                   ),
                 ),
               ],
@@ -507,12 +510,15 @@ class PaymentPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      constraints: const BoxConstraints(minWidth: 60),
       decoration: BoxDecoration(
-          color: color?.withAlpha(40), borderRadius: BorderRadius.circular(5)),
-      padding: const EdgeInsets.fromLTRB(10, 5, 10, 0),
-      height: 35,
-      child: Wrap(
-        spacing: 10,
+        color: (color ?? finalTextColor).withAlpha(20),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      padding: const EdgeInsets.all(7),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 3,
         children: [
           Txt(
             title,

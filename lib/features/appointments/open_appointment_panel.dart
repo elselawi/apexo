@@ -1037,7 +1037,7 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Txt(
-                txt("labworksForThisAppointment"),
+                txt("labworks"),
                 style: theme.typography.bodyStrong,
               ),
               if (widget.onDelete != null)

@@ -42,7 +42,6 @@ Future<Expense> openExpenses(
     title: supplierName,
     canNotBeNew: true,
     archiveButtonReplacement: const SizedBox.shrink(),
-    additionalControls: _SupplierOrdersFooter(orders: orders),
     checkUnsavedChanges: () {
       return orders.any((o) => jsonEncode(o.toJson()) != savedSnapshots[o.id]);
     },
@@ -57,19 +56,19 @@ Future<Expense> openExpenses(
     },
     tabs: [
       PanelTab(
-        title: txt("due"),
-        icon: WindowsIcons.warning,
-        body: _SupplierDetails(
-            allOrders: orders, supplierId: supplierId, processed: false),
-        padding: 0,
-      ),
+          title: txt("due"),
+          icon: WindowsIcons.warning,
+          body: _SupplierDetails(
+              allOrders: orders, supplierId: supplierId, processed: false),
+          padding: 0,
+          footer: _SupplierOrdersFooter(orders: orders)),
       PanelTab(
-        title: txt("paid"),
-        icon: WindowsIcons.check_mark,
-        body: _SupplierDetails(
-            allOrders: orders, supplierId: supplierId, processed: true),
-        padding: 0,
-      ),
+          title: txt("paid"),
+          icon: WindowsIcons.check_mark,
+          body: _SupplierDetails(
+              allOrders: orders, supplierId: supplierId, processed: true),
+          padding: 0,
+          footer: _SupplierOrdersFooter(orders: orders)),
     ],
   );
   routes.openPanel(panel);
@@ -241,74 +240,77 @@ class _SupplierOrdersFooterState extends State<_SupplierOrdersFooter> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final currency = globalSettings.get("currency").value;
-    return StreamBuilder(
-        stream: expenses.observableMap.stream,
-        builder: (context, asyncSnapshot) {
-          // Calculations moved inside the builder so they react to store changes
-          final double totalDue = widget.orders
-              .where((e) => e.processed == false)
-              .fold(0, (sum, order) => sum + (order.cost - order.paidAmount));
+    final currency = globalSettings.currency;
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: StreamBuilder(
+          stream: expenses.observableMap.stream,
+          builder: (context, asyncSnapshot) {
+            // Calculations moved inside the builder so they react to store changes
+            final double totalDue = widget.orders
+                .where((e) => e.processed == false)
+                .fold(0, (sum, order) => sum + (order.cost - order.paidAmount));
 
-          final double totalPaid = widget.orders
-              .where((e) => e.processed == true)
-              .fold(0, (a, b) => a + b.paidAmount);
+            final double totalPaid = widget.orders
+                .where((e) => e.processed == true)
+                .fold(0, (a, b) => a + b.paidAmount);
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    txt("totalDue"),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: theme.typography.caption?.color,
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      txt("totalDue"),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.typography.caption?.color,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  MoneyDisplay(
-                    "${totalDue.toStringAsFixed(2)} $currency",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.bold,
-                      color: totalDue > 0
-                          ? Colors.orange
-                          : theme.typography.body?.color,
+                    const SizedBox(width: 16),
+                    MoneyDisplay(
+                      "${totalDue.toStringAsFixed(2)} $currency",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        color: totalDue > 0
+                            ? Colors.orange
+                            : theme.typography.body?.color,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Text(
-                    txt("totalPayments"),
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: theme.typography.caption?.color,
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      txt("totalPayments"),
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: theme.typography.caption?.color,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 16),
-                  MoneyDisplay(
-                    "${totalPaid.toStringAsFixed(2)} $currency",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.bold,
-                      color: totalPaid > 0
-                          ? Colors.green
-                          : theme.typography.body?.color,
+                    const SizedBox(width: 16),
+                    MoneyDisplay(
+                      "${totalPaid.toStringAsFixed(2)} $currency",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                        color: totalPaid > 0
+                            ? Colors.green
+                            : theme.typography.body?.color,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
-          );
-        });
+                  ],
+                ),
+              ],
+            );
+          }),
+    );
   }
 }

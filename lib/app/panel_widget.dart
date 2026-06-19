@@ -236,7 +236,7 @@ class _PanelScreenState extends State<PanelScreen> {
       child: StreamBuilder<bool>(
           stream: widget.panel.hasUnsavedChanges.stream,
           builder: (context, _) {
-            return FilledButton(
+            return IconButton(
               onPressed: closeOrConfirmCancel,
               style: greyButtonStyle.copyWith(
                 textStyle:
@@ -245,7 +245,7 @@ class _PanelScreenState extends State<PanelScreen> {
                     ? WidgetStatePropertyAll(Colors.orange)
                     : const WidgetStatePropertyAll(Colors.grey),
               ),
-              child: ButtonContent(
+              icon: ButtonContent(
                 WindowsIcons.cancel,
                 widget.panel.hasUnsavedChanges() ? txt("cancel") : txt("close"),
               ),
@@ -258,7 +258,7 @@ class _PanelScreenState extends State<PanelScreen> {
     return StreamBuilder<bool>(
         stream: widget.panel.hasUnsavedChanges.stream,
         builder: (context, _) {
-          return FilledButton(
+          return IconButton(
             onPressed: () {
               if (widget.panel.hasUnsavedChanges()) {
                 if (widget.panel.onSave != null) {
@@ -285,7 +285,7 @@ class _PanelScreenState extends State<PanelScreen> {
                       ? Colors.blue
                       : Colors.grey.withValues(alpha: 0.25)),
             ),
-            child: ButtonContent(WindowsIcons.save, txt("save")),
+            icon: ButtonContent(WindowsIcons.save, txt("save")),
           );
         });
   }

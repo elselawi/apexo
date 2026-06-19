@@ -18,6 +18,8 @@ class En {
     "add": "Add",
     "edit": "Edit",
     "delete": "Delete",
+    "deletedItems": "Deleted Items",
+    "deleted": "Deleted",
     "archive": "Archive",
     "restore": "Restore",
     "logout": "Logout",
@@ -270,6 +272,9 @@ class En {
     "patientHasNoAppointments": "Patient has no appointments",
     "selectAppointment": "Select an appointment",
     "areYouSureYouWantTo": "Are you sure you want to",
+    "youCanRestoreFromDeletedItemsPage":
+        "You can restore from the deleted items page",
+    "youWillNotBeAbleToRestore": "You will not be able to restore",
 
     // expenses
     "expense": "Expense",
@@ -298,6 +303,7 @@ class En {
     "viewAllOrders": "View all orders",
     "lastOrder": "Last order",
     "supplier": "Supplier",
+    "order": "Order",
     "orders": "Orders",
 
     // notes
@@ -318,7 +324,7 @@ class En {
     "assignedTo": "Assigned to",
     "dueDate": "Due date",
     "attachments": "Attachments",
-    "archiveAllCompletedNotes": "Archive all completed notes",
+    "deleteAllCompletedNotes": "Delete all completed notes",
     "moveTowardsEnd": "Move towards end",
     "moveTowardsStart": "Move towards start",
     "item": "Item",
@@ -329,6 +335,7 @@ class En {
     "tapToMarkAsPending": "Tap to mark as pending",
     "tapToMarkAsDone": "Tap to mark as done",
     "archived": "Archived",
+    "noDeletedItems": "No deleted items",
     "overdue": "Overdue",
     "incoming": "Incoming",
     "outgoing": "Outgoing",
@@ -411,6 +418,7 @@ class En {
     "ISO": "ISO",
 
     // advanced settings: Backups
+    "backup": "Backup",
     "backups": "Backups",
     "refresh": "Refresh",
     "download": "Download",
@@ -653,6 +661,7 @@ class En {
     "receiptScanFailed": "Receipt scan failed",
     "testing": "Testing connection...",
     "unknown": "Unknown",
+    "unidentified": "Unidentified",
 
     // Dental history recording
     "VoiceAutoFill": "Voice Auto-Fill",

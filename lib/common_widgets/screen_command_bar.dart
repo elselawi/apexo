@@ -1,4 +1,3 @@
-import 'package:apexo/common_widgets/archive_toggle.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -43,7 +42,7 @@ class ScreenCommandBar extends StatelessWidget {
           ),
           Row(
             spacing: 5,
-            children: [...farItems, const ArchiveToggle()],
+            children: [...farItems],
           )
         ],
       ),

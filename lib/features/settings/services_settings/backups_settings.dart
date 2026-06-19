@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
@@ -613,12 +614,15 @@ class _BackupsSettingsState extends State<BackupsSettings> {
       message: txt("delete"),
       child: BorderColorTransition(
         animate: backups.deleting().containsKey(element.key),
-        child: IconButton(
-          icon: const Icon(WindowsIcons.delete),
-          onPressed: () {
-            if (backups.deleting().containsKey(element.key)) return;
-            showDeleteDialog(context, element);
+        child: DeleteButton(
+          actionIcon: WindowsIcons.delete,
+          actionText: txt("delete"),
+          preview: Txt("${txt("backup")}: ${DF.full(element.date)}"),
+          restorable: false,
+          onConfirm: () {
+            backups.delete(element.key);
           },
+          child: const Icon(WindowsIcons.delete),
         ),
       ),
     );

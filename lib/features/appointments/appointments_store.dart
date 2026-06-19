@@ -1,6 +1,5 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
@@ -20,7 +19,6 @@ class Appointments extends Store<Appointment> {
       : super(
           modeling: Appointment.fromJson,
           isDemo: launch.isDemo,
-          showArchived: showArchived,
           onSyncStart: () {
             networkActions.isSyncing(networkActions.isSyncing() + 1);
           },
@@ -137,7 +135,6 @@ class Appointments extends Store<Appointment> {
   init() {
     super.init();
     observableMap.observe(nullifyAppointmentsCache);
-    showArchived.observe(nullifyAppointmentsCache);
     login.activators[_storeName] = () async {
       await loaded;
 

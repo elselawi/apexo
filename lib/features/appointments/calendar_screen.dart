@@ -1,6 +1,5 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -21,7 +20,6 @@ class CalendarScreen extends StatelessWidget {
         streams: [
           appointments.observableMap.stream,
           appointments.filterByOperatorID.stream,
-          showArchived.stream,
         ],
         builder: (context, snapshot) {
           return WeekAgendaCalendar<Appointment>(

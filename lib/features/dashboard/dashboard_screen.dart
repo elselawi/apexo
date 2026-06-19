@@ -11,7 +11,6 @@ import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/item_title.dart';
@@ -51,7 +50,6 @@ class DashboardScreen extends StatelessWidget {
           streams: [
             appointments.observableMap.stream,
             expenses.observableMap.stream,
-            showArchived.stream
           ],
           builder: (context, asyncSnapshot) {
             return Column(

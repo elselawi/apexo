@@ -1,5 +1,5 @@
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/keyboard_aware.dart';
@@ -39,7 +39,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
   late final TextEditingController titleController;
   late final TextEditingController noteController;
   late final TextEditingController recurrenceIntervalController;
-  final _archiveFlyoutCtrl = FlyoutController();
+  final _deleteFlyoutCtrl = FlyoutController();
 
   late bool isDone;
   late DateTime dueDate;
@@ -73,7 +73,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
     titleController.dispose();
     noteController.dispose();
     recurrenceIntervalController.dispose();
-    _archiveFlyoutCtrl.dispose();
+    _deleteFlyoutCtrl.dispose();
     super.dispose();
   }
 
@@ -233,7 +233,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
           ),
           if (note != null)
             FlyoutTarget(
-              controller: _archiveFlyoutCtrl,
+              controller: _deleteFlyoutCtrl,
               child: FilledButton(
                   style: filledButtonStyle(
                     note.archived == true
@@ -242,15 +242,16 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                   ),
                   child: ButtonContent(
                     note.archived == true
-                        ? FluentIcons.archive_undo
-                        : FluentIcons.archive,
-                    note.archived == true ? txt("restore") : txt("archive"),
+                        ? WindowsIcons.undo
+                        : WindowsIcons.delete,
+                    note.archived == true ? txt("restore") : txt("delete"),
                   ),
                   onPressed: () async {
                     await flyoutFocusFix(context);
-                    _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
+                    _deleteFlyoutCtrl.showFlyout(builder: (ctx) {
                       return ConfirmDeleteFlyout(
-                        controller: _archiveFlyoutCtrl,
+                        restorable: true,
+                        controller: _deleteFlyoutCtrl,
                         onConfirm: () {
                           if (note.archived == true) {
                             notes.unarchive(note.id);
@@ -262,10 +263,10 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                           });
                         },
                         actionText:
-                            note.archived == true ? "restore" : "archive",
+                            note.archived == true ? "restore" : "delete",
                         actionIcon: note.archived == true
-                            ? FluentIcons.archive_undo
-                            : FluentIcons.archive,
+                            ? WindowsIcons.undo
+                            : WindowsIcons.delete,
                       );
                     });
                   }),

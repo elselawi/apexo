@@ -14,7 +14,6 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/ai_services/dental_history.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
@@ -91,7 +90,6 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
             streams: [
               patients.observableMap.stream,
               appointments.observableMap.stream,
-              showArchived.stream,
               transcriptionEditCounter.stream
             ],
             builder: (context, asyncSnapshot) {
@@ -295,7 +293,7 @@ class PatientAppointments extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
-        streams: [appointments.observableMap.stream, showArchived.stream],
+        streams: [appointments.observableMap.stream],
         builder: (context, snapshot) {
           final apts = patient.allAppointments;
           return Column(

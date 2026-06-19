@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
@@ -218,12 +219,7 @@ class _PanelScreenState extends State<PanelScreen> {
                         if (widget.panel.additionalControls != null)
                           widget.panel.additionalControls!,
                         if (widget.panel.showBottomControls) ...[
-                          if (isNew == false &&
-                              widget.panel.item.archived == true)
-                            _buildRestoreButton(),
-                          if (isNew == false &&
-                              widget.panel.item.archived != true)
-                            _buildArchiveButton(),
+                          if (isNew == false) _buildArchiveButton(),
                           _buildSaveButton(),
                         ],
                         _buildCancelButton(),
@@ -295,40 +291,46 @@ class _PanelScreenState extends State<PanelScreen> {
   }
 
   Widget _buildArchiveButton() {
+    final icon = widget.panel.item.archived == true
+        ? WindowsIcons.undo
+        : WindowsIcons.delete;
+    final action =
+        widget.panel.item.archived == true ? txt("restore") : txt("delete");
     return widget.panel.archiveButtonReplacement ??
-        FilledButton(
-          onPressed: () {
+        DeleteButton(
+          actionText: action,
+          actionIcon: icon,
+          restorable: true,
+          preview: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              Icon(widget.panel.icon),
+              Txt(
+                "${txt(widget.panel.singularName)}:",
+                style: FluentTheme.of(context).typography.bodyStrong,
+              ),
+              ItemTitle(item: widget.panel.item),
+            ],
+          ),
+          onConfirm: () {
             setState(() {
-              widget.panel.item.archived = true;
-              widget.panel.store.archive(widget.panel.item.id);
+              if (widget.panel.item.archived == true) {
+                widget.panel.store.unarchive(widget.panel.item.id);
+                widget.panel.item.archived = null;
+              } else {
+                widget.panel.store.archive(widget.panel.item.id);
+                widget.panel.item.archived = true;
+              }
             });
           },
           style: greyButtonStyle.copyWith(
             backgroundColor: const WidgetStatePropertyAll(Colors.grey),
             textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
           ),
-          child: ButtonContent(FluentIcons.archive,
-              "${txt("archive")} ${txt(widget.panel.singularName)}"),
+          child:
+              ButtonContent(icon, "$action ${txt(widget.panel.singularName)}"),
         );
-  }
-
-  FilledButton _buildRestoreButton() {
-    return FilledButton(
-      onPressed: () {
-        setState(() {
-          widget.panel.item.archived = null;
-          widget.panel.store.unarchive(widget.panel.item.id);
-        });
-      },
-      style: greyButtonStyle.copyWith(
-        textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-        backgroundColor: WidgetStatePropertyAll(Colors.teal),
-      ),
-      child: ButtonContent(
-        FluentIcons.archive_undo,
-        "${txt("restore")} ${txt(widget.panel.singularName)}",
-      ),
-    );
   }
 
   Widget _buildTabsControllers() {
@@ -486,11 +488,6 @@ class _PanelScreenState extends State<PanelScreen> {
         item: widget.panel.title != null
             ? Model.fromJson({"title": widget.panel.title})
             : widget.panel.item,
-        icon: widget.panel.item.archived == true
-            ? FluentIcons.archive
-            : isNew
-                ? FluentIcons.add
-                : FluentIcons.edit,
         predefinedColor:
             widget.panel.item.archived == true ? Colors.grey : null,
       ),

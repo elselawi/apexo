@@ -1,5 +1,7 @@
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 
@@ -23,6 +25,15 @@ class Expense extends Model {
       amount = amount + (item.cost - item.paidAmount);
     }
     return amount;
+  }
+
+  String get fromSupplierName {
+    return expenses.get(supplierId)?.supplierName ?? txt("unidentified");
+  }
+
+  @override
+  String get title {
+    return "${isSupplier ? txt("supplier") : txt("order")}: ${isSupplier ? supplierName : fromSupplierName}";
   }
 
   // id: id of the expense item (inherited from Model)

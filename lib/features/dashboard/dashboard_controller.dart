@@ -2,14 +2,12 @@ import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
-import 'package:apexo/services/archived.dart';
 
 class _DashboardController {
   List<Appointment> get thisMonthAppointments =>
       appointments.thisMonthAppointments;
-  List<Appointment> get todayAppointments => appointments.todayAppointments
-      .where((a) => a.archived != true || showArchived())
-      .toList();
+  List<Appointment> get todayAppointments =>
+      appointments.todayAppointments.where((a) => a.archived != true).toList();
 
   final currentOpenTab = ObservableState(0);
 

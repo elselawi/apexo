@@ -1,5 +1,5 @@
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/features/notes/notes_model.dart';
@@ -142,18 +142,18 @@ class _ArchiveColumnButton extends StatefulWidget {
 }
 
 class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
-  final _archiveFlyoutCtrl = FlyoutController();
+  final _deleteFlyoutCtrl = FlyoutController();
 
   @override
   void dispose() {
-    _archiveFlyoutCtrl.dispose();
+    _deleteFlyoutCtrl.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return FlyoutTarget(
-      controller: _archiveFlyoutCtrl,
+      controller: _deleteFlyoutCtrl,
       child: FilledButton(
           style: filledButtonStyle(
             widget.column.archived == true
@@ -162,15 +162,24 @@ class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
           ),
           child: ButtonContent(
             widget.column.archived == true
-                ? FluentIcons.archive_undo
-                : FluentIcons.archive,
-            widget.column.archived == true ? txt("restore") : txt("archive"),
+                ? WindowsIcons.undo
+                : WindowsIcons.delete,
+            widget.column.archived == true ? txt("restore") : txt("delete"),
           ),
           onPressed: () async {
             await flyoutFocusFix(context);
-            _archiveFlyoutCtrl.showFlyout(builder: (ctx) {
+            _deleteFlyoutCtrl.showFlyout(builder: (ctx) {
               return ConfirmDeleteFlyout(
-                controller: _archiveFlyoutCtrl,
+                restorable: true,
+                controller: _deleteFlyoutCtrl,
+                preview: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: 5,
+                  children: [
+                    const Icon(WindowsIcons.quick_note),
+                    Txt(widget.column.columnName),
+                  ],
+                ),
                 onConfirm: () {
                   if (widget.column.archived == true) {
                     notes.unarchive(widget.column.id);
@@ -182,10 +191,10 @@ class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
                   });
                 },
                 actionText:
-                    widget.column.archived == true ? "restore" : "archive",
+                    widget.column.archived == true ? "restore" : "delete",
                 actionIcon: widget.column.archived == true
-                    ? FluentIcons.archive_undo
-                    : FluentIcons.archive,
+                    ? WindowsIcons.undo
+                    : WindowsIcons.delete,
               );
             });
           }),

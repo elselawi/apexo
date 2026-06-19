@@ -1,5 +1,4 @@
 import 'package:apexo/features/login/login_controller.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
@@ -18,7 +17,6 @@ class Expenses extends Store<Expense> {
       : super(
           modeling: Expense.fromJson,
           isDemo: launch.isDemo,
-          showArchived: showArchived,
           onSyncStart: () {
             networkActions.isSyncing(networkActions.isSyncing() + 1);
           },
@@ -31,7 +29,6 @@ class Expenses extends Store<Expense> {
   init() {
     super.init();
     observableMap.observe((_) => nullifyExpensesCache());
-    showArchived.observe((_) => nullifyExpensesCache());
 
     login.activators[_storeName] = () async {
       await loaded;

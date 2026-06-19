@@ -139,7 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildLoginBtn(),
               if (loginCtrl.loginError().isNotEmpty)
                 _buildOfflineBtn()
-              else
+              else if (login.url.isNotEmpty || login.email.isNotEmpty)
                 _buildClearButton(),
             ]),
           ),

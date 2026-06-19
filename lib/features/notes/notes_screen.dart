@@ -7,7 +7,6 @@ import 'package:apexo/features/notes/dialog_column_edit.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
@@ -21,7 +20,6 @@ class NotesScreen extends StatelessWidget {
     return MStreamBuilder(
         streams: [
           notes.observableMap.stream,
-          showArchived.stream,
           notes.filterByAccountId.stream,
           notes.sortDirection.stream,
           notes.showIncoming.stream,

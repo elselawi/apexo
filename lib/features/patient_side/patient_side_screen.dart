@@ -740,7 +740,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                             ],
                             if (apt.archived) ...[
                               const SizedBox(width: 8),
-                              Icon(FluentIcons.archive,
+                              Icon(WindowsIcons.delete,
                                   size: 14,
                                   color:
                                       theme.resources.textFillColorSecondary),

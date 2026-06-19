@@ -328,7 +328,6 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                         widget.panel.inProgress(false);
                         widget.panel.selectedTab(widget.panel.selectedTab());
                       },
-                      showDeleteMiniButton: true,
                     );
                   });
         });
@@ -1037,8 +1036,10 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Txt(txt("labworksForThisAppointment"),
-                  style: theme.typography.bodyStrong),
+              Txt(
+                txt("labworksForThisAppointment"),
+                style: theme.typography.bodyStrong,
+              ),
               if (widget.onDelete != null)
                 Tooltip(
                   message: txt("delete"),

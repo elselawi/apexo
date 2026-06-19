@@ -1,14 +1,14 @@
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/accounts/open_account_panel.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/expenses/scan_receipt_dialog.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/services/login.dart';
@@ -24,7 +24,7 @@ class ExpensesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
-      streams: [expenses.observableMap.stream, showArchived.stream],
+      streams: [expenses.observableMap.stream],
       // ignore: prefer_const_constructors
       builder: (context, snapshot) => SuppliersList(),
     );
@@ -291,62 +291,35 @@ class _SupplierListTileState extends State<SupplierListTile> {
       tileColor: WidgetStatePropertyAll(
           FluentTheme.of(context).resources.solidBackgroundFillColorBase),
       leading: _buildContextMenuButton(context),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        spacing: 5,
-        children: [
-          _DuePaymentAmount(due: due),
-          if (widget.supplier.archived == true)
-            _buildArchivedIndicator(context, captionStyle),
-        ],
-      ),
+      trailing: _DuePaymentAmount(due: due),
       title: _buildSupplierName(orders, captionStyle),
       onPressed: widget.onPressed,
     );
   }
 
-  FlyoutTarget _buildSupplierName(
-      List<Expense> orders, TextStyle? captionStyle) {
-    return FlyoutTarget(
-      controller: archiveConfirmationController,
-      child: Row(spacing: 6, children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              spacing: 5,
-              children: [
-                const Icon(WindowsIcons.folder),
-                Text(widget.supplier.supplierName),
-              ],
-            ),
-            if (orders.isNotEmpty)
-              Txt(
-                "${txt("lastOrder")}: ${DateTime.now().difference(orders.first.date).inDays.toString()} ${txt("daysAgo")}",
-                style: captionStyle,
-              )
-          ],
-        )
-      ]),
-    );
-  }
-
-  Container _buildArchivedIndicator(
-      BuildContext context, TextStyle? captionStyle) {
-    return Container(
-      padding: const EdgeInsets.all(5),
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Row(
-        spacing: 5,
+  Widget _buildSupplierName(List<Expense> orders, TextStyle? captionStyle) {
+    return Row(spacing: 6, children: [
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(FluentIcons.archive, size: 12),
-          Text(txt("archived"), style: captionStyle),
+          Row(
+            spacing: 5,
+            children: [
+              const Icon(WindowsIcons.folder),
+              FlyoutTarget(
+                controller: archiveConfirmationController,
+                child: Text(widget.supplier.supplierName),
+              ),
+            ],
+          ),
+          if (orders.isNotEmpty)
+            Txt(
+              "${txt("lastOrder")}: ${DateTime.now().difference(orders.first.date).inDays.toString()} ${txt("daysAgo")}",
+              style: captionStyle,
+            )
         ],
-      ),
-    );
+      )
+    ]);
   }
 
   FlyoutTarget _buildContextMenuButton(context) {
@@ -377,31 +350,28 @@ class _SupplierListTileState extends State<SupplierListTile> {
                     ),
                   if (canEdit)
                     MenuFlyoutItem(
-                      text: Txt(txt(widget.supplier.archived == true
-                          ? "restore"
-                          : "archive")),
-                      leading: Icon(widget.supplier.archived == true
-                          ? FluentIcons.archive_undo
-                          : FluentIcons.archive),
+                      text: Txt(txt("delete")),
+                      leading: const Icon(WindowsIcons.delete),
                       onPressed: () {
                         menuController.close();
                         WidgetsBinding.instance.addPostFrameCallback((_) async {
                           await flyoutFocusFix(context);
                           archiveConfirmationController.showFlyout(
                               builder: (ctx) => ConfirmDeleteFlyout(
+                                  restorable: true,
                                   controller: archiveConfirmationController,
-                                  actionIcon: widget.supplier.archived == true
-                                      ? FluentIcons.archive_undo
-                                      : FluentIcons.archive,
-                                  actionText: widget.supplier.archived == true
-                                      ? txt("restore")
-                                      : txt("archive"),
+                                  actionIcon: WindowsIcons.delete,
+                                  actionText: txt("delete"),
+                                  preview: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    spacing: 5,
+                                    children: [
+                                      const Icon(WindowsIcons.folder),
+                                      Txt("${txt("supplier")}: ${widget.supplier.supplierName}")
+                                    ],
+                                  ),
                                   onConfirm: () {
-                                    if (widget.supplier.archived == true) {
-                                      expenses.unarchive(widget.supplier.id);
-                                    } else {
-                                      expenses.archive(widget.supplier.id);
-                                    }
+                                    expenses.archive(widget.supplier.id);
                                   }));
                         });
                       },

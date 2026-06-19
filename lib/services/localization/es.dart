@@ -19,6 +19,8 @@ class Es implements En {
     "add": "Añadir",
     "edit": "Editar",
     "delete": "Eliminar",
+    "deletedItems": "Eliminados",
+    "deleted": "Eliminado",
     "archive": "Archivar",
     "restore": "Restaurar",
     "logout": "Cerrar sesión",
@@ -272,6 +274,9 @@ class Es implements En {
     "patientHasNoAppointments": "El paciente no tiene citas",
     "selectAppointment": "Seleccione una cita",
     "areYouSureYouWantTo": "¿Está seguro de que desea",
+    "youCanRestoreFromDeletedItemsPage":
+        "Puede restaurarlo desde la página de elementos eliminados",
+    "youWillNotBeAbleToRestore": "No podrá restaurarlo",
 
     // expenses
     "expense": "Gasto",
@@ -300,6 +305,7 @@ class Es implements En {
     "viewAllOrders": "Ver todos los pedidos",
     "lastOrder": "Ultimo pedido",
     "supplier": "Proveedor",
+    "order": "Pedido",
     "orders": "Pedidos",
 
     // notes
@@ -320,7 +326,7 @@ class Es implements En {
     "assignedTo": "Asignado a",
     "dueDate": "Vence",
     "attachments": "Adjuntos",
-    "archiveAllCompletedNotes": "Archivar todas las notas completadas",
+    "deleteAllCompletedNotes": "Eliminar todas las notas completadas",
     "moveTowardsEnd": "Mover hacia el final",
     "moveTowardsStart": "Mover hacia el inicio",
     "item": "Ítem",
@@ -331,6 +337,7 @@ class Es implements En {
     "tapToMarkAsPending": "Toque para marcar como pendiente",
     "tapToMarkAsDone": "Toque para marcar como completado",
     "archived": "Archivado",
+    "noDeletedItems": "No hay elementos eliminados",
     "overdue": "Vencido",
     "incoming": "Entrante",
     "outgoing": "Saliente",
@@ -411,6 +418,7 @@ class Es implements En {
     "ISO": "ISO",
 
     // advanced settings: Backups
+    "backup": "Copia de seguridad",
     "backups": "Copias de seguridad",
     "refresh": "Actualizar",
     "download": "Descargar",
@@ -666,6 +674,7 @@ class Es implements En {
     "receiptScanFailed": "Error al escanear recibo",
     "testing": "Probando conexión...",
     "unknown": "Desconocido",
+    "unidentified": "No identificado",
 
     // Dental history recording
     "VoiceAutoFill": "Autocompletar por voz",

@@ -23,6 +23,7 @@ import 'package:apexo/features/appointments/calendar_screen.dart';
 import 'package:apexo/features/settings/settings_screen.dart';
 import '../core/observable.dart';
 import "../features/appointments/appointments_store.dart";
+import "../features/archive/archive_screen.dart";
 import "../features/settings/settings_stores.dart";
 
 class PanelTab {
@@ -278,6 +279,20 @@ class _Routes {
             accessible: login.isAdmin,
             onSelect: () {},
           ),
+        Route(
+          title: txt("deletedItems"),
+          identifier: "deletedItems",
+          navbarTitle: txt("deletedItems"),
+          icon: WindowsIcons.delete,
+          screen: ArchivedScreen.new,
+          accessible: true,
+          onSelect: () {
+            patients.synchronize();
+            appointments.synchronize();
+            expenses.synchronize();
+            notes.synchronize();
+          },
+        ),
         Route(
           title: txt("settings"),
           identifier: "settings",

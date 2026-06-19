@@ -1,6 +1,5 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
@@ -24,7 +23,6 @@ class Notes extends Store<Note> {
       : super(
           modeling: Note.fromJson,
           isDemo: launch.isDemo,
-          showArchived: showArchived,
           onSyncStart: () {
             networkActions.isSyncing(networkActions.isSyncing() + 1);
           },

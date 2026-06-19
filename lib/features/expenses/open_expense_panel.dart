@@ -9,7 +9,6 @@ import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/order_row.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
@@ -133,12 +132,13 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
     final orders = (widget.processed
             ? widget.allOrders.where((e) => e.processed == true).toList()
             : widget.allOrders.where((e) => e.processed == false).toList())
-        .where((e) => showArchived() || e.archived != true)
-        .where((e) => e.items.join("").toLowerCase().contains(search))
+        .where((e) =>
+            e.archived != true &&
+            e.items.join("").toLowerCase().contains(search))
         .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     return MStreamBuilder(
-        streams: [expenses.observableMap.stream, showArchived.stream],
+        streams: [expenses.observableMap.stream],
         builder: (context, asyncSnapshot) {
           return Column(
             children: [

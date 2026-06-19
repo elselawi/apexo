@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/observable.dart';
@@ -247,6 +247,16 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                       await flyoutFocusFix(context);
                       confirmDeleteFlyoutController.showFlyout(builder: (ctx) {
                         return ConfirmDeleteFlyout(
+                          preview: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 5,
+                            children: [
+                              const Icon(FluentIcons.manufacturing),
+                              Txt("${txt("labwork")}:"),
+                              Txt(selectedAppointment.patient?.title ?? "")
+                            ],
+                          ),
+                          restorable: false,
                           onConfirm: () {
                             selectedAppointment.hasLabwork = false;
                             appointments.set(selectedAppointment);
@@ -256,8 +266,10 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                         );
                       });
                     },
-                    child: ButtonContent(WindowsIcons.delete,
-                        "${txt("delete")} ${txt("labwork")}"),
+                    child: ButtonContent(
+                      WindowsIcons.delete,
+                      "${txt("delete")} ${txt("labwork")}",
+                    ),
                   ),
                 ),
               if (selectedAppointment != null)

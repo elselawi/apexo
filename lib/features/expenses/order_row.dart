@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -54,6 +55,7 @@ class OrderRowState extends State<OrderRow>
   final TextEditingController notesController = TextEditingController();
   final FlyoutController moreOptionsCtrl = FlyoutController();
   final FlyoutController photoAddMenu = FlyoutController();
+  final FlyoutController deleteConfirmCtrl = FlyoutController();
   final bool canEdit = login.permissions[PInt.expenses] == 2;
 
   bool inProgress = false;
@@ -99,6 +101,7 @@ class OrderRowState extends State<OrderRow>
     notesController.dispose();
     moreOptionsCtrl.dispose();
     photoAddMenu.dispose();
+    deleteConfirmCtrl.dispose();
 
     super.dispose();
   }
@@ -156,10 +159,10 @@ class OrderRowState extends State<OrderRow>
                     ),
                   if (widget.order.archived == true)
                     SmallLabel(
-                      label: txt("archived"),
+                      label: txt("deleted"),
                       textColor: Colors.white,
                       bgColor: Colors.grey,
-                      icon: FluentIcons.archive,
+                      icon: WindowsIcons.delete,
                     ),
                 ],
               ),
@@ -645,7 +648,6 @@ class OrderRowState extends State<OrderRow>
                   logger("Error during deleting image: $e", s);
                 }
               },
-              showDeleteMiniButton: false,
               canDelete: canEdit,
               size: 60,
               showPlayIcon: false,
@@ -772,51 +774,86 @@ class OrderRowState extends State<OrderRow>
 
   Widget _buildMoreButton() {
     return FlyoutTarget(
-      controller: moreOptionsCtrl,
-      child: IconButton(
-        icon: inProgress
-            ? const SizedBox(
-                width: 15,
-                height: 15,
-                child: ProgressRing(
-                  strokeWidth: 2,
-                ))
-            : const Icon(WindowsIcons.more),
-        onPressed: () async {
-          if (inProgress) return;
-          await flyoutFocusFix(context);
-          moreOptionsCtrl.showFlyout(builder: (context) {
-            return MenuFlyout(
-              items: [
-                MenuFlyoutItem(
-                  text: Txt(widget.order.processed
-                      ? txt("markAsDue")
-                      : txt("markAsPaid")),
-                  leading: Icon(widget.order.processed
-                      ? FluentIcons.warning
-                      : FluentIcons.accept),
-                  onPressed: () {
-                    widget.order.processed = !widget.order.processed;
-                    setState(() {});
-                  },
-                ),
-                MenuFlyoutItem(
-                  text: Txt(widget.order.archived == true
-                      ? txt("restore")
-                      : txt("archive")),
-                  leading: Icon(widget.order.archived == true
-                      ? FluentIcons.archive_undo
-                      : FluentIcons.archive),
-                  onPressed: () {
-                    widget.order.archived =
-                        widget.order.archived == true ? null : true;
-                    expenses.set(widget.order);
-                  },
-                ),
-              ],
-            );
-          });
-        },
+      controller: deleteConfirmCtrl,
+      child: FlyoutTarget(
+        controller: moreOptionsCtrl,
+        child: IconButton(
+          icon: inProgress
+              ? const SizedBox(
+                  width: 15,
+                  height: 15,
+                  child: ProgressRing(
+                    strokeWidth: 2,
+                  ))
+              : const Icon(WindowsIcons.more),
+          onPressed: () async {
+            if (inProgress) return;
+            await flyoutFocusFix(context);
+            moreOptionsCtrl.showFlyout(builder: (context) {
+              return MenuFlyout(
+                items: [
+                  MenuFlyoutItem(
+                    text: Txt(widget.order.processed
+                        ? txt("markAsDue")
+                        : txt("markAsPaid")),
+                    leading: Icon(widget.order.processed
+                        ? FluentIcons.warning
+                        : FluentIcons.accept),
+                    onPressed: () {
+                      widget.order.processed = !widget.order.processed;
+                      setState(() {});
+                    },
+                  ),
+                  MenuFlyoutItem(
+                    text: Txt(widget.order.archived == true
+                        ? txt("restore")
+                        : txt("delete")),
+                    leading: Icon(widget.order.archived == true
+                        ? FluentIcons.undo
+                        : WindowsIcons.delete),
+                    onPressed: () {
+                      moreOptionsCtrl.close();
+                      WidgetsBinding.instance.addPostFrameCallback((_) async {
+                        await flyoutFocusFix(context);
+                        final supplierName = expenses.suppliers
+                            .firstWhere((s) => s.id == widget.order.supplierId,
+                                orElse: () => Expense.fromJson(
+                                    {"supplierName": "Unknown"}))
+                            .supplierName;
+                        deleteConfirmCtrl.showFlyout(
+                            builder: (ctx) => ConfirmDeleteFlyout(
+                                restorable: true,
+                                controller: deleteConfirmCtrl,
+                                actionIcon: widget.order.archived == true
+                                    ? FluentIcons.undo
+                                    : WindowsIcons.delete,
+                                actionText: widget.order.archived == true
+                                    ? txt("restore")
+                                    : txt("delete"),
+                                preview: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: 5,
+                                  children: [
+                                    const Icon(FluentIcons.receipt_processing),
+                                    Txt(supplierName),
+                                    Txt(DF.allNumbers(widget.order.date))
+                                  ],
+                                ),
+                                onConfirm: () {
+                                  widget.order.archived =
+                                      widget.order.archived == true
+                                          ? null
+                                          : true;
+                                  expenses.set(widget.order);
+                                }));
+                      });
+                    },
+                  ),
+                ],
+              );
+            });
+          },
+        ),
       ),
     );
   }

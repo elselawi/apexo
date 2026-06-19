@@ -8,7 +8,6 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
@@ -24,7 +23,7 @@ class LabworksScreen extends StatelessWidget {
       children: [
         Expanded(
           child: MStreamBuilder(
-              streams: [appointments.observableMap.stream, showArchived.stream],
+              streams: [appointments.observableMap.stream],
               builder: (context, snapshot) {
                 // ignore: prefer_const_constructors
                 return LabworksTable();

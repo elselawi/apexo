@@ -1,4 +1,5 @@
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
@@ -313,53 +314,38 @@ class _EasyImageViewerDismissibleDialogState
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (widget.canDelete) ...[
-                          FlyoutTarget(
-                            controller: confirmDeleteFlyoutCtrl,
-                            child: IconButton(
-                              icon: Row(
-                                children: [
-                                  const Icon(WindowsIcons.delete,
-                                      color: Colors.white, size: 18),
-                                  const SizedBox(width: 4),
-                                  Txt(
-                                    txt("delete"),
-                                    style: FluentTheme.of(context)
-                                        .typography
-                                        .bodyStrong!
-                                        .copyWith(
-                                          color: Colors.white,
-                                          fontSize: 16,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                              onPressed: () {
-                                confirmDeleteFlyoutCtrl.showFlyout(
-                                  builder: (context) => ConfirmDeleteFlyout(
-                                    onConfirm: () {
-                                      if (_pageController.page != null) {
-                                        final currentIndex =
-                                            _pageController.page!.toInt();
-                                        widget.onPressDelete(currentIndex %
-                                            widget.imageProvider.imageCount);
-                                        WidgetsBinding.instance
-                                            .addPostFrameCallback((_) {
-                                          Navigator.of(context).pop();
-                                          _handleDismissal();
-                                        });
-                                      }
-                                    },
-                                    controller: confirmDeleteFlyoutCtrl,
-                                  ),
-                                );
-                              },
+                          DeleteButton(
+                            onConfirm: () {
+                              if (_pageController.page != null) {
+                                final currentIndex =
+                                    _pageController.page!.toInt();
+                                widget.onPressDelete(currentIndex %
+                                    widget.imageProvider.imageCount);
+                                WidgetsBinding.instance
+                                    .addPostFrameCallback((_) {
+                                  Navigator.of(context).pop();
+                                  _handleDismissal();
+                                });
+                              }
+                            },
+                            preview: Txt(txt("delete")),
+                            actionText: txt("delete"),
+                            actionIcon: WindowsIcons.delete,
+                            restorable: false,
+                            style: const ButtonStyle(
+                                foregroundColor:
+                                    WidgetStatePropertyAll(Colors.white)),
+                            child: ButtonContent(
+                              WindowsIcons.delete,
+                              txt("delete"),
+                              size: 18,
                             ),
                           ),
                           const SizedBox(width: 8),
                           Container(
                             width: 1,
                             height: 24,
-                            color: Colors.white.withOpacity(0.54),
+                            color: Colors.white.withValues(alpha: 0.54),
                           ),
                           const SizedBox(width: 8),
                         ],

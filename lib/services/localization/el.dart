@@ -19,6 +19,8 @@ class El implements En {
     "add": "Προσθήκη",
     "edit": "Επεξεργασία",
     "delete": "Διαγραφή",
+    "deletedItems": "Διαγραμμένα",
+    "deleted": "Διαγράφηκε",
     "archive": "Αρχειοθέτηση",
     "restore": "Επαναφορά",
     "logout": "Αποσύνδεση",
@@ -271,6 +273,9 @@ class El implements En {
     "patientHasNoAppointments": "Ο ασθενής δεν έχει ραντεβού",
     "selectAppointment": "Επιλέξτε ένα ραντεβού",
     "areYouSureYouWantTo": "Είστε σίγουροι ότι θέλετε να",
+    "youCanRestoreFromDeletedItemsPage":
+        "Μπορείτε να το επαναφέρετε από τη σελίδα διαγραμμένων",
+    "youWillNotBeAbleToRestore": "Δεν θα μπορείτε να το επαναφέρετε",
 
     // expenses
     "expense": "Έξοδο",
@@ -299,6 +304,7 @@ class El implements En {
     "viewAllOrders": "Προβολή όλων των παραγγελιών",
     "lastOrder": "Τελευταία παραγγελία",
     "supplier": "Προμηθευτής",
+    "order": "Παραγγελία",
     "orders": "Παραγγελίες",
 
     // notes
@@ -319,8 +325,7 @@ class El implements En {
     "assignedTo": "Ανατέθηκε σε",
     "dueDate": "Ημερομηνία λήξης",
     "attachments": "Συνημμένα",
-    "archiveAllCompletedNotes":
-        "Αρχειοθέτηση όλων των ολοκληρωμένων σημειώσεων",
+    "deleteAllCompletedNotes": "Διαγραφή όλων των ολοκληρωμένων σημειώσεων",
     "moveTowardsEnd": "Μετακίνηση προς το τέλος",
     "moveTowardsStart": "Μετακίνηση προς την αρχή",
     "item": "Στοιχείο",
@@ -331,6 +336,7 @@ class El implements En {
     "tapToMarkAsPending": "Πατήστε για σήμανση ως εκκρεμές",
     "tapToMarkAsDone": "Πατήστε για σήμανση ως ολοκληρωμένο",
     "archived": "Αρχειοθετημένο",
+    "noDeletedItems": "Δεν υπάρχουν διαγραμμένα στοιχεία",
     "overdue": "Εκπρόθεσμο",
     "incoming": "Εισερχόμενα",
     "outgoing": "Εξερχόμενα",
@@ -413,6 +419,7 @@ class El implements En {
     "ISO": "ISO",
 
     // advanced settings: Backups
+    "backup": "Αντίγραφο ασφαλείας",
     "backups": "Αντίγραφα ασφαλείας",
     "refresh": "Ανανέωση",
     "download": "Λήψη",
@@ -666,6 +673,7 @@ class El implements En {
     "receiptScanFailed": "Η σάρωση της απόδειξης απέτυχε",
     "testing": "Έλεγχος σύνδεσης...",
     "unknown": "Άγνωστο",
+    "unidentified": "Μη αναγνωρισμένο",
 
     // Dental history recording
     "VoiceAutoFill": "Αυτόματη συμπλήρωση με φωνή",

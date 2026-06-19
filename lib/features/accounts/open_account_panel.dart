@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -128,26 +128,27 @@ Future<AccountModel> openAccount([AccountModel? account]) {
   final editingCopy = AccountModel.fromJson(account?.toJson() ?? {});
   final isNew = accounts.list().every((e) => e.id != editingCopy.id);
   final panel = Panel<AccountModel>(
-    archiveButtonReplacement: FlyoutTarget(
-      controller: deleteConfirmFlyoutController,
-      child: FilledButton(
-          style: filledButtonStyle(login.currentAccountID == editingCopy.id
-              ? Colors.grey.withAlpha(60)
-              : Colors.errorPrimaryColor),
-          child: ButtonContent(WindowsIcons.delete, txt("delete")),
-          onPressed: () async {
-            await flyoutFocusFix(null);
-            if (login.currentAccountID == editingCopy.id) return;
-            deleteConfirmFlyoutController.showFlyout(builder: (ctx) {
-              return ConfirmDeleteFlyout(
-                  onConfirm: () {
-                    _accountStore.deleteAccount(editingCopy.id);
-                    routes.closePanel(editingCopy.id);
-                  },
-                  controller: deleteConfirmFlyoutController);
-            });
-          }),
-    ),
+    archiveButtonReplacement: login.currentAccountID == editingCopy.id
+        ? const SizedBox.shrink()
+        : DeleteButton(
+            onConfirm: () {
+              _accountStore.deleteAccount(editingCopy.id);
+              routes.closePanel(editingCopy.id);
+            },
+            style: filledButtonStyle(Colors.grey),
+            preview: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 5,
+              children: [
+                const Icon(FluentIcons.people),
+                Txt(editingCopy.title)
+              ],
+            ),
+            actionText: txt("delete"),
+            actionIcon: WindowsIcons.delete,
+            restorable: false,
+            child: ButtonContent(WindowsIcons.delete, txt("delete")),
+          ),
     singularName: editingCopy.isAdmin ? "admin" : "user",
     unicodeSymbol: "🧑‍💼",
     item: editingCopy,

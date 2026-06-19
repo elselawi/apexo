@@ -4,7 +4,6 @@ import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:apexo/utils/constants.dart';
@@ -46,11 +45,7 @@ class Patient extends Model {
   List<String> get allPredefinedTreatments {
     final List<String> list = List.from(teeth.values);
     list.addAll((appointments.byPatient[id]?["all"] ?? []).fold<Set<String>>(
-        {},
-        (set, x) => set
-          ..addAll((x.archived == true && showArchived() == false)
-              ? []
-              : x.teeth.values)));
+        {}, (set, x) => set..addAll(x.archived == true ? [] : x.teeth.values)));
     return list
         .where((label) =>
             txOptions.any((x) => x.type != StateType.state && x.label == label))
@@ -73,7 +68,7 @@ class Patient extends Model {
     return Map.from(teeth)
       ..addAll((appointments.byPatient[id]?["all"] ?? [])
           .fold<Map<String, String>>({}, (x, y) {
-        if ((y.archived == true && showArchived() == false)) return x;
+        if (y.archived == true) return x;
         for (var iso in y.teeth.keys) {
           x[iso] = y.teeth[iso]!;
         }
@@ -84,8 +79,7 @@ class Patient extends Model {
   List<Appointment> get allAppointments {
     return (appointments.byPatient[id]?["all"] ?? [])
         .where((appointment) =>
-            (appointment.archived != true || showArchived()) &&
-            appointment.locked == false)
+            (appointment.archived != true) && appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
@@ -93,8 +87,7 @@ class Patient extends Model {
   List<Appointment> get doneAppointments {
     return (appointments.byPatient[id]?["done"] ?? [])
         .where((appointment) =>
-            (appointment.archived != true || showArchived()) &&
-            appointment.locked == false)
+            (appointment.archived != true) && appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
@@ -102,8 +95,7 @@ class Patient extends Model {
   List<Appointment> get upcomingAppointments {
     return (appointments.byPatient[id]?["upcoming"] ?? [])
         .where((appointment) =>
-            (appointment.archived != true || showArchived()) &&
-            appointment.locked == false)
+            (appointment.archived != true) && appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }
@@ -111,8 +103,7 @@ class Patient extends Model {
   List<Appointment> get pastAppointments {
     return (appointments.byPatient[id]?["past"] ?? [])
         .where((appointment) =>
-            (appointment.archived != true || showArchived()) &&
-            appointment.locked == false)
+            (appointment.archived != true) && appointment.locked == false)
         .toList()
       ..sort((a, b) => a.date.compareTo(b.date));
   }

@@ -1,5 +1,7 @@
 import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -82,12 +84,28 @@ class AppointmentCard extends StatelessWidget {
                   spacing: 10,
                   children: [
                     _doneCheckBox(color),
-                    if (appointment.archived == true)
-                      const Icon(FluentIcons.archive)
-                    else if (appointment.isMissed == true)
+                    if (appointment.isMissed == true)
                       Icon(FluentIcons.event_date_missed12, color: color)
                     else if (!appointment.fullPaid)
                       Icon(FluentIcons.money, color: color),
+                    DeleteButton(
+                      onConfirm: () {
+                        appointments.archive(appointment.id);
+                      },
+                      preview: Txt(
+                          "${txt("appointment")} ${DF.commonDate(appointment.date)}"),
+                      actionText: txt("delete"),
+                      actionIcon: WindowsIcons.delete,
+                      restorable: true,
+                      style: ButtonStyle(
+                          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+                              borderRadius: BorderRadiusGeometry.circular(5),
+                              side: BorderSide(
+                                  color: FluentTheme.of(context)
+                                      .inactiveColor
+                                      .withAlpha(100))))),
+                      child: const Icon(WindowsIcons.delete, size: 13),
+                    )
                   ],
                 ),
               if (readOnly == false) const SizedBox(width: 4),
@@ -189,7 +207,6 @@ class AppointmentCard extends StatelessWidget {
                                         "Error during deleting image: $e", s);
                                   }
                                 },
-                                showDeleteMiniButton: false,
                               ),
                               FluentIcons.camera,
                               color,
@@ -437,13 +454,14 @@ class AppointmentCard extends StatelessWidget {
             _buildFormattedDate(color),
           ],
         ),
-        if (!hide.contains(AppointmentSections.openAppointmentButton))
+        if (!hide.contains(AppointmentSections.openAppointmentButton)) ...[
           IconButton(
             icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
             onPressed: () => openAppointment(appointment),
             iconButtonMode: IconButtonMode.large,
             style: filledButtonStyle(openButtonColor),
-          )
+          ),
+        ]
       ],
     );
   }

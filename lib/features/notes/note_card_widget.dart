@@ -1,4 +1,4 @@
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/small_label.dart';
@@ -27,7 +27,7 @@ class NoteCard extends StatefulWidget {
 
 class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   final FlyoutController _assigningFlyoutCtrl = FlyoutController();
-  final FlyoutController _confirmArchiveFlyoutCtrl = FlyoutController();
+  final FlyoutController _confirmDeleteFlyoutCtrl = FlyoutController();
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _recurringIntervalController =
       TextEditingController();
@@ -126,7 +126,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     _titleController.dispose();
     _noteController.dispose();
     _assigningFlyoutCtrl.dispose();
-    _confirmArchiveFlyoutCtrl.dispose();
+    _confirmDeleteFlyoutCtrl.dispose();
     _commentController.dispose();
     _recurringIntervalController.dispose();
     super.dispose();
@@ -226,8 +226,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
                         Tooltip(
                           message: widget.note.archived == true
                               ? txt("restore")
-                              : txt("archive"),
-                          child: _buildArchiveButton(theme),
+                              : txt("delete"),
+                          child: _buildDeleteButton(theme),
                         ),
                       if (widget.note.isGhost)
                         Tooltip(
@@ -346,7 +346,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   }
 
   Flexible _buildNoteMainBody(FluentThemeData theme) {
-    final isArchived = widget.note.archived == true;
+    final isDeleted = widget.note.archived == true;
     return Flexible(
       flex: 1,
       child: Column(
@@ -358,7 +358,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
           _buildNoteTitle(theme),
           ..._dividerWithPadding(0),
           expanded ? _noteEditingTextField(theme) : Text(widget.note.note),
-          _buildNoteLabels(isArchived, theme),
+          _buildNoteLabels(isDeleted, theme),
           if (widget.note.isRecurringInstance)
             Row(
               spacing: 5,
@@ -613,29 +613,37 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     ];
   }
 
-  Widget _buildArchiveButton(FluentThemeData theme) {
-    final isArchived = widget.note.archived == true;
+  Widget _buildDeleteButton(FluentThemeData theme) {
+    final isDeleted = widget.note.archived == true;
     return FlyoutTarget(
-      controller: _confirmArchiveFlyoutCtrl,
+      controller: _confirmDeleteFlyoutCtrl,
       child: IconButton(
         style: _iconButtonStyle(theme,
-            color: isArchived ? Colors.grey : Colors.errorPrimaryColor),
-        icon: Icon(isArchived ? FluentIcons.archive_undo : FluentIcons.archive),
+            color: isDeleted ? Colors.grey : Colors.errorPrimaryColor),
+        icon: Icon(isDeleted ? WindowsIcons.undo : WindowsIcons.delete),
         onPressed: () async {
           await flyoutFocusFix(context);
-          _confirmArchiveFlyoutCtrl.showFlyout(builder: (ctx) {
+          _confirmDeleteFlyoutCtrl.showFlyout(builder: (ctx) {
             return ConfirmDeleteFlyout(
-              actionText: isArchived ? txt("restore") : txt("archive"),
-              actionIcon:
-                  isArchived ? FluentIcons.archive_undo : FluentIcons.archive,
+              restorable: true,
+              actionText: isDeleted ? txt("restore") : txt("delete"),
+              actionIcon: isDeleted ? WindowsIcons.undo : WindowsIcons.delete,
               onConfirm: () {
-                if (isArchived) {
+                if (isDeleted) {
                   notes.unarchive(widget.note.id);
                 } else {
                   notes.archive(widget.note.id);
                 }
               },
-              controller: _confirmArchiveFlyoutCtrl,
+              preview: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 5,
+                children: [
+                  const Icon(WindowsIcons.quick_note),
+                  Txt(widget.note.title)
+                ],
+              ),
+              controller: _confirmDeleteFlyoutCtrl,
             );
           });
         },
@@ -717,17 +725,17 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     );
   }
 
-  Wrap _buildNoteLabels(bool isArchived, FluentThemeData theme) {
+  Wrap _buildNoteLabels(bool isDeleted, FluentThemeData theme) {
     return Wrap(
       spacing: 5,
       runSpacing: 5,
       children: [
-        if (isArchived)
+        if (isDeleted)
           SmallLabel(
             bgColor: theme.inactiveColor.withValues(alpha: 0.1),
             textColor: theme.inactiveColor,
-            icon: FluentIcons.archive,
-            label: txt("archived"),
+            icon: WindowsIcons.delete,
+            label: txt("deleted"),
           ),
         if (widget.note.overdue)
           SmallLabel(

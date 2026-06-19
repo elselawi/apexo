@@ -45,6 +45,7 @@ class Store<G extends Model> {
   final Function? onSyncEnd;
   final ObservableDict<G> observableMap;
   final Set<DictEvent> changes = {};
+  Map<String, G> archived = {};
   SaveLocal? local;
   SaveRemote? remote;
   Future<void> Function()? realtimeSub;
@@ -54,12 +55,10 @@ class Store<G extends Model> {
   int lastProcessChanges = 0;
   bool? manualSyncOnly;
   bool? isDemo;
-  ObservableState<bool>? showArchived;
 
   Store({
     required this.modeling,
     this.isDemo,
-    this.showArchived,
     this.local,
     this.remote,
     this.debounceMS = 100,
@@ -83,6 +82,17 @@ class Store<G extends Model> {
         // this is a view change not a storage change
         return;
       }
+
+      for (final element in events) {
+        final doc = element.document;
+        if (doc == null) continue;
+        if (doc.archived == true) {
+          archived[doc.id] = doc as G;
+        } else {
+          archived.remove(doc.id);
+        }
+      }
+
       changes.addAll(events.where((c) => c.id != "__ignore_view__"));
       _processChanges();
     });
@@ -105,10 +115,12 @@ class Store<G extends Model> {
     final capturedIsoCC = isoCC();
 
     // model json maps to document in a background isolate
-    final Map<String, G> modeled = await compute(
+    final modellingResult = await compute(
         _modelAllDocs<G>,
         _ModelAllDocsParams(
             modeling: modeling, decoded: decoded, isoCC: capturedIsoCC));
+    final Map<String, G> modeled = modellingResult[0];
+    archived = modellingResult[1];
     // silent for persistence; use the optimized setAllWithJson
     observableMap.silently(() {
       observableMap.clear();
@@ -227,6 +239,7 @@ class Store<G extends Model> {
     }
     deferredPresent = true;
     changes.clear();
+    await reload();
     onSyncEnd?.call();
   }
 
@@ -591,8 +604,7 @@ class Store<G extends Model> {
 
   Map<String, G> get present {
     return Map<String, G>.fromEntries(docs.entries.where((entry) =>
-        ((showArchived?.call() ?? false) || entry.value.archived != true) &&
-        entry.value.locked != true));
+        (entry.value.archived != true) && entry.value.locked != true));
   }
 
   bool has(String id) {
@@ -619,6 +631,7 @@ class Store<G extends Model> {
     G? item = get(id);
     if (item == null) return;
     observableMap.set(item..archived = true);
+    archived[id] = item;
   }
 
   /// un-archives a document by id (the concept of deletion is not supported here)
@@ -626,6 +639,7 @@ class Store<G extends Model> {
     G? item = get(id);
     if (item == null) return;
     observableMap.set(item..archived = false);
+    archived.remove(id);
   }
 
   /// archives a document by id (the concept of deletion is not supported here)
@@ -771,11 +785,19 @@ class _ModelAllDocsParams<G extends Model> {
   });
 }
 
-Map<String, G> _modelAllDocs<G extends Model>(_ModelAllDocsParams<G> params) {
+List<Map<String, G>> _modelAllDocs<G extends Model>(
+    _ModelAllDocsParams<G> params) {
   // Make the ISO country code available to PhoneNumberExtractor inside
   // this compute isolate (the reactive globalSettings store is not
   // accessible here).
   setIsoCountryCodeForIsolate(params.isoCC);
-  return Map<String, G>.fromEntries(params.decoded.entries
-      .map((entry) => MapEntry(entry.key, params.modeling(entry.value))));
+  final Map<String, G> archived = {};
+  final mapped = Map<String, G>.fromEntries(params.decoded.entries.map((entry) {
+    final modeled = params.modeling(entry.value);
+    if (modeled.archived == true) {
+      archived[modeled.id] = modeled;
+    }
+    return MapEntry(entry.key, modeled);
+  }));
+  return [mapped, archived];
 }

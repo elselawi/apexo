@@ -27,6 +27,7 @@ class ItemTitle extends StatefulWidget {
   final double radius;
   final double maxWidth;
   final IconData? icon;
+  final bool archivedStyling;
   final Color? predefinedColor;
   final double? fontSize;
   final List<TreatmentLabel> labels;
@@ -37,6 +38,7 @@ class ItemTitle extends StatefulWidget {
     this.maxWidth = 130.0,
     this.labels = const [],
     this.icon,
+    this.archivedStyling = true,
     this.predefinedColor,
     this.fontSize,
   });
@@ -57,7 +59,7 @@ class _ItemTitleState extends State<ItemTitle> {
   @override
   Widget build(BuildContext context) {
     final Color color = widget.predefinedColor ??
-        (widget.item.archived == true
+        (widget.item.archived == true && widget.archivedStyling
             ? FluentTheme.of(context).shadowColor.withValues(alpha: 0.2)
             : widget.item.color);
     return SizedBox(
@@ -85,8 +87,9 @@ class _ItemTitleState extends State<ItemTitle> {
                   backgroundColor: color,
                   backgroundImage:
                       (snapshot.data != null) ? snapshot.data : null,
-                  child: widget.item.archived == true
-                      ? Icon(FluentIcons.archive, size: widget.radius)
+                  child: (widget.item.archived == true &&
+                          widget.archivedStyling)
+                      ? Icon(WindowsIcons.delete, size: widget.radius)
                       : snapshot.data == null
                           ? widget.icon == null
                               ? Txt(("${widget.item.title} ").substring(0, 1))

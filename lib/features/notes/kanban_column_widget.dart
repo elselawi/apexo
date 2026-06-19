@@ -117,7 +117,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
         child: FilledButton(
           style: filledButtonStyle(Colors.errorPrimaryColor),
           child: ButtonContent(
-              FluentIcons.archive, txt("archiveAllCompletedNotes")),
+              WindowsIcons.delete, txt("deleteAllCompletedNotes")),
           onPressed: () {
             for (var note in widget.columnNotes) {
               if (note.done && note.archived != true) {

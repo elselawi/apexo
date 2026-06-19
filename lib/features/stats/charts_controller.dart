@@ -1,5 +1,4 @@
 import 'package:apexo/core/observable.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -431,7 +430,6 @@ class _ChartsController {
     }
     filterByOperatorID.observe(_nullifyCache);
     // also bind to showArchived
-    showArchived.observe((_) => start(start()));
   }
 }
 

@@ -1,10 +1,6 @@
-import 'package:apexo/common_widgets/confirm_delete_flyout.dart';
 import 'package:apexo/common_widgets/dialogs/loading_blocking.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/services/login.dart';
-import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/common_widgets/slideshow/slideshow.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -19,7 +15,6 @@ class GridGallery extends StatefulWidget {
   final int clipCount;
   final bool progress;
   final bool showPlayIcon;
-  final bool showDeleteMiniButton;
   final bool canDelete;
   final Map<String, String>? drawings;
   final void Function(String, String)? onSaveDrawing;
@@ -30,7 +25,6 @@ class GridGallery extends StatefulWidget {
     required this.imgs,
     required this.progress,
     required this.onPressDelete,
-    required this.showDeleteMiniButton,
     required this.canDelete,
     this.countPerLine = 3,
     this.rowWidth = 350,
@@ -137,14 +131,6 @@ class _GridGalleryState extends State<GridGallery> {
             }
           },
         ),
-        if (widget.showDeleteMiniButton &&
-            login.permissions[PInt.photos] == 1 &&
-            widget.progress == false)
-          Positioned(
-            top: 4,
-            right: 4,
-            child: ImageDeleteButton(widget: widget, img: img),
-          ),
         if ((index == widget.clipCount - 1 &&
             widget.imgs.length > widget.clipCount))
           SizedBox.expand(
@@ -244,53 +230,5 @@ class _GridGalleryState extends State<GridGallery> {
         },
       );
     }
-  }
-}
-
-class ImageDeleteButton extends StatefulWidget {
-  const ImageDeleteButton({
-    super.key,
-    required this.widget,
-    required this.img,
-  });
-
-  final GridGallery widget;
-  final String img;
-
-  @override
-  State<ImageDeleteButton> createState() => _ImageDeleteButtonState();
-}
-
-class _ImageDeleteButtonState extends State<ImageDeleteButton> {
-  final FlyoutController deleteConfirmationFlyout = FlyoutController();
-
-  @override
-  void dispose() {
-    deleteConfirmationFlyout.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FlyoutTarget(
-      controller: deleteConfirmationFlyout,
-      child: IconButton(
-        style: ButtonStyle(
-            backgroundColor:
-                WidgetStatePropertyAll(FluentTheme.of(context).menuColor)),
-        icon: const Icon(WindowsIcons.delete),
-        onPressed: () async {
-          await flyoutFocusFix(context);
-          deleteConfirmationFlyout.showFlyout(builder: (context) {
-            return FlyoutContent(
-              child: ConfirmDeleteFlyout(
-                controller: deleteConfirmationFlyout,
-                onConfirm: () => widget.widget.onPressDelete.call(widget.img),
-              ),
-            );
-          });
-        },
-      ),
-    );
   }
 }

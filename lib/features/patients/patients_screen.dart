@@ -12,7 +12,6 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
-import 'package:apexo/services/archived.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
@@ -31,7 +30,6 @@ class PatientsScreen extends StatelessWidget {
         streams: [
           patients.observableMap.stream,
           appointments.observableMap.stream,
-          showArchived.stream,
           routes.panels.stream
         ],
         builder: (context, snapshot) {

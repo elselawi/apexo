@@ -17,6 +17,8 @@ class Ar implements En {
     "add": "إضافة",
     "edit": "تعديل",
     "delete": "حذف",
+    "deletedItems": "محذوفات",
+    "deleted": "محذوف",
     "archive": "أرشفة",
     "restore": "استعادة",
     "logout": "خروج",
@@ -267,6 +269,9 @@ class Ar implements En {
     "patientHasNoAppointments": "لا يوجد مواعيد للمريض",
     "selectAppointment": "تحديد الموعد",
     "areYouSureYouWantTo": "هل انت متاكد من أنك تريد",
+    "youCanRestoreFromDeletedItemsPage":
+        "يمكنك استعادته من صفحة العناصر المحذوفة",
+    "youWillNotBeAbleToRestore": "لن تتمكن من استعادته",
 
     // expenses
     "expense": "مصروف",
@@ -295,6 +300,7 @@ class Ar implements En {
     "viewAllOrders": "عرض جميع الطلبيات",
     "lastOrder": "اخر طلبية",
     "supplier": "المزود",
+    "order": "طلبية",
     "orders": "طلبيات",
 
     // notes
@@ -315,7 +321,7 @@ class Ar implements En {
     "assignedTo": "مرسل إلى",
     "dueDate": "تاريخ الاستحقاق",
     "attachments": "مرفقات",
-    "archiveAllCompletedNotes": "أرشفة جميع الملاحظات المكتملة",
+    "deleteAllCompletedNotes": "حذف جميع الملاحظات المكتملة",
     "moveTowardsEnd": "تحريك نحو النهاية",
     "moveTowardsStart": "تحريك نحو البداية",
     "item": "عنصر",
@@ -326,6 +332,7 @@ class Ar implements En {
     "tapToMarkAsPending": "تأشير كـ غير مكتمل",
     "tapToMarkAsDone": "تأشير كـ مكتمل",
     "archived": "مؤرشف",
+    "noDeletedItems": "لا توجد عناصر محذوفة",
     "overdue": "متأخر",
     "incoming": "مستلم لك",
     "outgoing": "صادر منك",
@@ -407,6 +414,7 @@ class Ar implements En {
     "ISO": "أيزو",
 
     // advanced settings: Backups
+    "backup": "نسخة احتياطية",
     "backups": "النسخ الاحتياطي",
     "refresh": "تحديث",
     "download": "تحميل",
@@ -648,6 +656,7 @@ class Ar implements En {
     "receiptScanFailed": "فشل مسح الفاتورة",
     "testing": "جاري اختبار الاتصال...",
     "unknown": "غير معروف",
+    "unidentified": "غير محدد",
 
     // Dental history recording
     "VoiceAutoFill": "ادخال تلقائي بالصوت",

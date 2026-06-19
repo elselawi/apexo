@@ -92,7 +92,13 @@ class TopSearch extends StatelessWidget {
           color: Colors.transparent,
           border: Border.all(color: Colors.transparent)),
       placeholder: txt("searchPlaceholder"),
-      prefix: const Text("🔍"),
+      placeholderStyle: TextStyle(
+          fontSize: 18,
+          color: FluentTheme.of(context).inactiveColor.withAlpha(140)),
+      prefix: const Text(
+        "🔍",
+        style: TextStyle(fontSize: 18),
+      ),
       controller: controller,
       onChanged: (text) => setState(() {}),
       suffix: controller.text.isNotEmpty

@@ -242,9 +242,12 @@ class _LabworksTableState extends State<LabworksTable> {
                     _buildDataCell("📅 ${DF.allNumbers(apt.date)}"),
                     _buildDataCell(apt.operatorsNames),
                     _buildDataCell(apt.labName),
-                    _buildDataCell(apt.labworkNotes),
+                    _buildDataCell(apt.labworkNotes, tooltip: apt.labworkNotes),
                     _buildDataCell(
-                        "${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0, 1).toUpperCase()}${apt.labworkStatus.substring(1)}"),
+                        "${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0, 1).toUpperCase()}${apt.labworkStatus.substring(1)}",
+                        tooltip:
+                            apt.labworkStatus.substring(0, 1).toUpperCase() +
+                                apt.labworkStatus.substring(1)),
                   ],
                 ),
               );
@@ -339,17 +342,21 @@ class _LabworksTableState extends State<LabworksTable> {
     );
   }
 
-  Widget _buildDataCell(String text, {double width = 150, bool cross = false}) {
-    return SizedBox(
-      width: width,
-      child: Text(
+  Widget _buildDataCell(String text,
+      {double width = 150, bool cross = false, String? tooltip}) {
+    final textWidget = Text(
         text,
         style: FluentTheme.of(context)
             .typography
             .body
             ?.copyWith(decoration: cross ? TextDecoration.lineThrough : null),
         overflow: TextOverflow.ellipsis,
-      ),
+    );
+    return SizedBox(
+      width: width,
+      child: tooltip != null
+          ? Tooltip(message: tooltip, child: textWidget)
+          : textWidget,
     );
   }
 }

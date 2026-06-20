@@ -1,27 +1,35 @@
 import 'dart:math';
 
-import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/money_display.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
-import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
-import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
-import 'package:flutter/material.dart' show Card, TimeOfDay, showTimePicker;
+import 'package:flutter/material.dart' show Card;
 import 'package:intl/intl.dart' as intl;
+import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import '../../utils/round.dart';
-import '../../common_widgets/item_title.dart';
-import 'appointments_store.dart';
-import 'package:table_calendar/table_calendar.dart';
-import 'package:apexo/common_widgets/screen_command_bar.dart';
+import 'events_agenda_widget.dart';
+import 'events_timeline_widget.dart';
+
+/// Which view to show below the day title bar.
+enum EventsViewMode {
+  /// Plain sorted list of appointment tiles.
+  agenda,
+
+  /// Google‑Calendar‑style time grid with duration‑based positioning.
+  timeline,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main widget
+// ─────────────────────────────────────────────────────────────────────────────
 
 class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   final List<Item> items;
@@ -53,7 +61,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
   CalendarFormat calendarFormat = CalendarFormat.week;
   late DateTime selectedDate;
   final now = DateTime.now();
-  late bool showPayments = false;
+  bool showPayments = false;
 
   double get calendarHeight {
     switch (calendarFormat) {
@@ -73,31 +81,20 @@ class WeekAgendaCalendarState<Item extends Appointment>
         DateTime.fromMillisecondsSinceEpoch(widget.initiallySelectedDay);
   }
 
-  void _goToToday() {
-    setState(() {
-      selectedDate = now;
-    });
-  }
+  void _goToToday() => setState(() => selectedDate = now);
 
-  List<Item> _getItemsForDay(DateTime day) {
-    return widget.items.where((item) => isSameDay(day, item.date)).toList();
-  }
+  List<Item> _getItemsForDay(DateTime day) =>
+      widget.items.where((item) => isSameDay(day, item.date)).toList();
 
-  List<Item> _getItemsForSelectedDay() {
-    return widget.items
-        .where((item) => isSameDay(selectedDate, item.date))
-        .toList();
-  }
+  List<Item> _getItemsForSelectedDay() =>
+      widget.items.where((item) => isSameDay(selectedDate, item.date)).toList();
 
-  bool isSameDay(DateTime day1, DateTime day2) {
-    return day1.day == day2.day &&
-        day1.month == day2.month &&
-        day1.year == day2.year;
-  }
+  bool isSameDay(DateTime a, DateTime b) =>
+      a.day == b.day && a.month == b.month && a.year == b.year;
 
   @override
   Widget build(BuildContext context) {
-    var itemsForSelectedDay = _getItemsForSelectedDay();
+    final itemsForSelectedDay = _getItemsForSelectedDay();
     return Column(
       children: [
         _buildCommandBar(),
@@ -112,10 +109,26 @@ class WeekAgendaCalendarState<Item extends Appointment>
               selectedDate = selectedDate.add(const Duration(days: 1));
             }),
             child: Column(children: [
-              _buildCurrentDayTitleBar(itemsForSelectedDay),
-              itemsForSelectedDay.isEmpty
-                  ? _buildEmptyDayMessage()
-                  : _buildAppointmentsList(itemsForSelectedDay),
+              _buildDayTitleBar(itemsForSelectedDay),
+              Expanded(
+                child: localSettings.calendarEventsViewMode ==
+                        EventsViewMode.agenda
+                    ? AgendaListView<Item>(
+                        items: itemsForSelectedDay,
+                        showPayments: showPayments,
+                        onSelect: widget.onSelect,
+                        onSetTime: widget.onSetTime,
+                      )
+                    : CalendarTimelineView(
+                        items: itemsForSelectedDay.cast<Appointment>().toList(),
+                        showPayments: showPayments,
+                        selectedDate: selectedDate,
+                        onSelect: (appointment) =>
+                            widget.onSelect(appointment as Item),
+                        onSetTime: (appointment) =>
+                            widget.onSetTime(appointment as Item),
+                      ),
+              ),
             ]),
           ),
         ),
@@ -123,6 +136,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
     );
   }
 
+  // ─── Command bar ───────────────────────────────────────────────────────
   Widget _buildCommandBar() {
     return ScreenCommandBar(
       mainButton: IconButton(
@@ -133,6 +147,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
     );
   }
 
+  // ─── Calendar header ───────────────────────────────────────────────────
   Widget _buildCalendar() {
     return Container(
         constraints: BoxConstraints(maxHeight: calendarHeight),
@@ -237,77 +252,51 @@ class WeekAgendaCalendarState<Item extends Appointment>
     );
   }
 
-  Widget _buildAppointmentsList(List<Item> itemsForSelectedDay) {
-    var sortedItems = [...itemsForSelectedDay]..sort((a, b) =>
-        a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
-    return Expanded(
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 80),
-        itemCount: sortedItems.length,
-        itemBuilder: (context, index) {
-          Item item = sortedItems[index];
-          return Padding(
-            padding: const EdgeInsets.all(0),
-            child: AppointmentCalendarTile<Item>(
-              key: WK.calendarAppointmentTile,
-              context: context,
-              showPayments: showPayments,
-              item: item,
-              onSelect: (item) {
-                widget.onSelect(item);
-              },
-              onSetTime: (item) {
-                widget.onSetTime(item);
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildEmptyDayMessage() {
-    return Expanded(
-      child: Container(
-        color: Colors.transparent,
-        child: Center(
-          child: InfoBar(
-            isLong: false,
-            isIconVisible: true,
-            severity: InfoBarSeverity.warning,
-            title: Txt(txt("noAppointmentsForThisDay")),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurrentDayTitleBar(List<Item> itemsForSelectedDay) {
+  // ─── Day title bar ─────────────────────────────────────────────────────
+  Widget _buildDayTitleBar(List<Item> items) {
     return Container(
-      decoration: topBarDecoration(
-        context,
-        Colors.grey,
-      ),
+      decoration: topBarDecoration(context, Colors.grey),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       height: 45,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Txt(
-            " ${DF.commonDate(selectedDate)}",
-            style: const TextStyle(fontWeight: FontWeight.w500),
+          IconButton(
+            onPressed: () => setState(() {
+              localSettings.toggleEventsViewMode();
+            }),
+            icon: Row(
+              spacing: 10,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Txt(
+                  " ${DF.commonDate(selectedDate)}",
+                  style: const TextStyle(fontWeight: FontWeight.w500),
+                ),
+                Tooltip(
+                    message: localSettings.calendarEventsViewMode ==
+                            EventsViewMode.agenda
+                        ? txt("switchToTimelineView")
+                        : txt("switchToAgendaView"),
+                    child: Icon(
+                      localSettings.calendarEventsViewMode ==
+                              EventsViewMode.agenda
+                          ? WindowsIcons.group_list
+                          : WindowsIcons.grid_view,
+                      size: 20,
+                    )),
+              ],
+            ),
           ),
           if (login.perm(Perm.revenue).read)
             Row(
               children: [
                 if (showPayments)
                   MoneyDisplay(
-                    "💵 ${(itemsForSelectedDay as List<Appointment>).fold<double>(0, (amount, appointment) => amount + appointment.paid)} ${currency()}",
+                    "💵 ${(items as List<Appointment>).fold<double>(0, (amount, appointment) => amount + appointment.paid)} ${currency()}",
                     style: const TextStyle(fontSize: 13),
                   ),
-                const SizedBox(
-                  width: 5,
-                ),
+                const SizedBox(width: 5),
                 ToggleButton(
                   checked: showPayments,
                   onChanged: (x) {
@@ -332,6 +321,10 @@ class WeekAgendaCalendarState<Item extends Appointment>
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared leaf widgets
+// ─────────────────────────────────────────────────────────────────────────────
 
 class AppointmentsNumberIndicator extends StatelessWidget {
   final List<Object?> events;
@@ -397,15 +390,13 @@ class DayCell extends StatelessWidget {
         gradient: LinearGradient(
           colors: type == DayCellType.normal
               ? [
-                  Colors.grey.withAlpha((10).toInt()),
-                  Colors.grey.withAlpha((20).toInt()),
+                  Colors.grey.withAlpha(10),
+                  Colors.grey.withAlpha(20),
                 ]
               : type == DayCellType.today
                   ? [
-                      colorsWithoutYellow[day.weekday - 1]
-                          .withAlpha((20).toInt()),
-                      colorsWithoutYellow[day.weekday - 1]
-                          .withAlpha((100).toInt()),
+                      colorsWithoutYellow[day.weekday - 1].withAlpha(20),
+                      colorsWithoutYellow[day.weekday - 1].withAlpha(100),
                     ]
                   : [
                       colorsWithoutYellow[day.weekday - 1],
@@ -420,172 +411,6 @@ class DayCell extends StatelessWidget {
             style: type == DayCellType.normal
                 ? null
                 : const TextStyle(color: Colors.white)),
-      ),
-    );
-  }
-}
-
-class AppointmentCalendarTile<Item extends Appointment>
-    extends StatelessWidget {
-  final Item item;
-  final void Function(Item item) onSetTime;
-  final void Function(Item item) onSelect;
-  final bool showPayments;
-  const AppointmentCalendarTile(
-      {super.key,
-      required this.context,
-      required this.item,
-      required this.onSetTime,
-      required this.onSelect,
-      required this.showPayments});
-
-  final BuildContext context;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
-      ),
-      child: ListTile(
-        key: ValueKey(item.id),
-        margin: EdgeInsets.zero,
-        shape: listDividerBorder(context),
-        tileColor: WidgetStateColor.resolveWith((states) {
-          if (item.isDone) {
-            return Colors.blue.withAlpha(10);
-          } else if (states.contains(WidgetState.hovered)) {
-            return FluentTheme.of(context)
-                .resources
-                .controlAltFillColorTertiary;
-          }
-          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
-        }),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              children: [
-                SizedBox(width: 165, child: ItemTitle(item: item)),
-              ],
-            ),
-            Column(
-              children: [
-                if (item.hasLabwork) ...[
-                  const Icon(FluentIcons.manufacturing, size: 17),
-                  const SizedBox(height: 5),
-                ],
-                TreatmentLabels(
-                    labels: item.teeth.entries
-                        .toSet()
-                        .map((e) => TreatmentLabel(
-                            string: e.value,
-                            color: labelToColor(e.value),
-                            icon: labelToIcon(e.value),
-                            iso: e.key,
-                            extraNote: item.teethExtraNotes[e.key]))
-                        .toList()),
-              ],
-            )
-          ],
-        ),
-        subtitle: item.subtitleLine1.isNotEmpty
-            ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
-            : null,
-        leading: Row(children: [
-          routes.panels().where((p) => p.item.id == item.id).isNotEmpty
-              ? IconButton(
-                  icon: const Icon(FluentIcons.open_in_new_tab),
-                  onPressed: () {
-                    final index =
-                        routes.panels().indexWhere((p) => p.item.id == item.id);
-                    if (index == -1) return;
-                    routes.bringPanelToFront(index);
-                  })
-              : Transform.scale(
-                  scale: 1.25,
-                  child: Checkbox(
-                      style: CheckboxThemeData(
-                        icon: WindowsIcons.completed,
-                        uncheckedIconColor: WidgetStatePropertyAll(
-                            FluentTheme.of(context).inactiveColor),
-                      ),
-                      checked: item.isDone,
-                      onChanged: (checked) {
-                        item.isDone = checked == true;
-                        appointments.set(item as Appointment);
-                      }),
-                ),
-          const SizedBox(width: 8),
-          const Divider(direction: Axis.vertical, size: 40),
-        ]),
-        onPressed: () => onSelect(item),
-        trailing: Row(
-          children: [
-            const Divider(direction: Axis.vertical, size: 40),
-            const SizedBox(width: 5),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  spacing: 2,
-                  children: [
-                    if ((item.patient?.phonesString ?? '').isNotEmpty)
-                      PhoneNumberButton(phoneNumbers: item.patient!.phone),
-                    if ((item.patient?.email ?? '').isNotEmpty)
-                      EmailButton(email: item.patient!.email),
-                    if ((item.patient?.allAppointments ?? []).length > 1)
-                      AppointmentsHistoryFlyout(
-                        patient: item.patient!,
-                        exclude: item,
-                      ),
-                  ],
-                ),
-                IconButton(
-                  onPressed: () async {
-                    final index =
-                        routes.panels().indexWhere((p) => p.item.id == item.id);
-                    if (index > -1) return routes.bringPanelToFront(index);
-                    TimeOfDay? res = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay(
-                            hour: item.date.hour, minute: item.date.minute));
-                    if (res != null) {
-                      item.date = DateTime(item.date.year, item.date.month,
-                          item.date.day, res.hour, res.minute);
-                      onSetTime(item);
-                    }
-                  },
-                  icon: Row(
-                    children: [
-                      routes.panels().where((p) => p.item.id == item.id).isEmpty
-                          ? const Icon(FluentIcons.clock)
-                          : const Icon(FluentIcons.open_in_new_tab),
-                      const SizedBox(width: 5),
-                      Txt(intl.DateFormat('hh:mm a', locale.s.$code)
-                          .format(item.date)),
-                    ],
-                  ),
-                ),
-                if (item.subtitleLine2.isNotEmpty)
-                  SizedBox(
-                      width: 75,
-                      child: Txt(
-                        item.subtitleLine2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      )),
-                if (item.paid > 0 &&
-                    login.perm(Perm.revenue).read &&
-                    showPayments)
-                  MoneyDisplay(
-                    "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
-                    style: const TextStyle(fontSize: 12),
-                  )
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }

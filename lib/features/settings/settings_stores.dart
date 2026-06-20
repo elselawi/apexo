@@ -1,5 +1,6 @@
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -136,8 +137,16 @@ class LocalSettings extends ObservablePersistingObject {
   String dentalNotation = "p";
   String? aiToken;
   DateTime? aiTokenExpiry;
+  EventsViewMode calendarEventsViewMode = EventsViewMode.agenda;
 
   static const _aiTokenSafetyMargin = Duration(hours: 2);
+
+  void toggleEventsViewMode() {
+    calendarEventsViewMode = calendarEventsViewMode == EventsViewMode.agenda
+        ? EventsViewMode.timeline
+        : EventsViewMode.agenda;
+    notifyAndPersist();
+  }
 
   String get transcriptionOutputLocale {
     if (transcriptionLocaleNonFinal.isNotEmpty) {
@@ -165,6 +174,8 @@ class LocalSettings extends ObservablePersistingObject {
     aiTokenExpiry = json["aiTokenExpiry"] != null
         ? DateTime.fromMillisecondsSinceEpoch(json["aiTokenExpiry"] as int)
         : null;
+    calendarEventsViewMode =
+        EventsViewMode.values[json["calendarEventsViewMode"] ?? 0];
   }
 
   @override
@@ -175,6 +186,7 @@ class LocalSettings extends ObservablePersistingObject {
       "dentalNotation": dentalNotation,
       "transcriptionLocale": transcriptionLocaleNonFinal,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
+      "calendarEventsViewMode": calendarEventsViewMode.index,
       if (aiToken != null) "aiToken": aiToken,
       if (aiTokenExpiry != null)
         "aiTokenExpiry": aiTokenExpiry!.millisecondsSinceEpoch,

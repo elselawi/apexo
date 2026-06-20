@@ -57,7 +57,7 @@ class Appointment extends Model {
 
   String get operatorsNames {
     if (operatorsIDs.isEmpty) return "";
-    return "🥼 ${operatorsIDs.map((id) => accounts.nameOrEmailFromID(id)).join(", ")}";
+    return operatorsIDs.map((id) => accounts.nameOrEmailFromID(id)).join(", ");
   }
 
   bool get userIsOperator {

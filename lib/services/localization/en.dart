@@ -228,6 +228,8 @@ class En {
     "minutes": "minutes",
     "duration": "Duration",
     "today": "Today",
+    "switchToTimelineView": "Switch to timeline view",
+    "switchToAgendaView": "Switch to agenda view",
     "date": "Date",
     "changeDate": "Change Date",
     "changeTime": "Change Time",
@@ -402,6 +404,10 @@ class En {
     "dateFormat": "Date format",
     "dateFormat_desc":
         "This format will be used to display dates where applicable.",
+    "calendarView": "Calendar view",
+    "calendarView_desc": "Choose how appointments are displayed in the calendar.",
+    "agenda": "Agenda (list)",
+    "timeline": "Timeline (time grid)",
     "cacheReset": "Cache reset",
     "cacheReset_desc":
         "Using the button below, you can delete locally saved data (except for images), this would solve some issues with synchronization if you're facing any.",

@@ -229,6 +229,8 @@ class El implements En {
     "minutes": "λεπτά",
     "duration": "Διάρκεια",
     "today": "Σήμερα",
+    "switchToTimelineView": "Μετάβαση σε προβολή χρονοδιαγράμματος",
+    "switchToAgendaView": "Μετάβαση σε προβολή ατζέντας",
     "date": "Ημερομηνία",
     "changeDate": "Αλλαγή ημερομηνίας",
     "changeTime": "Αλλαγή ώρας",
@@ -401,6 +403,11 @@ class El implements En {
     "startingDayOfWeek": "Πρώτη ημέρα της εβδομάδας",
     "startingDayOfWeek_desc": "Η ημέρα από την οποία ξεκινά η εβδομάδα.",
     "dateFormat": "Μορφή ημερομηνίας",
+    "calendarView": "Προβολή ημερολογίου",
+    "calendarView_desc":
+        "Επιλέξτε πώς θα εμφανίζονται τα ραντεβού στο ημερολόγιο.",
+    "agenda": "Ατζέντα (λίστα)",
+    "timeline": "Χρονοδιάγραμμα (πλέγμα χρόνου)",
     "dateFormat_desc":
         "Αυτή η μορφή θα χρησιμοποιείται για την εμφάνιση ημερομηνιών όπου ισχύει.",
     "cacheReset": "Επαναφορά προσωρινής μνήμης",

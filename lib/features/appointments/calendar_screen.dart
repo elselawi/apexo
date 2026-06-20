@@ -1,5 +1,6 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -7,7 +8,6 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'calendar_widget.dart';
 import 'appointment_model.dart';
 import 'appointments_store.dart';
 
@@ -22,7 +22,7 @@ class CalendarScreen extends StatelessWidget {
           appointments.filterByOperatorID.stream,
         ],
         builder: (context, snapshot) {
-          return WeekAgendaCalendar<Appointment>(
+          return WeekAgendaCalendar(
             items: appointments.filtered.values.toList(),
             actions: [
               ComboBox<String>(

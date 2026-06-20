@@ -28,6 +28,7 @@ class CalendarTimelineView extends StatefulWidget {
   final DateTime selectedDate;
   final void Function(Appointment item) onSelect;
   final void Function(Appointment item) onSetTime;
+  final void Function(DateTime date) onAddNew;
 
   const CalendarTimelineView({
     super.key,
@@ -36,6 +37,7 @@ class CalendarTimelineView extends StatefulWidget {
     required this.selectedDate,
     required this.onSelect,
     required this.onSetTime,
+    required this.onAddNew,
   });
 
   @override
@@ -344,6 +346,7 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
     final hourLabels = <Widget>[];
     for (int h = _startHour; h <= _endHour; h++) {
       final i = h - _startHour;
+      final slotH = _slotHeights.isEmpty ? _hourHeight : _slotHeights[i];
       final y = _slotTops.isEmpty ? i * _hourHeight : _slotTops[i];
       final label = h == 0
           ? ""
@@ -357,13 +360,12 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
           alignment: rtl ? Alignment.centerLeft : Alignment.centerRight,
           child: Text(label,
               style: TextStyle(
-                  fontSize: 13,
+                  fontSize: slotH > _emptyHourHeight ? 16 : 13,
                   fontWeight: FontWeight.w500,
                   color: FluentTheme.of(context).inactiveColor)),
         ),
       ));
       if (h > 0) {
-        final slotH = _slotHeights.isEmpty ? _hourHeight : _slotHeights[i];
         if (slotH > _emptyHourHeight) {
           final quarterH = slotH / 4;
           for (final q in [15, 30, 45]) {
@@ -465,24 +467,33 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
         if (_dragging && _dragItem != null) _buildDragPrev(),
       ]),
     );
-    if (!needsHorizScroll) {
-      return SingleChildScrollView(
-        controller: _vertCtrl,
-        child: SingleChildScrollView(
-          controller: _horizCtrl,
-          scrollDirection: Axis.horizontal,
-          physics: const NeverScrollableScrollPhysics(),
-          child: content,
-        ),
-      );
-    }
-    return SingleChildScrollView(
-      controller: _vertCtrl,
-      child: SingleChildScrollView(
-        controller: _horizCtrl,
-        scrollDirection: Axis.horizontal,
-        child: content,
-      ),
+    final scrollable = needsHorizScroll
+        ? SingleChildScrollView(
+            controller: _vertCtrl,
+            child: SingleChildScrollView(
+              controller: _horizCtrl,
+              scrollDirection: Axis.horizontal,
+              child: content,
+            ),
+          )
+        : SingleChildScrollView(
+            controller: _vertCtrl,
+            child: SingleChildScrollView(
+              controller: _horizCtrl,
+              scrollDirection: Axis.horizontal,
+              physics: const NeverScrollableScrollPhysics(),
+              child: content,
+            ),
+          );
+    return GestureDetector(
+      onTapUp: (d) {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box == null) return;
+        final y = box.globalToLocal(d.globalPosition).dy + _vertCtrl.offset;
+        if (y < 0 || y > _totalH) return;
+        widget.onAddNew(_yToTime(y));
+      },
+      child: scrollable,
     );
   }
 
@@ -495,14 +506,16 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
               top: i * _hourHeight - 0.5,
               width: gw,
               height: 1,
-              child: Container(color: stroke.withValues(alpha: 0.2))),
+              child: Container(color: stroke.withValues(alpha: 0.4))),
         for (int i = 0; i < _endHour - _startHour; i++)
           Positioned(
               left: gx,
               top: (i + 0.5) * _hourHeight,
               width: gw,
               height: 1,
-              child: Container(color: stroke.withValues(alpha: 0.1))),
+              child: CustomPaint(
+                  painter: _DashedLinePainter(
+                      color: stroke.withValues(alpha: 0.2)))),
       ];
     }
     return [
@@ -520,7 +533,9 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
               top: _slotTops[i] + _slotHeights[i] / 2,
               width: gw,
               height: 1,
-              child: Container(color: stroke.withValues(alpha: 0.1))),
+              child: CustomPaint(
+                  painter: _DashedLinePainter(
+                      color: stroke.withValues(alpha: 0.3)))),
     ];
   }
 
@@ -1148,4 +1163,30 @@ class ChairInfo {
   final String name;
   final Color color;
   const ChairInfo({required this.id, required this.name, required this.color});
+}
+
+class _DashedLinePainter extends CustomPainter {
+  final Color color;
+  _DashedLinePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    const dashWidth = 5.0;
+    const gapWidth = 5.0;
+    double x = 0;
+    while (x < size.width) {
+      canvas.drawLine(
+        Offset(x, size.height / 2),
+        Offset((x + dashWidth).clamp(0, size.width), size.height / 2),
+        paint,
+      );
+      x += dashWidth + gapWidth;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

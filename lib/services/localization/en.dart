@@ -405,7 +405,8 @@ class En {
     "dateFormat_desc":
         "This format will be used to display dates where applicable.",
     "calendarView": "Calendar view",
-    "calendarView_desc": "Choose how appointments are displayed in the calendar.",
+    "calendarView_desc":
+        "Choose how appointments are displayed in the calendar.",
     "agenda": "Agenda (list)",
     "timeline": "Timeline (time grid)",
     "cacheReset": "Cache reset",

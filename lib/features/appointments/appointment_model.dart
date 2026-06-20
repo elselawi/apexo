@@ -86,6 +86,8 @@ class Appointment extends Model {
         !isDone;
   }
 
+  DateTime get endDate => date.add(Duration(minutes: duration));
+
   bool get firstAppointmentForThisPatient {
     if (patient == null) return false;
     if (patient!.allAppointments.isEmpty) return false;
@@ -126,6 +128,7 @@ class Appointment extends Model {
   /* 14 */ String labworkNotes = "";
   /* 15 */ bool labworkReceived = false;
   /* 16 */ Map<String, String> drawings = {};
+  /* 17 */ int duration = 15; // in minutes, default 15
 
   Appointment.fromJson(super.json) : super.fromJson();
 
@@ -159,6 +162,7 @@ class Appointment extends Model {
     /* 14 */ labworkNotes = json["labworkNotes"] ?? labworkNotes;
     /* 15 */ labworkReceived = json["labworkReceived"] ?? labworkReceived;
     /* 16 */ drawings = Map<String, String>.from(json['drawings'] ?? drawings);
+    /* 17 */ duration = (json["duration"] as int?) ?? duration;
   }
 
   @override
@@ -187,6 +191,7 @@ class Appointment extends Model {
       json['labworkReceived'] = labworkReceived;
     }
     /* 16 */ if (drawings.isNotEmpty) json['drawings'] = drawings;
+    /* 17 */ if (duration != d.duration) json['duration'] = duration;
 
     json.remove("title"); // remove since it is a computed value in this case
 

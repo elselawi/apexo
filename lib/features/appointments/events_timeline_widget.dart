@@ -2,12 +2,8 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
-import 'package:apexo/common_widgets/contact_buttons.dart';
-import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/money_display.dart';
-import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -190,7 +186,7 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
             (sn % 60).clamp(0, 59));
       }
     }
-    final tm = (_endHour * 60 - 1);
+    const tm = (_endHour * 60 - 1);
     return DateTime(widget.selectedDate.year, widget.selectedDate.month,
         widget.selectedDate.day, tm ~/ 60, tm % 60);
   }
@@ -995,7 +991,9 @@ class _TimelineChipState extends State<TimelineChip> {
               borderRadius: BorderRadius.circular(50),
               boxShadow: [
                 BoxShadow(
-                  color: FluentTheme.of(context).shadowColor.withOpacity(0.2),
+                  color: FluentTheme.of(context)
+                      .shadowColor
+                      .withValues(alpha: 0.2),
                   blurRadius: 5,
                   offset: const Offset(0, 1),
                 )

@@ -195,39 +195,39 @@ class LocalSettings extends ObservablePersistingObject {
 }
 
 abstract class DF {
-  static String commonDate(date) {
+  static String commonDate(DateTime date) {
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "📅 EE dd / MM / yyyy"
         : "📅 EE MM / dd / yyyy";
     return DateFormat(df, locale.s.$code).format(date);
   }
 
-  static String full(date) {
+  static String full(DateTime date) {
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "📅 EE dd / MM / yyyy 🕒 hh:mm a"
         : "📅 EE MM / dd / yyyy 🕒 hh:mm a";
     return DateFormat(df, locale.s.$code).format(date);
   }
 
-  static String fullCompact(date) {
+  static String fullCompact(DateTime date) {
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "📅 dd / MM / yyyy 🕒 hh:mm a"
         : "📅 MM / dd / yyyy 🕒 hh:mm a";
     return DateFormat(df, locale.s.$code).format(date);
   }
 
-  static String allNumbers(date) {
+  static String allNumbers(DateTime date) {
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "dd / MM / yyyy"
         : "MM / dd / yyyy";
     return DateFormat(df, locale.s.$code).format(date);
   }
 
-  static String dayOfWeek(date) {
+  static String dayOfWeek(DateTime date) {
     return DateFormat("EE", locale.s.$code).format(date);
   }
 
-  static String time(date) {
+  static String time(DateTime date) {
     return DateFormat("🕒 hh:mm a", locale.s.$code).format(date);
   }
 }

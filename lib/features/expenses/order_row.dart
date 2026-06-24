@@ -809,7 +809,7 @@ class OrderRowState extends State<OrderRow>
                         ? txt("restore")
                         : txt("delete")),
                     leading: Icon(widget.order.archived == true
-                        ? FluentIcons.undo
+                        ? WindowsIcons.undo
                         : WindowsIcons.delete),
                     onPressed: () {
                       moreOptionsCtrl.close();
@@ -825,7 +825,7 @@ class OrderRowState extends State<OrderRow>
                                 restorable: true,
                                 controller: deleteConfirmCtrl,
                                 actionIcon: widget.order.archived == true
-                                    ? FluentIcons.undo
+                                    ? WindowsIcons.undo
                                     : WindowsIcons.delete,
                                 actionText: widget.order.archived == true
                                     ? txt("restore")

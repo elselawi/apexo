@@ -90,13 +90,14 @@ class ConfirmDeleteFlyout extends StatelessWidget {
                   .bodyStrong
                   ?.copyWith(color: FluentTheme.of(context).inactiveColor)),
           if (preview != null) ...[preview!],
-          Txt(
-            "(${restorable ? txt("youCanRestoreFromDeletedItemsPage") : txt("youWillNotBeAbleToRestore")})",
-            style: FluentTheme.of(context).typography.caption?.copyWith(
-                  color: restorable == false ? Colors.red : null,
-                  fontWeight: restorable == false ? FontWeight.bold : null,
-                ),
-          ),
+          if (actionIcon != WindowsIcons.undo && actionIcon != FluentIcons.undo)
+            Txt(
+              "(${restorable ? txt("youCanRestoreFromDeletedItemsPage") : txt("youWillNotBeAbleToRestore")})",
+              style: FluentTheme.of(context).typography.caption?.copyWith(
+                    color: restorable == false ? Colors.red : null,
+                    fontWeight: restorable == false ? FontWeight.bold : null,
+                  ),
+            ),
           _buildDivider(),
           Row(
             mainAxisSize: MainAxisSize.min,

@@ -619,7 +619,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       controller: _confirmDeleteFlyoutCtrl,
       child: IconButton(
         style: _iconButtonStyle(theme,
-            color: isDeleted ? Colors.grey : Colors.errorPrimaryColor),
+            color: isDeleted ? Colors.teal : Colors.errorPrimaryColor),
         icon: Icon(isDeleted ? WindowsIcons.undo : WindowsIcons.delete),
         onPressed: () async {
           await flyoutFocusFix(context);

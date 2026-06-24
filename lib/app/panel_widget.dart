@@ -296,6 +296,8 @@ class _PanelScreenState extends State<PanelScreen> {
         : WindowsIcons.delete;
     final action =
         widget.panel.item.archived == true ? txt("restore") : txt("delete");
+    final color =
+        widget.panel.item.archived == true ? Colors.teal : Colors.grey;
     return widget.panel.archiveButtonReplacement ??
         DeleteButton(
           actionText: action,
@@ -325,7 +327,7 @@ class _PanelScreenState extends State<PanelScreen> {
             });
           },
           style: greyButtonStyle.copyWith(
-            backgroundColor: const WidgetStatePropertyAll(Colors.grey),
+            backgroundColor: WidgetStatePropertyAll(color),
             textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
           ),
           child:

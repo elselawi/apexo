@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
@@ -22,7 +23,8 @@ import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 // immediately in [addOrderForSupplier] so photo uploads work right away.
 // Archive/restore is handled per-order via the more menu in [OrderRow].
 Future<Expense> openExpenses(
-    List<Expense> orders, String supplierName, String? supplierId) {
+    List<Expense> orders, String supplierName, String? supplierId,
+    [bool? singleArchived]) {
   // Snapshot of each order's JSON at panel-open time.
   // Updated after each save so we only re-save what changed.
   final Map<String, String> savedSnapshots = {
@@ -41,7 +43,22 @@ Future<Expense> openExpenses(
     icon: WindowsIcons.folder,
     title: supplierName,
     canNotBeNew: true,
-    archiveButtonReplacement: const SizedBox.shrink(),
+    archiveButtonReplacement: singleArchived == true
+        ? DeleteButton(
+            onConfirm: () => expenses.unarchive(orders.firstOrNull?.id ?? ""),
+            preview: Row(spacing: 5, mainAxisSize: MainAxisSize.min, children: [
+              const Icon(FluentIcons.receipt_processing),
+              Txt(orders.firstOrNull?.fromSupplierName ?? ""),
+              Txt(DF.allNumbers(orders.firstOrNull?.date ?? DateTime.now()))
+            ]),
+            actionText: txt("restore"),
+            actionIcon: WindowsIcons.undo,
+            restorable: true,
+            style: filledButtonStyle(Colors.teal),
+            child: ButtonContent(
+                WindowsIcons.undo, "${txt("restore")} ${txt("order")}"),
+          )
+        : const SizedBox.shrink(),
     checkUnsavedChanges: () {
       return orders.any((o) => jsonEncode(o.toJson()) != savedSnapshots[o.id]);
     },
@@ -54,22 +71,38 @@ Future<Expense> openExpenses(
         }
       }
     },
-    tabs: [
-      PanelTab(
-          title: txt("due"),
-          icon: WindowsIcons.warning,
-          body: _SupplierDetails(
-              allOrders: orders, supplierId: supplierId, processed: false),
-          padding: 0,
-          footer: _SupplierOrdersFooter(orders: orders)),
-      PanelTab(
-          title: txt("paid"),
-          icon: WindowsIcons.check_mark,
-          body: _SupplierDetails(
-              allOrders: orders, supplierId: supplierId, processed: true),
-          padding: 0,
-          footer: _SupplierOrdersFooter(orders: orders)),
-    ],
+    tabs: singleArchived == true
+        ? [
+            PanelTab(
+              title: txt("order"),
+              icon: FluentIcons.receipt_processing,
+              body: _SupplierDetails(
+                allOrders: orders,
+                supplierId: supplierId,
+                processed: false,
+                singleArchived: true,
+              ),
+              padding: 0,
+            )
+          ]
+        : [
+            PanelTab(
+              title: txt("due"),
+              icon: WindowsIcons.warning,
+              body: _SupplierDetails(
+                  allOrders: orders, supplierId: supplierId, processed: false),
+              padding: 0,
+              footer: _SupplierOrdersFooter(orders: orders),
+            ),
+            PanelTab(
+              title: txt("paid"),
+              icon: WindowsIcons.check_mark,
+              body: _SupplierDetails(
+                  allOrders: orders, supplierId: supplierId, processed: true),
+              padding: 0,
+              footer: _SupplierOrdersFooter(orders: orders),
+            ),
+          ],
   );
   routes.openPanel(panel);
   return panel.result.future;
@@ -80,11 +113,13 @@ class _SupplierDetails extends StatefulWidget {
     required this.allOrders,
     required this.processed,
     required this.supplierId,
+    this.singleArchived,
   });
 
   final List<Expense> allOrders;
   final bool processed;
   final String? supplierId;
+  final bool? singleArchived;
 
   @override
   State<_SupplierDetails> createState() => _SupplierDetailsState();
@@ -128,79 +163,82 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
   @override
   Widget build(BuildContext context) {
     final search = _searchOrderController.text.toLowerCase();
-    final orders = (widget.processed
-            ? widget.allOrders.where((e) => e.processed == true).toList()
-            : widget.allOrders.where((e) => e.processed == false).toList())
-        .where((e) =>
-            e.archived != true &&
-            e.items.join("").toLowerCase().contains(search))
-        .toList()
+    final orders = widget.singleArchived == true
+        ? widget.allOrders
+        : (widget.processed
+                ? widget.allOrders.where((e) => e.processed == true).toList()
+                : widget.allOrders.where((e) => e.processed == false).toList())
+            .where((e) =>
+                e.archived != true &&
+                e.items.join("").toLowerCase().contains(search))
+            .toList()
       ..sort((a, b) => b.date.compareTo(a.date));
     return MStreamBuilder(
         streams: [expenses.observableMap.stream],
         builder: (context, asyncSnapshot) {
           return Column(
             children: [
-              Container(
-                decoration: BoxDecoration(
-                  color: FluentTheme.of(context)
-                      .resources
-                      .solidBackgroundFillColorBase,
-                  border: Border(
-                    bottom: BorderSide(
-                        color: FluentTheme.of(context)
-                            .resources
-                            .dividerStrokeColorDefault),
+              if (widget.singleArchived != true)
+                Container(
+                  decoration: BoxDecoration(
+                    color: FluentTheme.of(context)
+                        .resources
+                        .solidBackgroundFillColorBase,
+                    border: Border(
+                      bottom: BorderSide(
+                          color: FluentTheme.of(context)
+                              .resources
+                              .dividerStrokeColorDefault),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(5.0),
+                    child: Row(
+                      spacing: 3,
+                      children: [
+                        Expanded(
+                          child: TopSearch(
+                              controller: _searchOrderController,
+                              setState: setState),
+                        ),
+                        if (canEdit)
+                          FlyoutTarget(
+                            controller: pickSupplierForAdditionFlyout,
+                            child: Button(
+                              child: ButtonContent(
+                                  WindowsIcons.add, txt("addOrder")),
+                              onPressed: () async {
+                                if (widget.supplierId == null) {
+                                  await flyoutFocusFix(context);
+                                  pickSupplierForAdditionFlyout.showFlyout(
+                                      builder: (ctx) {
+                                    return MenuFlyout(
+                                      items: expenses.suppliers
+                                          .map((e) => MenuFlyoutItem(
+                                                text: Text(e.supplierName),
+                                                leading: const Icon(
+                                                    WindowsIcons.folder),
+                                                onPressed: () {
+                                                  setState(() {
+                                                    addOrderForSupplier(e.id);
+                                                  });
+                                                },
+                                              ))
+                                          .toList(),
+                                    );
+                                  });
+                                } else {
+                                  setState(() {
+                                    addOrderForSupplier(widget.supplierId!);
+                                  });
+                                }
+                              },
+                            ),
+                          )
+                      ],
+                    ),
                   ),
                 ),
-                child: Padding(
-                  padding: const EdgeInsets.all(5.0),
-                  child: Row(
-                    spacing: 3,
-                    children: [
-                      Expanded(
-                        child: TopSearch(
-                            controller: _searchOrderController,
-                            setState: setState),
-                      ),
-                      if (canEdit)
-                        FlyoutTarget(
-                          controller: pickSupplierForAdditionFlyout,
-                          child: Button(
-                            child: ButtonContent(
-                                WindowsIcons.add, txt("addOrder")),
-                            onPressed: () async {
-                              if (widget.supplierId == null) {
-                                await flyoutFocusFix(context);
-                                pickSupplierForAdditionFlyout.showFlyout(
-                                    builder: (ctx) {
-                                  return MenuFlyout(
-                                    items: expenses.suppliers
-                                        .map((e) => MenuFlyoutItem(
-                                              text: Text(e.supplierName),
-                                              leading: const Icon(
-                                                  WindowsIcons.folder),
-                                              onPressed: () {
-                                                setState(() {
-                                                  addOrderForSupplier(e.id);
-                                                });
-                                              },
-                                            ))
-                                        .toList(),
-                                  );
-                                });
-                              } else {
-                                setState(() {
-                                  addOrderForSupplier(widget.supplierId!);
-                                });
-                              }
-                            },
-                          ),
-                        )
-                    ],
-                  ),
-                ),
-              ),
               orders.isEmpty
                   ? const NoItemsFound()
                   : Expanded(

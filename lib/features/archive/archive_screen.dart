@@ -8,8 +8,13 @@ import 'package:apexo/core/model.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/expenses/open_expense_panel.dart';
+import 'package:apexo/features/notes/dialog_column_edit.dart';
+import 'package:apexo/features/notes/dialog_note_edit.dart';
 import 'package:apexo/features/notes/notes_store.dart';
+import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -50,6 +55,7 @@ class _ArchivedRow {
   final IconData storeIcon;
   final String subtitle;
   final VoidCallback onRestore;
+  final VoidCallback? onOpen;
 
   const _ArchivedRow({
     required this.item,
@@ -58,6 +64,7 @@ class _ArchivedRow {
     required this.storeIcon,
     required this.subtitle,
     required this.onRestore,
+    required this.onOpen,
   });
 }
 
@@ -104,7 +111,6 @@ class _ArchivedPageState extends State<_ArchivedPage> {
 
   /// Drop cached rows so the next [build] recomputes them.
   void _invalidateCache() {
-    _slice = 20;
     _rebuild();
   }
 
@@ -172,6 +178,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           storeIcon: FluentIcons.medication_admin,
           subtitle: '$g, ${p.age}',
           onRestore: () => patients.unarchive(p.id),
+          onOpen: () => openPatient(p),
         );
       case "appointments":
         final a = appointments.get(key[0])!;
@@ -185,6 +192,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           storeIcon: WindowsIcons.calendar,
           subtitle: ops.isNotEmpty ? '$d — $ops' : d,
           onRestore: () => appointments.unarchive(a.id),
+          onOpen: () => openAppointment(a),
         );
       case "expenses":
         final e = expenses.get(key[0])!;
@@ -198,6 +206,14 @@ class _ArchivedPageState extends State<_ArchivedPage> {
               ? "${expenses.docs.values.where((x) => x.supplierId == e.id).length} ${txt("orders")}"
               : '${DF.commonDate(e.date)} - ${"${e.items.length} ${txt("items")}"}',
           onRestore: () => expenses.unarchive(e.id),
+          onOpen: e.isOrder
+              ? () => openExpenses(
+                    [e],
+                    "${e.fromSupplierName}-${DF.allNumbers(e.date)}-${txt("deleted")}${e.id}",
+                    null,
+                    true,
+                  )
+              : null,
         );
       case "notes":
         final n = notes.get(key[0])!;
@@ -214,6 +230,9 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           storeIcon: WindowsIcons.quick_note,
           subtitle: '$t — $d',
           onRestore: () => notes.unarchive(n.id),
+          onOpen: () => n.isColumn
+              ? showColumnEditDialog(context, column: n)
+              : showNoteEditDialog(context, note: n),
         );
       default:
         throw ArgumentError("Unknown store key: ${key[1]}");
@@ -456,13 +475,16 @@ class _ArchivedPageState extends State<_ArchivedPage> {
       contentPadding:
           const EdgeInsetsDirectional.only(top: 0, bottom: 0, start: 4, end: 4),
       leading: _buildStoreTag(context, row),
-      title: ItemTitle(
-        item: row.item,
-        radius: 13,
-        maxWidth: 160,
-        fontSize: 13,
-        icon: row.storeIcon,
-        archivedStyling: false,
+      title: GestureDetector(
+        onTap: row.onOpen,
+        child: ItemTitle(
+          item: row.item,
+          radius: 13,
+          maxWidth: 160,
+          fontSize: 13,
+          icon: row.storeIcon,
+          archivedStyling: false,
+        ),
       ),
       subtitle: Text(
         row.subtitle,

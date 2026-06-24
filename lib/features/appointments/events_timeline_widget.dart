@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:apexo/app/routes.dart';
+import 'package:apexo/common_widgets/duration_pill.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -767,14 +768,16 @@ class TimelineChip extends StatefulWidget {
 }
 
 class _TimelineChipState extends State<TimelineChip> {
-  final _durationFlyout = FlyoutController();
   final _operatorsFlyout = FlyoutController();
 
   @override
   void dispose() {
-    _durationFlyout.dispose();
     _operatorsFlyout.dispose();
     super.dispose();
+  }
+
+  bool get isCurrentlyOpenInAPanel {
+    return routes.panels().where((p) => p.item.id == widget.item.id).isNotEmpty;
   }
 
   @override
@@ -824,10 +827,7 @@ class _TimelineChipState extends State<TimelineChip> {
             mainAxisSize: MainAxisSize.min,
             spacing: 5,
             children: [
-              routes
-                      .panels()
-                      .where((p) => p.item.id == widget.item.id)
-                      .isNotEmpty
+              isCurrentlyOpenInAPanel
                   ? _buildBringToFrontButton()
                   : _buildDoneCheckBox(context),
               const Divider(direction: Axis.vertical),
@@ -873,7 +873,13 @@ class _TimelineChipState extends State<TimelineChip> {
                           Column(
                             spacing: 2,
                             children: [
-                              _cyclePill(),
+                              DurationPill(
+                                disabled: isCurrentlyOpenInAPanel,
+                                item: widget.item,
+                                color: widget.color,
+                                onSet: (duration) => appointments
+                                    .set(widget.item..duration = duration),
+                              ),
                               Row(
                                 spacing: 2,
                                 children: [
@@ -896,22 +902,6 @@ class _TimelineChipState extends State<TimelineChip> {
                                     )
                                   else
                                     _buildOperatorsPill()
-                                  // else ...[
-                                  //   if ((widget.item.patient?.phonesString ??
-                                  //           '')
-                                  //       .isNotEmpty)
-                                  //     PhoneNumberButton(
-                                  //         phoneNumbers:
-                                  //             widget.item.patient!.phone),
-                                  //   if ((widget.item.patient?.allAppointments ??
-                                  //               [])
-                                  //           .length >
-                                  //       1)
-                                  //     AppointmentsHistoryFlyout(
-                                  //       patient: widget.item.patient!,
-                                  //       exclude: widget.item,
-                                  //     ),
-                                  // ],
                                 ],
                               ),
                             ],
@@ -946,83 +936,6 @@ class _TimelineChipState extends State<TimelineChip> {
     );
   }
 
-  static const _durations = [15, 30, 45, 60, 90, 120];
-
-  Widget _cyclePill() {
-    return FlyoutTarget(
-      controller: _durationFlyout,
-      child: GestureDetector(
-        onTap: () => _durationFlyout.showFlyout(
-          builder: (ctx) => MenuFlyout(
-            items: [
-              MenuFlyoutItem(
-                text: Text(txt("duration"),
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 12)),
-                leading: Icon(FluentIcons.clock,
-                    size: 14, color: FluentTheme.of(ctx).inactiveColor),
-                onPressed: null,
-              ),
-              ..._durations.map((d) {
-                final sel = d == widget.item.duration;
-                return MenuFlyoutItem(
-                  selected: sel,
-                  leading: sel
-                      ? Icon(FluentIcons.accept, size: 14, color: widget.color)
-                      : null,
-                  text: Text("$d ${txt("minutes")}"),
-                  onPressed: () {
-                    widget.item.duration = d;
-                    appointments.set(widget.item);
-                    _durationFlyout.close();
-                    setState(() {});
-                  },
-                );
-              }),
-            ],
-          ),
-        ),
-        child: MouseRegion(
-          cursor: SystemMouseCursors.click,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-            decoration: BoxDecoration(
-              color: widget.color.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(50),
-              boxShadow: [
-                BoxShadow(
-                  color: FluentTheme.of(context)
-                      .shadowColor
-                      .withValues(alpha: 0.2),
-                  blurRadius: 5,
-                  offset: const Offset(0, 1),
-                )
-              ],
-            ),
-            child: Row(
-              spacing: 5,
-              children: [
-                const Icon(
-                  FluentIcons.skype_circle_clock,
-                  color: Colors.white,
-                  size: 11,
-                ),
-                Text(
-                  "${widget.item.duration} ${txt("min")}",
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFFFFFFF),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildOperatorsPill() {
     final selectedIds = widget.item.operatorsIDs.toSet();
     final ops = accounts.operators;
@@ -1033,15 +946,17 @@ class _TimelineChipState extends State<TimelineChip> {
     return FlyoutTarget(
       controller: _operatorsFlyout,
       child: GestureDetector(
-        onTap: () {
-          if (_operatorsFlyout.isOpen) {
-            _operatorsFlyout.close();
-          } else {
-            _operatorsFlyout.showFlyout(
-              builder: (ctx) => _buildOperatorsFlyoutContent(ctx, ops),
-            );
-          }
-        },
+        onTap: isCurrentlyOpenInAPanel
+            ? null
+            : () {
+                if (_operatorsFlyout.isOpen) {
+                  _operatorsFlyout.close();
+                } else {
+                  _operatorsFlyout.showFlyout(
+                    builder: (ctx) => _buildOperatorsFlyoutContent(ctx, ops),
+                  );
+                }
+              },
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: SizedBox(

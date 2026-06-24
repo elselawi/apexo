@@ -27,6 +27,7 @@ import 'package:apexo/utils/money_editing_controller.dart';
 import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:apexo/utils/print/print_prescription.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/duration_pill.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/common_widgets/operators_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
@@ -454,28 +455,23 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                 widget.appointment.operatorsIDs = s;
               }),
         ),
-        Column(
-          children: [
-            InfoLabel(
-              label: "${txt("date")}:",
-              child: DateTimePicker(
-                key: WK.fieldAppointmentDate,
-                initValue: widget.appointment.date,
-                onChange: (d) {
-                  widget.appointment.date = DateTime(
-                    d.year,
-                    d.month,
-                    d.day,
-                    widget.appointment.date.hour,
-                    widget.appointment.date.minute,
-                  );
-                },
-                buttonText: txt("changeDate"),
-                buttonIcon: WindowsIcons.calendar,
-              ),
-            ),
-            const SizedBox(height: 5),
-          ],
+        InfoLabel(
+          label: "${txt("date")}:",
+          child: DateTimePicker(
+            key: WK.fieldAppointmentDate,
+            initValue: widget.appointment.date,
+            onChange: (d) {
+              widget.appointment.date = DateTime(
+                d.year,
+                d.month,
+                d.day,
+                widget.appointment.date.hour,
+                widget.appointment.date.minute,
+              );
+            },
+            buttonText: txt("changeDate"),
+            buttonIcon: WindowsIcons.calendar,
+          ),
         ),
         InfoLabel(
           label: "${txt("time")}:",
@@ -494,6 +490,15 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
             buttonText: txt("changeTime"),
             pickTime: true,
             buttonIcon: FluentIcons.clock,
+          ),
+        ),
+        InfoLabel(
+          label: "${txt("duration")}:",
+          child: DurationPill(
+            item: widget.appointment,
+            color: Colors.blue,
+            onSet: (d) => widget.appointment.duration = d,
+            isCompact: false,
           ),
         ),
         InfoLabel(

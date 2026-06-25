@@ -141,8 +141,8 @@ class _Routes {
     final foundPanel = panels()
         .indexWhere((element) => element.identifier == panel.identifier);
     if (foundPanel > -1) {
-      bringPanelToFront(foundPanel);
       panels()[foundPanel].selectedTab(panel.selectedTab());
+      bringPanelToFront(foundPanel);
     } else {
       panels(panels()..add(panel));
       routes.minimizePanels(false);
@@ -197,8 +197,7 @@ class _Routes {
             navbarTitle: txt("calendar"),
             icon: WindowsIcons.calendar,
             screen: CalendarScreen.new,
-            accessible:
-                login.perm(Perm.appointments).some || login.isAdmin,
+            accessible: login.perm(Perm.appointments).some || login.isAdmin,
             onSelect: () async {
               if (login.perm(Perm.appointments).not(2)) {
                 appointments.filterByOperatorID(login.currentAccountID);
@@ -215,8 +214,7 @@ class _Routes {
             navbarTitle: txt("labworks"),
             icon: FluentIcons.manufacturing,
             screen: LabworksScreen.new,
-            accessible:
-                login.perm(Perm.appointments).some || login.isAdmin,
+            accessible: login.perm(Perm.appointments).some || login.isAdmin,
             onSelect: () async {
               await accounts.reloadFromRemote();
               await patients.synchronize();

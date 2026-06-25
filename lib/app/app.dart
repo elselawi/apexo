@@ -26,6 +26,13 @@ import 'package:flutter/foundation.dart';
 
 late BuildContext bContext;
 
+/// Cached [GlobalObjectKey]s for route screen bodies so [identical] comparison
+/// succeeds across rebuilds. Without caching, string interpolation creates a
+/// new String each build, breaking [GlobalObjectKey]'s identity-based equality.
+final _bodyKeys = <String, GlobalKey>{};
+GlobalKey _bodyKeyFor(String routeId) =>
+    _bodyKeys.putIfAbsent(routeId, () => GlobalObjectKey(routeId));
+
 class ApexoApp extends StatelessWidget {
   const ApexoApp({super.key});
 
@@ -235,13 +242,16 @@ class ApexoApp extends StatelessWidget {
                                   ? Icon(route.icon)
                                   : const Icon(WindowsIcons.lock),
                               body: route.accessible
-                                  ? Padding(
-                                      padding: EdgeInsets.only(
-                                          bottom: (routes.showBottomNav() &&
-                                                  constraints.maxWidth < 710)
-                                              ? 66
-                                              : 0),
-                                      child: (route.screen)(),
+                                  ? KeyedSubtree(
+                                      key: _bodyKeyFor(route.identifier),
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                            bottom: (routes.showBottomNav() &&
+                                                    constraints.maxWidth < 710)
+                                                ? 66
+                                                : 0),
+                                        child: (route.screen)(),
+                                      ),
                                     )
                                   : const SizedBox(),
                               title: Txt(route.title),
@@ -255,7 +265,10 @@ class ApexoApp extends StatelessWidget {
                     ...routes.allRoutes.where((p) => p.onFooter == true).map(
                           (route) => PaneItem(
                             icon: Icon(route.icon),
-                            body: (route.screen)(),
+                            body: KeyedSubtree(
+                              key: _bodyKeyFor(route.identifier),
+                              child: (route.screen)(),
+                            ),
                             title: Txt(route.title),
                             onTap: () => route.accessible
                                 ? routes.navigate(route.identifier)

@@ -5,6 +5,7 @@
 - Fixed: extra notes icon and color should be based on the entry itself not the fist item.
 - Fixed: calendar screen not listening to archive toggle.
 - an animation on opening a new panel (or switching) from inside another panel.
+- Fixed: search, filter, sorting, and slicing state resetting on medium screens (tablets) when opening/closing panels. Root cause: `NavigationView` rebuilds its widget tree when `PaneDisplayMode.auto` switches modes during the width animation. Fixed by anchoring each route screen body with a cached `GlobalKey` via `KeyedSubtree`, so Flutter can reparent and preserve `StatefulWidget` state across tree restructuring.
 
 ### [0.12.0]
 - New Features & Enhancements

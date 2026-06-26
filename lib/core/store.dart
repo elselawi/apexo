@@ -329,7 +329,7 @@ class Store<G extends Model> {
           final bool upload = entry.value == 1;
           final String rowID = deferredFile[1];
           final String pathOrName = deferredFile[2];
-          final String fileName =
+          final String filename =
               deferredFile.length == 4 ? deferredFile[3] : "";
           // we will delay file handling since it takes too much time
           // so we would run the document handling first then the file handling
@@ -340,7 +340,7 @@ class Store<G extends Model> {
                 multipart = await MultipartFile.fromPath(
                   "imgs+",
                   pathOrName,
-                  filename: fileName,
+                  filename: filename,
                 );
               } else {
                 multipart = MultipartFile.fromBytes(
@@ -348,10 +348,14 @@ class Store<G extends Model> {
                   (await http.get(Uri.parse(
                           'https://imgs.apexo.app/?url=${Uri.encodeComponent(pathOrName)}')))
                       .bodyBytes,
-                  filename: fileName,
+                  filename: filename,
                 );
               }
-              await remote!.uploadImage(rowID, multipart);
+              await remote!.uploadImage(
+                rowID: rowID,
+                filename: filename,
+                predefinedMultipart: multipart,
+              );
             } else {
               await remote!.deleteImage(rowID, pathOrName);
             }
@@ -685,69 +689,49 @@ class Store<G extends Model> {
     onSyncEnd?.call();
   }
 
-  /// upload set of files to a certain row
-  Future<void> uploadImg(
-      {required String rowID,
-      required String filename,
-      String? path,
-      XFile? file}) async {
-    if (path == null && file == null) {
-      throw Exception("either path or file must be defined when uploading");
-    }
+  /// Upload an image with deferred retry support.
+  /// Returns the PB-assigned filename on success, or the client filename
+  /// if the upload was deferred (model will be corrected by next sync).
+  Future<String> uploadImg({
+    required String rowID,
+    required String filename,
+    String? path,
+    XFile? file,
+  }) async {
+    onSyncStart?.call();
     if (remote == null) {
       throw Exception("remote persistence layer is not defined");
     }
     if (local == null) {
       throw Exception("local persistence layer is not defined");
     }
-    onSyncStart?.call();
-
-    Map<String, int> lastDeferred = await local!.getDeferred();
-
+    final lastDeferred = await local!.getDeferred();
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
-        MultipartFile multipart;
-        if (path != null) {
-          multipart = await MultipartFile.fromPath(
-            "imgs+",
-            path,
-            filename: filename,
-          );
-        } else {
-          multipart = MultipartFile.fromBytes(
-            "imgs+",
-            (await http.get(file!.path.startsWith("blob")
-                    ? Uri.parse(file.path)
-                    : Uri.parse(
-                        'https://imgs.apexo.app/?url=${Uri.encodeComponent(file.path)}')))
-                .bodyBytes,
-            filename: filename,
-          );
-        }
-        await remote!.uploadImage(rowID, multipart);
+        final pbName = await remote!.uploadImage(
+          rowID: rowID,
+          filename: filename,
+          path: path,
+          file: file,
+        );
         onSyncEnd?.call();
         synchronize();
-        return;
+        return pbName;
       } catch (e, s) {
         login.askForLoginAgain(e);
         showErrorMessage(e, "uploadingFile");
-        logger("Error during sending the file (Will defer upload): $e", s);
+        logger("Error during upload (Will defer): $e", s);
       }
     }
 
-    /**
-     * If we reached here it means that its either
-     * 1. we're offline
-     * 2. there was an error during sending updates
-     * 3. there are already deferred updates
-     */
-    // DEFERRED Structure: "FILE||{rowID}||path:{0 for deleting, 1 for uploading}"
-    final valueToDefer = path ?? file!.path;
-    await local!.putDeferred({}
-      ..addAll(lastDeferred)
-      ..addAll({"FILE||$rowID||$valueToDefer||$filename": 1}));
+    // Defer: "FILE||{rowID}||{path}||{filename}" → 1 (upload)
+    await local!.putDeferred({
+      ...lastDeferred,
+      "FILE||$rowID||${path ?? ''}||$filename": 1,
+    });
     deferredPresent = true;
     onSyncEnd?.call();
+    return filename;
   }
 
   /// notifies the view that the store has changed

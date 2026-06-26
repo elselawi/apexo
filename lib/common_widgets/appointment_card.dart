@@ -46,6 +46,7 @@ class AppointmentCard extends StatelessWidget {
   final bool showLeftBorder;
   final bool showSectionTitle;
   final Color openButtonColor;
+  final int openOnTab;
   const AppointmentCard({
     super.key,
     required this.appointment,
@@ -53,10 +54,11 @@ class AppointmentCard extends StatelessWidget {
     this.readOnly = false,
     required this.number,
     this.hide = const [],
-    this.photosClipCount = 2,
+    this.photosClipCount = 3,
     this.showLeftBorder = true,
     this.showSectionTitle = true,
     this.openButtonColor = const Color(0xFF0078D4),
+    this.openOnTab = 0,
   });
 
   @override
@@ -183,11 +185,13 @@ class AppointmentCard extends StatelessWidget {
                                 clipCount: photosClipCount,
                                 rowWidth: 200,
                                 size: 43,
-                                progress: false,
                                 drawings: appointment.drawings,
                                 onSaveDrawing: (img, drawing) {
                                   appointment.drawings[img] = drawing;
                                   appointments.set(appointment);
+                                },
+                                onTapClip: () {
+                                  openAppointment(appointment, 2);
                                 },
                                 onPressDelete: (img) async {
                                   try {
@@ -462,7 +466,7 @@ class AppointmentCard extends StatelessWidget {
         if (!hide.contains(AppointmentSections.openAppointmentButton)) ...[
           IconButton(
             icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
-            onPressed: () => openAppointment(appointment),
+            onPressed: () => openAppointment(appointment, openOnTab),
             iconButtonMode: IconButtonMode.large,
             style: filledButtonStyle(openButtonColor),
           ),

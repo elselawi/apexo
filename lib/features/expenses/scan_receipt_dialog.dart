@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/keyboard_aware.dart';
@@ -136,17 +137,11 @@ class _ScanReceiptDialogContentState extends State<_ScanReceiptDialogContent> {
           ),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: _saving
-                ? const SizedBox(
-                    width: 14, height: 14, child: ProgressRing(strokeWidth: 2))
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(WindowsIcons.save),
-                      const SizedBox(width: 8),
-                      Txt(txt("save")),
-                    ],
-                  ),
+            child: ButtonContent(
+              WindowsIcons.save,
+              txt("save"),
+              inProgress: _saving,
+            ),
           ),
         ],
       ),

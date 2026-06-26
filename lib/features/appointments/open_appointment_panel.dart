@@ -161,97 +161,6 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
   routes.openPanel(panel);
 }
 
-class _UploadButtons extends StatelessWidget {
-  final Panel<Appointment> panel;
-  const _UploadButtons(this.panel);
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FilledButton(
-            child: ButtonContent(WindowsIcons.link, txt("link")),
-            onPressed: () {
-              showDialog(
-                barrierDismissible: true,
-                dismissWithEsc: true,
-                context: context,
-                builder: (context) {
-                  return ImportDialog(panel: panel);
-                },
-              );
-            },
-          ),
-          if (ImagePicker().supportsImageSource(ImageSource.camera)) ...[
-            const SizedBox(width: 10),
-            FilledButton(
-              child: ButtonContent(WindowsIcons.camera, txt("camera")),
-              onPressed: () async {
-                final XFile? res =
-                    await ImagePicker().pickImage(source: ImageSource.camera);
-                if (res == null) return;
-                panel.inProgress(true);
-
-                try {
-                  final imgName = await handleNewImage(
-                    rowID: panel.item.id,
-                    sourcePath: res.path,
-                    sourceFile: res,
-                  );
-                  if (panel.item.imgs.contains(imgName) == false) {
-                    panel.item.imgs.add(imgName);
-                    appointments.set(panel.item);
-                    panel.savedJson = jsonEncode(panel.item.toJson());
-                  }
-                } catch (e, s) {
-                  showErrorMessage(e, "uploadingPatientImageFromCamera");
-                  login.askForLoginAgain(e);
-                  logger("Error during uploading camera capture: $e", s);
-                }
-                panel.selectedTab(panel.selectedTab());
-                panel.inProgress(false);
-              },
-            )
-          ],
-          const SizedBox(width: 10),
-          FilledButton(
-            child: ButtonContent(WindowsIcons.photo_collection, txt("upload")),
-            onPressed: () async {
-              List<XFile> res = await ImagePicker()
-                  .pickMultiImage(limit: 50 - panel.item.imgs.length);
-              panel.inProgress(true);
-              try {
-                for (var img in res) {
-                  final imgName = await handleNewImage(
-                    rowID: panel.item.id,
-                    sourcePath: img.path,
-                    sourceFile: img,
-                  );
-                  if (panel.item.imgs.contains(imgName) == false) {
-                    panel.item.imgs.add(imgName);
-                    appointments.set(panel.item);
-                    panel.savedJson = jsonEncode(panel.item.toJson());
-                    panel.selectedTab(panel.selectedTab());
-                  }
-                }
-              } catch (e, s) {
-                showErrorMessage(e, "uploadingPatientImageFromGallery");
-                login.askForLoginAgain(e);
-                logger("Error during file upload: $e", s);
-              }
-              panel.inProgress(false);
-              panel.selectedTab(panel.selectedTab());
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _AppointmentGallery extends StatefulWidget {
   final Panel<Appointment> panel;
   const _AppointmentGallery(this.panel);
@@ -271,12 +180,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          children: [
-            _buildCurrentAppointmentPhotos(),
-            if (login.perm(Perm.photos).exact(1)) _UploadButtons(widget.panel),
-          ],
-        ),
+        _buildCurrentAppointmentPhotos(),
         if (otherImages.isNotEmpty)
           _OtherAppointmentsPhotos(otherImages: otherImages),
       ],
@@ -287,49 +191,60 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
     return StreamBuilder(
         stream: widget.panel.selectedTab.stream,
         builder: (context, _) {
-          return widget.panel.item.imgs.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: InfoBar(
-                    title: Txt(txt("emptyGallery")),
-                    content: Txt(txt("noPhotos")),
-                  ),
-                )
-              : StreamBuilder(
-                  stream: widget.panel.inProgress.stream,
-                  builder: (context, snapshot) {
-                    return GridGallery(
-                      canDelete: login.perm(Perm.photos).exact(1),
-                      rowId: widget.panel.item.id,
-                      imgs: widget.panel.item.imgs,
-                      progress: widget.panel.inProgress(),
-                      drawings: widget.panel.item.drawings,
-                      onSaveDrawing: (img, drawing) {
-                        widget.panel.item.drawings[img] = drawing;
-                        appointments.set(widget.panel.item);
-                        widget.panel.savedJson =
-                            jsonEncode(widget.panel.item.toJson());
-                      },
-                      onPressDelete: (img) async {
-                        widget.panel.inProgress(true);
-                        try {
-                          await appointments.deleteImg(
-                              widget.panel.item.id, img);
-                          widget.panel.item.imgs.remove(img);
-                          widget.panel.item.drawings.remove(img);
-                          appointments.set(widget.panel.item);
-                          widget.panel.savedJson =
-                              jsonEncode(widget.panel.item.toJson());
-                        } catch (e, s) {
-                          showErrorMessage(e, "deletingPatientImageFromServer");
-                          login.askForLoginAgain(e);
-                          logger("Error during deleting image: $e", s);
-                        }
-                        widget.panel.inProgress(false);
+          return StreamBuilder(
+              stream: widget.panel.inProgress.stream,
+              builder: (context, snapshot) {
+                return GridGallery(
+                  onProgress: (inProgress) {
+                    setState(() {
+                      widget.panel.inProgress(inProgress);
+                    });
+                  },
+                  canDelete: login.perm(Perm.photos).exact(1),
+                  rowId: widget.panel.item.id,
+                  imgs: widget.panel.item.imgs,
+                  slideshowEnabled: true,
+                  drawings: widget.panel.item.drawings,
+                  onSaveDrawing: (img, drawing) {
+                    widget.panel.item.drawings[img] = drawing;
+                    appointments.set(widget.panel.item);
+                    widget.panel.savedJson =
+                        jsonEncode(widget.panel.item.toJson());
+                  },
+                  onPressDelete: (img) async {
+                    widget.panel.inProgress(true);
+                    try {
+                      await appointments.deleteImg(widget.panel.item.id, img);
+                      widget.panel.item.imgs.remove(img);
+                      widget.panel.item.drawings.remove(img);
+                      appointments.set(widget.panel.item);
+                      widget.panel.savedJson =
+                          jsonEncode(widget.panel.item.toJson());
+                    } catch (e, s) {
+                      showErrorMessage(e, "deletingPatientImageFromServer");
+                      login.askForLoginAgain(e);
+                      logger("Error during deleting image: $e", s);
+                    }
+                    widget.panel.inProgress(false);
+                    widget.panel.selectedTab(widget.panel.selectedTab());
+                  },
+                  uploadConfig: GalleryUploadConfig(
+                    store: appointments,
+                    canUpload: login.perm(Perm.photos).exact(1),
+                    modelPersistence: (names) async {
+                      widget.panel.item.imgs.addAll(names);
+                      widget.panel.item.imgs =
+                          widget.panel.item.imgs.toSet().toList();
+                      appointments.set(widget.panel.item);
+                      widget.panel.savedJson =
+                          jsonEncode(widget.panel.item.toJson());
+                      if (mounted) {
                         widget.panel.selectedTab(widget.panel.selectedTab());
-                      },
-                    );
-                  });
+                      }
+                    },
+                  ),
+                );
+              });
         });
   }
 }

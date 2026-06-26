@@ -297,6 +297,8 @@ class Ar implements En {
     "new": "جديد",
     "thisMonth": "هذا الشهر",
     "addPhoto": "إضافة صورة",
+    "files": "ملفات",
+    "noFiles": "لم تتم إضافة ملفات بعد.",
     "change": "تغيير",
     "empty": "فارغ",
     "totalDue": "المجموع المستحق",
@@ -358,6 +360,9 @@ class Ar implements En {
 
     // stats
     "pickRange": "اختيار النطاق",
+    "pickPhotos": "اختيار الصور",
+    "pickFiles": "اختيار الملفات",
+    "photoSlideshow": "عرض تقديمي لجميع الصور",
     "start": "بداية",
     "end": "نهاية",
     "weeks": "أسابيع",
@@ -483,6 +488,16 @@ class Ar implements En {
         "عدد الأيام قبل أن يحتاج المدراء لإعادة تسجيل الدخول",
     "auth_save_success": "تم حفظ إعدادات المصادقة بنجاح",
     "auth_save_fail": "فشل حفظ إعدادات المصادقة",
+
+    // File upload settings
+    "file_upload_settings": "إعدادات رفع الملفات",
+    "file_upload_info_title": "الحد الأقصى لحجم رفع الملفات",
+    "file_upload_info_desc":
+        "تعيين الحد الأقصى المسموح به لرفع الملفات (الصور والمستندات وما إلى ذلك) عبر التطبيق.",
+    "file_upload_max_size": "الحد الأقصى لحجم الملف (ميجابايت)",
+    "file_upload_max_size_hint": "الحد الأقصى بالميجابايت لكل ملف يتم رفعه",
+    "file_upload_save_success": "تم حفظ إعدادات رفع الملفات بنجاح",
+    "file_upload_save_fail": "فشل حفظ إعدادات رفع الملفات",
 
     // advanced settings: Admins
     "admins": "المدراء",

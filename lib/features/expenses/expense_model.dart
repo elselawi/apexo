@@ -4,6 +4,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/imgs.dart';
 
 class Expense extends Model {
   @override
@@ -34,6 +35,10 @@ class Expense extends Model {
   @override
   String get title {
     return "${isSupplier ? txt("supplier") : txt("order")}: ${isSupplier ? supplierName : fromSupplierName}";
+  }
+
+  List<String> get viewableImgs {
+    return photos.where((name) => isAnImageName(name)).toList();
   }
 
   // id: id of the expense item (inherited from Model)

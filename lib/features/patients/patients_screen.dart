@@ -247,7 +247,7 @@ class _PatientsPageState extends State<_PatientsPage> {
             controller: _scrollController,
             itemCount: _displayedItems.length,
             padding: const EdgeInsets.all(0),
-            itemExtent: 93,
+            itemExtent: 95,
             itemBuilder: (context, index) {
               final patient = _displayedItems[index];
               return _buildRow(
@@ -374,7 +374,7 @@ class _PatientsPageState extends State<_PatientsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 5),
       width: constraints.maxWidth - 52,
-      height: 45,
+      height: 48,
       child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -543,7 +543,7 @@ class ClickableBottomLabel extends StatelessWidget {
           }
         },
         child: Container(
-          width: cW,
+          width: cW + 5,
           padding: const EdgeInsets.symmetric(horizontal: 2),
           decoration:
               searchStringLowerCased == label.searchableString.toLowerCase() &&

@@ -1,40 +1,28 @@
 import 'dart:convert';
-import 'package:apexo/app/routes.dart';
+
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
-import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/keyboard_aware.dart';
-import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/services/login.dart';
-import 'package:apexo/utils/imgs.dart';
-import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart';
 
 class ImportDialog extends StatefulWidget {
-  final Panel<Appointment> panel;
-
-  const ImportDialog({super.key, required this.panel});
+  const ImportDialog({super.key});
 
   @override
   State<ImportDialog> createState() => _ImportDialogState();
 }
 
 class _ImportDialogState extends State<ImportDialog> {
-  final importPhotosFromLinkController = TextEditingController();
-
-  // empty means ready
-  // . means loading
-  // any other string means error
-  String status = "";
+  final _linkCtrl = TextEditingController();
+  String _error = "";
 
   @override
   void dispose() {
-    importPhotosFromLinkController.dispose();
+    _linkCtrl.dispose();
     super.dispose();
   }
 
@@ -52,86 +40,56 @@ class _ImportDialogState extends State<ImportDialog> {
               content: Txt(txt("useThisForm")),
             ),
             const SizedBox(height: 10),
-            if (status.length > 1)
+            if (_error.isNotEmpty)
               InfoBar(
                 title: Txt(txt("error")),
-                content: Txt(status),
+                content: Txt(_error),
                 severity: InfoBarSeverity.error,
               ),
             const SizedBox(height: 10),
             InfoLabel(
               label: txt("link"),
               child: CupertinoTextField(
-                  controller: importPhotosFromLinkController,
-                  placeholder: txt("enterLink")),
+                controller: _linkCtrl,
+                placeholder: txt("enterLink"),
+              ),
             ),
           ],
         ),
         actions: [
-          if (status.length == 1) const ProgressBar(),
           const CloseButtonInDialog(),
           FilledButton(
             style: filledButtonStyle(Colors.blue),
-            child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              const Icon(WindowsIcons.save),
-              const SizedBox(width: 5),
-              Txt(txt("import"))
-            ]),
-            onPressed: () async {
-              // cache the id so that if the user opens another appointment
-              // the photos would go to the correct appointment
-              final id = widget.panel.item.id;
-              setState(() {
-                status = ".";
-              });
-              widget.panel.selectedTab(widget.panel.selectedTab());
-              List<String> res;
-              try {
-                final url = Uri.parse(
-                    'https://imgs.apexo.app/?url=${Uri.encodeComponent(importPhotosFromLinkController.text)}');
-                final response = await get(url);
-                if (response.statusCode != 200) {
-                  throw Exception(response.body);
-                } else {
-                  if (!mounted) return;
-                  setState(() {
-                    status = "";
-                  });
-                  res = List<String>.from(jsonDecode(response.body));
-                }
-              } catch (e) {
-                if (!mounted) return;
-                setState(() {
-                  status = e.toString();
-                });
-                widget.panel.selectedTab(widget.panel.selectedTab());
-                return;
-              }
-              if (context.mounted) Navigator.pop(context);
-              widget.panel.inProgress(true);
-              try {
-                for (var imgLink in res) {
-                  final imgName =
-                      await handleNewImage(rowID: id, sourcePath: imgLink);
-                  if (widget.panel.item.imgs.contains(imgName) == false) {
-                    widget.panel.item.imgs.add(imgName);
-                    appointments.set(widget.panel.item);
-                    widget.panel.savedJson =
-                        jsonEncode(widget.panel.item.toJson());
-                  }
-                  widget.panel.selectedTab(widget.panel.selectedTab());
-                }
-              } catch (e, s) {
-                showErrorMessage(e, "importingRemoteImages");
-                login.askForLoginAgain(e);
-                logger("Error during images importing: $e", s);
-              }
-              widget.panel.inProgress(false);
-              widget.panel.selectedTab(widget.panel.selectedTab());
-            },
+            onPressed: _import,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(WindowsIcons.save),
+                const SizedBox(width: 5),
+                Txt(txt("import")),
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _import() async {
+    setState(() => _error = "");
+    try {
+      final url = Uri.parse(
+          'https://imgs.apexo.app/?url=${Uri.encodeComponent(_linkCtrl.text)}');
+      final response = await get(url);
+      if (response.statusCode != 200) {
+        throw Exception(response.body);
+      }
+      if (!mounted) return;
+      final res = List<String>.from(jsonDecode(response.body));
+      if (mounted) Navigator.pop(context, res);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.toString());
+    }
   }
 }

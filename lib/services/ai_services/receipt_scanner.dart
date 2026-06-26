@@ -65,14 +65,6 @@ class ReceiptData {
 // ============================================================================
 
 class ReceiptScanner extends AIService {
-  // ── From file / bytes (cross-platform) ──────────────────────────────────
-
-  /// Reads a receipt from the given image file path (native only).
-  static Future<ReceiptData> readReceiptFromFile(String imagePath) async {
-    final bytes = await File(imagePath).readAsBytes();
-    return _sendImage(bytes);
-  }
-
   /// Reads a receipt from an [XFile] (works on web + native).
   static Future<ReceiptData> readReceiptFromXFile(XFile xFile) async {
     return _sendImage(await xFile.readAsBytes());
@@ -82,22 +74,6 @@ class ReceiptScanner extends AIService {
   static Future<List<String>> extractItemsFromUrl(String imageUrl) async {
     final bytes = await _downloadBytes(imageUrl);
     return _extractItemsFromBytes(bytes);
-  }
-
-  // ── From picker ─────────────────────────────────────────────────────────
-
-  /// Reads a receipt from the image picker (gallery).
-  static Future<ReceiptData> readReceiptFromPicker() async {
-    final xFile = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (xFile == null) throw Exception('No image selected');
-    return _sendImage(await xFile.readAsBytes());
-  }
-
-  /// Reads a receipt by taking a photo with the camera.
-  static Future<ReceiptData> readReceiptFromCamera() async {
-    final xFile = await ImagePicker().pickImage(source: ImageSource.camera);
-    if (xFile == null) throw Exception('No image captured');
-    return _sendImage(await xFile.readAsBytes());
   }
 
   // ── Internal ────────────────────────────────────────────────────────────

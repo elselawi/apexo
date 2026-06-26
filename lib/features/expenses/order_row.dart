@@ -388,10 +388,10 @@ class OrderRowState extends State<OrderRow>
           ),
           const SizedBox(height: 8),
           _buildItemsInput(),
-          if ((canEdit && !inProgress) &&
+          if (canEdit &&
               network.isOnline() &&
               globalSettings.aiServicesEnabled &&
-              widget.order.photos.isNotEmpty &&
+              widget.order.viewableImgs.isNotEmpty &&
               widget.order.items.isEmpty) ...[
             const SizedBox(height: 3),
             Button(
@@ -399,6 +399,7 @@ class OrderRowState extends State<OrderRow>
               child: ButtonContent(
                 WindowsIcons.lightbulb,
                 txt("readFromPhoto"),
+                inProgress: inProgress,
               ),
             )
           ],
@@ -592,170 +593,71 @@ class OrderRowState extends State<OrderRow>
 
   Widget _buildPhotosSection() {
     final theme = FluentTheme.of(context);
-    return SizedBox(
-      child: Column(
-        crossAxisAlignment: widget.order.photos.isEmpty
-            ? CrossAxisAlignment.center
-            : CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                txt("photos").toUpperCase(),
-                style: _sectionTitleTextStyle(theme).copyWith(
-                  fontSize: 14,
-                ),
+    return Column(
+      crossAxisAlignment: widget.order.photos.isEmpty
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              txt("photos").toUpperCase(),
+              style: _sectionTitleTextStyle(theme).copyWith(
+                fontSize: 14,
               ),
-              if (canEdit && !inProgress) ...[
-                _buildAddPhotoButton(),
-              ]
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GridGallery(
+          onProgress: (busy) {
+            setState(() {
+              inProgress = busy;
+            });
+          },
+          rowId: widget.order.id,
+          imgs: widget.order.photos,
+          onPressDelete: (img) async {
+            try {
+              await expenses.deleteImg(
+                widget.order.id,
+                img,
+              );
+              widget.order.photos.remove(img);
+              expenses.set(widget.order);
+            } catch (e, s) {
+              showErrorMessage(e, "deletingOrderImageFromServer");
+              login.askForLoginAgain(e);
+              logger("Error during deleting image: $e", s);
+            }
+          },
+          canDelete: canEdit,
+          size: 89,
+          uploadConfig: GalleryUploadConfig(
+            acceptedSources: {
+              UploadSource.camera,
+              UploadSource.files,
+              UploadSource.gallery
+            },
+            store: expenses,
+            canUpload: canEdit,
+            modelPersistence: (names) async {
+              widget.order.photos.addAll(names);
+              widget.order.photos = widget.order.photos.toSet().toList();
+              expenses.set(widget.order);
+            },
           ),
-          const SizedBox(height: 8),
-          if (widget.order.photos.isEmpty)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisAlignment: MainAxisAlignment.center,
-              spacing: 5,
-              children: [
-                const SizedBox(height: 0),
-                const Icon(FluentIcons.photo2_remove, size: 20),
-                SmallLabel(
-                  label: txt("noPhotos"),
-                  textColor: Colors.white,
-                  bgColor: Colors.warningPrimaryColor,
-                  icon: FluentIcons.warning,
-                ),
-              ],
-            )
-          else
-            GridGallery(
-              rowId: widget.order.id,
-              imgs: widget.order.photos,
-              progress: inProgress,
-              onPressDelete: (img) async {
-                try {
-                  await expenses.deleteImg(
-                    widget.order.id,
-                    img,
-                  );
-                  widget.order.photos.remove(img);
-                } catch (e, s) {
-                  showErrorMessage(e, "deletingOrderImageFromServer");
-                  login.askForLoginAgain(e);
-                  logger("Error during deleting image: $e", s);
-                }
-              },
-              canDelete: canEdit,
-              size: 60,
-              showPlayIcon: false,
-              clipCount: 99999,
-            )
-        ],
-      ),
+        )
+      ],
     );
-  }
-
-  Widget _buildAddPhotoButton() {
-    return FlyoutTarget(
-      controller: photoAddMenu,
-      child: Button(
-        child: ButtonContent(WindowsIcons.photo, txt("add")),
-        onPressed: () async {
-          if (inProgress) return;
-          final bool suppGallery =
-              ImagePicker().supportsImageSource(ImageSource.gallery);
-          final bool suppCamera =
-              ImagePicker().supportsImageSource(ImageSource.camera);
-
-          if (suppGallery && !suppCamera) {
-            uploadFromGallery();
-            return;
-          }
-          if (!suppGallery && suppCamera) {
-            uploadFromCamera();
-            return;
-          }
-
-          await flyoutFocusFix(context);
-          photoAddMenu.showFlyout(builder: (context) {
-            return MenuFlyout(
-              items: [
-                if (suppGallery)
-                  MenuFlyoutItem(
-                    text: Txt(txt("upload")),
-                    leading: const Icon(FluentIcons.upload),
-                    onPressed: uploadFromGallery,
-                  ),
-                if (suppCamera)
-                  MenuFlyoutItem(
-                    text: Txt(txt("camera")),
-                    leading: const Icon(FluentIcons.camera),
-                    onPressed: uploadFromCamera,
-                  ),
-              ],
-            );
-          });
-        },
-      ),
-    );
-  }
-
-  void uploadFromGallery() async {
-    List<XFile> res = await ImagePicker().pickMultiImage(limit: 10);
-    if (!mounted) return;
-    setState(() => inProgress = true);
-    try {
-      for (var img in res) {
-        final imgName = await handleNewImage(
-          rowID: widget.order.id,
-          sourcePath: img.path,
-          sourceFile: img,
-          targetStore: expenses,
-        );
-        if (!widget.order.photos.contains(imgName)) {
-          widget.order.photos.add(imgName);
-        }
-      }
-    } catch (e, s) {
-      showErrorMessage(e, "uploadingOrderImageFromGallery");
-      login.askForLoginAgain(e);
-      logger("Error during file upload: $e", s);
-    }
-    if (mounted) setState(() => inProgress = false);
-  }
-
-  void uploadFromCamera() async {
-    final XFile? res =
-        await ImagePicker().pickImage(source: ImageSource.camera);
-    if (res == null) return;
-    if (!mounted) return;
-    setState(() => inProgress = true);
-    try {
-      final imgName = await handleNewImage(
-        rowID: widget.order.id,
-        sourcePath: res.path,
-        sourceFile: res,
-        targetStore: expenses,
-      );
-      if (!widget.order.photos.contains(imgName)) {
-        widget.order.photos.add(imgName);
-      }
-    } catch (e, s) {
-      showErrorMessage(e, "uploadingOrderImageFromCamera");
-      login.askForLoginAgain(e);
-      logger("Error during camera upload: $e", s);
-    }
-    if (mounted) setState(() => inProgress = false);
   }
 
   void _readFromPhoto() async {
-    if (widget.order.photos.isEmpty || !mounted) return;
+    if (widget.order.viewableImgs.isEmpty || !mounted || inProgress) return;
     setState(() => inProgress = true);
     try {
-      final imgName = widget.order.photos.first;
+      final imgName = widget.order.viewableImgs.first;
       final imgUrl =
           await expenses.remote?.getImageLink(widget.order.id, imgName);
       if (imgUrl == null) throw Exception("Could not retrieve image URL");

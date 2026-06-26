@@ -300,6 +300,8 @@ class En {
     "new": "New",
     "thisMonth": "This month",
     "addPhoto": "Add photo",
+    "files": "Files",
+    "noFiles": "No files have been added yet.",
     "change": "Change",
     "empty": "Empty",
     "totalDue": "Total due",
@@ -361,6 +363,9 @@ class En {
 
     // stats
     "pickRange": "Pick range",
+    "pickPhotos": "Pick photos",
+    "pickFiles": "Pick files",
+    "photoSlideshow": "Photo slideshow",
     "start": "Start",
     "end": "End",
     "weeks": "Weeks",
@@ -488,6 +493,17 @@ class En {
         "How many days before admins need to re-login",
     "auth_save_success": "Authentication settings saved successfully",
     "auth_save_fail": "Failed to save authentication settings",
+
+    // File upload settings
+    "file_upload_settings": "File Upload Settings",
+    "file_upload_info_title": "Maximum File Upload Size",
+    "file_upload_info_desc":
+        "Set the maximum allowed size for file uploads (images, documents, etc.) across the application.",
+    "file_upload_max_size": "Maximum file size (MB)",
+    "file_upload_max_size_hint":
+        "Maximum size in megabytes for each uploaded file",
+    "file_upload_save_success": "File upload settings saved successfully",
+    "file_upload_save_fail": "Failed to save file upload settings",
 
     // advanced settings: Admins
     "admins": "Administrators",

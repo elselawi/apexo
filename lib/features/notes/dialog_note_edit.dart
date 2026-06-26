@@ -2,16 +2,18 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
+import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/features/notes/note_attachments_widget.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
@@ -218,9 +220,48 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                 ),
                 if (note != null && !note.isGhost)
                   InfoLabel(
-                    label: "${txt("attachments")}:",
-                    child: NoteAttachmentsWidget(note: note),
-                  ),
+                      label: "${txt("attachments")}:",
+                      child: LayoutBuilder(builder: (context, constraints) {
+                        if (widget.note == null) return const SizedBox.shrink();
+                        return GridGallery(
+                            rowId: widget.note!.id,
+                            imgs: widget.note!.attachments,
+                            onPressDelete: (img) async {
+                              try {
+                                await notes.deleteImg(widget.note!.id, img);
+                                notes
+                                    .set(widget.note!..attachments.remove(img));
+                              } catch (e, s) {
+                                showErrorMessage(e, "deletingFile");
+                                login.askForLoginAgain(e);
+                                logger("Error during deleting file: $e", s);
+                              }
+                            },
+                            canDelete: true,
+                            rowWidth: 268,
+                            countPerLine: 3,
+                            uploadConfig: GalleryUploadConfig(
+                              acceptedSources: {
+                                UploadSource.camera,
+                                UploadSource.files,
+                                UploadSource.gallery
+                              },
+                              store: notes,
+                              canUpload: true,
+                              modelPersistence: (names) async {
+                                final List<String> urls = [];
+                                for (final name in names) {
+                                  final url = await notes.remote!
+                                      .getImageLink(widget.note!.id, name);
+                                  if (url != null) urls.add(url);
+                                }
+                                widget.note!.attachments.addAll(urls);
+                                widget.note!.attachments =
+                                    widget.note!.attachments.toSet().toList();
+                                notes.set(widget.note!);
+                              },
+                            ));
+                      })),
               ],
             ),
           ),

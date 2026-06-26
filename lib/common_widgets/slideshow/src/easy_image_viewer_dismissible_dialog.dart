@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
+import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
@@ -73,12 +74,13 @@ class _EasyImageViewerDismissibleDialogState
     super.initState();
     _pageController =
         PageController(initialPage: widget.imageProvider.initialIndex);
-    if (widget.onPageChanged != null) {
-      _internalPageChangeListener = () {
+    _internalPageChangeListener = () {
+      if (widget.onPageChanged != null) {
         widget.onPageChanged!(_getCurrentPage());
-      };
-      _pageController.addListener(_internalPageChangeListener!);
-    }
+      }
+      setState(() {});
+    };
+    _pageController.addListener(_internalPageChangeListener!);
   }
 
   @override
@@ -93,7 +95,6 @@ class _EasyImageViewerDismissibleDialogState
 
   @override
   Widget build(BuildContext context) {
-    // Remove this once we release v2.0.0 and can bump the minimum Flutter version to 3.13.0
     final popScopeAwareDialog = PopScope(
         onPopInvokedWithResult: (_, __) {
           _handleDismissal();
@@ -310,73 +311,83 @@ class _EasyImageViewerDismissibleDialogState
                         )
                       ],
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (widget.canDelete) ...[
-                          DeleteButton(
-                            onConfirm: () {
-                              if (_pageController.page != null) {
-                                final currentIndex =
-                                    _pageController.page!.toInt();
-                                widget.onPressDelete(currentIndex %
-                                    widget.imageProvider.imageCount);
-                                WidgetsBinding.instance
-                                    .addPostFrameCallback((_) {
-                                  Navigator.of(context).pop();
-                                  _handleDismissal();
-                                });
-                              }
-                            },
-                            preview: Txt(txt("delete")),
-                            actionText: txt("delete"),
-                            actionIcon: WindowsIcons.delete,
-                            restorable: false,
-                            style: const ButtonStyle(
-                                foregroundColor:
-                                    WidgetStatePropertyAll(Colors.white)),
-                            child: ButtonContent(
-                              WindowsIcons.delete,
-                              txt("delete"),
-                              size: 18,
-                            ),
+                    child: Builder(builder: (context) {
+                      final currentIndex = _pageController.page != null
+                          ? _pageController.page!.toInt() %
+                              widget.imageProvider.imageCount
+                          : widget.imageProvider.initialIndex;
+                      final fileName = widget.imageIds != null &&
+                              currentIndex < widget.imageIds!.length
+                          ? widget.imageIds![currentIndex]
+                          : '';
+                      return Row(
+                        spacing: 10,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GalleryDownloadButton(
+                            name: fileName,
+                            buttonLabel: txt("download"),
                           ),
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 1,
-                            height: 24,
-                            color: Colors.white.withValues(alpha: 0.54),
-                          ),
-                          const SizedBox(width: 8),
-                        ],
-                        IconButton(
-                          icon: Row(
-                            children: [
-                              const Icon(
-                                FluentIcons.clear,
-                                color: Colors.white,
+                          _divider(),
+                          if (widget.canDelete)
+                            DeleteButton(
+                              onConfirm: () {
+                                if (_pageController.page != null) {
+                                  widget.onPressDelete(currentIndex);
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    Navigator.of(context).pop();
+                                    _handleDismissal();
+                                  });
+                                }
+                              },
+                              preview: FileDeletePreview(
+                                name: fileName,
+                                imageProvider: widget.imageProvider
+                                    .imageBuilder(context, currentIndex),
+                              ),
+                              actionText: txt("delete"),
+                              actionIcon: WindowsIcons.delete,
+                              restorable: false,
+                              style: const ButtonStyle(
+                                  foregroundColor:
+                                      WidgetStatePropertyAll(Colors.white)),
+                              child: ButtonContent(
+                                WindowsIcons.delete,
+                                txt("delete"),
                                 size: 18,
                               ),
-                              const SizedBox(width: 4),
-                              Txt(
-                                txt("close"),
-                                style: FluentTheme.of(context)
-                                    .typography
-                                    .bodyStrong!
-                                    .copyWith(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                    ),
-                              ),
-                            ],
+                            ),
+                          _divider(),
+                          IconButton(
+                            icon: Row(
+                              children: [
+                                const Icon(
+                                  FluentIcons.clear,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                const SizedBox(width: 4),
+                                Txt(
+                                  txt("close"),
+                                  style: FluentTheme.of(context)
+                                      .typography
+                                      .bodyStrong!
+                                      .copyWith(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                              _handleDismissal();
+                            },
                           ),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                            _handleDismissal();
-                          },
-                        ),
-                      ],
-                    ),
+                        ],
+                      );
+                    }),
                   ),
                 ),
               ),
@@ -399,6 +410,14 @@ class _EasyImageViewerDismissibleDialogState
     } else {
       return popScopeAwareDialog;
     }
+  }
+
+  Container _divider() {
+    return Container(
+      width: 1,
+      height: 24,
+      color: Colors.white.withValues(alpha: 0.54),
+    );
   }
 
   // Internal function to be called whenever the dialog

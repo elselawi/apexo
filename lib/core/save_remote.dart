@@ -5,6 +5,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:intl/intl.dart';
 import 'dart:async';
@@ -46,6 +47,7 @@ class SaveRemote {
   void Function(bool)? onOnlineStatusChange;
 
   bool isOnline = true;
+  final Map<String, Future<String>> _uploadsInFlight = {};
   SaveRemote({
     required this.storeName,
     required this.pbInstance,
@@ -184,70 +186,88 @@ class SaveRemote {
     return true;
   }
 
-  Future<void> waitForAnotherProcess({
-    required String fileName,
-    Duration checkInterval = const Duration(milliseconds: 500),
-    Duration timeout = const Duration(seconds: 15),
-  }) async {
-    final stopwatch = Stopwatch()..start();
-
-    while (stopwatch.elapsed < timeout) {
-      // Check if the string has been removed
-      if (!inProgress.contains(fileName)) {
-        return; // Resolves the future if the string is no longer in the set
+  Future<String?> _findExistingByHash(String rowID, String filename) async {
+    final hash = p.basenameWithoutExtension(filename).split('_').last;
+    try {
+      List<String> fullNames;
+      if (fullNamesCache.containsKey(rowID)) {
+        fullNames = fullNamesCache[rowID]!;
+      } else {
+        final record = await remoteRows.getOne(rowID, fields: "imgs");
+        fullNames = List<String>.from(record.data["imgs"]);
+        fullNamesCache[rowID] = fullNames;
       }
-
-      // Wait for the next interval before checking again
-      await Future.delayed(checkInterval);
+      return fullNames.where((e) => e.contains("_${hash}_")).firstOrNull;
+    } catch (_) {
+      return null; // can't check → proceed with upload
     }
-
-    // If we exit the loop, it means the timeout has been reached
-    throw TimeoutException(
-      'The image was not uploaded in time in another process',
-    );
   }
 
-  // some synchronization processes happens too fast
-  // that an image might be uploaded twice
-  // this is a workaround to avoid that
-  Set<String> inProgress = <String>{};
-  Future<bool> uploadImage(String rowID, http.MultipartFile file) async {
-    final nameWithoutExt = p.basenameWithoutExtension(file.filename ?? "null");
-    try {
-      if (inProgress.contains(nameWithoutExt)) {
-        await waitForAnotherProcess(fileName: nameWithoutExt);
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      late List<String> alreadyUploaded;
-      try {
-        alreadyUploaded = List<String>.from(
-            (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
-      } catch (e, s) {
-        alreadyUploaded = [];
-        login.askForLoginAgain(e);
-        showErrorMessage(e, "gettingRemoteImagesList");
-        logger(
-            "Error while trying to get a list of already uploaded images: $e",
-            s);
-      }
+  Future<String> uploadImage({
+    required String rowID,
+    required String filename,
+    String? path,
+    XFile? file,
+    http.MultipartFile? predefinedMultipart,
+  }) async {
+    final hash = p.basenameWithoutExtension(filename).split('_').last;
 
-      // skip if file was already uploaded
-      if (alreadyUploaded
-          .any((uploaded) => uploaded.contains(nameWithoutExt))) {
-        return false;
-      }
-      inProgress.add(nameWithoutExt);
-      final updatedRecord =
-          await remoteRows.update(rowID, files: [file], fields: "imgs");
-      fullNamesCache
-          .addAll({rowID: List<String>.from(updatedRecord.data["imgs"])});
+    final existing = await _findExistingByHash(rowID, filename);
+    if (existing != null) return existing;
+
+    // Guard against concurrent uploads of the same hash
+    if (_uploadsInFlight.containsKey(hash)) {
+      return _uploadsInFlight[hash]!;
+    }
+
+    final future = _doUpload(rowID, filename, path, file, predefinedMultipart);
+    _uploadsInFlight[hash] = future;
+    try {
+      return await future;
+    } finally {
+      _uploadsInFlight.remove(hash);
+    }
+  }
+
+  Future<String> _doUpload(
+    String rowID,
+    String filename,
+    String? path,
+    XFile? file,
+    http.MultipartFile? predefinedMultipart,
+  ) async {
+    http.MultipartFile multipart;
+    if (predefinedMultipart != null) {
+      multipart = predefinedMultipart;
+    } else if (path != null) {
+      multipart = await http.MultipartFile.fromPath(
+        "imgs+",
+        path,
+        filename: filename,
+      );
+    } else {
+      multipart = http.MultipartFile.fromBytes(
+        "imgs+",
+        (await http.get(file!.path.startsWith("blob")
+                ? Uri.parse(file.path)
+                : Uri.parse(
+                    'https://imgs.apexo.app/?url=${Uri.encodeComponent(file.path)}')))
+            .bodyBytes,
+        filename: filename,
+      );
+    }
+
+    try {
+      final newListOfImages = List<String>.from(
+          (await remoteRows.update(rowID, files: [multipart], fields: "imgs"))
+              .data["imgs"]);
+
+      fullNamesCache.addAll({rowID: newListOfImages});
+      return newListOfImages.last;
     } catch (e) {
-      inProgress.remove(nameWithoutExt);
       await checkOnline();
       rethrow;
     }
-    inProgress.remove(nameWithoutExt);
-    return true;
   }
 
   Future<bool> deleteImage(String rowID, String imgName) async {
@@ -270,21 +290,31 @@ class SaveRemote {
     return true;
   }
 
-  Future<String?> getImageLink(String rowID, String imageName) async {
+  Future<String?> getImageLink(String rowID, String imageName,
+      [bool useCache = true]) async {
     try {
       List<String> fullNames;
-      if (fullNamesCache.containsKey(rowID)) {
+      bool usedCache = false;
+      if (fullNamesCache.containsKey(rowID) && useCache) {
         fullNames = fullNamesCache[rowID]!;
+        usedCache = true;
       } else {
         final record = await remoteRows.getOne(rowID, fields: "imgs");
         fullNames = List<String>.from(record.data["imgs"]);
       }
       fullNamesCache[rowID] = fullNames;
+
       final candidates = fullNames
-          .where((e) => e.contains(imageName.split(".").first))
+          .where((e) => e
+              .toLowerCase()
+              .contains(imageName.toLowerCase().split(".").first))
           .toList();
       if (candidates.isEmpty) {
-        return null;
+        if (useCache && usedCache) {
+          return await getImageLink(rowID, imageName, false);
+        } else {
+          return null;
+        }
       } else {
         return "${pbInstance.baseURL}/api/files/$dataCollectionName/$rowID/${candidates.first}";
       }

@@ -302,6 +302,8 @@ class Es implements En {
     "new": "Nuevo",
     "thisMonth": "Este mes",
     "addPhoto": "Agregar foto",
+    "files": "Archivos",
+    "noFiles": "Aún no se han agregado archivos.",
     "change": "Cambiar",
     "empty": "Vacío",
     "totalDue": "Total pendiente",
@@ -363,6 +365,9 @@ class Es implements En {
 
     // stats
     "pickRange": "Seleccionar rango",
+    "pickPhotos": "Seleccionar fotos",
+    "pickFiles": "Seleccionar archivos",
+    "photoSlideshow": "Presentación de fotos",
     "start": "Inicio",
     "end": "Fin",
     "weeks": "Semanas",
@@ -492,6 +497,19 @@ class Es implements En {
     "auth_save_success":
         "Configuración de autenticación guardada correctamente",
     "auth_save_fail": "Error al guardar la configuración de autenticación",
+
+    // File upload settings
+    "file_upload_settings": "Configuración de subida de archivos",
+    "file_upload_info_title": "Tamaño máximo de subida de archivos",
+    "file_upload_info_desc":
+        "Establezca el tamaño máximo permitido para la subida de archivos (imágenes, documentos, etc.) en toda la aplicación.",
+    "file_upload_max_size": "Tamaño máximo de archivo (MB)",
+    "file_upload_max_size_hint":
+        "Tamaño máximo en megabytes para cada archivo subido",
+    "file_upload_save_success":
+        "Configuración de subida de archivos guardada correctamente",
+    "file_upload_save_fail":
+        "Error al guardar la configuración de subida de archivos",
 
     // advanced settings: Admins
     "admins": "Administradores",

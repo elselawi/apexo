@@ -13,11 +13,18 @@ ButtonStyle filledButtonStyle(Color color) => ButtonStyle(
 
 class ButtonContent extends StatelessWidget {
   // ignore: use_key_in_widget_constructors
-  const ButtonContent(this.icon, this.txt, {this.size, super.key});
+  const ButtonContent(
+    this.icon,
+    this.txt, {
+    this.size,
+    super.key,
+    this.inProgress = false,
+  });
 
   final String txt;
   final IconData icon;
   final double? size;
+  final bool inProgress;
 
   @override
   Widget build(BuildContext context) {
@@ -25,8 +32,23 @@ class ButtonContent extends StatelessWidget {
       spacing: 5,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: size),
-        Txt(txt, style: TextStyle(fontSize: size))
+        inProgress
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: ProgressRing(
+                  strokeWidth: 4,
+                ))
+            : Icon(icon, size: size),
+        Txt(
+          txt,
+          style: TextStyle(
+            fontSize: size,
+            color: inProgress
+                ? FluentTheme.of(context).inactiveColor.withValues(alpha: 0.3)
+                : null,
+          ),
+        )
       ],
     );
   }

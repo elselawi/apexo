@@ -4,6 +4,7 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/que.dart';
 import 'package:apexo/utils/safe_dir.dart';
+import 'package:apexo/utils/save_file_multiplatform.dart';
 import 'package:apexo/utils/strip_id_from_file.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -68,8 +69,17 @@ Future<String> handleNewImage({
     extension = path.extension(sourcePath);
   }
 
-  // hashing the path to get a filename
-  final imgName = simpleHash(sourcePath) + extension;
+  final raw = path.basenameWithoutExtension(sourcePath);
+  final safe = raw.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_').toLowerCase();
+
+  String hashInput;
+  if (fromLink || sourcePath.startsWith("blob:") || kIsWeb) {
+    hashInput = sourcePath; // fallback: path hash
+  } else {
+    final mtime = File(sourcePath).lastModifiedSync().millisecondsSinceEpoch;
+    hashInput = '${path.basename(sourcePath)}_$mtime'; // name + mtime
+  }
+  final imgName = '${safe}_${simpleHash(hashInput)}$extension';
 
   File? savedFile;
   if (!kIsWeb) {
@@ -81,29 +91,62 @@ Future<String> handleNewImage({
     }
 
     // resizing it to a thumb
-    final cmd = img.Command()
-      ..decodeImageFile(savedFile.path)
-      ..copyResize(width: 100)
-      ..writeToFile(_nameToThumbName(savedFile.path));
-    await cmd.executeThread();
+    if (isAnImageName(imgName)) {
+      try {
+        final cmd = img.Command()
+          ..decodeImageFile(savedFile.path)
+          ..copyResize(width: 100)
+          ..writeToFile(_nameToThumbName(savedFile.path));
+        await cmd.executeThread();
+      } catch (_) {
+        // Non-decodable file — skip local thumbnail (PB will handle server-side)
+      }
+    }
   }
 
   // uploading
   final store = targetStore ?? appointments;
-  await store.uploadImg(
-      rowID: rowID, filename: imgName, path: savedFile?.path, file: sourceFile);
+  final finalFileName = await store.uploadImg(
+    rowID: rowID,
+    filename: imgName,
+    path: savedFile?.path,
+    file: sourceFile,
+  );
 
-  // returning the imgName which is the hashed name + extension
-  // to be saved in the row
-  return imgName;
+  // Rename local files to match the PB-assigned name — avoids a redundant
+  // re-download on first view and keeps the locally-generated thumbnail.
+  if (!kIsWeb && savedFile != null && finalFileName != imgName) {
+    try {
+      final newPath = path.join(path.dirname(savedFile.path), finalFileName);
+      await savedFile.rename(newPath);
+      final oldThumb = File(_nameToThumbName(savedFile.path));
+      if (await oldThumb.exists()) {
+        await oldThumb.rename(_nameToThumbName(newPath));
+      }
+    } catch (_) {}
+  }
+
+  // returns the final file name
+  return finalFileName;
 }
 
 final imgMemoryCache = <String, ImageProvider?>{};
 final _imageHttpReqQue =
     TaskQueue(delayBetweenTasks: const Duration(milliseconds: 100));
 
+String _stripLastHashFromFileName(String name) {
+  return name.replaceFirstMapped(
+    RegExp(r'^(.+)_[A-Za-z0-9]{6,}(\.[^.]+)$'),
+    (m) => '${m[1]}${m[2]}',
+  );
+}
+
 Future<ImageProvider?> getImage(String rowID, String name,
     [bool thumb = true]) async {
+  if (isUrl(name)) {
+    name = Uri.parse(name).pathSegments.last;
+  }
+
   if (thumb &&
       imgMemoryCache.containsKey(name) &&
       imgMemoryCache[name] != null) {
@@ -209,4 +252,68 @@ Future<String?> getImageExtensionFromURL(String imageUrl) async {
   } catch (e) {
     return null;
   }
+}
+
+isAnImageName(String name) {
+  const imageExtensions = {
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'bmp',
+    'webp',
+    'svg',
+    'tiff',
+    'tif',
+    'ico',
+    'heic',
+    'heif',
+    'avif',
+    'jfif',
+  };
+
+  final extension = name.split('.').last.toLowerCase();
+  return imageExtensions.contains(extension);
+}
+
+/// Downloads a file from the local cache or remote server and saves it
+/// via [saveFileUtility].
+///
+/// If [name] is already a URL (starts with `http`), it is downloaded directly.
+/// Otherwise the local cache is checked first, then [rowId] + [name] are used
+/// to resolve a remote URL via [getImageLink].
+Future<void> downloadFile(String? rowId, String name) async {
+  final saveAs = displayNameForFile(name);
+  Uint8List bytes;
+
+  if (isUrl(name)) {
+    final response = await http.get(Uri.parse(name));
+    if (response.statusCode != 200) throw Exception('Download failed');
+    bytes = response.bodyBytes;
+  } else if (await checkIfFileExists(name)) {
+    final file = await getOrCreateFile(name);
+    bytes = await file.readAsBytes();
+  } else if (rowId != null) {
+    final url = await appointments.remote!.getImageLink(rowId, name);
+    if (url == null) throw Exception('File not found');
+    final response = await http.get(Uri.parse(url));
+    if (response.statusCode != 200) throw Exception('Download failed');
+    bytes = response.bodyBytes;
+  } else {
+    throw Exception('File not found');
+  }
+  await saveFileUtility(fileName: saveAs, bytes: bytes);
+}
+
+bool isUrl(String s) => s.startsWith('http://') || s.startsWith('https://');
+
+/// Returns a human-readable display name from a stored filename or URL.
+///
+/// - URLs: extracts last path segment
+/// - Hash-prefixed names (`a3f8e2dc_invoice_2024.pdf`): strips the hash
+/// - Legacy plain hashes (`a3f8e2dc.pdf`): returns as-is
+String displayNameForFile(String name) {
+  // Strip URL to last path segment
+  final base = name.contains('/') ? name.split('/').last : name;
+  return _stripLastHashFromFileName(_stripLastHashFromFileName(base));
 }

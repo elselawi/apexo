@@ -1,9 +1,10 @@
 import 'package:apexo/common_widgets/delete_button.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
+import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/features/notes/note_attachments_widget.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -11,6 +12,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show showDatePicker;
@@ -241,6 +243,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
             ),
             if (expanded) ...[
               ..._dividerWithPadding(10),
+              if (!widget.note.isGhost) ..._buildAttachments(theme),
+              ..._dividerWithPadding(10),
               _buildAssignation(theme),
               ..._dividerWithPadding(10),
               _buildDateRelatedRow(theme, context),
@@ -389,11 +393,6 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
               style: theme.typography.bodyStrong,
             ),
             _buildForPatientRow(),
-            if (!widget.note.isGhost &&
-                (canEdit || widget.note.attachments.isNotEmpty)) ...[
-              ..._dividerWithPadding(10),
-              ..._buildAttachments(theme),
-            ]
           ]
         ],
       ),
@@ -696,7 +695,45 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   List<Widget> _buildAttachments(FluentThemeData theme) {
     return [
       Txt("${txt("attachments")}:", style: theme.typography.bodyStrong),
-      NoteAttachmentsWidget(note: widget.note, canUpload: canEdit)
+      LayoutBuilder(builder: (context, constraints) {
+        return GridGallery(
+            rowId: widget.note.id,
+            imgs: widget.note.attachments,
+            onPressDelete: (img) async {
+              try {
+                await notes.deleteImg(widget.note.id, img);
+                notes.set(widget.note..attachments.remove(img));
+              } catch (e, s) {
+                showErrorMessage(e, "deletingFile");
+                login.askForLoginAgain(e);
+                logger("Error during deleting file: $e", s);
+              }
+            },
+            canDelete: canEdit,
+            rowWidth: 268,
+            countPerLine: 3,
+            uploadConfig: GalleryUploadConfig(
+              acceptedSources: {
+                UploadSource.camera,
+                UploadSource.files,
+                UploadSource.gallery
+              },
+              store: notes,
+              canUpload: canEdit,
+              modelPersistence: (names) async {
+                final List<String> urls = [];
+                for (final name in names) {
+                  final url =
+                      await notes.remote!.getImageLink(widget.note.id, name);
+                  if (url != null) urls.add(url);
+                }
+                widget.note.attachments.addAll(urls);
+                widget.note.attachments =
+                    widget.note.attachments.toSet().toList();
+                notes.set(widget.note);
+              },
+            ));
+      })
     ];
   }
 

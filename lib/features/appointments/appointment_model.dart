@@ -6,6 +6,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/imgs.dart';
 
 class Appointment extends Model {
   @override
@@ -107,6 +108,10 @@ class Appointment extends Model {
     if (isLaboworkUndelivered) return txt("undelivered");
     if (labworkReceived) return txt("receivedAndDelivered");
     return txt("waitingForLab");
+  }
+
+  List<String> get viewableImgs {
+    return imgs.where((name) => isAnImageName(name)).toList();
   }
 
   // id: id of the appointment (inherited from Model)

@@ -202,9 +202,9 @@ class Patient extends Model {
   String? get avatar {
     if (launch.isDemo) return "https://person.alisaleem.workers.dev/";
     final appointmentsWithImages =
-        allAppointments.where((a) => a.imgs.isNotEmpty);
+        allAppointments.where((a) => a.viewableImgs.isNotEmpty);
     if (appointmentsWithImages.isEmpty) return null;
-    return appointmentsWithImages.first.imgs.first;
+    return appointmentsWithImages.first.viewableImgs.first;
   }
 
   @override

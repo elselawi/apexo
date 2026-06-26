@@ -720,7 +720,8 @@ class El implements En {
 
     // calendar system
     "calendarSystem": "Σύστημα ημερολογίου",
-    "calendarSystem_desc": "Επιλέξτε το σύστημα ημερολογίου για την προβολή ημερομηνιών",
+    "calendarSystem_desc":
+        "Επιλέξτε το σύστημα ημερολογίου για την προβολή ημερομηνιών",
     "gregorian": "Γρηγοριανό",
     "persian": "Περσικό (Jalali / Shamsi)",
 

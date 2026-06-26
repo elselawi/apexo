@@ -235,7 +235,8 @@ abstract class DF {
     return DateFormat("🕒 hh:mm a", locale.s.$code).format(date);
   }
 
-  static bool get isPersianCalendar => localSettings.calendarSystem == "persian";
+  static bool get isPersianCalendar =>
+      localSettings.calendarSystem == "persian";
 
   static String jalaliDate(date) {
     if (isPersianCalendar) {

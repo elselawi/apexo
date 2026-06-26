@@ -394,11 +394,9 @@ class Fa implements En {
     "currency": "واحد پول",
     "currency_desc":
         "کد واحد پول مورد استفاده در سراسر برنامه (مثلاً USD، EUR، IQD).",
-    "phone_desc":
-        "شماره تلفن در چاپ‌ها و صفحه وب بیماران نمایش داده می‌شود.",
+    "phone_desc": "شماره تلفن در چاپ‌ها و صفحه وب بیماران نمایش داده می‌شود.",
     "prescriptionFooter": "پاورقی نسخه",
-    "prescriptionFooter_desc":
-        "این متن در پایین نسخه نمایش داده می‌شود.",
+    "prescriptionFooter_desc": "این متن در پایین نسخه نمایش داده می‌شود.",
     "language": "زبان",
     "language_desc":
         "زبان رابط کاربری برای منوها، دکمه‌ها و اطلاعات مورد استفاده در سراسر برنامه.",
@@ -460,7 +458,8 @@ class Fa implements En {
     "backups_cron_hint":
         "یک برنامه از پیش تعیین شده را از لیست انتخاب کنید. عبارت cron به صورت خودکار پر می‌شود.",
     "backups_max_keep": "حداکثر پشتیبان‌های نگهداری",
-    "backups_max_keep_hint": "پشتیبان‌های قدیمی‌تر هنگام تجاوز از این حد حذف می‌شوند",
+    "backups_max_keep_hint":
+        "پشتیبان‌های قدیمی‌تر هنگام تجاوز از این حد حذف می‌شوند",
     "backups_s3_enabled": "ذخیره پشتیبان‌ها در S3",
     "backups_save_success": "تنظیمات پشتیبان‌گیری با موفقیت ذخیره شد",
     "backups_save_fail": "ذخیره تنظیمات پشتیبان‌گیری ناموفق بود",
@@ -468,12 +467,12 @@ class Fa implements En {
     // Meta settings
     "meta_settings": "تنظیمات برنامه",
     "meta_info_title": "اطلاعات عمومی برنامه",
-    "meta_info_desc":
-        "نام برنامه، URL و تنظیمات برندینگ خود را پیکربندی کنید.",
+    "meta_info_desc": "نام برنامه، URL و تنظیمات برندینگ خود را پیکربندی کنید.",
     "meta_appName": "نام برنامه",
     "meta_appName_hint": "در ایمیل‌ها و عنوان صفحه ورود نمایش داده می‌شود",
     "meta_appUrl": "آدرس برنامه",
-    "meta_appUrl_hint": "در ایمیل‌ها و لینک‌های اشتراک‌گذاری شده استفاده می‌شود",
+    "meta_appUrl_hint":
+        "در ایمیل‌ها و لینک‌های اشتراک‌گذاری شده استفاده می‌شود",
     "meta_save_success": "تنظیمات برنامه با موفقیت ذخیره شد",
     "meta_save_fail": "ذخیره تنظیمات برنامه ناموفق بود",
 
@@ -585,7 +584,8 @@ class Fa implements En {
     "smtp_senderName_hint": "نام نمایشی در فیلد فرستنده",
     "smtp_senderEmail_hint": "آدرس ایمیل نمایش داده شده در فیلد فرستنده",
     "smtp_localName": "نام محلی HELO/EHLO",
-    "smtp_localName_hint": "در سلام HELO/EHLO استفاده می‌شود، معمولاً دامنه شما",
+    "smtp_localName_hint":
+        "در سلام HELO/EHLO استفاده می‌شود، معمولاً دامنه شما",
     "smtp_enabled": "فعال کردن SMTP",
     "smtp_test_success": "پیکربندی SMTP به درستی کار می‌کند",
     "smtp_test_fail": "آزمون پیکربندی SMTP ناموفق بود",
@@ -703,7 +703,8 @@ class Fa implements En {
 
     // calendar system
     "calendarSystem": "سیستم تقویم",
-    "calendarSystem_desc": "سیستم تقویم مورد نظر برای نمایش تاریخ‌ها در نمای تقویم را انتخاب کنید",
+    "calendarSystem_desc":
+        "سیستم تقویم مورد نظر برای نمایش تاریخ‌ها در نمای تقویم را انتخاب کنید",
     "gregorian": "میلادی",
     "persian": "شمسی (جلالی)",
 

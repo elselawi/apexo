@@ -720,7 +720,8 @@ class Es implements En {
 
     // calendar system
     "calendarSystem": "Sistema de calendario",
-    "calendarSystem_desc": "Elija el sistema de calendario para mostrar las fechas",
+    "calendarSystem_desc":
+        "Elija el sistema de calendario para mostrar las fechas",
     "gregorian": "Gregoriano",
     "persian": "Persa (Jalali / Shamsi)",
 

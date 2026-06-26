@@ -696,5 +696,25 @@ class Ar implements En {
     "paused": "متوقف مؤقتاً",
     "processingDentalHistory": "معالجة الصوت لاستخراج تاريخ الأسنان",
     "processingPostOpNotes": "معالجة الصوت لاستخراج ملاحظات ما بعد العملية",
+
+    // calendar system
+    "calendarSystem": "نظام التقويم",
+    "calendarSystem_desc": "اختر نظام التقويم لعرض التواريخ في عرض التقويم",
+    "gregorian": "ميلادي",
+    "persian": "فارسي (جلالي / شمسي)",
+
+    // Jalali month names
+    "farvardin": "فروردين",
+    "ordibehesht": "ارديبهشت",
+    "khordad": "خرداد",
+    "tir": "تير",
+    "mordad": "مرداد",
+    "shahrivar": "شهريور",
+    "mehr": "مهر",
+    "aban": "آبان",
+    "azar": "آذر",
+    "dey": "دي",
+    "bahman": "بهمن",
+    "esfand": "اسفند",
   };
 }

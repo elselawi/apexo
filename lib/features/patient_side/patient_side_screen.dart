@@ -8,7 +8,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/utils/save_file_multiplatform.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:http/http.dart' as http;
 
@@ -613,7 +612,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
     final isPaid = apt.price == 0 || apt.paid >= apt.price;
     final payColor =
         isPaid ? Colors.successPrimaryColor : Colors.warningPrimaryColor;
-    final dateStr = DateFormat("d MMM yyyy", locale.s.$code).format(apt.date);
+    final dateStr = DF.jalaliDate(apt.date);
 
     return Column(
       children: [
@@ -820,9 +819,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    DateFormat.yMMMMEEEEd(locale.s.$code)
-                                        .add_jm()
-                                        .format(apt.date),
+                                    DF.jalaliCommonDate(apt.date),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: theme

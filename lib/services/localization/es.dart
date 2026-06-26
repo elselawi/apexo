@@ -717,5 +717,25 @@ class Es implements En {
     "paused": "Pausado",
     "processingDentalHistory": "procesando historial dental",
     "processingPostOpNotes": "procesando notas post-operatorias",
+
+    // calendar system
+    "calendarSystem": "Sistema de calendario",
+    "calendarSystem_desc": "Elija el sistema de calendario para mostrar las fechas",
+    "gregorian": "Gregoriano",
+    "persian": "Persa (Jalali / Shamsi)",
+
+    // Jalali month names
+    "farvardin": "Farvardin",
+    "ordibehesht": "Ordibehesht",
+    "khordad": "Khordad",
+    "tir": "Tir",
+    "mordad": "Mordad",
+    "shahrivar": "Shahrivar",
+    "mehr": "Mehr",
+    "aban": "Aban",
+    "azar": "Azar",
+    "dey": "Dey",
+    "bahman": "Bahman",
+    "esfand": "Esfand",
   };
 }

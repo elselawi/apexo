@@ -717,5 +717,25 @@ class El implements En {
     "paused": "Σε παύση",
     "processingDentalHistory": "επεξεργασία ήχου οδοντιατρικού ιστορικού",
     "processingPostOpNotes": "επεξεργασία ήχου μετεγχειρητικών σημειώσεων",
+
+    // calendar system
+    "calendarSystem": "Σύστημα ημερολογίου",
+    "calendarSystem_desc": "Επιλέξτε το σύστημα ημερολογίου για την προβολή ημερομηνιών",
+    "gregorian": "Γρηγοριανό",
+    "persian": "Περσικό (Jalali / Shamsi)",
+
+    // Jalali month names
+    "farvardin": "Farvardin",
+    "ordibehesht": "Ordibehesht",
+    "khordad": "Khordad",
+    "tir": "Tir",
+    "mordad": "Mordad",
+    "shahrivar": "Shahrivar",
+    "mehr": "Mehr",
+    "aban": "Aban",
+    "azar": "Azar",
+    "dey": "Dey",
+    "bahman": "Bahman",
+    "esfand": "Esfand",
   };
 }

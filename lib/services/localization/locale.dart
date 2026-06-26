@@ -3,12 +3,13 @@ import "package:apexo/services/localization/ar.dart";
 import "package:apexo/services/localization/el.dart";
 import "package:apexo/services/localization/en.dart";
 import "package:apexo/services/localization/es.dart";
+import "package:apexo/services/localization/fa.dart";
 import "package:fluent_ui/fluent_ui.dart";
 
 class _Localization {
-  List<En> list = [En(), Ar(), Es(), El()];
+  List<En> list = [En(), Ar(), Es(), El(), Fa()];
   En get s => list[localSettings.selectedLocale];
-  bool get isRtl => s.$direction == Direction.rtl; // Arabic is RTL
+  bool get isRtl => s.$direction == Direction.rtl; // Arabic and Persian are RTL
 }
 
 final locale = _Localization();

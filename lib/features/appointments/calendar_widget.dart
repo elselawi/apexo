@@ -11,7 +11,6 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show Card;
-import 'package:intl/intl.dart' as intl;
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import '../../utils/round.dart';
@@ -194,7 +193,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
       calendarBuilders: CalendarBuilders(
         dowBuilder: (context, day) => Center(
           child: Txt(
-            intl.DateFormat("EE", locale.s.$code).format(day),
+            DF.jalaliDayOfWeekAbbr(day),
             style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
           ),
         ),
@@ -204,7 +203,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
             children: [
               Center(
                 child: Txt(
-                  intl.DateFormat('MMMM yyyy', locale.s.$code).format(day),
+                  DF.jalaliMonthYear(day),
                 ),
               ),
               const Divider(size: 20, direction: Axis.vertical),
@@ -271,7 +270,9 @@ class WeekAgendaCalendarState<Item extends Appointment>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Txt(
-                  " ${DF.commonDate(selectedDate)}",
+                  localSettings.calendarSystem == "persian"
+                      ? " ${DF.jalaliCommonDate(selectedDate)}"
+                      : " ${DF.commonDate(selectedDate)}",
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Tooltip(
@@ -408,7 +409,7 @@ class DayCell extends StatelessWidget {
         boxShadow: type == DayCellType.selected ? kElevationToShadow[2] : null,
       ),
       child: Center(
-        child: Txt(intl.DateFormat("d", locale.s.$code).format(day),
+        child: Txt(DF.jalaliDay(day),
             style: type == DayCellType.normal
                 ? null
                 : const TextStyle(color: Colors.white)),

@@ -644,6 +644,7 @@ class Es implements En {
     "newVersionDialogTitle": "Nueva versión disponible",
     "newVersionDialogContent":
         "Una nueva versión de Apexo está disponible. Por favor actualiza a la última versión para obtener la mejor experiencia. Escanea el código QR de abajo para comenzar.",
+    "changelogDialogTitle": "Novedades en",
 
     // login required
     "loginRequired": "Se requiere inicio de sesión",

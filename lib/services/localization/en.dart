@@ -636,6 +636,7 @@ class En {
     "newVersionDialogTitle": "New version available",
     "newVersionDialogContent":
         "A new version of Apexo is available. Please update to the latest version to get the best experience. Scan the QR code below to get started.",
+    "changelogDialogTitle": "What's New in",
 
     // login required
     "loginRequired": "Login required",
@@ -706,7 +707,8 @@ class En {
 
     // calendar system
     "calendarSystem": "Calendar system",
-    "calendarSystem_desc": "Choose the calendar system for displaying dates in the calendar view",
+    "calendarSystem_desc":
+        "Choose the calendar system for displaying dates in the calendar view",
     "gregorian": "Gregorian",
     "persian": "Persian (Jalali / Shamsi)",
 

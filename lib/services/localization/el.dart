@@ -643,6 +643,7 @@ class El implements En {
     "newVersionDialogTitle": "Διαθέσιμη νέα έκδοση",
     "newVersionDialogContent":
         "Μια νέα έκδοση του Apexo είναι διαθέσιμη. Ενημερώστε στην τελευταία έκδοση για την καλύτερη εμπειρία. Σαρώστε τον παρακάτω κωδικό QR για να ξεκινήσετε.",
+    "changelogDialogTitle": "Τι νέο υπάρχει στην",
 
     // login required
     "loginRequired": "Απαιτείται σύνδεση",

@@ -4,6 +4,7 @@ import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/app/panel_widget.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
+import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -18,6 +19,7 @@ import 'package:apexo/common_widgets/current_account.dart';
 import 'package:apexo/common_widgets/logo.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/services/version.dart';
+import 'package:apexo/services/changelog.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -107,6 +109,19 @@ class ApexoApp extends StatelessWidget {
 
   void showDialogsIfNeeded() async {
     await version.init();
+
+    // Show changelog dialog when the app version changes (post-update).
+    if (localSettings.lastSeenVersion != version.current() &&
+        version.current() != "0.0.0" &&
+        bContext.mounted) {
+      final entry = await changelog.forVersion(version.current());
+      localSettings.lastSeenVersion = version.current();
+      localSettings.notifyAndPersist();
+
+      if (entry != null && entry.changes.isNotEmpty && bContext.mounted) {
+        showChangelogDialog(bContext, entry: entry);
+      }
+    }
 
     // Show new version dialog only on macOS — all other platforms
     // (MS Store, Play Store, App Store) handle updates automatically.

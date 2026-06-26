@@ -140,6 +140,7 @@ class LocalSettings extends ObservablePersistingObject {
   String? aiToken;
   DateTime? aiTokenExpiry;
   EventsViewMode calendarEventsViewMode = EventsViewMode.agenda;
+  String lastSeenVersion = "";
 
   static const _aiTokenSafetyMargin = Duration(hours: 2);
 
@@ -179,6 +180,7 @@ class LocalSettings extends ObservablePersistingObject {
         : null;
     calendarEventsViewMode =
         EventsViewMode.values[json["calendarEventsViewMode"] ?? 0];
+    lastSeenVersion = json["lastSeenVersion"] ?? lastSeenVersion;
   }
 
   @override
@@ -190,6 +192,7 @@ class LocalSettings extends ObservablePersistingObject {
       "dentalNotation": dentalNotation,
       "transcriptionLocale": transcriptionLocaleNonFinal,
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
+      "lastSeenVersion": lastSeenVersion,
       "calendarEventsViewMode": calendarEventsViewMode.index,
       if (aiToken != null) "aiToken": aiToken,
       if (aiTokenExpiry != null)

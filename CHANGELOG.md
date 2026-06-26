@@ -1,4 +1,4 @@
-### [0.13.0]
+### ____0.13.0____
 - Improvement: More readable duration since last appointment in the patients screen and between appointment cards
 - Fixed: Added tooltips for patients screen bottom labels
 - Fixed: inconsistent hover color between patients page and other pages
@@ -7,7 +7,7 @@
 - an animation on opening a new panel (or switching) from inside another panel.
 - Fixed: search, filter, sorting, and slicing state resetting on medium screens (tablets) when opening/closing panels. Root cause: `NavigationView` rebuilds its widget tree when `PaneDisplayMode.auto` switches modes during the width animation. Fixed by anchoring each route screen body with a cached `GlobalKey` via `KeyedSubtree`, so Flutter can reparent and preserve `StatefulWidget` state across tree restructuring.
 
-### [0.12.0]
+### ____0.12.0____
 - New Features & Enhancements
     - In-App Settings Management: Configure 99% of relevant settings directly within the app—no more constant trips to the PocketBase dashboard.
     - Smart Phone Number Input: Complete overhaul of phone number handling. The new, wider text field accepts any raw string, auto-validates, auto-appends country codes, and extracts numbers into clickable buttons on the fly.
@@ -46,7 +46,7 @@
     - RTL Layouts: Corrected an inverted swipeDetector orientation issue in Right-to-Left (RTL) language contexts.
     - Flyout Fixes: Hardened the global flyoutFix patch and applied it more robustly across all UI panels.
 
-### [0.11.0]
+### ____0.11.0____
 - New field on expenses: "notes"
 - Pasting a phone number now removes the spaces
 - Prices & payment currency formatting
@@ -68,13 +68,13 @@
     - fixed slow labworks screen
     - fixed and simplified caching mechanisms
 
-### [0.10.4]
+### ____0.10.4____
 - notifications and sounds for windows
 
-### [0.10.3]
+### ____0.10.3____
 - fixed safari iOS notification error
 
-### [0.10.1]
+### ____0.10.1____
 - updated version fetching mechanism
 
 

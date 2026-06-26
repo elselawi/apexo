@@ -629,6 +629,7 @@ class Ar implements En {
     "newVersionDialogTitle": "هنالك اصدار جديد متاح",
     "newVersionDialogContent":
         "يرجى تحديث التطبيق للحصول على أحدث الميزات والتطويرات الجديدة. قم بمسح الكود التالي لتحميل التحديث الجديد.",
+    "changelogDialogTitle": "ما الجديد في",
 
     // login required
     "loginRequired": "تسجيل الدخول مطلوب",

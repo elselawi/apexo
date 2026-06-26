@@ -14,6 +14,7 @@ All contribution are welcome, whether as a PR or issue. All I ask is to adhere t
 ### Members contributed
 - [sealine 150, Greek localization](https://github.com/sealine150).
 - [Sammy Habta, Spanish localization](https://github.com/dojosgithub)
+- [Ar7in, Jalali calendar and Farsi localization](https://github.com/ar7in)
 
 ## Technology stack
 

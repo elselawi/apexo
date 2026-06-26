@@ -12,6 +12,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/settings/applies_to_indicator.dart';
 import 'package:apexo/features/settings/services_settings/auth_settings.dart';
 import 'package:apexo/features/settings/services_settings/backups_settings.dart';
+import 'package:apexo/features/settings/services_settings/file_upload_settings.dart';
 import 'package:apexo/features/settings/services_settings/meta_settings.dart';
 import 'package:apexo/features/settings/services_settings/s3_settings.dart';
 import 'package:apexo/features/settings/services_settings/smtp_settings.dart';
@@ -296,6 +297,7 @@ class SettingsScreen extends StatelessWidget {
           if (login.isAdmin && network.isOnline()) ...[
             const MetaSettings(),
             const AuthSettings(),
+            const FileUploadSettings(),
             const S3Settings(),
             const SmtpSettings(),
             const BackupsSettings(),

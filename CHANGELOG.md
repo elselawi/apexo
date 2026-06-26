@@ -1,11 +1,51 @@
 ### ____0.13.0____
-- Improvement: More readable duration since last appointment in the patients screen and between appointment cards
-- Fixed: Added tooltips for patients screen bottom labels
-- Fixed: inconsistent hover color between patients page and other pages
-- Fixed: extra notes icon and color should be based on the entry itself not the fist item.
-- Fixed: calendar screen not listening to archive toggle.
-- an animation on opening a new panel (or switching) from inside another panel.
-- Fixed: search, filter, sorting, and slicing state resetting on medium screens (tablets) when opening/closing panels. Root cause: `NavigationView` rebuilds its widget tree when `PaneDisplayMode.auto` switches modes during the width animation. Fixed by anchoring each route screen body with a cached `GlobalKey` via `KeyedSubtree`, so Flutter can reparent and preserve `StatefulWidget` state across tree restructuring.
+
+- New Features & Enhancements
+    - Voice & Audio Transcription: Live streaming audio transcription for dental history and post-op notes. Voice input for individual text fields with a recording bubble. AI services authentication caching for faster startup.
+    - Calendar Timeline View: Optional timeline view in the calendar alongside the existing agenda mode, with appointment duration editing directly inside the appointment panel.
+    - Archive → Delete Overhaul: Renamed "Archive" to "Delete" across the app. Deleted items can now be opened in panels and restored or permanently removed. Consistent teal accent for restoration actions.
+    - Persian Language & Jalali Calendar: Full Persian (Farsi) translation and support for the Jalali (Shamsi) calendar system, thanks to contribution from [Ar7in](https://github.com/ar7in).
+    - Greek Language: Added Greek locale with full translation coverage, thanks to contribution from [Aris Pal](https://github.com/sealine150).
+    - Expense Receipt Scanning: Scan receipts from photos to auto-fill expense items.
+    - Post-Update Changelog Dialog: A "What's New" dialog automatically shown after app updates, parsed from the local changelog. Tapping the version number in the app logo also opens it.
+    - File Upload Limits: Configurable file upload size limits in settings.
+    - Other Appointments Mini-Window: Quick view of a patient's other appointments from within the appointment panel.
+    - Appointment History: Added appointment history to the calendar screen for quick reference.
+    - New Grid Gallery: Redesigned image grid gallery with an improved file uploading system.
+
+- UI & UX Polish
+    - Permissions Redesign: Rewrote the permissions system with a clearer layout that accommodates more characters and adds a dedicated revenue display permission.
+    - Search Visibility: Made the search bar more visually prominent across all screens.
+    - All Dialogs Keyboard-Aware: Every dialog in the app now properly handles keyboard dismissal (barrier dismiss + Esc key).
+    - Icon Consistency: Unified all delete icons to `WindowsIcons` and replaced `FluentIcons.undo` with `WindowsIcons.undo`.
+    - Dark Mode Button Tweaks: Refined button styles for better contrast in dark mode.
+    - Recording Bubble UX: Improved the recorder bubble with a 3-minute hard limit, smoother animations, and clearer semantics for voice auto-fill.
+    - Layout Fixes: Prevented text overflow in Greek and Spanish locales, fixed overflowing minimized panels, and prevented treatment labels from scrolling when viewed vertically.
+    - Network Actions Localized: Error messages and sync status labels are now translated.
+    - More readable duration since last appointment in the patients screen and between appointment cards.
+    - Added tooltips for patients screen bottom labels.
+    - Panel open/close animation when navigating between panels.
+
+- Bug Fixes
+    - Fixed panel search/filter state resetting when opening panels on tablets (medium screens).
+    - Fixed a bug where reopening a panel with a different tab wouldn't update correctly.
+    - Fixed scroll controller not being attached in the Labworks screen.
+    - Fixed selecting note columns in the archived screen not working.
+    - Fixed deleted appointments being incorrectly counted in today's revenue summary.
+    - Fixed an infinite sync loop in the settings store caused by `.set()` calls inside the isolate.
+    - Fixed country code override not being applied when parsing extracted phone numbers.
+    - Fixed a `TextEditingController` disposed before use error on the login screen.
+    - Fixed the "Open Patient" button inside appointments not responding.
+    - Fixed money amounts displaying in the wrong text direction (now always LTR).
+    - Fixed duplicate images appearing when swiping between appointments.
+    - Fixed `TagInputWidget` not updating when its initial value changed (affected prescription fields).
+    - Fixed inconsistent hover color between patients page and other pages.
+    - Fixed extra notes icon and color based on the entry itself, not the first item.
+    - Fixed calendar screen not listening to archive toggle.
+    - Fixed search, filter, sorting, and slicing state resetting on medium screens (tablets) when opening/closing panels. Root cause: `NavigationView` rebuilds its widget tree when `PaneDisplayMode.auto` switches modes during the width animation. Fixed by anchoring each route screen body with a cached `GlobalKey` via `KeyedSubtree`, so Flutter can reparent and preserve `StatefulWidget` state across tree restructuring.
+    - Added multiple `mounted` guards to prevent state modifications after widget disposal.
+    - Error handling: duplicate errors now pulse the red indicator instead of showing multiple dialogs; tapping it reveals the full error list.
+    - Catch and report errors during attachment uploads gracefully.
 
 ### ____0.12.0____
 - New Features & Enhancements

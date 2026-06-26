@@ -633,6 +633,7 @@ class Fa implements En {
     "newVersionDialogTitle": "نسخه جدید موجود است",
     "newVersionDialogContent":
         "نسخه جدیدی از اپکسو موجود است. لطفاً برای بهترین تجربه به آخرین نسخه به‌روزرسانی کنید. کد QR زیر را اسکن کنید تا شروع کنید.",
+    "changelogDialogTitle": "چه چیز جدیدی در",
 
     // login required
     "loginRequired": "ورود لازم است",

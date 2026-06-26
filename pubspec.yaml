@@ -76,6 +76,7 @@ flutter:
         - asset: assets/fonts/DentalIcons.ttf
   uses-material-design: true
   assets:
+    - CHANGELOG.md
     - assets/app_icon.png
     - assets/images/logo.png
     - assets/images/missing.png

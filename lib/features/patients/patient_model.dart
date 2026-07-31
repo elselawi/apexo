@@ -219,6 +219,12 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
+  /// Appointments that have at least one DCM X-ray attached.
+  /// Parallel to [appointmentsWithImages].
+  List<Appointment> get appointmentsWithDcmImgs {
+    return allAppointments.where((a) => a.dcmImgs.isNotEmpty).toList();
+  }
+
   String? _searchString;
   List<PatientTableLabel>? _labels;
   void nullifyLabels() {

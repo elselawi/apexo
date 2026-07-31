@@ -1,9 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:apexo/common_widgets/error_dialog.dart';
-import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/logger.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -275,7 +272,13 @@ class SaveRemote {
       final nameWithoutExt = p.basenameWithoutExtension(imgName);
       final allFullNames = List<String>.from(
           (await remoteRows.getOne(rowID, fields: "imgs")).data["imgs"]);
-      final fullNameToDelete =
+      // Prefer exact match first — avoids ambiguity between e.g.
+      // "x.dcm" and "x.dcm.png" (the DCM original and its PNG preview).
+      var fullNameToDelete = allFullNames
+          .where((e) => e.toLowerCase() == imgName.toLowerCase())
+          .firstOrNull;
+      // Fallback: fuzzy match by basename (legacy behaviour).
+      fullNameToDelete ??=
           allFullNames.where((e) => e.contains(nameWithoutExt)).firstOrNull;
       if (fullNameToDelete == null) {
         return false;
@@ -304,11 +307,17 @@ class SaveRemote {
       }
       fullNamesCache[rowID] = fullNames;
 
-      final candidates = fullNames
-          .where((e) => e
-              .toLowerCase()
-              .contains(imageName.toLowerCase().split(".").first))
-          .toList();
+      // Prefer exact match first — avoids ambiguity between e.g.
+      // "x.dcm" and "x.dcm.png" (the DCM original and its PNG preview).
+      final lower = imageName.toLowerCase();
+      var candidates =
+          fullNames.where((e) => e.toLowerCase() == lower).toList();
+      // Fallback: fuzzy match by first path segment (legacy behaviour).
+      if (candidates.isEmpty) {
+        candidates = fullNames
+            .where((e) => e.toLowerCase().contains(lower.split(".").first))
+            .toList();
+      }
       if (candidates.isEmpty) {
         if (useCache && usedCache) {
           return await getImageLink(rowID, imageName, false);

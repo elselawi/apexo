@@ -170,7 +170,8 @@ class AppointmentCard extends StatelessWidget {
                               color,
                               context),
                         ],
-                        if (appointment.imgs.isNotEmpty &&
+                        if ((appointment.imgs.isNotEmpty ||
+                                appointment.dcmImgs.isNotEmpty) &&
                             !hide.contains(AppointmentSections.photos)) ...[
                           const Divider(
                             direction: Axis.horizontal,
@@ -181,6 +182,7 @@ class AppointmentCard extends StatelessWidget {
                                 canDelete: login.perm(Perm.photos).exact(1),
                                 rowId: appointment.id,
                                 imgs: appointment.imgs,
+                                dcmImgs: appointment.dcmImgs,
                                 countPerLine: 4,
                                 clipCount: photosClipCount,
                                 rowWidth: 200,
@@ -208,6 +210,23 @@ class AppointmentCard extends StatelessWidget {
                                     login.askForLoginAgain(e);
                                     logger(
                                         "Error during deleting image: $e", s);
+                                  }
+                                },
+                                onPressDeleteDcm: (dcmName) async {
+                                  try {
+                                    await appointments.deleteDcmImg(
+                                      appointment.id,
+                                      dcmName,
+                                    );
+                                    appointments.set(
+                                        appointment..dcmImgs.remove(dcmName));
+                                  } catch (e, s) {
+                                    showErrorMessage(
+                                        e, "deletingPatientImageFromServer");
+                                    login.askForLoginAgain(e);
+                                    logger(
+                                        "Error during deleting DCM image: $e",
+                                        s);
                                   }
                                 },
                               ),

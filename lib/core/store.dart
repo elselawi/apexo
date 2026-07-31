@@ -689,6 +689,26 @@ class Store<G extends Model> {
     onSyncEnd?.call();
   }
 
+  /// Deletes a DCM X-ray and its PNG preview from PocketBase.
+  ///
+  /// Calls [deleteImg] for both the `.dcm` original and the `${dcmName}.png`
+  /// preview. If the PNG doesn't exist yet (still queued or generation
+  /// failed), the error for that call is swallowed — the `.dcm` deletion
+  /// still proceeds.
+  ///
+  /// The caller is responsible for removing `dcmName` from the model's
+  /// `dcmImgs` list and calling `set(model)`.
+  Future<void> deleteDcmImg(String rowID, String dcmName) async {
+    // Delete the .dcm original.
+    await deleteImg(rowID, dcmName);
+    // Delete the .png preview — swallow errors (may not exist yet).
+    try {
+      await deleteImg(rowID, '$dcmName.png');
+    } catch (e, s) {
+      logger("deleteDcmImg: PNG preview not deleted (may not exist): $e", s);
+    }
+  }
+
   /// Upload an image with deferred retry support.
   /// Returns the PB-assigned filename on success, or the client filename
   /// if the upload was deferred (model will be corrected by next sync).

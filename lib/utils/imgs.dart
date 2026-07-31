@@ -1,7 +1,13 @@
 import 'dart:io';
+import 'package:apexo/core/observable.dart';
 import 'package:apexo/core/store.dart';
+import 'package:apexo/services/dicom/dicom_io_service.dart';
+import 'package:apexo/services/dicom/dicom_parser.dart';
+import 'package:apexo/services/dicom/dicom_renderer.dart';
+import 'package:apexo/services/dicom/dicom_skipped.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/que.dart';
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/save_file_multiplatform.dart';
@@ -130,6 +136,155 @@ Future<String> handleNewImage({
   return finalFileName;
 }
 
+/// Bumped (incremented) each time a DCM PNG preview finishes generating.
+/// The gallery subscribes to this via `MStreamBuilder` so placeholder cells
+/// rebuild into real previews once the PNG lands.
+final ObservableState<int> dicomPngReady = ObservableState<int>(0);
+
+/// Background queue for DCM PNG preview generation. Serialised so we don't
+/// fire off dozens of concurrent Rust parse+render calls during a bulk import.
+final _dcmPngQue =
+    TaskQueue(delayBetweenTasks: const Duration(milliseconds: 50));
+
+/// Imports a `.dcm` file: saves the original to `filesDir()`, uploads it to
+/// PocketBase immediately, and queues PNG preview generation in the background.
+///
+/// Returns the PB-assigned `.dcm` filename **without waiting** for the PNG —
+/// the gallery shows a placeholder until [dicomPngReady] bumps.
+///
+/// On native: the `.dcm` is copied to `filesDir()` then uploaded. On web this
+/// is a no-op (DCM import is Windows-only); returns an empty string.
+///
+/// PNG generation failure is logged to [dicomSkippedLog] with the reason
+/// `"png_generation_failed"` — the `.dcm` is still preserved and viewable.
+Future<String> handleNewDcm({
+  required String rowID,
+  required String sourcePath,
+  Store? targetStore,
+}) async {
+  // Web has no filesystem — DCM import is Windows-only.
+  if (kIsWeb) return '';
+
+  // Read source bytes.
+  final bytes = await DicomIO.readBytes(sourcePath);
+  if (bytes == null || bytes.isEmpty) {
+    await dicomSkippedLog.add(
+      path: sourcePath,
+      reason: 'handleNewDcm: failed to read bytes',
+    );
+    return '';
+  }
+
+  // Generate a unique filename.
+  final mtime = File(sourcePath).lastModifiedSync().millisecondsSinceEpoch;
+  final hashInput = '${path.basename(sourcePath)}_$mtime';
+  final dcmName = 'dcm_${simpleHash(hashInput)}.dcm';
+
+  // Save the .dcm to filesDir().
+  final savedFile = await getOrCreateFile(dcmName);
+  if (!await savedFile.exists()) {
+    await savedFile.writeAsBytes(bytes);
+  }
+
+  // Upload the .dcm immediately — do not block on PNG generation.
+  final store = targetStore ?? appointments;
+  final finalDcmName = await store.uploadImg(
+    rowID: rowID,
+    filename: dcmName,
+    path: savedFile.path,
+  );
+
+  // Rename the local file if PB assigned a different name.
+  if (finalDcmName != dcmName) {
+    try {
+      final newPath = path.join(path.dirname(savedFile.path), finalDcmName);
+      await savedFile.rename(newPath);
+    } catch (_) {}
+  }
+
+  // Queue PNG preview generation in the background.
+  _dcmPngQue.add(() => _generateDcmPreview(
+        rowID: rowID,
+        dcmName: finalDcmName,
+        bytes: bytes,
+        sourcePath: sourcePath,
+        store: store,
+      ));
+
+  return finalDcmName;
+}
+
+/// Background task: parse the full DicomParseResult, render a PNG preview,
+/// save it + a thumbnail locally, upload to PB, and bump [dicomPngReady].
+Future<void> _generateDcmPreview({
+  required String rowID,
+  required String dcmName,
+  required Uint8List bytes,
+  required String sourcePath,
+  required Store store,
+}) async {
+  try {
+    // Full parse (metadata + pixels) — needed for rendering.
+    final result = await dicomParser.parse(bytes, sourcePath: sourcePath);
+    if (result == null) {
+      await dicomSkippedLog.add(
+        path: sourcePath,
+        reason: 'png_generation_failed: full parse returned null',
+      );
+      return;
+    }
+
+    // Render PNG preview bytes.
+    final pngBytes = await dicomRenderer.renderPreviewPng(result);
+    if (pngBytes == null || pngBytes.isEmpty) {
+      await dicomSkippedLog.add(
+        path: sourcePath,
+        reason: 'png_generation_failed: renderPreviewPng returned null',
+      );
+      return;
+    }
+
+    // Derive PNG + thumb filenames from the DCM filename.
+    final pngName = '$dcmName.png';
+    final thumbName = _nameToThumbName(pngName);
+
+    // Save PNG locally.
+    final pngFile = await getOrCreateFile(pngName);
+    await pngFile.writeAsBytes(pngBytes);
+
+    // Generate a 100px thumbnail from the PNG.
+    try {
+      final cmd = img.Command()
+        ..decodeImageFile(pngFile.path)
+        ..copyResize(width: 100)
+        ..writeToFile(path.join(await filesDir(), thumbName));
+      await cmd.executeThread();
+    } catch (_) {
+      // Thumbnail is best-effort — PB handles server-side resizing too.
+    }
+
+    // Upload PNG to PB.
+    await store.uploadImg(
+      rowID: rowID,
+      filename: pngName,
+      path: pngFile.path,
+    );
+
+    // Notify the gallery to rebuild placeholder cells.
+    dicomPngReady(dicomPngReady() + 1);
+  } catch (e, s) {
+    logger('_generateDcmPreview error: $e', s, 2);
+    try {
+      await dicomSkippedLog.add(
+        path: sourcePath,
+        reason: 'png_generation_failed: $e',
+      );
+    } catch (_) {
+      // best-effort logging
+    }
+  }
+}
+
 final imgMemoryCache = <String, ImageProvider?>{};
 final _imageHttpReqQue =
     TaskQueue(delayBetweenTasks: const Duration(milliseconds: 100));
@@ -145,6 +300,13 @@ Future<ImageProvider?> getImage(String rowID, String name,
     [bool thumb = true]) async {
   if (isUrl(name)) {
     name = Uri.parse(name).pathSegments.last;
+  }
+
+  // DCM X-rays: never auto-fetch the raw .dcm (5–20 MB). Return the small
+  // PNG preview instead. The raw .dcm is only fetched on-demand inside the
+  // viewer panel (Phase 6).
+  if (isADcmName(name)) {
+    return getImage(rowID, '$name.png', thumb);
   }
 
   if (thumb &&
@@ -254,7 +416,7 @@ Future<String?> getImageExtensionFromURL(String imageUrl) async {
   }
 }
 
-isAnImageName(String name) {
+bool isAnImageName(String name) {
   const imageExtensions = {
     'jpg',
     'jpeg',
@@ -274,6 +436,15 @@ isAnImageName(String name) {
 
   final extension = name.split('.').last.toLowerCase();
   return imageExtensions.contains(extension);
+}
+
+/// Returns `true` if [name] looks like a DICOM X-ray file
+/// (`.dcm` / `.dicom`). Case-insensitive — sensor software often emits
+/// uppercase `.DCM`. Used to distinguish X-rays from regular photos.
+bool isADcmName(String name) {
+  const dcmExtensions = {'dcm', 'dicom'};
+  final extension = name.split('.').last.toLowerCase();
+  return dcmExtensions.contains(extension);
 }
 
 /// Downloads a file from the local cache or remote server and saves it

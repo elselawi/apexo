@@ -1,5 +1,6 @@
 import 'package:apexo/app/app.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
+import 'package:apexo/utils/dicom_init.dart';
 import 'package:apexo/utils/init_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,10 @@ void main() async {
     print('>>> ${record.level.name}: ${record.time}: ${record.message}');
   });
 
+  // initialize the dicom_toolkit native (Rust/WASM) engine
+  // non-fatal: app continues if the engine fails to load
+  await initDicomToolkit();
+
   // initialize receiving notifications
   // on Android and iOS
   if (kIsWeb == false) await Messaging.initializeReceiving();
@@ -37,6 +42,7 @@ void main() async {
   ));
 
   if (kDebugMode) {
+    // ignore: prefer_const_constructors
     runApp(ApexoApp());
   } else {
     await SentryFlutter.init(

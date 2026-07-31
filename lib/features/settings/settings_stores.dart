@@ -31,6 +31,39 @@ class GlobalSettings extends Store<Setting> {
   String get isoCountryCode => get("ISO_country____").value;
   bool get aiServicesEnabled => get("ai_services_ena").value == "1";
 
+  // Windows-only feature: directory/directories where the Xray software
+  // stores `.dcm` files. Supports multiple directories separated by `;`.
+  // Empty string = not configured.
+  String get dicomWatchDir => get("dicom_watch_dir").value;
+  set dicomWatchDir(String v) =>
+      set(Setting.fromJson({"id": "dicom_watch_dir", "value": v}));
+
+  /// Parsed list of watch directories (split by `;`, trimmed, empty entries
+  /// filtered out). Use this for scanning — handles both single-dir legacy
+  /// values (no semicolons) and the new multi-dir format.
+  List<String> get dicomWatchDirs {
+    final raw = dicomWatchDir;
+    if (raw.isEmpty) return const <String>[];
+    return raw
+        .split(";")
+        .map((d) => d.trim())
+        .where((d) => d.isNotEmpty)
+        .toList();
+  }
+
+  /// Persists a list of watch directories as a semicolon-separated string.
+  set dicomWatchDirs(List<String> dirs) {
+    dicomWatchDir =
+        dirs.map((d) => d.trim()).where((d) => d.isNotEmpty).join(";");
+  }
+
+  // When true, new `.dcm` files for already-linked patients are auto-imported
+  // during scans (startup + appointments resync). When false, the dentist
+  // opens the DICOM Import screen manually.
+  bool get dicomAutoImport => get("dicom_auto_imp_").value == "1";
+  set dicomAutoImport(bool v) =>
+      set(Setting.fromJson({"id": "dicom_auto_imp_", "value": v ? "1" : "0"}));
+
   Map<String, String> defaults = {
     "currency_______": "USD",
     "phone__________": "1234567890",
@@ -38,6 +71,8 @@ class GlobalSettings extends Store<Setting> {
     "start_day_of_wk": "monday",
     "ISO_country____": "",
     "ai_services_ena": "0",
+    "dicom_watch_dir": "",
+    "dicom_auto_imp_": "1",
   };
 
   @override
@@ -142,6 +177,14 @@ class LocalSettings extends ObservablePersistingObject {
   EventsViewMode calendarEventsViewMode = EventsViewMode.agenda;
   String lastSeenVersion = "";
 
+  // ── DICOM viewer preferences
+  // JSON string: {"windowCenter": double, "windowWidth": double,
+  //               "colorMap": String, "invert": bool, "rotationSteps": int}
+  // Empty string = use DICOM defaults. The viewer panel (Phase 6) reads this
+  // on open and writes back (debounced) when the dentist changes a setting,
+  // so the next image opens with the same preferences.
+  String dicomViewerPrefs = "";
+
   static const _aiTokenSafetyMargin = Duration(hours: 2);
 
   void toggleEventsViewMode() {
@@ -181,6 +224,7 @@ class LocalSettings extends ObservablePersistingObject {
     calendarEventsViewMode =
         EventsViewMode.values[json["calendarEventsViewMode"] ?? 0];
     lastSeenVersion = json["lastSeenVersion"] ?? lastSeenVersion;
+    dicomViewerPrefs = json["dicomViewerPrefs"] as String? ?? "";
   }
 
   @override
@@ -194,6 +238,7 @@ class LocalSettings extends ObservablePersistingObject {
       "selectedTheme": selectedTheme == ThemeMode.dark ? 1 : 0,
       "lastSeenVersion": lastSeenVersion,
       "calendarEventsViewMode": calendarEventsViewMode.index,
+      "dicomViewerPrefs": dicomViewerPrefs,
       if (aiToken != null) "aiToken": aiToken,
       if (aiTokenExpiry != null)
         "aiTokenExpiry": aiTokenExpiry!.millisecondsSinceEpoch,

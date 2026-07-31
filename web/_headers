@@ -1,0 +1,17 @@
+# Cloudflare Pages headers
+# https://developers.cloudflare.com/pages/configuration/headers/
+#
+# dicom_toolkit compiles its Rust backend to WASM using threading
+# (SharedArrayBuffer). Browsers only enable SharedArrayBuffer when the
+# document is cross-origin isolated, which requires BOTH of these headers
+# to be served as real HTTP response headers. <meta http-equiv> tags in
+# index.html are NOT honored for worker-spawned contexts, so this file is
+# the primary mechanism — the meta tags are only a belt-and-suspenders
+# fallback for top-level documents.
+#
+# Picked up automatically by `wrangler pages deploy` from the build output.
+# For local dev, use `flutter run -d chrome` with the --web-header flags
+# (see .vscode/launch.json "apexo-flutter (web, COOP/COEP)").
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

@@ -8,6 +8,17 @@
 	<meta content="IE=Edge" http-equiv="X-UA-Compatible" />
 	<meta name="description" content="Dental clinic management system" />
 
+	<!--
+		COOP/COEP — fallback for cross-origin isolation (dicom_toolkit WASM
+		threading / SharedArrayBuffer). The PRIMARY mechanism is web/_headers
+		served by Cloudflare Pages, because browsers do not honor <meta>
+		tags for worker-spawned contexts. These meta tags cover top-level
+		document isolation only.
+	-->
+	<meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
+	<meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
+
+
 	<!-- iOS meta tags & icons -->
 	<meta name="mobile-web-app-capable" content="yes" />
 	<meta name="apple-mobile-web-app-status-bar-style" content="black" />

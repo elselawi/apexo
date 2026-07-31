@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
 
@@ -8,6 +9,7 @@ import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/loading_blocking.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/store.dart';
+import 'package:apexo/features/dicom/open_dicom_viewer_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
@@ -204,7 +206,23 @@ class GalleryUploadConfig {
 class GridGallery extends StatefulWidget {
   final String rowId;
   final List<String> imgs;
+
+  /// DICOM X-ray filenames (`*.dcm`/`*.dicom`) rendered alongside
+  /// [imgs] as PNG previews. Each cell shows a "DCM" badge; tapping opens
+  /// the interactive viewer instead of the photo slideshow.
+  final List<String> dcmImgs;
   final Future<void> Function(String img) onPressDelete;
+
+  /// Delete handler for DCM entries. If `null`, [onPressDelete] is reused —
+  /// callers that pass [dcmImgs] should supply this so both `.dcm` + `.png`
+  /// are removed (see `Store.deleteDcmImg`).
+  final Future<void> Function(String dcmName)? onPressDeleteDcm;
+
+  /// Tap handler for DCM entries. Defaults to [openDicomViewerPanel] when
+  /// `null`; supplied explicitly so callers (e.g. read-only previews) can
+  /// override or suppress it.
+  final void Function(BuildContext context, String rowId, String dcmName)?
+      onTapDcm;
   final int countPerLine;
   final double rowWidth;
   final double? size;
@@ -221,7 +239,10 @@ class GridGallery extends StatefulWidget {
     super.key,
     required this.rowId,
     required this.imgs,
+    this.dcmImgs = const [],
     required this.onPressDelete,
+    this.onPressDeleteDcm,
+    this.onTapDcm,
     required this.canDelete,
     this.countPerLine = 3,
     this.rowWidth = 350,
@@ -249,13 +270,26 @@ class _GridGalleryState extends State<GridGallery>
   bool _isDeleting = false;
   final Set<String> _downloadingFiles = {};
 
-  int get _visibleCount => widget.imgs.isNotEmpty
+  int get _visibleCount => _displayImgs.isNotEmpty
       ? math.min(
-          widget.clipCount > 0 ? widget.clipCount : widget.imgs.length,
-          widget.imgs.length,
+          widget.clipCount > 0 ? widget.clipCount : _displayImgs.length,
+          _displayImgs.length,
         )
       : 0;
 
+  /// Photos + DCM X-rays, DCMs appended after photos. Layout, clipping, and
+  /// tap/delete routing all operate on this combined view; per-cell DCM
+  /// behaviour is decided by membership in [_dcmNames] (NOT by name pattern —
+  /// a `.dcm` file attached to a note/expense stays a regular file).
+  List<String> get _displayImgs => [...widget.imgs, ...widget.dcmImgs];
+
+  /// The set of names that are DCM X-rays (sourced from [GridGallery.dcmImgs]).
+  /// Only these get the badge / spinner placeholder / viewer routing /
+  /// dedicated delete. A `.dcm`-named entry in `imgs` (e.g. a note attachment)
+  /// is NOT in this set and keeps regular-file behaviour.
+  Set<String> get _dcmNames => widget.dcmImgs.toSet();
+
+  /// Photos only — the slideshow is for images; DCMs open the viewer.
   List<String> get viewableImgs {
     return widget.imgs.where((name) => isAnImageName(name)).toList();
   }
@@ -292,6 +326,7 @@ class _GridGalleryState extends State<GridGallery>
   void didUpdateWidget(GridGallery oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.imgs != widget.imgs ||
+        oldWidget.dcmImgs != widget.dcmImgs ||
         oldWidget.clipCount != widget.clipCount) {
       _setupEntranceAnimations();
       _entranceController
@@ -358,7 +393,15 @@ class _GridGalleryState extends State<GridGallery>
       widget.onProgress?.call(true);
     });
     try {
-      await widget.onPressDelete(img);
+      // DCM X-rays need a dedicated delete (removes both .dcm + .png preview).
+      // Only entries explicitly in `dcmImgs` get this path — a `.dcm` file
+      // attached to a note/expense deletes via the regular `onPressDelete`.
+      if (_dcmNames.contains(img)) {
+        final dcmDelete = widget.onPressDeleteDcm ?? widget.onPressDelete;
+        await dcmDelete(img);
+      } else {
+        await widget.onPressDelete(img);
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -490,6 +533,19 @@ class _GridGalleryState extends State<GridGallery>
   // ── Slideshow / viewer ──
 
   void _handleFileTap(String img) {
+    // DCM X-rays open the interactive viewer (which parses the raw .dcm
+    // itself — no dependency on the PNG preview being ready yet). Only entries
+    // explicitly in `dcmImgs` route here — a `.dcm` file attached to a
+    // note/expense falls through to the regular download path below.
+    if (_dcmNames.contains(img)) {
+      final onTapDcm = widget.onTapDcm;
+      if (onTapDcm != null) {
+        onTapDcm(context, widget.rowId, img);
+      } else {
+        openDicomViewerPanel(context, widget.rowId, img);
+      }
+      return;
+    }
     if (!isAnImageName(img)) {
       setState(() => _downloadingFiles.add(img));
       downloadFile(widget.rowId, img).whenComplete(() {
@@ -575,7 +631,7 @@ class _GridGalleryState extends State<GridGallery>
         widget.size != null ? math.min(widget.size!, 100.0) : calculatedSize;
 
     final Widget content;
-    if (widget.imgs.isEmpty) {
+    if (_displayImgs.isEmpty) {
       if (widget.uploadConfig == null) return const SizedBox.shrink();
       content = _buildEmptyState();
     } else if (primarySize < 90) {
@@ -583,14 +639,15 @@ class _GridGalleryState extends State<GridGallery>
     } else {
       content = _FeaturedMasonry(
         rowId: widget.rowId,
-        imgs: widget.imgs,
+        imgs: _displayImgs,
         width: widget.rowWidth - _kGallerySpacing * 2,
         canDelete: _deleteEnabled,
         clipCount: widget.clipCount,
         imageProviders: _imageProviders,
         downloadingFiles: _downloadingFiles,
-        onTapImage: (i) => _handleFileTap(widget.imgs[i]),
-        onDeleteImage: (i) => _doDelete(widget.imgs[i]),
+        onTapImage: (i) => _handleFileTap(_displayImgs[i]),
+        onDeleteImage: (i) => _doDelete(_displayImgs[i]),
+        dcmNames: _dcmNames,
         onTapClip: widget.onTapClip,
       );
     }
@@ -677,15 +734,16 @@ class _GridGalleryState extends State<GridGallery>
               width: tileSize,
               height: tileSize,
               child: _ImageTile(
-                img: widget.imgs[i],
+                img: _displayImgs[i],
                 rowId: widget.rowId,
+                isDcm: _dcmNames.contains(_displayImgs[i]),
                 canDelete: _deleteEnabled,
                 showClipOverlay: widget.clipCount > 0 &&
                     i == widget.clipCount - 1 &&
-                    widget.imgs.length > widget.clipCount,
-                remainingCount: widget.imgs.length - widget.clipCount + 1,
-                onTap: () => _handleFileTap(widget.imgs[i]),
-                onDelete: () => _doDelete(widget.imgs[i]),
+                    _displayImgs.length > widget.clipCount,
+                remainingCount: _displayImgs.length - widget.clipCount + 1,
+                onTap: () => _handleFileTap(_displayImgs[i]),
+                onDelete: () => _doDelete(_displayImgs[i]),
                 imageProviders: _imageProviders,
                 downloadingFiles: _downloadingFiles,
                 tileSize: tileSize,
@@ -728,6 +786,12 @@ class _EntranceWrapper extends StatelessWidget {
 class _ImageTile extends StatefulWidget {
   final String img;
   final String rowId;
+
+  /// When `true`, [img] is a `.dcm`/`.dicom` X-ray. The tile renders the PNG
+  /// preview (via `getImage`, which auto-redirects `.dcm` → `.dcm.png`), shows
+  /// a "DCM" badge, displays a spinner placeholder while the PNG is still
+  /// generating, and rebuilds when `dicomPngReady` bumps.
+  final bool isDcm;
   final bool canDelete;
   final bool showClipOverlay;
   final int remainingCount;
@@ -742,6 +806,7 @@ class _ImageTile extends StatefulWidget {
   const _ImageTile({
     required this.img,
     required this.rowId,
+    this.isDcm = false,
     required this.canDelete,
     required this.showClipOverlay,
     required this.remainingCount,
@@ -762,6 +827,7 @@ class _ImageTileState extends State<_ImageTile> {
   bool _isHovered = false;
   bool _hasLoaded = false;
   late Future<ImageProvider<Object>?> _imageFuture;
+  StreamSubscription<int>? _pngReadySub;
 
   bool get _showHoverEffects => _isHovered;
   bool get _showLargeHoverEffects => _showHoverEffects && widget.tileSize >= 56;
@@ -770,6 +836,18 @@ class _ImageTileState extends State<_ImageTile> {
   void initState() {
     super.initState();
     _imageFuture = getImage(widget.rowId, widget.img, !widget.useOriginal);
+    // DCM previews are generated lazily; rebuild the cell each time a new
+    // PNG lands so a placeholder flips to the real preview.
+    if (widget.isDcm) {
+      _pngReadySub = dicomPngReady.stream.listen((_) {
+        if (!mounted) return;
+        setState(() {
+          _hasLoaded = false;
+          _imageFuture =
+              getImage(widget.rowId, widget.img, !widget.useOriginal);
+        });
+      });
+    }
   }
 
   @override
@@ -782,6 +860,12 @@ class _ImageTileState extends State<_ImageTile> {
         _imageFuture = getImage(widget.rowId, widget.img, !widget.useOriginal);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _pngReadySub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -817,8 +901,12 @@ class _ImageTileState extends State<_ImageTile> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (!_hasLoaded) const _ShimmerPlaceholder(),
+                if (!_hasLoaded)
+                  widget.isDcm
+                      ? _buildDcmPlaceholder()
+                      : const _ShimmerPlaceholder(),
                 _buildImageContent(theme),
+                if (widget.isDcm) const _DcmBadge(),
                 if (widget.downloadingFiles.contains(widget.img))
                   Positioned.fill(
                     child: Center(
@@ -911,13 +999,40 @@ class _ImageTileState extends State<_ImageTile> {
             return Image(
               image: snapshot.data!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildFilePlaceholder(theme),
+              errorBuilder: (_, __, ___) => widget.isDcm
+                  ? _buildDcmPlaceholder()
+                  : _buildFilePlaceholder(theme),
             );
           }
-          return _buildFilePlaceholder(theme);
+          // No preview yet: DCM shows the generating spinner; other files
+          // show the file-type icon placeholder.
+          return widget.isDcm
+              ? _buildDcmPlaceholder()
+              : _buildFilePlaceholder(theme);
         }
-        return const SizedBox.expand();
+        // Loading: DCM shows the spinner; photos leave the shimmer visible.
+        return widget.isDcm ? _buildDcmPlaceholder() : const SizedBox.expand();
       },
+    );
+  }
+
+  /// Placeholder shown while a DCM's PNG preview is still being generated
+  /// (or has failed to generate). A spinner conveys "in progress"; the
+  /// tooltip explains what's happening.
+  Widget _buildDcmPlaceholder() {
+    return Tooltip(
+      message: txt("generatingPreview"),
+      child: Container(
+        color:
+            FluentTheme.of(context).resources.cardBackgroundFillColorSecondary,
+        child: const Center(
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: ProgressRing(strokeWidth: 2),
+          ),
+        ),
+      ),
     );
   }
 
@@ -927,6 +1042,45 @@ class _ImageTileState extends State<_ImageTile> {
       iconSize: widget.tileSize * 0.5,
       showLabel: widget.tileSize >= 45,
       labelWidth: widget.tileSize,
+    );
+  }
+}
+
+// ─── DCM badge overlay ────────────────────────────────────────────────────
+
+/// Small "DCM" badge rendered in the top-left corner of a gallery cell to
+/// distinguish X-ray previews from regular photos.
+class _DcmBadge extends StatelessWidget {
+  const _DcmBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 4,
+      left: 4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0078D4),
+          borderRadius: BorderRadius.circular(3),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 2,
+              offset: const Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Text(
+          txt("dcm"),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1169,6 +1323,10 @@ class _FeaturedMasonry extends StatefulWidget {
   final void Function(int index) onDeleteImage;
   final VoidCallback? onTapClip;
 
+  /// Names in [imgs] that are DCM X-rays (sourced from `GridGallery.dcmImgs`).
+  /// Only these get the DCM badge / spinner placeholder / viewer routing.
+  final Set<String> dcmNames;
+
   const _FeaturedMasonry({
     required this.rowId,
     required this.imgs,
@@ -1179,6 +1337,7 @@ class _FeaturedMasonry extends StatefulWidget {
     required this.downloadingFiles,
     required this.onTapImage,
     required this.onDeleteImage,
+    required this.dcmNames,
     this.onTapClip,
   });
 
@@ -1248,6 +1407,7 @@ class _FeaturedMasonryState extends State<_FeaturedMasonry> {
     return _ImageTile(
       img: widget.imgs[index],
       rowId: widget.rowId,
+      isDcm: widget.dcmNames.contains(widget.imgs[index]),
       canDelete: widget.canDelete && widget.clipCount == 0,
       showClipOverlay: isLast,
       remainingCount: isLast ? widget.imgs.length - widget.clipCount : 0,

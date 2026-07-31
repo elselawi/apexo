@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/dicom/dicom_controller.dart';
+import 'package:apexo/features/dicom/dicom_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_screen.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/labwork/labworks_screen.dart';
@@ -16,6 +18,7 @@ import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../services/localization/locale.dart';
@@ -291,6 +294,22 @@ class _Routes {
             notes.synchronize();
           },
         ),
+        // Windows-only DICOM import route. Gated on the current
+        // platform + photos permission (or admin). onSelect triggers a scan
+        // so the pending list is fresh when the dentist opens the screen.
+        if (DicomController.isSupported &&
+            (login.perm(Perm.photos).some || login.isAdmin))
+          Route(
+            title: txt("xrayLink"),
+            identifier: "dicom",
+            navbarTitle: txt("xrayLink"),
+            icon: FluentIcons.generic_scan,
+            screen: DicomScreen.new,
+            accessible: true,
+            onSelect: () {
+              dicomCtrl.refresh();
+            },
+          ),
         Route(
           title: txt("settings"),
           identifier: "settings",

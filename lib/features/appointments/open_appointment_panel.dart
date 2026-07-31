@@ -3,7 +3,6 @@ import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -18,7 +17,6 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
-import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -172,10 +170,21 @@ class _AppointmentGallery extends StatefulWidget {
 class _AppointmentGalleryState extends State<_AppointmentGallery> {
   @override
   Widget build(BuildContext context) {
-    final otherImages =
-        (widget.panel.item.patient?.appointmentsWithImages ?? [])
-            .where((a) => a.id != widget.panel.item.id)
-            .toList();
+    // Other appointments surfaced below the current one's gallery: include
+    // any appointment that has photos OR DCM X-rays (deduped by id).
+    final patient = widget.panel.item.patient;
+    final otherImages = <Appointment>[];
+    if (patient != null) {
+      final seen = <String>{};
+      for (final a in [
+        ...patient.appointmentsWithImages,
+        ...patient.appointmentsWithDcmImgs,
+      ]) {
+        if (a.id != widget.panel.item.id && seen.add(a.id)) {
+          otherImages.add(a);
+        }
+      }
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -203,6 +212,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                   canDelete: login.perm(Perm.photos).exact(1),
                   rowId: widget.panel.item.id,
                   imgs: widget.panel.item.imgs,
+                  dcmImgs: widget.panel.item.dcmImgs,
                   slideshowEnabled: true,
                   drawings: widget.panel.item.drawings,
                   onSaveDrawing: (img, drawing) {
@@ -224,6 +234,23 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                       showErrorMessage(e, "deletingPatientImageFromServer");
                       login.askForLoginAgain(e);
                       logger("Error during deleting image: $e", s);
+                    }
+                    widget.panel.inProgress(false);
+                    widget.panel.selectedTab(widget.panel.selectedTab());
+                  },
+                  onPressDeleteDcm: (dcmName) async {
+                    widget.panel.inProgress(true);
+                    try {
+                      await appointments.deleteDcmImg(
+                          widget.panel.item.id, dcmName);
+                      widget.panel.item.dcmImgs.remove(dcmName);
+                      appointments.set(widget.panel.item);
+                      widget.panel.savedJson =
+                          jsonEncode(widget.panel.item.toJson());
+                    } catch (e, s) {
+                      showErrorMessage(e, "deletingPatientImageFromServer");
+                      login.askForLoginAgain(e);
+                      logger("Error during deleting DCM image: $e", s);
                     }
                     widget.panel.inProgress(false);
                     widget.panel.selectedTab(widget.panel.selectedTab());

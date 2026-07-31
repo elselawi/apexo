@@ -425,7 +425,9 @@ class _ArchivedPageState extends State<_ArchivedPage> {
       child: Center(
         child: Txt(
           txt("noResultsFound"),
-          style: TextStyle(fontSize: 14, color: Colors.grey[120]),
+          style: TextStyle(
+              fontSize: 14,
+              color: FluentTheme.of(context).resources.textFillColorDisabled),
         ),
       ),
     );

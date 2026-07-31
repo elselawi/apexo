@@ -4,7 +4,6 @@ import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/features/accounts/open_account_panel.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/expenses/scan_receipt_dialog.dart';

@@ -237,7 +237,10 @@ class DashboardScreen extends StatelessWidget {
                     style: FluentTheme.of(context)
                         .typography
                         .bodyStrong!
-                        .copyWith(backgroundColor: Colors.grey.withAlpha(40)),
+                        .copyWith(
+                            backgroundColor: FluentTheme.of(context)
+                                .resources
+                                .textFillColorDisabled),
                   ))
                 : ListView(
                     scrollDirection: Axis.vertical,

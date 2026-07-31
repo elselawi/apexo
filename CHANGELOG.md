@@ -1,3 +1,8 @@
+### ____0.14.0____
+
+- New Features & Enhancements
+    - **DICOM / RVG X-Ray Import (Windows)**: One-click workflow to import X-rays from RVG sensors. Configure watch folders once, then Apexo scans for new `.dcm` files every 90 seconds. Smart matching suggests which patient each X-ray belongs to based on embedded metadata. Once a DICOM patient ID is linked, future X-rays auto-import without manual steps. Includes a full cross-platform interactive viewer with windowing, rotation, color-map presets, invert, and measurement tools (ROI statistics, ruler in mm). Imported X-rays sync to all devices via PocketBase.
+
 ### ____0.13.0____
 
 - New Features & Enhancements

@@ -390,6 +390,49 @@ If you have an order, and uploaded a receipt image, yet you still haven't added 
 
 ---
 
+### DICOM / X-Ray Import
+
+The **DICOM** feature lets you import X-rays from RVG (radiovisiography) sensors directly into Apexo. It's available on Windows — the platform where X-ray sensor software runs.
+
+#### How it works
+
+1. **Configure once**: Open Settings → DICOM / X-Ray Settings. Pick the folder(s) where your RVG sensor software saves `.dcm` files. Enable **Auto-import**.
+
+2. **Automatic discovery**: Apexo scans the configured folders every 90 seconds for new `.dcm` files. For already-linked patients, X-rays are imported automatically — no manual steps.
+
+3. **Smart matching**: For new patients, Apexo reads the patient name and ID from each `.dcm` file's metadata and suggests which Apexo patient it belongs to. You confirm with one click.
+
+4. **View anywhere**: Imported X-rays sync to all your devices via PocketBase. Open any appointment's Gallery tab — X-rays appear alongside photos, marked with a **DCM** badge. Tap to open the interactive viewer.
+
+#### The X-Ray Viewer
+
+The viewer works on all platforms (Windows, Android, iOS, macOS, Web):
+
+| Control | What it does |
+|---------|-------------|
+| **Drag** | Adjust brightness/contrast (windowing) |
+| **Pinch** | Zoom in/out |
+| **Presets** | Quick windowing: Full Range, DICOM Default, Mid 50%, Narrow 25%, High, Low |
+| **Color Map** | Grayscale, Hot Iron, PET Heat, Rainbow, Cool, Bone |
+| **Invert** | Toggle black/white inversion |
+| **Rotate** | 0° / 90° / 180° / 270° |
+| **Ruler** | Measure distance in millimeters (tap two points) |
+| **ROI** | Draw a rectangle to get statistics (min, max, mean, stdDev) |
+
+#### Dedicated X-Ray laptop
+
+If your clinic keeps a Windows laptop solely for the RVG sensor, just install Apexo on it, configure the watch folders, and enable auto-import. The laptop can sit unattended — Apexo will discover new X-rays, match them, and sync them to PocketBase. All other clinic devices will have the X-rays within minutes.
+
+#### Manual import screen
+
+Open the **X-Ray Link** route from the sidebar to manage pending imports:
+- Review suggested patient matches with confidence badges (green ≥80%, yellow ≥50%, red <50%)
+- Change or unmatch suggestions
+- Batch-approve multiple patients at once
+- Manage linked patients (unlink to re-match later)
+
+---
+
 ### Settings
 
 The **Settings** screen contains all configurable options for the application. Each setting is displayed as an expandable card showing its icon, title, and an indicator of whether it applies to the whole clinic or only your device.
@@ -415,4 +458,12 @@ The **Settings** screen contains all configurable options for the application. E
 | **Audio transcription locale** | 📱 Your device only | Language for voice‑to‑text transcription. Choose "Same as app language" or pick from 30+ supported languages. |
 | **Cache reset** | 📱 Your device only | Clears all local data and re‑syncs from the server. Useful for troubleshooting. A progress dialog guides you through the process. |
 
-> Service‑specific settings (SMTP, Backups, S3, Authentication, Meta) are documented in the [Best practices](#best-practices) section above.
+#### DICOM / X-Ray settings
+
+| Setting | Scope | Description |
+|---------|-------|-------------|
+| **X-Ray watch folder** | 🌐 Whole clinic | Folder(s) where your RVG sensor software saves `.dcm` files. Supports multiple directories separated by `;`. Click to manage folders (add/remove). |
+| **Auto-import** | 🌐 Whole clinic | When enabled, new X-rays from already-linked patients are imported automatically every 90 seconds. Turn off to require manual approval for every file. |
+| **Reset viewer preferences** | 📱 Your device only | Resets the interactive viewer to DICOM default settings (window, color map, invert, rotation). |
+
+> Detailed DICOM setup and usage is documented in the [DICOM / X-Ray Import](#dicom--x-ray-import) section above.

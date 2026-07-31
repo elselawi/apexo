@@ -12,6 +12,7 @@ list(APPEND FLUTTER_PLUGIN_LIST
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST
+  dicom_toolkit
   flutter_local_notifications_windows
   jni
 )

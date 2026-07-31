@@ -20,6 +20,20 @@
             "request": "launch",
             "type": "dart",
             "flutterMode": "release"
+        },
+        {
+            // Web run with COOP/COEP headers — required for dicom_toolkit's
+            // WASM threading (SharedArrayBuffer). Mirrors the web/_headers
+            // file that Cloudflare Pages serves in production. Use this
+            // config (not the default) when testing DICOM features on web.
+            "name": "apexo-flutter (web, COOP/COEP)",
+            "request": "launch",
+            "type": "dart",
+            "deviceId": "chrome",
+            "args": [
+                "--web-header=Cross-Origin-Opener-Policy=same-origin",
+                "--web-header=Cross-Origin-Embedder-Policy=require-corp"
+            ]
         }
     ]
 }

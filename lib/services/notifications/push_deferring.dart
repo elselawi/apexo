@@ -19,6 +19,12 @@ class _DeferredPush {
     hiveBox = _initialize(clinicServer);
   }
 
+  /// Resets so [init] re-runs for the next login (different server = different
+  /// Hive box). Called from [Login.logout] via [onLogoutCallbacks].
+  void reset() {
+    _initialized = false;
+  }
+
   Future<Box<String>> _initialize(String clinicServer) async {
     await safeHiveInit();
     return Hive.openBox<String>("push-${simpleHash(clinicServer)}",

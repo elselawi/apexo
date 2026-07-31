@@ -21,6 +21,13 @@ import 'package:flutter/foundation.dart';
 import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
 
+/// Callbacks invoked during [Login.logout], before credentials are cleared.
+///
+/// Services that need to tear down session-scoped resources (e.g. the DICOM
+/// periodic timer) can register here without creating circular imports
+/// between `lib/services/` and `lib/features/`.
+final List<void Function()> onLogoutCallbacks = [];
+
 class _LoginService extends ObservablePersistingObject {
   _LoginService(super.identifier);
 
@@ -155,6 +162,16 @@ class _LoginService extends ObservablePersistingObject {
       JSBridge.setGlobalVariable("accountId", "");
       JSBridge.setGlobalVariable("shouldShowPrompt", "no");
     }
+    // Let registered services tear down session-scoped resources
+    // (e.g. DICOM periodic timer) before we clear state.
+    for (final cb in onLogoutCallbacks) {
+      cb();
+    }
+    // Reset navigation state so the next login starts at the dashboard.
+    routes.reset();
+    // Deferred push is keyed by server URL — reset so the next login
+    // opens the correct Hive box for the new server.
+    deferredPush.reset();
     notifyAndPersist();
     routes.panels([]);
     return loginCtrl.finishedLoginProcess();

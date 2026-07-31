@@ -317,21 +317,23 @@ Future<_ScanResult> _doScan({
       // Skip volumetric scans (CBCT, CT) — they produce hundreds of slices
       // that are clinically meaningless as individual 2D images.  The
       // original files stay on disk; the dentist uses dedicated 3D software.
-      if (meta.isVolumetric) {
-        skipped.add(DicomSkippedRecord(
-            entry.path, 'volumetric scan (CBCT/CT), skipped'));
-        // Still cache the metadata so we don't re-parse on every scan.
-        newCacheEntries[entry.path] = DicomCachedMeta(
-          mtime: entry.mtime,
-          size: entry.size,
-          dedupKey: meta.dedupKey,
-          patientName: meta.patientName,
-          patientId: meta.patientId,
-          dcmDate: meta.dcmDate,
-          isVolumetric: true,
-        );
-        continue;
-      }
+      // we're currently commenting it out since it seems to skip even regular RVG
+      //  ------- TODO: more investigation on ^ to update dicom_toolkit if we need
+      // if (meta.isVolumetric) {
+      //   skipped.add(DicomSkippedRecord(
+      //       entry.path, 'volumetric scan (CBCT/CT), skipped'));
+      //   // Still cache the metadata so we don't re-parse on every scan.
+      //   newCacheEntries[entry.path] = DicomCachedMeta(
+      //     mtime: entry.mtime,
+      //     size: entry.size,
+      //     dedupKey: meta.dedupKey,
+      //     patientName: meta.patientName,
+      //     patientId: meta.patientId,
+      //     dcmDate: meta.dcmDate,
+      //     isVolumetric: true,
+      //   );
+      //   continue;
+      // }
 
       dk = meta.dedupKey;
       patientName = meta.patientName;

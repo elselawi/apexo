@@ -551,7 +551,11 @@ class _EmptyState extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 60),
           child: Column(
             children: [
-              const Icon(FluentIcons.generic_scan, size: 48),
+              Icon(
+                FluentIcons.generic_scan,
+                size: 48,
+                color: txtColor,
+              ),
               const SizedBox(height: 16),
               Txt(
                 watchDirEmpty

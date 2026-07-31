@@ -20,8 +20,6 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
-import 'dart:io' show Platform;
 import 'package:table_calendar/table_calendar.dart';
 import 'settings_model.dart';
 import 'settings_stores.dart';

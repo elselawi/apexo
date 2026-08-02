@@ -223,9 +223,9 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
 
   void remove(String id) {
     if (_dictionary.containsKey(id)) {
+      _copyDictionary([id]);
       _dictionary.remove(id);
       notifyObservers([DictEvent.remove(id)]);
-      _copyDictionary([id]);
     }
   }
 

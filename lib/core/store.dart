@@ -292,6 +292,15 @@ class Store<G extends Model> {
       List<int> remoteLosersIndices = [];
 
       // check conflicts: last write wins
+      // Collect merged results for conflicting records.  Each conflict is
+      // field-level-merged (see [mergeConflict]) rather than discarding one
+      // entire version.  The merged JSON goes to BOTH local and remote.
+      final Map<String, String> mergedConflictsToLocal = {};
+      final Map<String, String> mergedConflictsToRemote = {};
+
+      // First pass: identify conflicts synchronously (removeWhere's
+      // callback cannot be async).  Collect the data needed for merging.
+      final List<_ConflictInfo> conflictsFound = [];
       deferred.removeWhere((dfID, deferredTimeStamp) {
         int remoteConflictIndex =
             remoteUpdates.rows.indexWhere((r) => r.id == dfID);
@@ -300,18 +309,43 @@ class Store<G extends Model> {
           return false;
         }
         int remoteTimeStamp = remoteUpdates.rows[remoteConflictIndex].ts;
-        if (deferredTimeStamp > remoteTimeStamp) {
-          // local update wins
-          conflicts++;
-          remoteLosersIndices.add(remoteConflictIndex);
-          return false;
-        } else {
-          // remote update wins
-          // return true to remove this item from deferred
-          conflicts++;
-          return true;
-        }
+        final bool localWins = deferredTimeStamp > remoteTimeStamp;
+        conflictsFound.add(_ConflictInfo(
+          dfID: dfID,
+          remoteConflictIndex: remoteConflictIndex,
+          localWins: localWins,
+          remoteData: remoteUpdates.rows[remoteConflictIndex].data,
+        ));
+        conflicts++;
+        // Remove the conflicting remote row from the pull set — the
+        // merged version is written to local directly below.
+        remoteLosersIndices.add(remoteConflictIndex);
+        // Remove from deferred — the merged version is pushed to remote
+        // directly below.
+        return true;
       });
+
+      // Second pass: async field-level merge for each conflict.
+      final pendingUploadsAll =
+          filenamesFromDeferred(deferred).where((f) => f.isNotEmpty).toSet();
+      for (final c in conflictsFound) {
+        final localJson =
+            jsonDecode(await local!.get(c.dfID)) as Map<String, dynamic>;
+        final remoteJson = jsonDecode(c.remoteData) as Map<String, dynamic>;
+        final serverFiles = remote!.fullNamesCache[c.dfID] ?? const <String>[];
+
+        final mergedJson = mergeConflict(
+          localJson: localJson,
+          remoteJson: remoteJson,
+          localWins: c.localWins,
+          serverFiles: serverFiles,
+          pendingUploads: pendingUploadsAll,
+        );
+
+        final mergedStr = jsonEncode(mergedJson);
+        mergedConflictsToLocal[c.dfID] = mergedStr;
+        mergedConflictsToRemote[c.dfID] = mergedStr;
+      }
 
       // remove losers from remote updates
       // Sort indices in descending order
@@ -322,6 +356,11 @@ class Store<G extends Model> {
 
       Map<String, String> toLocalWrite = Map.fromEntries(
           remoteUpdates.rows.map((r) => MapEntry(r.id, r.data)));
+
+      // Merge in field-level-merged conflict results (these override any
+      // remote-only row of the same ID, but conflicting IDs were already
+      // removed from remoteUpdates above via remoteLosersIndices).
+      toLocalWrite.addAll(mergedConflictsToLocal);
 
       // those will be built in the for loop below
       Map<String, String> toRemoteWrite = {};
@@ -415,6 +454,10 @@ class Store<G extends Model> {
           toRemoteWrite.addAll({entry.key: await local!.get(entry.key)});
         }
       }
+
+      // Add field-level-merged conflict results to the remote write set.
+      // These were removed from `deferred` above and need to be pushed.
+      toRemoteWrite.addAll(mergedConflictsToRemote);
 
       if (toLocalWrite.isNotEmpty) {
         await local!.put(toLocalWrite);
@@ -971,6 +1014,199 @@ class Store<G extends Model> {
       return parts.length >= 4 ? parts[3] : '';
     }).toSet();
   }
+
+  /// Field names that store image filenames in the model JSON.  These are
+  /// reconciled against the server's actual file list during merge instead
+  /// of being union/LWW-merged, because PocketBase's `imgs` column is the
+  /// authoritative source of which files exist.
+  static const _imageFields = ['imgs', 'dcmImgs'];
+
+  /// Map fields (tooth notes, drawings) that are merged per-key with
+  /// last-writer-wins for same-key conflicts.  This lets two devices edit
+  /// *different* keys (e.g. different teeth) without losing either edit.
+  static const _mapFields = ['teeth', 'teethExtraNotes', 'drawings'];
+
+  /// List fields that are merged by union with dedup.  Only fields whose
+  /// semantics are additive (multi-assignment) belong here.
+  static const _unionListFields = ['operatorsIDs'];
+
+  /// List fields that are NOT merged — they keep whole-field LWW.
+  /// Free-text lists edited via whole-list replacement (tags,
+  /// prescriptions) are unsafe to union because deletions are expressed
+  /// only by absence and would be silently un-deleted.
+  static const _lwwListFields = ['tags', 'prescriptions'];
+
+  /// Merges two JSON representations of the same record after a sync
+  /// conflict, instead of discarding one entire version.
+  ///
+  /// Strategies per field type (see the field sets above):
+  /// - **Scalar fields**: union — a field present on one side (and
+  ///   default-absent on the other) is kept.  When both sides have a
+  ///   non-default value that differs, last-write-wins by [localWins].
+  /// - **`imgs`/`dcmImgs`**: reconciled against [serverFiles] (the PB
+  ///   `imgs` column), which is the authoritative source of which files
+  ///   exist.  Filenames in [pendingUploads] are kept even if not yet on
+  ///   the server (deferred uploads).
+  /// - **Map fields** (`teeth`, `teethExtraNotes`, `drawings`): per-key
+  ///   LWW — different keys survive from both sides; same-key conflict
+  ///   resolved by [localWins].
+  /// - **`operatorsIDs`**: union with dedup (additive semantics).
+  /// - **`tags`/`prescriptions`**: whole-field LWW (no merge).
+  ///
+  /// [localJson]/[remoteJson] are the full `toJson()` output for each
+  /// side.  [localWins] selects the winner for same-field/same-key
+  /// conflicts.  [serverFiles] is the list of filenames PB actually has
+  /// for this record (may be empty).  [pendingUploads] is the set of
+  /// filenames queued for deferred upload to this record.
+  ///
+  /// Returns the merged JSON map.
+  @visibleForTesting
+  static Map<String, dynamic> mergeConflict({
+    required Map<String, dynamic> localJson,
+    required Map<String, dynamic> remoteJson,
+    required bool localWins,
+    List<String> serverFiles = const [],
+    Set<String> pendingUploads = const {},
+  }) {
+    final winner = localWins ? localJson : remoteJson;
+    final loser = localWins ? remoteJson : localJson;
+    final merged = <String, dynamic>{};
+
+    // Union of all keys across both sides.
+    final allKeys = <String>{...localJson.keys, ...remoteJson.keys};
+
+    for (final key in allKeys) {
+      // `id` is always present and identical — take it from either side.
+      if (key == 'id') {
+        merged['id'] = localJson['id'] ?? remoteJson['id'];
+        continue;
+      }
+
+      final localVal = localJson[key];
+      final remoteVal = remoteJson[key];
+      final localHas = localJson.containsKey(key);
+      final remoteHas = remoteJson.containsKey(key);
+
+      // ── Image fields: reconcile against the server's actual files ──
+      if (_imageFields.contains(key)) {
+        merged[key] = _mergeImageField(
+          localVal: localVal,
+          remoteVal: remoteVal,
+          serverFiles: serverFiles,
+          pendingUploads: pendingUploads,
+          isDcm: key == 'dcmImgs',
+        );
+        continue;
+      }
+
+      // ── Map fields: per-key LWW ──
+      if (_mapFields.contains(key)) {
+        final localMap = _toStringMap(localVal);
+        final remoteMap = _toStringMap(remoteVal);
+        // Winner's keys win for same-key conflicts; loser's distinct
+        // keys survive.  This preserves deletions on the winning side
+        // (a deleted key is simply absent from the winner's map).
+        final mapKeys = <String>{...localMap.keys, ...remoteMap.keys};
+        final mergedMap = <String, String>{};
+        for (final mk in mapKeys) {
+          if (winner.containsKey(key) && winner[key] is Map) {
+            // Winner takes precedence for keys it has.
+            final wMap = _toStringMap(winner[key]);
+            if (wMap.containsKey(mk)) {
+              mergedMap[mk] = wMap[mk]!;
+              continue;
+            }
+          }
+          // Otherwise take from whichever side has it.
+          if (localMap.containsKey(mk)) {
+            mergedMap[mk] = localMap[mk]!;
+          } else if (remoteMap.containsKey(mk)) {
+            mergedMap[mk] = remoteMap[mk]!;
+          }
+        }
+        if (mergedMap.isNotEmpty) merged[key] = mergedMap;
+        continue;
+      }
+
+      // ── Union list fields (operatorsIDs): union with dedup ──
+      if (_unionListFields.contains(key)) {
+        final localList = _toStringList(localVal);
+        final remoteList = _toStringList(remoteVal);
+        final union = <String>{
+          ...localList,
+          ...remoteList,
+        }.toList();
+        if (union.isNotEmpty) merged[key] = union;
+        continue;
+      }
+
+      // ── LWW list fields (tags, prescriptions) & all other scalars ──
+      // Whole-field LWW: take the winner's value if present, else the
+      // loser's.  This also covers `date` (always present → winner wins)
+      // and scalar fields like `name`/`phone`/`age`.
+      if (winner.containsKey(key)) {
+        merged[key] = winner[key];
+      } else if (loser.containsKey(key)) {
+        merged[key] = loser[key];
+      }
+    }
+
+    return merged;
+  }
+
+  /// Merges an image-filename list field (`imgs`/`dcmImgs`) by taking the
+  /// union of local and remote model lists, then keeping only filenames
+  /// that either (a) exist on the server ([serverFiles]) or (b) are
+  /// pending upload ([pendingUploads]).  [isDcm] filters the server list
+  /// to DICOM vs regular images.
+  static List<String> _mergeImageField({
+    required dynamic localVal,
+    required dynamic remoteVal,
+    required List<String> serverFiles,
+    required Set<String> pendingUploads,
+    required bool isDcm,
+  }) {
+    final localList = _toStringList(localVal);
+    final remoteList = _toStringList(remoteVal);
+    final candidates = <String>{...localList, ...remoteList};
+
+    // The server's `imgs` column holds BOTH regular images and DICOM
+    // files in one list.  Filter to the relevant subtype.
+    final serverRelevant = serverFiles
+        .where(isDcm ? _isDcmFileStatic : _isNotDcmFileStatic)
+        .toSet();
+
+    final kept = <String>[];
+    for (final name in candidates) {
+      // Keep if the server actually has the file, or if it's pending
+      // upload (deferred FILE entry not yet processed).
+      if (serverRelevant.contains(name) || pendingUploads.contains(name)) {
+        kept.add(name);
+      }
+    }
+    return kept;
+  }
+
+  static bool _isDcmFileStatic(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.dcm') || lower.endsWith('.dicom');
+  }
+
+  static bool _isNotDcmFileStatic(String name) => !_isDcmFileStatic(name);
+
+  static Map<String, String> _toStringMap(dynamic val) {
+    if (val is Map) {
+      return val.map((k, v) => MapEntry(k.toString(), v.toString()));
+    }
+    return {};
+  }
+
+  static List<String> _toStringList(dynamic val) {
+    if (val is List) {
+      return val.map((e) => e.toString()).toList();
+    }
+    return [];
+  }
 }
 
 // The following two functions
@@ -978,6 +1214,22 @@ class Store<G extends Model> {
 // that's why they are top-level
 // they are meant to to run jsonDecode
 // and modelling on large batches of data
+
+/// Internal record used during conflict resolution in [_syncTry].
+/// Collects the data needed for the async field-level merge pass.
+class _ConflictInfo {
+  final String dfID;
+  final int remoteConflictIndex;
+  final bool localWins;
+  final String remoteData;
+  _ConflictInfo({
+    required this.dfID,
+    required this.remoteConflictIndex,
+    required this.localWins,
+    required this.remoteData,
+  });
+}
+
 Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
   return Map<String, Map<String, dynamic>>.fromEntries(encoded.entries.map(
       (entry) => MapEntry(

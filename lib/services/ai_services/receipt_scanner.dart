@@ -58,6 +58,13 @@ class ReceiptData {
             [],
         totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
       );
+
+  Map<String, dynamic> toJson() => {
+        'supplierName': supplierName,
+        'orderDate': orderDate,
+        'orderItems': orderItems.map((e) => e.toJson()).toList(),
+        'totalPrice': totalPrice,
+      };
 }
 
 // ============================================================================

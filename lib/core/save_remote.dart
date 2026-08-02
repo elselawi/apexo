@@ -194,7 +194,7 @@ class SaveRemote {
         fullNames = List<String>.from(record.data["imgs"]);
         fullNamesCache[rowID] = fullNames;
       }
-      return fullNames.where((e) => e.contains("_${hash}_")).firstOrNull;
+      return fullNames.where((e) => e.contains("_$hash")).firstOrNull;
     } catch (_) {
       return null; // can't check → proceed with upload
     }

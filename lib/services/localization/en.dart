@@ -66,7 +66,7 @@ class En {
     "archive": "Archive",
     "restore": "Restore",
     "logout": "Logout",
-    "VoiceInput": "Voice Input",
+    "voiceInput": "Voice Input",
     "noResultsFound": "No results found",
     "startTyping": "Start typing",
     "home": "Home",
@@ -540,7 +540,7 @@ class En {
     "dentalNotation_desc": "choose your preferred system of notation",
     "palmer": "Palmer",
     "universal": "Universal",
-    "ISO": "ISO",
+    "iso": "ISO",
 
     // advanced settings: Backups
     "backup": "Backup",
@@ -804,7 +804,7 @@ class En {
     "unidentified": "Unidentified",
 
     // Dental history recording
-    "VoiceAutoFill": "Voice Auto-Fill",
+    "voiceAutoFill": "Voice Auto-Fill",
     "dentalHistoryVoiceAutoFillHint":
         "Speak tooth numbers and conditions naturally to update the patient's chart automatically.",
     "postOperativeVoiceAutoFillHint":

@@ -63,7 +63,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
             ? Builder(
                 builder: (context) => AudioRecorderButton(
                   hint: txt("dentalHistoryVoiceAutoFillHint"),
-                  label: txt("VoiceAutoFill"),
+                  label: txt("voiceAutoFill"),
                   onRecordingComplete: (bytes, mimeType) async {
                     try {
                       final result = await DentalHistory.processAudioBytes(

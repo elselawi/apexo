@@ -65,7 +65,7 @@ class Fa implements En {
     "archive": "بایگانی",
     "restore": "بازیابی",
     "logout": "خروج",
-    "VoiceInput": "ورودی صوتی",
+    "voiceInput": "ورودی صوتی",
     "noResultsFound": "نتیجه‌ای یافت نشد",
     "startTyping": "شروع به تایپ کنید",
     "home": "خانه",
@@ -536,7 +536,7 @@ class Fa implements En {
     "dentalNotation_desc": "سیستم نمادگذاری ترجیحی خود را انتخاب کنید",
     "palmer": "پالمر",
     "universal": "جهانی",
-    "ISO": "ISO",
+    "iso": "ISO",
 
     // advanced settings: Backups
     "backup": "پشتیبان",
@@ -802,7 +802,7 @@ class Fa implements En {
     "unidentified": "ناشناس",
 
     // Dental history recording
-    "VoiceAutoFill": "پرکردن خودکار صوتی",
+    "voiceAutoFill": "پرکردن خودکار صوتی",
     "dentalHistoryVoiceAutoFillHint":
         "شماره دندان‌ها و شرایط را به طور طبیعی بگویید تا نمودار بیمار به صورت خودکار به‌روزرسانی شود.",
     "postOperativeVoiceAutoFillHint":

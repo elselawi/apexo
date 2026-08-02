@@ -40,7 +40,7 @@ class _LiveTranscriptionButtonState extends State<LiveTranscriptionButton> {
   @override
   Widget build(BuildContext context) {
     return Tooltip(
-      message: txt("VoiceInput"),
+      message: txt("voiceInput"),
       child: StreamBuilder<TranscriptionSession>(
           stream: liveTranscriptionService.stream,
           builder: (context, _) {

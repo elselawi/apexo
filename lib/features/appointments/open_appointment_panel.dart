@@ -96,7 +96,7 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
         footer: (network.isOnline() && globalSettings.aiServicesEnabled)
             ? AudioRecorderButton(
                 hint: txt("postOperativeVoiceAutoFillHint"),
-                label: txt("VoiceAutoFill"),
+                label: txt("voiceAutoFill"),
                 onRecordingComplete: (bytes, mimeType) async {
                   try {
                     final existing = PostOpData(

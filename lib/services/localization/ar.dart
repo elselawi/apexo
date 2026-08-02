@@ -64,7 +64,7 @@ class Ar implements En {
     "archive": "أرشفة",
     "restore": "استعادة",
     "logout": "خروج",
-    "VoiceInput": "إدخال صوتي",
+    "voiceInput": "إدخال صوتي",
     "noResultsFound": "لم يتم العثور على نتائج",
     "startTyping": "اكتب هنا",
     "home": "الرئيسية",
@@ -534,7 +534,7 @@ class Ar implements En {
     "dentalNotation_desc": "اختر نظام الترميز المفضل لديك",
     "palmer": "بالمر",
     "universal": "عالمي - أميريكي",
-    "ISO": "أيزو",
+    "iso": "أيزو",
 
     // advanced settings: Backups
     "backup": "نسخة احتياطية",
@@ -796,7 +796,7 @@ class Ar implements En {
     "unidentified": "غير محدد",
 
     // Dental history recording
-    "VoiceAutoFill": "ادخال تلقائي بالصوت",
+    "voiceAutoFill": "ادخال تلقائي بالصوت",
     "dentalHistoryVoiceAutoFillHint":
         "تحدث عن وضع الاسنان والعلاجات السابقة، بشكل طبيعي لتحديث مخطط المريض تلقائياً.",
     "postOperativeVoiceAutoFillHint":

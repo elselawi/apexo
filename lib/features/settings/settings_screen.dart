@@ -201,7 +201,7 @@ class SettingsScreen extends StatelessWidget {
               ),
               ComboBoxItem(
                 value: "i",
-                child: Txt(txt("ISO")),
+                child: Txt(txt("iso")),
               ),
             ],
             initValue: localSettings.dentalNotation,

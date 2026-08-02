@@ -68,7 +68,7 @@ class El implements En {
     "archive": "Αρχειοθέτηση",
     "restore": "Επαναφορά",
     "logout": "Αποσύνδεση",
-    "VoiceInput": "Φωνητική εισαγωγή",
+    "voiceInput": "Φωνητική εισαγωγή",
     "noResultsFound": "Δεν βρέθηκαν αποτελέσματα",
     "startTyping": "Ξεκινήστε να πληκτρολογείτε",
     "home": "Αρχική",
@@ -545,7 +545,7 @@ class El implements En {
     "dentalNotation_desc": "επιλέξτε το προτιμώμενο σύστημα συμβολισμού",
     "palmer": "Palmer",
     "universal": "Universal",
-    "ISO": "ISO",
+    "iso": "ISO",
 
     // advanced settings: Backups
     "backup": "Αντίγραφο ασφαλείας",
@@ -822,7 +822,7 @@ class El implements En {
     "unidentified": "Μη αναγνωρισμένο",
 
     // Dental history recording
-    "VoiceAutoFill": "Αυτόματη συμπλήρωση με φωνή",
+    "voiceAutoFill": "Αυτόματη συμπλήρωση με φωνή",
     "dentalHistoryVoiceAutoFillHint":
         "Πείτε αριθμούς και καταστάσεις δοντιών φυσικά για να ενημερωθεί αυτόματα ο χάρτης του ασθενούς.",
     "postOperativeVoiceAutoFillHint":

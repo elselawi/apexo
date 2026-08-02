@@ -68,7 +68,7 @@ class Es implements En {
     "archive": "Archivar",
     "restore": "Restaurar",
     "logout": "Cerrar sesión",
-    "VoiceInput": "Entrada de voz",
+    "voiceInput": "Entrada de voz",
     "noResultsFound": "No se encontraron resultados",
     "startTyping": "Empieza a escribir",
     "home": "Inicio",
@@ -542,7 +542,7 @@ class Es implements En {
     "dentalNotation_desc": "Elija su sistema de notación preferido",
     "palmer": "Palmer",
     "universal": "Universal",
-    "ISO": "ISO",
+    "iso": "ISO",
 
     // advanced settings: Backups
     "backup": "Copia de seguridad",
@@ -821,7 +821,7 @@ class Es implements En {
     "unidentified": "No identificado",
 
     // Dental history recording
-    "VoiceAutoFill": "Autocompletar por voz",
+    "voiceAutoFill": "Autocompletar por voz",
     "dentalHistoryVoiceAutoFillHint":
         "Dicta los números y condiciones dentales de forma natural para actualizar la ficha del paciente automáticamente.",
     "postOperativeVoiceAutoFillHint":

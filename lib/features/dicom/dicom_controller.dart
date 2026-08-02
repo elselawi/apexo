@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -79,6 +80,13 @@ class DicomController {
     // Register a logout callback so the timer stops when the user
     // signs out — prevents cross-server contamination.
     onLogoutCallbacks.add(stopPeriodicScan);
+
+    // When a DICOM file's upload permanently fails (dead-letter),
+    // also clear the import registry so the file re-appears in the
+    // pending list on the next directory scan.
+    Store.onFileDeadLettered.add((filename) {
+      _importer.unregisterFile(filename);
+    });
   }
 
   // ── Date-matching helpers ────────────────────────────────────────────
@@ -251,8 +259,81 @@ class DicomController {
       return;
     }
 
+    // One-time cleanup: remove dangling dcmImgs entries left behind by
+    // deferred uploads that never completed (e.g. app killed mid-import).
+    if (!_healed) {
+      _healed = true;
+      await _healDanglingDcmImgs();
+    }
+
     await refresh();
   }
+
+  /// One-time cleanup pass: removes `dcmImgs` entries whose files are not
+  /// confirmed in the appointment's `imgs` field (i.e. the DCM upload was
+  /// deferred and never completed). The files remain on disk and will be
+  /// re-discovered on the next directory scan if still in a watch folder.
+  Future<void> _healDanglingDcmImgs() async {
+    // Ensure the local imgs state reflects PB before we treat missing
+    // entries as dangling. Without this a stale local cache could
+    // incorrectly remove dcmImgs entries for files that DO exist on PB.
+    try {
+      await appointments.synchronize();
+    } catch (_) {
+      // Offline or sync error — skip healing; we can't trust imgs state.
+      return;
+    }
+
+    final toFix = <String, List<String>>{}; // apptId → dangling names
+
+    // Collect filenames currently queued for deferred upload — these are
+    // legitimately not yet in `imgs` and must not be treated as dangling.
+    final deferred = await appointments.local?.getDeferred() ?? {};
+    final pendingUploadFilenames = Store.filenamesFromDeferred(deferred);
+
+    for (final appt in appointments.present.values) {
+      if (appt.dcmImgs.isEmpty) continue;
+      final dangling = appt.dcmImgs
+          .where((d) =>
+              !appt.imgs.contains(d) && !pendingUploadFilenames.contains(d))
+          .toList();
+      if (dangling.isNotEmpty) {
+        toFix[appt.id] = dangling;
+      }
+    }
+    if (toFix.isEmpty) return;
+
+    log.info('DicomController._healDanglingDcmImgs: cleaning '
+        '${toFix.length} appointment(s) with '
+        '${toFix.values.fold<int>(0, (s, l) => s + l.length)} dangling '
+        'dcmImgs entries');
+    var unregistered = 0;
+    for (final entry in toFix.entries) {
+      final appt = appointments.docs[entry.key];
+      if (appt == null) continue;
+      // For each dangling filename whose local DCM copy still exists
+      // on disk, clear its registry entry so the file can be
+      // re-discovered on the next directory scan.
+      for (final dcmName in entry.value) {
+        if (await _importer.unregisterFile(dcmName)) {
+          unregistered++;
+        }
+      }
+      appt.dcmImgs.removeWhere((d) => entry.value.contains(d));
+      appointments.set(appt);
+    }
+    if (unregistered > 0) {
+      log.info('DicomController._healDanglingDcmImgs: unregistered '
+          '$unregistered file(s) from DICOM registry — they will '
+          're-appear in pending on the next scan');
+    }
+    if (toFix.isNotEmpty) {
+      await appointments.waitUntilChangesAreProcessed();
+      await appointments.synchronize();
+    }
+  }
+
+  bool _healed = false;
 
   /// Auto-approves any [DicomPendingImport] items in the current pending
   /// list that are [DicomPendingImport.autoLinked] (i.e. the DICOM patient

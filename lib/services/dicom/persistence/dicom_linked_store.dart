@@ -131,8 +131,7 @@ class DicomLinksStore {
     }
   }
 
-  Future<void> setPatient(
-      String dicomPatientId, String apexoPatientId) async {
+  Future<void> setPatient(String dicomPatientId, String apexoPatientId) async {
     try {
       final box = await _openBox;
       final entry = _cache[dicomPatientId] ?? _LinkEntry();
@@ -159,6 +158,39 @@ class DicomLinksStore {
           'for dicomPatient="$dicomPatientId"');
     } catch (e, s) {
       logger('DicomLinksStore.unlink error: $e', s, 2);
+    }
+  }
+
+  /// Removes a single dedup key from whichever patient entry owns it.
+  ///
+  /// Used when a DICOM file's upload permanently failed — clearing the
+  /// registry entry lets the file be re-discovered on the next directory
+  /// scan so the dentist can re-approve it.
+  Future<bool> removeKey(String dedupKey) async {
+    try {
+      final box = await _openBox; // ensures Hive is open + cache is populated
+      if (!_allKeysCache.contains(dedupKey)) return false;
+      for (final entry in _cache.entries) {
+        if (entry.value.keys.remove(dedupKey)) {
+          _allKeysCache.remove(dedupKey);
+          if (entry.value.keys.isEmpty) {
+            _cache.remove(entry.key);
+            await box.delete(entry.key);
+          } else {
+            await box.put(entry.key, entry.value.toJson());
+          }
+          _bump();
+          log.info('DicomLinksStore.removeKey: removed "$dedupKey" '
+              'from dicomPatient="${entry.key}"');
+          return true;
+        }
+      }
+      // Shouldn't happen if _allKeysCache is consistent, but be defensive.
+      _allKeysCache.remove(dedupKey);
+      return false;
+    } catch (e, s) {
+      logger('DicomLinksStore.removeKey error: $e', s, 2);
+      return false;
     }
   }
 

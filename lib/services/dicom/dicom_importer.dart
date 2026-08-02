@@ -1111,6 +1111,8 @@ class DicomImporter {
       var done = 0;
       importProgress((current: 0, total: total));
 
+      var newAppointments = false;
+
       for (final dateEntry in byDate.entries) {
         final studyDate = dateEntry.key;
         final files = dateEntry.value;
@@ -1129,8 +1131,7 @@ class DicomImporter {
             ..date =
                 DateTime(studyDate.year, studyDate.month, studyDate.day, 12);
           _setAppointment(appt);
-          await appointments.waitUntilChangesAreProcessed();
-          await appointments.synchronize();
+          newAppointments = true;
         }
 
         for (final f in files) {
@@ -1142,6 +1143,10 @@ class DicomImporter {
             log.info(
                 'DicomImporter.approveImport: handleNewDcm "${_shortName(f.path)}" â†’ '
                 '"$dcmName" in ${fileSw.elapsedMilliseconds}ms');
+            // If upload succeeded online the returned name is the PB name.
+            // If upload was deferred the returned name is the local name —
+            // Store._syncTry will reconcile dcmImgs once the deferred
+            // upload completes (see _ensureDcmInModel / _patchModelFilename).
             if (dcmName.isNotEmpty && !appt.dcmImgs.contains(dcmName)) {
               appt.dcmImgs.add(dcmName);
             }
@@ -1156,6 +1161,12 @@ class DicomImporter {
           importProgress((current: done, total: total));
         }
         _setAppointment(appt);
+      }
+
+      // ── Batch sync: confirm all new appointments exist on PB ──
+      if (newAppointments) {
+        await appointments.waitUntilChangesAreProcessed();
+        await appointments.synchronize();
       }
 
       // Note: progress is left at (total, total) â€” callers are responsible
@@ -1173,6 +1184,35 @@ class DicomImporter {
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Clears a single file from the DICOM import registry so it can be
+  /// re-discovered on the next directory scan.
+  ///
+  /// [dcmFilename] is the PB/local filename (e.g. `dcm_abc123.dcm`).
+  /// Reads the local copy from `filesDir()`, extracts the dedup key from
+  /// its DICOM metadata, and removes that key from [dicomLinks].
+  ///
+  /// Returns `true` if the registry entry was found and removed.
+  Future<bool> unregisterFile(String dcmFilename) async {
+    try {
+      if (!await imgs.checkIfFileExists(dcmFilename)) return false;
+      final file = await imgs.getOrCreateFile(dcmFilename);
+      final bytes = await _readBytes(file.path);
+      if (bytes == null || bytes.isEmpty) return false;
+      final meta = await _parseMetadata(bytes);
+      if (meta == null) return false;
+      final key = meta.dedupKey;
+      final removed = await dicomLinks.removeKey(key);
+      if (removed) {
+        log.info('DicomImporter.unregisterFile: "$dcmFilename" → '
+            'removed dedup key "$key" from registry');
+      }
+      return removed;
+    } catch (e, s) {
+      logger('DicomImporter.unregisterFile error: $e', s, 2);
+      return false;
+    }
+  }
 }
 
 final dicomImporter = DicomImporter();

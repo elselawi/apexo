@@ -40,6 +40,11 @@ class SyncResult {
 /// but adds ability to persist data as well as synchronize it with a remote server
 
 class Store<G extends Model> {
+  /// Callbacks invoked when a file upload permanently fails (dead-letter).
+  /// DICOM code registers here to clear the import registry so the file
+  /// can be re-discovered on the next directory scan.
+  static final List<void Function(String filename)> onFileDeadLettered = [];
+
   late Future<void> loaded;
   final Function? onSyncStart;
   final Function? onSyncEnd;
@@ -322,6 +327,9 @@ class Store<G extends Model> {
       Map<String, String> toRemoteWrite = {};
 
       final List<Future Function()> fileHandling = [];
+      // Track FILE keys whose upload succeeds so we can safely clear
+      // them at the end without wiping re-queued failure entries.
+      final succeededFileKeys = <String>{};
 
       for (var entry in deferred.entries) {
         if (entry.key.startsWith("FILE")) {
@@ -330,11 +338,27 @@ class Store<G extends Model> {
           final String rowID = deferredFile[1];
           final String pathOrName = deferredFile[2];
           final String filename =
-              deferredFile.length == 4 ? deferredFile[3] : "";
+              deferredFile.length >= 4 ? deferredFile[3] : "";
+          final int retries = parseDeferredRetries(entry.key);
+          const maxRetries = 5;
+          final newKey = buildDeferredRetryKey(entry.key, retries + 1);
+
           // we will delay file handling since it takes too much time
           // so we would run the document handling first then the file handling
           fileHandling.add(() async {
             if (upload) {
+              // Dead-letter: too many retries.
+              if (retries >= maxRetries) {
+                logger(
+                    'Deferred upload: permanently failed for '
+                    '"$filename" after $retries retries — removing from model',
+                    null,
+                    1);
+                _cleanDanglingFileRef(rowID, filename);
+                succeededFileKeys.add(entry.key);
+                return;
+              }
+
               MultipartFile multipart;
               if (!pathOrName.startsWith("http")) {
                 multipart = await MultipartFile.fromPath(
@@ -351,11 +375,38 @@ class Store<G extends Model> {
                   filename: filename,
                 );
               }
-              await remote!.uploadImage(
-                rowID: rowID,
-                filename: filename,
-                predefinedMultipart: multipart,
-              );
+              try {
+                final pbName = await remote!.uploadImage(
+                  rowID: rowID,
+                  filename: filename,
+                  predefinedMultipart: multipart,
+                );
+                // PB may assign a different name — patch the model first
+                // so _ensureDcmInModel sees the correct name and avoids
+                // creating a duplicate entry.
+                if (pbName != filename) {
+                  _patchModelFilename(rowID, filename, pbName);
+                }
+                // DICOM files: ensure the model's dcmImgs lists the
+                // PB-confirmed filename.
+                if (_isDcmFile(pbName)) {
+                  _ensureDcmInModel(rowID, pbName);
+                }
+                // Mark this entry as successfully uploaded so it gets
+                // cleaned up at the end of the sync cycle.
+                succeededFileKeys.add(entry.key);
+              } catch (e, s) {
+                // Upload failed — keep in queue with incremented retries.
+                logger(
+                    'Deferred upload: attempt ${retries + 1}/$maxRetries '
+                    'failed for "$filename" — $e',
+                    s,
+                    1);
+                final currentDeferred = await local!.getDeferred();
+                currentDeferred.remove(entry.key);
+                currentDeferred[newKey] = 1;
+                await local!.putDeferred(currentDeferred);
+              }
             } else {
               await remote!.deleteImage(rowID, pathOrName);
             }
@@ -387,9 +438,16 @@ class Store<G extends Model> {
       // when all json related updates are done, we can handle files
       await Future.wait(fileHandling.map((f) => f()));
 
-      // reset deferred
-      await local!.putDeferred({});
-      deferredPresent = false;
+      // Clean up deferred entries that were successfully processed.
+      // - Non-FILE entries were handled via toRemoteWrite above.
+      // - Succeeded FILE entries are tracked in succeededFileKeys.
+      // - Failed FILE entries were re-queued with incremented retries
+      //   by the catch block — those must NOT be cleared here.
+      final currentDeferred = await local!.getDeferred();
+      currentDeferred.removeWhere(
+          (k, _) => !k.startsWith("FILE") || succeededFileKeys.contains(k));
+      await local!.putDeferred(currentDeferred);
+      deferredPresent = currentDeferred.isNotEmpty;
 
       // set local version to the version given by the current request
       // this might be outdated as soon as this functions ends
@@ -744,10 +802,10 @@ class Store<G extends Model> {
       }
     }
 
-    // Defer: "FILE||{rowID}||{path}||{filename}" → 1 (upload)
+    // Defer: "FILE||{rowID}||{path}||{filename}||{retries}" → 1 (upload)
     await local!.putDeferred({
       ...lastDeferred,
-      "FILE||$rowID||${path ?? ''}||$filename": 1,
+      "FILE||$rowID||${path ?? ''}||$filename||0": 1,
     });
     deferredPresent = true;
     onSyncEnd?.call();
@@ -764,6 +822,154 @@ class Store<G extends Model> {
     while (changes.isNotEmpty) {
       await Future.delayed(const Duration(milliseconds: 30));
     }
+  }
+
+  /// Remove a dangling file reference from the local model after permanent
+  /// upload failure (retries exhausted or local file deleted).
+  void _cleanDanglingFileRef(String rowID, String filename) {
+    final model = observableMap.docs[rowID];
+    if (model == null) return;
+    final json = model.toJson();
+    var changed = false;
+    for (final field in ['imgs', 'dcmImgs']) {
+      final list = (json[field] as List?)?.cast<String>();
+      if (list != null && list.remove(filename)) {
+        if (list.isEmpty) {
+          json.remove(field);
+        } else {
+          json[field] = list;
+        }
+        changed = true;
+      }
+    }
+    if (changed) {
+      observableMap.set(modeling(json));
+    }
+    // If this was a DICOM file, notify listeners so the import registry
+    // can be cleared — otherwise the file stays locked as "imported" and
+    // never re-appears in the pending list.
+    if (_isDcmFile(filename)) {
+      for (final cb in onFileDeadLettered) {
+        cb(filename);
+      }
+    }
+  }
+
+  /// After a deferred upload succeeds, PB may assign a different filename
+  /// (e.g. collision suffix). Update the local model so other devices see
+  /// the correct filename.
+  void _patchModelFilename(
+      String rowID, String oldFilename, String newFilename) {
+    final model = observableMap.docs[rowID];
+    if (model == null) return;
+    final json = model.toJson();
+    var changed = false;
+    for (final field in ['imgs', 'dcmImgs']) {
+      final list = (json[field] as List?)?.cast<String>();
+      if (list != null) {
+        final idx = list.indexOf(oldFilename);
+        if (idx != -1) {
+          list[idx] = newFilename;
+          json[field] = list;
+          changed = true;
+        }
+      }
+    }
+    if (changed) {
+      observableMap.set(modeling(json));
+    }
+  }
+
+  /// True when [name] ends with `.dcm` or `.dicom` (case-insensitive).
+  /// Inlined here to avoid a circular dependency on `lib/utils/imgs.dart`.
+  bool _isDcmFile(String name) {
+    final lower = name.toLowerCase();
+    return lower.endsWith('.dcm') || lower.endsWith('.dicom');
+  }
+
+  /// Ensures [pbName] is listed in the model's `dcmImgs` field.
+  ///
+  /// Called after a deferred DICOM upload succeeds — at this point the file
+  /// is confirmed on PB but the model may not yet advertise it in `dcmImgs`
+  /// (because [DicomImporter.approveImport] intentionally deferred the
+  /// `dcmImgs` update until the upload is confirmed).
+  void _ensureDcmInModel(String rowID, String pbName) {
+    final model = observableMap.docs[rowID];
+    if (model == null) return;
+    final json = model.toJson();
+    final list = (json['dcmImgs'] as List?)?.cast<String>();
+    if (list != null && !list.contains(pbName)) {
+      list.add(pbName);
+      json['dcmImgs'] = list;
+      observableMap.set(modeling(json));
+    } else if (list == null) {
+      json['dcmImgs'] = [pbName];
+      observableMap.set(modeling(json));
+    }
+  }
+
+  // ── @visibleForTesting wrappers ───────────────────────────────────
+  // Dart privacy is library-scoped, not class-scoped. These thin public
+  // wrappers let unit tests in other libraries exercise the logic without
+  // making the helpers part of the public API.
+
+  @visibleForTesting
+  void debugCleanDanglingFileRef(String rowID, String filename) =>
+      _cleanDanglingFileRef(rowID, filename);
+
+  @visibleForTesting
+  void debugPatchModelFilename(
+          String rowID, String oldFilename, String newFilename) =>
+      _patchModelFilename(rowID, oldFilename, newFilename);
+
+  @visibleForTesting
+  void debugEnsureDcmInModel(String rowID, String pbName) =>
+      _ensureDcmInModel(rowID, pbName);
+
+  @visibleForTesting
+  bool debugIsDcmFile(String name) => _isDcmFile(name);
+
+  // ── Static helpers (extracted from _syncTry / _healDanglingDcmImgs) ─
+
+  /// Returns the retry count embedded in a deferred FILE key, or 0 for
+  /// legacy 4-segment keys.  Format: `FILE||rowID||path||filename||retries`.
+  @visibleForTesting
+  static int parseDeferredRetries(String key) {
+    final parts = key.split('||');
+    if (parts.length >= 5) return int.tryParse(parts[4]) ?? 0;
+    return 0;
+  }
+
+  /// Builds a new deferred FILE key with [newRetries] substituted into the
+  /// retries slot.  Legacy 4-segment keys grow a 5th segment; 5+-segment
+  /// keys overwrite the last segment.
+  @visibleForTesting
+  static String buildDeferredRetryKey(String key, int newRetries) {
+    final parts = key.split('||');
+    final next = newRetries.toString();
+    if (parts.length > 4) {
+      parts[4] = next;
+    } else {
+      parts.add(next);
+    }
+    return parts.join('||');
+  }
+
+  /// Extracts the filename (segment index 3) from every `FILE||…` key in
+  /// [deferred] whose value indicates an upload (value == 1).  Delete
+  /// entries (value == 0 / 3-segment keys) produce empty strings and are
+  /// harmless in the returned set.
+  ///
+  /// Used by [DicomController._healDanglingDcmImgs] to skip filenames that
+  /// are currently queued for upload.
+  @visibleForTesting
+  static Set<String> filenamesFromDeferred(Map<String, int> deferred) {
+    return deferred.keys
+        .where((k) => k.startsWith('FILE') && (deferred[k] ?? 0) == 1)
+        .map((k) {
+      final parts = k.split('||');
+      return parts.length >= 4 ? parts[3] : '';
+    }).toSet();
   }
 }
 

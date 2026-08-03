@@ -1,6 +1,7 @@
 import 'package:apexo/core/save_remote.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/dicom/dicom_lru.dart';
+import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:flutter/foundation.dart';
@@ -29,15 +30,19 @@ Future<Uint8List?> fetchDcmBytes({
 }) async {
   final saveRemote = remote ?? appointments.remote!;
   final lru = lruCache ?? dicomLruCache;
+  // A PB filename is only unique within its source record/server. Namespacing
+  // the on-disk cache prevents stale cross-clinic bytes from being displayed.
+  final cacheName =
+      'dcm_${simpleHash('${saveRemote.pbInstance.baseURL}|$rowId|$dcmName')}_$dcmName';
 
   // Native: try the local LRU cache first.
   if (!kIsWeb) {
     try {
-      if (await checkIfFileExists(dcmName)) {
-        final file = await getOrCreateFile(dcmName);
+      if (await checkIfFileExists(cacheName)) {
+        final file = await getOrCreateFile(cacheName);
         final bytes = await file.readAsBytes();
         // Refresh the LRU access timestamp so this entry survives eviction.
-        await lru.markAccessed(dcmName);
+        await lru.markAccessed(cacheName);
         return bytes;
       }
     } catch (e, s) {
@@ -76,11 +81,11 @@ Future<Uint8List?> fetchDcmBytes({
   // Native: persist to filesDir() + record in the LRU cache for next time.
   if (!kIsWeb) {
     try {
-      final file = await getOrCreateFile(dcmName);
+      final file = await getOrCreateFile(cacheName);
       if (!await file.exists()) {
         await file.writeAsBytes(bytes);
       }
-      await lru.touch(dcmName, bytes.length);
+      await lru.touch(cacheName, bytes.length);
     } catch (e, s) {
       logger('fetchDcmBytes: local cache write failed for $dcmName: $e', s);
       // Non-fatal — bytes are already in memory for this session.

@@ -77,10 +77,16 @@ class DicomLruEntry {
 /// On web there is no filesystem, so this cache is never used (the viewer
 /// fetches the `.dcm` fresh per session into memory only).
 class DicomLruCache {
-  // ignore: unused_element_parameter
-  DicomLruCache._({this.evictionThresholdBytes = _defaultThreshold});
+  DicomLruCache._({
+    this.evictionThresholdBytes = _defaultThreshold,
+    this.storagePath,
+    this.boxName = _defaultBoxName,
+    DateTime Function()? clock,
+  }) : _clock = clock ?? DateTime.now;
 
   static const int _defaultThreshold = 500 * 1024 * 1024; // 500 MB
+  static const String _defaultBoxName = 'dicom_lru';
+  static int _testBoxSequence = 0;
 
   static final DicomLruCache _instance = DicomLruCache._();
   static DicomLruCache get instance => _instance;
@@ -88,11 +94,20 @@ class DicomLruCache {
   /// Creates an instance with a custom eviction threshold. For testing only —
   /// the singleton uses the default 500 MB threshold.
   @visibleForTesting
-  DicomLruCache.forTesting({this.evictionThresholdBytes = 1024});
+  DicomLruCache.forTesting({
+    this.evictionThresholdBytes = 1024,
+    this.storagePath,
+    String? boxName,
+    DateTime Function()? clock,
+  })  : boxName = boxName ?? 'dicom_lru_test_${++_testBoxSequence}',
+        _clock = clock ?? DateTime.now;
 
   /// When the total size of non-evicted entries exceeds this, the LRU
   /// entries are evicted (local files deleted) until usage drops below it.
   final int evictionThresholdBytes;
+  final String? storagePath;
+  final String boxName;
+  final DateTime Function() _clock;
 
   late final Future<Box<String>> _box;
   bool _initialized = false;
@@ -101,7 +116,10 @@ class DicomLruCache {
     if (_initialized) return;
     _initialized = true;
     await safeHiveInit();
-    _box = Hive.openBox<String>('dicom_lru', path: await filesDir());
+    _box = Hive.openBox<String>(
+      boxName,
+      path: storagePath ?? await filesDir(),
+    );
   }
 
   Future<Box<String>> get _openBox async {
@@ -116,7 +134,7 @@ class DicomLruCache {
       final box = await _openBox;
       final entry = DicomLruEntry(
         name: name,
-        lastAccess: DateTime.now(),
+        lastAccess: _clock(),
         size: size,
         evicted: false,
       );
@@ -138,9 +156,8 @@ class DicomLruCache {
           DicomLruEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       await box.put(
           name,
-          jsonEncode(entry
-              .copyWith(lastAccess: DateTime.now(), evicted: false)
-              .toJson()));
+          jsonEncode(
+              entry.copyWith(lastAccess: _clock(), evicted: false).toJson()));
     } catch (e, s) {
       logger('DicomLruCache.markAccessed error: $e', s, 2);
     }
@@ -155,7 +172,7 @@ class DicomLruCache {
       final entry =
           DicomLruEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       if (entry.evicted) return false;
-      final file = File(p.join(await filesDir(), name));
+      final file = File(p.join(storagePath ?? await filesDir(), name));
       return await file.exists();
     } catch (_) {
       return false;
@@ -204,7 +221,7 @@ class DicomLruCache {
       entries.sort((a, b) => a.lastAccess.compareTo(b.lastAccess));
 
       final box = await _openBox;
-      final dir = await filesDir();
+      final dir = storagePath ?? await filesDir();
 
       // Evict from the oldest, but always keep at least 1 entry.
       for (int i = 0;
@@ -232,7 +249,7 @@ class DicomLruCache {
   Future<void> clear() async {
     try {
       final box = await _openBox;
-      final dir = await filesDir();
+      final dir = storagePath ?? await filesDir();
       for (final raw in box.values) {
         try {
           final entry =
@@ -245,6 +262,16 @@ class DicomLruCache {
     } catch (e, s) {
       logger('DicomLruCache.clear error: $e', s, 2);
     }
+  }
+
+  /// Closes the cache box. Intended for short-lived clients and tests.
+  Future<void> dispose() async {
+    if (!_initialized) return;
+    final box = await _box;
+    if (box.isOpen) {
+      await box.close();
+    }
+    _initialized = false;
   }
 }
 

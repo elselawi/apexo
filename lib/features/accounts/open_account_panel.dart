@@ -37,6 +37,11 @@ class AccountModel extends Model {
   }
 
   @override
+  AccountModel copy(bool blank) {
+    return AccountModel.fromJson(blank ? {} : toJson());
+  }
+
+  @override
   Map<String, dynamic> toJson() {
     final json = super.toJson();
     json["email"] = email;

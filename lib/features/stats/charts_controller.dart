@@ -447,7 +447,11 @@ class _ChartsController {
       filter.observe(_nullifyCache);
     }
     filterByOperatorID.observe(_nullifyCache);
-    // also bind to showArchived
+    // Derived chart data depends on both source stores as well as filters.
+    // Without these observers, a chart accessed before a store mutation
+    // stays stale until the user changes a date/operator filter.
+    appointments.observableMap.observe(_nullifyCache);
+    expenses.observableMap.observe(_nullifyCache);
   }
 }
 

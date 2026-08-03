@@ -2,6 +2,8 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/stats/widgets/charts/bar.dart';
 import 'package:apexo/features/stats/widgets/charts/line.dart';
@@ -95,7 +97,9 @@ class StatsScreen extends StatelessWidget {
               chartsCtrl.start.stream,
               chartsCtrl.end.stream,
               chartsCtrl.interval.stream,
-              chartsCtrl.filterByOperatorID.stream
+              chartsCtrl.filterByOperatorID.stream,
+              appointments.observableMap.stream,
+              expenses.observableMap.stream,
             ],
             builder: (context, snapshot) {
               return LayoutBuilder(builder: (context, constraints) {

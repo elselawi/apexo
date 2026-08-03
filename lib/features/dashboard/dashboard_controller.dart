@@ -13,14 +13,14 @@ class _DashboardController {
 
   double get paymentsToday {
     double res = 0;
-    for (var appointment in appointments.todayAppointments) {
+    for (var appointment in todayAppointments) {
       res += appointment.paid;
     }
     return res;
   }
 
   List<Patient> get newPatientsToday {
-    return appointments.todayAppointments
+    return todayAppointments
         .where((x) => x.firstAppointmentForThisPatient && x.patient != null)
         .map((x) => x.patient!)
         .toList();

@@ -28,11 +28,14 @@ class Expenses extends Store<Expense> {
   @override
   init() {
     super.init();
+    onLogoutCallbacks.add(endSession);
     observableMap.observe((_) => nullifyExpensesCache());
 
     login.activators[_storeName] = () async {
       await loaded;
 
+      await deactivatePersistenceSession();
+      await local?.dispose();
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
       if (launch.isDemo) {
@@ -66,6 +69,7 @@ class Expenses extends Store<Expense> {
     _cachedSupplierMap = null;
     _cachedOrdersPerSupplier = null;
     _cachedTotalDue = null;
+    _cachedAllOrders = null;
   }
 
   List<String>? _cachedAllItems;

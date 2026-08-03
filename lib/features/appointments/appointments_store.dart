@@ -116,6 +116,7 @@ class Appointments extends Store<Appointment> {
     _byPatientCache = null;
     _todayAppointments = null;
     _thisMonthAppointments = null;
+    _allPrescriptions = null;
     labs.clear();
   }
 
@@ -134,10 +135,13 @@ class Appointments extends Store<Appointment> {
   @override
   init() {
     super.init();
+    onLogoutCallbacks.add(endSession);
     observableMap.observe(nullifyAppointmentsCache);
     login.activators[_storeName] = () async {
       await loaded;
 
+      await deactivatePersistenceSession();
+      await local?.dispose();
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
 

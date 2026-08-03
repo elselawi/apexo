@@ -60,6 +60,8 @@ class Store<G extends Model> {
   int lastProcessChanges = 0;
   bool? manualSyncOnly;
   bool? isDemo;
+  int _persistenceSession = 0;
+  final Set<Future<void>> _activePersistenceTasks = {};
 
   Store({
     required this.modeling,
@@ -140,10 +142,24 @@ class Store<G extends Model> {
     return jsonEncode(input);
   }
 
-  _processChanges() async {
+  void _processChanges() {
+    final task = _processChangesForSession(
+      _persistenceSession,
+      local,
+      remote,
+    );
+    _activePersistenceTasks.add(task);
+    task.whenComplete(() => _activePersistenceTasks.remove(task));
+  }
+
+  Future<void> _processChangesForSession(
+    int session,
+    SaveLocal? sessionLocal,
+    SaveRemote? sessionRemote,
+  ) async {
     if (isDemo == true) notify();
 
-    if (local == null) {
+    if (session != _persistenceSession || sessionLocal == null) {
       return;
     }
 
@@ -172,7 +188,7 @@ class Store<G extends Model> {
       // push notifications processing
       final doc = e.document;
 
-      if (remote == null) continue;
+      if (sessionRemote == null) continue;
       if (doc == null) continue;
       if (e.type == DictEventType.remove) continue;
       if (e.type == DictEventType.add && doc.pushOnCreation == false) continue;
@@ -182,7 +198,7 @@ class Store<G extends Model> {
       }
       final pushTargets = doc.targetsToPushTo;
       toPush.add(PushData(
-        store: remote!.storeName,
+        store: sessionRemote.storeName,
         id: e.id,
         readableIdentifier: doc.title,
         isCreation: e.type == DictEventType.add,
@@ -194,20 +210,23 @@ class Store<G extends Model> {
       ));
     }
 
-    await local!.put(toWrite);
+    await sessionLocal.put(toWrite);
+    if (session != _persistenceSession) return;
 
-    if (remote == null) {
+    if (sessionRemote == null) {
       changes.clear();
       onSyncEnd?.call();
       return;
     }
 
-    Map<String, int> lastDeferred = await local!.getDeferred();
-    if (remote!.isOnline && lastDeferred.isEmpty) {
+    Map<String, int> lastDeferred = await sessionLocal.getDeferred();
+    if (session != _persistenceSession) return;
+    if (sessionRemote.isOnline && lastDeferred.isEmpty) {
       try {
-        await remote!.put(toWrite.entries
+        await sessionRemote.put(toWrite.entries
             .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
             .toList());
+        if (session != _persistenceSession) return;
         changes.clear();
 
         await PushRelay.sendPush(toPush);
@@ -235,9 +254,10 @@ class Store<G extends Model> {
 	 * 2. there was an error during sending updates
 	 * 3. there are already deferred updates
 	 */
-    await local!.putDeferred({}
+    await sessionLocal.putDeferred({}
       ..addAll(lastDeferred)
       ..addAll(toDefer));
+    if (session != _persistenceSession) return;
 
     if (toPush.isNotEmpty) {
       await deferredPush.putBulk(toPush);
@@ -623,6 +643,35 @@ class Store<G extends Model> {
     }
   }
 
+  /// Stops session-scoped persistence safely before its local/remote targets
+  /// are replaced (for example when a user signs into another clinic).
+  ///
+  /// Work that was already awaiting I/O is invalidated first, then allowed to
+  /// finish before its Hive boxes can be closed by the caller.
+  Future<void> deactivatePersistenceSession() async {
+    _persistenceSession++;
+    _syncJob = null;
+    changes.clear();
+    deferredPresent = false;
+    cancelRealtimeSub();
+
+    while (_activePersistenceTasks.isNotEmpty) {
+      await Future.wait(_activePersistenceTasks.toList(), eagerError: false);
+    }
+  }
+
+  /// Ends session-bound listeners and queued persistence work on logout.
+  /// Unlike [deactivatePersistenceSession], this retains local storage so a
+  /// later login to the same clinic can load its offline data normally.
+  void endSession() {
+    _persistenceSession++;
+    _syncJob = null;
+    changes.clear();
+    deferredPresent = false;
+    cancelRealtimeSub();
+    remote = null;
+  }
+
   /// Syncs the local database with the remote database
   Future<List<SyncResult>> synchronize() async {
     // this would only register a job
@@ -634,8 +683,10 @@ class Store<G extends Model> {
     List<SyncResult>? res;
     final sw = Stopwatch();
     sw.start();
+    final session = _persistenceSession;
     _syncJob = () async {
-      res = await _syncRequest();
+      if (session != _persistenceSession) return;
+      res = await _syncRequest(session);
       lastRes = res;
     };
     while (res == null && sw.elapsed.inSeconds < 10) {
@@ -644,7 +695,8 @@ class Store<G extends Model> {
     return res ?? lastRes ?? [];
   }
 
-  Future<List<SyncResult>> _syncRequest() async {
+  Future<List<SyncResult>> _syncRequest(int session) async {
+    if (session != _persistenceSession) return [];
     // this would run multiple tries to be in sync with the server
     // why multiple tries?
     // well... if it gives the server data then it would outdate itself
@@ -657,13 +709,22 @@ class Store<G extends Model> {
 
     // regardless of that... on first sync
     // we need to set up the realtime subscription
-    if (remote != null && realtimeSub == null && manualSyncOnly != true) {
-      remote?.pbInstance.collection(dataCollectionName).subscribe("*", (msg) {
-        if (msg.record?.data["store"] == remote?.storeName) {
+    final sessionRemote = remote;
+    if (sessionRemote != null &&
+        realtimeSub == null &&
+        manualSyncOnly != true) {
+      sessionRemote.pbInstance.collection(dataCollectionName).subscribe("*",
+          (msg) {
+        if (session == _persistenceSession &&
+            msg.record?.data["store"] == sessionRemote.storeName) {
           synchronize();
         }
       }).then((cancellation) {
-        realtimeSub = cancellation;
+        if (session == _persistenceSession) {
+          realtimeSub = cancellation;
+        } else {
+          cancellation();
+        }
       }).catchError((e, s) {
         login.askForLoginAgain(e);
         logger("Error during realtime subscription: $e", s);
@@ -674,6 +735,7 @@ class Store<G extends Model> {
     onSyncStart?.call();
     List<SyncResult> tries = [];
     while (true) {
+      if (session != _persistenceSession) break;
       SyncResult result = await _syncTry();
       tries.add(result);
       if (result.exception != null) break;

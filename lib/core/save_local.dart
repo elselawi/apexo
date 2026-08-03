@@ -16,20 +16,30 @@ typedef ClearingFunction = Future<void> Function();
 class SaveLocal {
   final String name;
   final String uniqueId;
+
+  /// Optional storage root used by tests and isolated clients.
+  ///
+  /// When omitted, the application data directory is used as before.
+  final String? storagePath;
   late final Future<Box<String>> mainHiveBox;
   late final Future<Box<String>> metaHiveBox;
+  late final ClearingFunction _clearCallback;
 
-  SaveLocal({required this.name, required this.uniqueId}) {
+  SaveLocal({required this.name, required this.uniqueId, this.storagePath}) {
     mainHiveBox = initialize("$name-main");
     metaHiveBox = initialize("$name-meta");
-    removeAllLocalData.add(() async {
+    _clearCallback = () async {
       await clear();
-    });
+    };
+    removeAllLocalData.add(_clearCallback);
   }
 
   Future<Box<String>> initialize(String name) async {
     await safeHiveInit();
-    return Hive.openBox<String>(name + uniqueId, path: await filesDir());
+    return Hive.openBox<String>(
+      name + uniqueId,
+      path: storagePath ?? await filesDir(),
+    );
   }
 
   // Put entries into the main box
@@ -113,6 +123,21 @@ class SaveLocal {
       await metaBox.clear();
     } catch (e, s) {
       throw StorageException('Failed to clear storage: $e', s);
+    }
+  }
+
+  /// Closes this instance's boxes and unregisters its global cleanup hook.
+  ///
+  /// Application code normally keeps a [SaveLocal] instance for the lifetime
+  /// of the session. Tests and short-lived clients should call this method to
+  /// prevent open Hive handles and stale callbacks from leaking between cases.
+  Future<void> dispose() async {
+    removeAllLocalData.remove(_clearCallback);
+    for (final boxFuture in [mainHiveBox, metaHiveBox]) {
+      final box = await boxFuture;
+      if (box.isOpen) {
+        await box.close();
+      }
     }
   }
 }

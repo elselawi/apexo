@@ -95,9 +95,12 @@ class GlobalSettings extends Store<Setting> {
   @override
   init() {
     super.init();
+    onLogoutCallbacks.add(endSession);
     login.activators[_storeNameGlobal] = () async {
       await loaded;
 
+      await deactivatePersistenceSession();
+      await local?.dispose();
       local =
           SaveLocal(name: _storeNameGlobal, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();

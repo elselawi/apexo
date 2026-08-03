@@ -34,6 +34,7 @@ class Notes extends Store<Note> {
   @override
   init() {
     super.init();
+    onLogoutCallbacks.add(endSession);
 
     // Observe store changes to update indexes
     observableMap.observe((_) {
@@ -43,6 +44,8 @@ class Notes extends Store<Note> {
     login.activators[_storeName] = () async {
       await loaded;
 
+      await deactivatePersistenceSession();
+      await local?.dispose();
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
       if (launch.isDemo) {

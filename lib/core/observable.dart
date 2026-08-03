@@ -96,18 +96,23 @@ class ObservableState<T> extends ObservableBase<T> {
 /// however only data that are defined in toJson and fromJson will be persisted
 abstract class ObservablePersistingObject
     extends ObservableBase<ObservablePersistingObject> {
-  ObservablePersistingObject(this.identifier) {
+  ObservablePersistingObject(this.identifier, {this.storagePath}) {
     box = () async {
       await safeHiveInit();
-      return Hive.openBox<String>(identifier, path: await filesDir());
+      return Hive.openBox<String>(
+        identifier,
+        path: storagePath ?? await filesDir(),
+      );
     }();
-    _initialLoad();
+    ready = _initialLoad();
   }
 
   String identifier;
+  final String? storagePath;
   late Future<Box<String>> box;
+  late final Future<void> ready;
 
-  _initialLoad() async {
+  Future<void> _initialLoad() async {
     var value = (await box).get(identifier);
     if (value == null) {
       return;

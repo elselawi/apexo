@@ -29,9 +29,12 @@ class Patients extends Store<Patient> {
   @override
   init() {
     super.init();
+    onLogoutCallbacks.add(endSession);
     login.activators[_storeName] = () async {
       await loaded;
 
+      await deactivatePersistenceSession();
+      await local?.dispose();
       local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
       await deleteMemoryAndLoadFromPersistence();
 

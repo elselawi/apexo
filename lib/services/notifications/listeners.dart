@@ -18,13 +18,22 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+/// The background notification callback runs in a separate isolate. It may
+/// only perform background-safe work; route navigation is deferred until the
+/// app is resumed through the normal FCM/local foreground callbacks.
+@pragma('vm:entry-point')
+void backgroundNotificationResponse(NotificationResponse response) {
+  // Intentionally no UI access or store synchronization in a background
+  // isolate. The payload remains available to the platform notification.
+}
+
 /// This function is called when a background message is received.
 /// It initializes the local notifications plugin and shows the notification.
 /// It should stay top-level to avoid isolate issues.
 @pragma('vm:entry-point')
 Future<void> backgroundMsg(RemoteMessage message) async {
-  await login.box;
-  await patientSide.box;
+  await login.ready;
+  await patientSide.ready;
 
   if (login.token.isEmpty && patientSide.patientID.isEmpty) {
     return;
@@ -114,20 +123,6 @@ abstract class PushListeners {
     final payload = jsonDecode(message.data["payload"]);
     final pushData = PushData.fromJson(payload);
     _addStaticNotification(pushData);
-  }
-
-  static void backgroundRes(NotificationResponse res) {
-    if (login.token.isEmpty && patientSide.patientID.isEmpty) {
-      return;
-    }
-    final payload = jsonDecode(res.payload!);
-    final pushData = PushData.fromJson(payload);
-    if (pushData.store == "notes") {
-      routes.navigate("notes");
-    } else if (pushData.store == "appointments") {
-      routes.navigate("calendar");
-      _openAppointmentIfExist(pushData.id);
-    }
   }
 
   static void _addStaticNotification(PushData pushData) {

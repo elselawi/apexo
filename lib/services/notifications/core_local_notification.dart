@@ -57,7 +57,8 @@ class LocalNotificationsService {
     await _flutterLocalNotificationsPlugin.initialize(
       settings: initializationSettings,
       onDidReceiveNotificationResponse: PushListeners.foregroudRes,
-      onDidReceiveBackgroundNotificationResponse: PushListeners.backgroundRes,
+      onDidReceiveBackgroundNotificationResponse:
+          backgroundNotificationResponse,
     );
 
     // Create Android notification channel

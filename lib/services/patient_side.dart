@@ -33,18 +33,21 @@ class PatientAppointment {
         : date);
     prescriptions = List<String>.from(json["prescriptions"] ?? []);
     imgs = List<String>.from(json["imgs"] ?? []);
-    archived = json["archived"] == 1 ? true : false;
-    isDone = json["isDone"] == 1 ? true : false;
+    archived = json["archived"] == 1 || json["archived"] == true;
+    isDone = json["isDone"] == 1 || json["isDone"] == true;
   }
 }
 
 class PatientSide extends ObservablePersistingObject {
+  final Future<http.Response> Function(Uri) _httpGet;
+  final Future<void> Function() _identifyDevice;
   bool initialized = false;
   String server;
   String name;
   String patientID;
   String relayKey;
   String collectionId = "";
+  int _activationGeneration = 0;
 
   // values taken from settings
   String currency = "";
@@ -60,10 +63,15 @@ class PatientSide extends ObservablePersistingObject {
     required this.name,
     required this.patientID,
     required this.relayKey,
-  }) : super("patient-side");
+    Future<http.Response> Function(Uri)? httpGet,
+    Future<void> Function()? identifyDevice,
+  })  : _httpGet = httpGet ?? http.get,
+        _identifyDevice =
+            identifyDevice ?? (() => Messaging.identifyDevice(isPatient: true)),
+        super("patient-side");
 
   static fromHref() async {
-    await patientSide.box;
+    await patientSide.ready;
     final url = getUrl();
     try {
       String code = Uri.parse(url).path;
@@ -121,6 +129,7 @@ class PatientSide extends ObservablePersistingObject {
   }
 
   logoutPatientSide() {
+    _activationGeneration++;
     launch.open(Open.login);
     server = "";
     name = "";
@@ -135,6 +144,7 @@ class PatientSide extends ObservablePersistingObject {
   }
 
   Future<void> activate() async {
+    final activation = ++_activationGeneration;
     loginCtrl.loadingPatientSide(true);
     if (server.isEmpty ||
         name.isEmpty ||
@@ -147,69 +157,86 @@ class PatientSide extends ObservablePersistingObject {
 
     loginCtrl.loginError("");
 
-    // Initialize deferred push storage early so stores can safely
-    // defer push notifications throughout the rest of activate().
-    deferredPush.init(server);
-
-    // getting currency
-    final settingsRes = await http.get(Uri.parse(
-        "$server/api/collections/data/records?page=1&perPage=500&skipTotal=1"));
-
-    final settingsJson = jsonDecode(settingsRes.body);
-    currency = (settingsJson["items"] as List<dynamic>)
-            .where((item) => (item["id"] as String).startsWith("currency"))
-            .firstOrNull?["data"]?["value"] ??
-        "";
-
-    phone = (settingsJson["items"] as List<dynamic>)
-            .where((item) => (item["id"] as String).startsWith("phone"))
-            .firstOrNull?["data"]?["value"] ??
-        "";
-
-    countryCode = (settingsJson["items"] as List<dynamic>)
-            .where((item) => (item["id"] as String).startsWith("country"))
-            .firstOrNull?["data"]?["value"] ??
-        "";
-
-    clinicNameAndAddress = (settingsJson["items"] as List<dynamic>)
-            .where((item) =>
-                (item["id"] as String).startsWith("prescription_header"))
-            .firstOrNull?["data"]?["value"] ??
-        "";
-
-    // getting appointments
-    final appointmentsRes = await http.get(Uri.parse(
-        "$server/api/collections/public/records?page=1&perPage=9999&filter=pid%3D%22$patientID%22"));
-
-    final appointmentsJson = jsonDecode(appointmentsRes.body);
-
-    final items = appointmentsJson["items"] as List<dynamic>;
-
-    if (items.firstOrNull != null) {
-      collectionId = items.first["collectionId"] ?? "";
-    }
-
-    appointments.clear();
-    for (final item in items) {
-      appointments.add(PatientAppointment.fromJson(item));
-    }
-
-    for (final appointment in appointments) {
-      for (var img in appointment.imgs) {
-        imgLinks.add("$server/api/files/$collectionId/${appointment.id}/$img");
-      }
-    }
-
-    loginCtrl.finishedLoginProcess();
-    notifyAndPersist();
-    loginCtrl.loadingPatientSide(false);
-
-    launch.open(Open.patient);
-
     try {
-      await Messaging.identifyDevice(isPatient: true);
-    } catch (e, t) {
-      throw Exception("Error while initializing notifications: $e $t");
+      // Initialize deferred push storage early so stores can safely
+      // defer push notifications throughout the rest of activate().
+      deferredPush.init(server);
+
+      // getting currency
+      final settingsRes = await _httpGet(Uri.parse(
+          "$server/api/collections/data/records?page=1&perPage=500&skipTotal=1"));
+      if (activation != _activationGeneration) return;
+
+      final settingsJson = jsonDecode(settingsRes.body);
+      currency = (settingsJson["items"] as List<dynamic>)
+              .where((item) => (item["id"] as String).startsWith("currency"))
+              .firstOrNull?["data"]?["value"] ??
+          "";
+
+      phone = (settingsJson["items"] as List<dynamic>)
+              .where((item) => (item["id"] as String).startsWith("phone"))
+              .firstOrNull?["data"]?["value"] ??
+          "";
+
+      countryCode = (settingsJson["items"] as List<dynamic>)
+              .where((item) => (item["id"] as String).startsWith("country"))
+              .firstOrNull?["data"]?["value"] ??
+          "";
+
+      clinicNameAndAddress = (settingsJson["items"] as List<dynamic>)
+              .where((item) =>
+                  (item["id"] as String).startsWith("prescription_header"))
+              .firstOrNull?["data"]?["value"] ??
+          "";
+
+      // getting appointments
+      final appointmentsRes = await _httpGet(Uri.parse(
+          "$server/api/collections/public/records?page=1&perPage=9999&filter=pid%3D%22$patientID%22"));
+      if (activation != _activationGeneration) return;
+
+      final appointmentsJson = jsonDecode(appointmentsRes.body);
+
+      final items = appointmentsJson["items"] as List<dynamic>;
+
+      if (items.firstOrNull != null) {
+        collectionId = items.first["collectionId"] ?? "";
+      }
+
+      appointments.clear();
+      imgLinks.clear();
+      for (final item in items) {
+        appointments.add(PatientAppointment.fromJson(item));
+      }
+
+      for (final appointment in appointments) {
+        for (var img in appointment.imgs) {
+          imgLinks
+              .add("$server/api/files/$collectionId/${appointment.id}/$img");
+        }
+      }
+
+      loginCtrl.finishedLoginProcess();
+      notifyAndPersist();
+
+      launch.open(Open.patient);
+
+      // Patient data has loaded and the patient screen is open at this point.
+      // Device registration is useful for push notifications but is not a
+      // prerequisite for using patient-side, so a registration failure must
+      // not turn a successful activation into a failed login.
+      try {
+        await _identifyDevice();
+        if (activation != _activationGeneration) return;
+      } catch (e, stackTrace) {
+        logger("Error while registering patient device: $e", stackTrace);
+      }
+    } catch (e) {
+      loginCtrl.loginError(e.toString());
+      rethrow;
+    } finally {
+      if (activation == _activationGeneration) {
+        loginCtrl.loadingPatientSide(false);
+      }
     }
   }
 
@@ -218,7 +245,11 @@ class PatientSide extends ObservablePersistingObject {
   }
 
   String getThumbFromImgLink(String imgLink) {
-    return "$imgLink?thumb=100x100";
+    final uri = Uri.parse(imgLink);
+    return uri.replace(queryParameters: {
+      ...uri.queryParameters,
+      "thumb": "100x100"
+    }).toString();
   }
 
   @override

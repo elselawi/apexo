@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';

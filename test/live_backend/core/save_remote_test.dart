@@ -1,4 +1,4 @@
-@Tags(['live_backend'])
+@Tags(['live_backend', 'serial'])
 library;
 
 import 'package:apexo/core/save_remote.dart';

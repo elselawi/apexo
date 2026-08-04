@@ -44,22 +44,30 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 ### Unit tests
 
-From the project root, run the complete unit suite with:
+**TL;DR:** Run all test partitions in order:
 
 ```bash
-flutter test test/unit --exclude-tags live_backend -j 1
+flutter test test --exclude-tags "serial || live_backend" && flutter test test --tags "serial || live_backend" -j 1
 ```
 
-The above command excludes live PocketBase tests. To run those tests, provide the
-required credentials in `test/secret.dart`, as per `test/secret.dart.example` and use:
+> Windows PowerShell 5.1 does not support &&; use PowerShell 7+
+
+- **Regarding the test tags**:
+   - `live_backend` tests require a live backend and a `test/secret.dart` file. Copy `test/secret.dart.example` to `test/secret.dart` and configure the credentials.
+   - `serial` tests must run sequentially using the `-j 1` parameter.
+
+
+#### Run only deterministic, parallel-tolerant tests:
 
 ```bash
-flutter test --tags live_backend test/live_backend -j 1
+flutter test test --exclude-tags "serial || live_backend"
 ```
 
-See [`integration_test/readme.md`](integration_test/readme.md) for end-to-end
-testing.
+#### Run serial deterministic tests and live-backend tests:
 
+```bash
+flutter test test --tags "serial || live_backend" -j 1
+```
 
 ## Building & Distribution
 

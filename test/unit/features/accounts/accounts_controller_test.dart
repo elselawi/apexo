@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
 import 'package:flutter_test/flutter_test.dart';

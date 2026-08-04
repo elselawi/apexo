@@ -1,4 +1,7 @@
-﻿import 'dart:typed_data';
+﻿@Tags(['serial'])
+library;
+
+import 'dart:typed_data';
 
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -44,12 +47,12 @@ class _FakeLinksStore {
 /// and drives `scanAndBuildPending` + `approveImport` end-to-end.
 ///
 /// Coverage:
-///  - 2 files (same patient, diff dates) â†’ 1 pending import with 2 dates.
+///  - 2 files (same patient, diff dates) 1 pending import with 2 dates.
 ///  - Re-scan dedups via registry AND hits the file cache (0 parses).
-///  - Nonexistent directory â†’ [] (graceful, no crash).
+///  - Nonexistent directory [] (graceful, no crash).
 ///  - approveImport creates appointments with correct dcmImgs; registry +
 ///    link map updated.
-///  - Idempotency: re-approve â†’ no duplicates, no new appointments.
+///  - Idempotency: re-approve no duplicates, no new appointments.
 ///  - Edge-case corpus: parse failures logged to skipped; dup SOP UID
 ///    first-wins.
 
@@ -99,28 +102,28 @@ DicomParsedMeta _meta({
 /// [DicomImporter] wired to them. Tests call [rebuild] after mutating the
 /// fake filesystem / registry to refresh the importer's view.
 class _Harness {
-  /// The fake watch directory contents (path â†’ file).
+  /// The fake watch directory contents (path file).
   final Map<String, _FakeFile> fs = {};
 
-  /// In-memory file cache (path â†’ cached meta).
+  /// In-memory file cache (path cached meta).
   final Map<String, DicomCachedMeta> cache = {};
 
-  /// In-memory skipped log (path â†’ reason).
+  /// In-memory skipped log (path reason).
   final Map<String, String> skipped = {};
 
   /// Number of times the parser was invoked (for cache-hit assertions).
   int parseCalls = 0;
 
-  /// In-memory appointments store (id â†’ appointment).
+  /// In-memory appointments store (id appointment).
   final Map<String, Appointment> appointments = {};
 
-  /// Recorded handleNewDcm results (sourcePath â†’ assigned dcmName).
+  /// Recorded handleNewDcm results (sourcePath assigned dcmName).
   final Map<String, String> handleNewDcmResults = {};
 
-  /// In-memory patient roster (id â†’ patient).
+  /// In-memory patient roster (id patient).
   final Map<String, Patient> patients = {};
 
-  /// In-memory appointment dates per Apexo patient (id â†’ dates), used by the
+  /// In-memory appointment dates per Apexo patient (id dates), used by the
   /// fuzzy matcher's date-proximity score. Lets tests supply appointment
   /// dates without populating the global appointments store.
   final Map<String, Set<DateTime>> appointmentDates = {};
@@ -168,7 +171,7 @@ class _Harness {
       appointmentDayMap: () => appointmentDates,
       scanDirectory: (dir) async {
         // Simulate scanDirectory: list files whose path starts with `dir`.
-        // An empty or nonexistent dir â†’ empty list (graceful handling).
+        // An empty or nonexistent dir empty list (graceful handling).
         if (dir.isEmpty) return <DicomFileEntry>[];
         return fs.entries
             .where((e) => e.key.startsWith(dir))
@@ -184,7 +187,7 @@ class _Harness {
         if (_unreadable.contains(p)) return null;
         final f = fs[p];
         if (f == null) return null;
-        // Any non-empty payload â€” the fake parser ignores bytes and resolves
+        // Any non-empty payload the fake parser ignores bytes and resolves
         // metadata via the _lastReadPath side-channel.
         return Uint8List.fromList([1, 2, 3, 4]);
       },
@@ -228,10 +231,10 @@ class _Harness {
     fs[f.path] = f;
   }
 
-  /// Marks [path] as unreadable (readBytes returns null â†’ skipped).
+  /// Marks [path] as unreadable (readBytes returns null skipped).
   void markUnreadable(String path) => _unreadable.add(path);
 
-  /// Marks [path] as corrupt (parseMetadata throws â†’ skipped).
+  /// Marks [path] as corrupt (parseMetadata throws skipped).
   void markCorrupt(String path) => _corrupt.add(path);
 }
 
@@ -249,8 +252,8 @@ _Harness _harnessWithWatchDirs(List<String> dirs) {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('scanAndBuildPending â€” happy path', () {
-    test('2 files (same patient, 2 dates) â†’ 1 pending import with 2 dates',
+  group('scanAndBuildPending happy path', () {
+    test('2 files (same patient, 2 dates) 1 pending import with 2 dates',
         () async {
       final h = _newHarness();
       h.addFile(_FakeFile(
@@ -270,7 +273,7 @@ void main() {
 
       final pending = await h.importer.scanAndBuildPending();
 
-      expect(pending.length, 1, reason: 'one DICOM patient â†’ one pending');
+      expect(pending.length, 1, reason: 'one DICOM patient one pending');
       final p = pending.single;
       expect(p.dicomPatientId, 'P100');
       expect(p.dicomPatientName, 'Smith^John');
@@ -304,7 +307,7 @@ void main() {
     });
   });
 
-  group('scanAndBuildPending â€” dedup + file cache', () {
+  group('scanAndBuildPending dedup + file cache', () {
     test('re-scan after approve returns [] (registry dedup)', () async {
       final h = _newHarness();
       h.addFile(_FakeFile(
@@ -342,7 +345,7 @@ void main() {
       final parsesAfterFirst = h.parseCalls;
       expect(parsesAfterFirst, 1);
 
-      // Second scan with the same files (mtime/size unchanged) â†’ cache hit,
+      // Second scan with the same files (mtime/size unchanged) cache hit,
       // zero additional parses. Registry empty so the file still surfaces.
       h.importer = h.rebuild();
       final pending = await h.importer.scanAndBuildPending();
@@ -391,14 +394,14 @@ void main() {
     });
   });
 
-  group('scanAndBuildPending â€” robustness', () {
-    test('nonexistent directory â†’ [] (graceful, no crash)', () async {
+  group('scanAndBuildPending robustness', () {
+    test('nonexistent directory [] (graceful, no crash)', () async {
       final h = _harnessWithWatchDirs(['/does/not/exist']);
       final pending = await h.importer.scanAndBuildPending();
       expect(pending, isEmpty);
     });
 
-    test('empty watch dir setting â†’ [] (early return, no scan)', () async {
+    test('empty watch dir setting [] (early return, no scan)', () async {
       final h = _harnessWithWatchDirs([]);
       final pending = await h.importer.scanAndBuildPending();
       expect(pending, isEmpty);
@@ -474,7 +477,7 @@ void main() {
       // Both produce the same dedup key 'sop:dup'. The importer's _doScan
       // does NOT dedup within a single scan (it dedups against the registry).
       // So both surface in pending. The first-wins behaviour is enforced by
-      // the registry during approveImport â€” verified in the approveImport
+      // the registry during approveImport verified in the approveImport
       // idempotency test below. Here we verify both keys are equal.
       final pending = await h.importer.scanAndBuildPending();
       expect(pending.single.fileCount, 2);
@@ -544,7 +547,7 @@ void main() {
     });
   });
 
-  group('scanAndBuildPending â€” matching', () {
+  group('scanAndBuildPending matching', () {
     test('auto-link via dicomPatientLinksMap (confidence 1.0, isConfirmed)',
         () async {
       final h = _newHarness();
@@ -578,7 +581,7 @@ void main() {
       final patient =
           Patient.fromJson({'id': 'apexo-1', 'title': 'John Smith'});
       h.patients['apexo-1'] = patient;
-      // An appointment on the exact study date â†’ dateProximity = 1.0.
+      // An appointment on the exact study date dateProximity = 1.0.
       // Supplied via the injected appointmentDates map (not the global store).
       h.appointmentDates['apexo-1'] = {DateTime(2025, 1, 1)};
 
@@ -597,12 +600,12 @@ void main() {
       expect(p.autoLinked, isFalse);
       expect(p.matchedPatient?.id, 'apexo-1');
       // nameScore = 1.0 (identical token sets), dateScore = 1.0 (same day)
-      // â†’ confidence = 0.6*1 + 0.4*1 = 1.0
+      // confidence = 0.6*1 + 0.4*1 = 1.0
       expect(p.confidence, closeTo(1.0, 1e-9));
       expect(p.isConfirmed, isFalse, reason: 'suggestion, not yet approved');
     });
 
-    test('no plausible match â†’ matchedPatient null, confidence 0', () async {
+    test('no plausible match matchedPatient null, confidence 0', () async {
       final h = _newHarness();
       h.patients['apexo-1'] = Patient.fromJson(
           {'id': 'apexo-1', 'title': 'Completely Different Name'});
@@ -729,7 +732,7 @@ void main() {
       final pending = await h.importer.scanAndBuildPending();
       await h.importer.approveImport(pending.single, apexoPatientId: 'apexo-1');
 
-      // Two appointments created â€” one per date.
+      // Two appointments created one per date.
       final created =
           h.appointments.values.where((a) => a.patientID == 'apexo-1').toList();
       expect(created.length, 2);
@@ -794,7 +797,7 @@ void main() {
               studyDate: '20250101')));
 
       final pending = await h.importer.scanAndBuildPending();
-      // No matchedPatient, no apexoPatientId â†’ must throw.
+      // No matchedPatient, no apexoPatientId must throw.
       expect(
         () => h.importer.approveImport(pending.single),
         throwsA(isA<StateError>()),
@@ -823,14 +826,14 @@ void main() {
       final pending = await h.importer.scanAndBuildPending();
       await h.importer.approveImport(pending.single, apexoPatientId: 'apexo-1');
 
-      // approveImport no longer resets progress to idle â€” callers own that.
+      // approveImport no longer resets progress to idle callers own that.
       // Progress ends at (total, total) indicating all files completed.
       expect(h.importer.importProgress(), (current: 2, total: 2),
           reason:
-              'progress stays at (total, total) after import â€” callers reset to idle');
+              'progress stays at (total, total) after import callers reset to idle');
     });
 
-    test('idempotency: re-approve â†’ no duplicates, no new appointments',
+    test('idempotency: re-approve no duplicates, no new appointments',
         () async {
       final h = _newHarness();
       h.patients['apexo-1'] =
@@ -897,7 +900,7 @@ void main() {
       // marked imported but its dedup key is already in the registry, so
       // handleNewDcm runs only once.
       expect(h.handleNewDcmResults.length, 1,
-          reason: 'duplicate dedup key â†’ only the first file is processed');
+          reason: 'duplicate dedup key only the first file is processed');
       // Only one appointment, with a single dcmImg.
       final forPatient =
           h.appointments.values.where((a) => a.patientID == 'apexo-1').toList();
@@ -906,7 +909,7 @@ void main() {
     });
   });
 
-  group('approveImport â€” push exclusion', () {
+  group('approveImport push exclusion', () {
     // Adding dcmImgs to an EXISTING appointment must not trigger a push:
     // `Appointment.pushIfChanged` excludes `dcmImgs`. This is pinned at the
     // model level; here we verify the importer

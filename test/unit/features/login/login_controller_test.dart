@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';

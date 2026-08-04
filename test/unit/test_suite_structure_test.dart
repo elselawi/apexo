@@ -35,7 +35,7 @@ void main() {
     for (final entity in liveBackendRoot.listSync(recursive: true)) {
       if (entity is! File || !entity.path.endsWith('_test.dart')) continue;
       final source = entity.readAsStringSync();
-      if (!source.contains("@Tags(['live_backend'])")) {
+      if (!source.contains("'live_backend'")) {
         offenders.add(entity.path);
       }
     }

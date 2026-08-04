@@ -185,6 +185,7 @@ class SaveRemote {
 
   Future<String?> _findExistingByHash(String rowID, String filename) async {
     final hash = p.basenameWithoutExtension(filename).split('_').last;
+    final extension = p.extension(filename).toLowerCase();
     try {
       List<String> fullNames;
       if (fullNamesCache.containsKey(rowID)) {
@@ -194,7 +195,10 @@ class SaveRemote {
         fullNames = List<String>.from(record.data["imgs"]);
         fullNamesCache[rowID] = fullNames;
       }
-      return fullNames.where((e) => e.contains("_$hash")).firstOrNull;
+      return fullNames
+          .where((e) =>
+              p.extension(e).toLowerCase() == extension && e.contains("_$hash"))
+          .firstOrNull;
     } catch (_) {
       return null; // can't check → proceed with upload
     }

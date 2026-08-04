@@ -106,13 +106,11 @@ void main() {
     });
 
     test('only names in dcmImgs are routed as DCM X-rays', () {
-      final imgs = ['photo.jpg'];
       final dcmImgs = ['xray.dcm', 'scan.dicom'];
       final dcmNames = dcmImgs.toSet();
 
       expect(dcmNames.contains('xray.dcm'), isTrue);
       expect(dcmNames.contains('scan.dicom'), isTrue);
-      expect(dcmNames.contains('photo.jpg'), isFalse);
       // A stray .dcm in imgs that isn't in dcmImgs is NOT a DCM X-ray.
       expect(dcmNames.contains('other.dcm'), isFalse);
     });
@@ -120,7 +118,7 @@ void main() {
     test('dcmImgs defaults to empty (non-appointment callers unaffected)', () {
       // Mirrors the GridGallery.dcmImgs default. With dcmImgs empty, the
       // derived _dcmNames set is empty and no cell gets DCM treatment.
-      final defaultDcmImgs = const <String>[];
+      const defaultDcmImgs = <String>[];
       expect(defaultDcmImgs.toSet(), isEmpty);
     });
   });

@@ -26,5 +26,23 @@ void main() {
     test('rounds to more decimal places than the number has', () {
       expect(roundToPrecision(123.4, 3), 123.4);
     });
+
+    test('rounds using negative precision for tens and hundreds', () {
+      expect(roundToPrecision(123.456, -1), 120);
+      expect(roundToPrecision(123.456, -2), 100);
+    });
+
+    test('uses Dart rounding behavior for positive and negative half ties', () {
+      expect(roundToPrecision(1.5, 0), 2);
+      expect(roundToPrecision(-1.5, 0), -2);
+    });
+
+    test('rejects non-finite values through double.round', () {
+      expect(() => roundToPrecision(double.nan, 2), throwsUnsupportedError);
+      expect(
+          () => roundToPrecision(double.infinity, 2), throwsUnsupportedError);
+      expect(() => roundToPrecision(double.negativeInfinity, 2),
+          throwsUnsupportedError);
+    });
   });
 }

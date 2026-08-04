@@ -88,7 +88,7 @@ void main() {
 
     test('fromJson restores dicomViewerPrefs', () {
       final settings = LocalSettings();
-      final prefsJson =
+      const prefsJson =
           '{"windowCenter":40,"windowWidth":400,"colorMap":"hotIron","invert":false,"rotationSteps":2}';
       settings.fromJson({'dicomViewerPrefs': prefsJson});
       expect(settings.dicomViewerPrefs, prefsJson);

@@ -33,6 +33,35 @@ class _ThrowingOnPngStore extends _RecordingStore {
 }
 
 void main() {
+  late io.Directory testDirectory;
+  final caches = <DicomLruCache>[];
+
+  DicomLruCache newCache({int threshold = 1024, DateTime Function()? clock}) {
+    final cache = DicomLruCache.forTesting(
+      evictionThresholdBytes: threshold,
+      storagePath: testDirectory.path,
+      clock: clock,
+    );
+    caches.add(cache);
+    return cache;
+  }
+
+  Future<void> flushNotifications() => Future<void>.delayed(Duration.zero);
+
+  setUpAll(() async {
+    testDirectory = await io.Directory.systemTemp.createTemp('apexo-dicom-');
+  });
+
+  tearDownAll(() async {
+    for (final cache in caches) {
+      await cache.dispose();
+    }
+    await DicomLruCache.instance.dispose();
+    if (await testDirectory.exists()) {
+      await testDirectory.delete(recursive: true);
+    }
+  });
+
   group('DicomLruEntry — JSON round-trip', () {
     test('toJson / fromJson preserves all fields', () {
       final original = DicomLruEntry(
@@ -78,12 +107,10 @@ void main() {
 
   group('DicomLruCache — Hive operations', () {
     test('touch then isCached returns true', () async {
-      final cache = DicomLruCache.instance;
-      final name =
-          'test-lru-touch-${DateTime.now().microsecondsSinceEpoch}.dcm';
+      final cache = newCache();
+      const name = 'test-lru-touch.dcm';
       // Create a dummy local file so isCached's file-exists check passes.
-      final dir = await _testFilesDir();
-      final file = io.File('${dir.path}/$name');
+      final file = io.File('${testDirectory.path}/$name');
       await file.writeAsBytes(List.filled(10, 0));
 
       await cache.touch(name, 10);
@@ -94,25 +121,22 @@ void main() {
     });
 
     test('isCached returns false for unknown name', () async {
-      final cache = DicomLruCache.instance;
-      expect(
-          await cache.isCached(
-              'nonexistent-${DateTime.now().microsecondsSinceEpoch}.dcm'),
-          isFalse);
+      final cache = newCache();
+      expect(await cache.isCached('nonexistent.dcm'), isFalse);
     });
 
     test('markAccessed updates lastAccess timestamp', () async {
-      final cache = DicomLruCache.instance;
-      final name = 'test-lru-mark-${DateTime.now().microsecondsSinceEpoch}.dcm';
-      final dir = await _testFilesDir();
-      final file = io.File('${dir.path}/$name');
+      var now = DateTime.utc(2026, 1, 1);
+      final cache = newCache(clock: () => now);
+      const name = 'test-lru-mark.dcm';
+      final file = io.File('${testDirectory.path}/$name');
       await file.writeAsBytes(List.filled(10, 0));
 
       await cache.touch(name, 10);
       final entriesBefore = await cache.activeEntries;
       final entryBefore = entriesBefore.firstWhere((e) => e.name == name);
 
-      await Future.delayed(const Duration(milliseconds: 50));
+      now = now.add(const Duration(seconds: 1));
       await cache.markAccessed(name);
 
       final entriesAfter = await cache.activeEntries;
@@ -127,18 +151,18 @@ void main() {
   group('DicomLruCache — eviction', () {
     test('evicts LRU entries when threshold exceeded', () async {
       // Use a test instance with a tiny threshold (1 KB).
-      final cache = DicomLruCache.forTesting(evictionThresholdBytes: 1024);
+      var now = DateTime.utc(2026, 1, 1);
+      final cache = newCache(clock: () => now);
       await cache.init();
 
-      final dir = await _testFilesDir();
-      final suffix = DateTime.now().microsecondsSinceEpoch.toString();
+      final dir = testDirectory;
 
       // Insert 3 entries, each 500 bytes → total 1500 > 1024 threshold.
       // After eviction, the oldest should be evicted, keeping total ≤ 1024.
       final names = [
-        'evict-old-$suffix.dcm',
-        'evict-mid-$suffix.dcm',
-        'evict-new-$suffix.dcm',
+        'evict-old.dcm',
+        'evict-mid.dcm',
+        'evict-new.dcm',
       ];
 
       for (final name in names) {
@@ -148,9 +172,9 @@ void main() {
 
       // Touch in order with small delays so lastAccess differs.
       await cache.touch(names[0], 500);
-      await Future.delayed(const Duration(milliseconds: 20));
+      now = now.add(const Duration(seconds: 1));
       await cache.touch(names[1], 500);
-      await Future.delayed(const Duration(milliseconds: 20));
+      now = now.add(const Duration(seconds: 1));
       await cache.touch(names[2], 500);
 
       // After the 3rd touch (total 1500 > 1024), eviction should have
@@ -177,12 +201,14 @@ void main() {
     });
 
     test('always keeps at least one entry (never evicts everything)', () async {
-      final cache = DicomLruCache.forTesting(evictionThresholdBytes: 100);
+      final cache = newCache(
+        threshold: 100,
+        clock: () => DateTime.utc(2026, 1, 1),
+      );
       await cache.init();
 
-      final dir = await _testFilesDir();
-      final suffix = DateTime.now().microsecondsSinceEpoch.toString();
-      final name = 'evict-single-$suffix.dcm';
+      final dir = testDirectory;
+      const name = 'evict-single.dcm';
       final file = io.File('${dir.path}/$name');
       await file.writeAsBytes(List.filled(500, 0));
 
@@ -250,7 +276,7 @@ void main() {
       dicomPngReady.observe((v) => observed = v);
 
       dicomPngReady(dicomPngReady() + 1);
-      await Future.delayed(const Duration(milliseconds: 10));
+      await flushNotifications();
 
       expect(observed, 1);
       expect(dicomPngReady(), 1);
@@ -258,15 +284,4 @@ void main() {
       dicomPngReady(0); // reset
     });
   });
-}
-
-/// Returns the app files directory for the test environment.
-Future<io.Directory> _testFilesDir() async {
-  // In test mode, filesDir() returns 'apexo-files' relative to cwd.
-  // Ensure it exists.
-  final dir = io.Directory('apexo-files');
-  if (!await dir.exists()) {
-    await dir.create(recursive: true);
-  }
-  return dir;
 }

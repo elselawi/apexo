@@ -1,7 +1,4 @@
-import 'dart:convert';
-
 import 'package:apexo/core/model.dart';
-import 'package:apexo/core/observable.dart';
 import 'package:apexo/core/store.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -100,6 +97,18 @@ void main() {
       expect(m.dcmImgs, ['bad.dcm', 'good.dcm']);
     });
 
+    test('removes only one duplicate reference from each field', () {
+      final m = store.get(rowID)!;
+      m.imgs = ['bad.dcm', 'bad.dcm'];
+      m.dcmImgs = ['bad.dcm', 'bad.dcm'];
+      store.set(m);
+
+      store.debugCleanDanglingFileRef(rowID, 'bad.dcm');
+
+      expect(store.get(rowID)!.imgs, ['bad.dcm']);
+      expect(store.get(rowID)!.dcmImgs, ['bad.dcm']);
+    });
+
     test('removes field from JSON when list becomes empty', () {
       final special = _TestModel.fromJson({});
       special.dcmImgs = ['only.dcm'];
@@ -163,6 +172,18 @@ void main() {
 
       final m = store.get(rowID)!;
       expect(m.imgs, ['old_name.dcm', 'other.jpg']);
+    });
+
+    test('patches only the first duplicate in each field', () {
+      final m = store.get(rowID)!;
+      m.imgs = ['old_name.dcm', 'old_name.dcm'];
+      m.dcmImgs = ['old_name.dcm', 'old_name.dcm'];
+      store.set(m);
+
+      store.debugPatchModelFilename(rowID, 'old_name.dcm', 'new_name.dcm');
+
+      expect(store.get(rowID)!.imgs, ['new_name.dcm', 'old_name.dcm']);
+      expect(store.get(rowID)!.dcmImgs, ['new_name.dcm', 'old_name.dcm']);
     });
 
     test('no-op when model not found', () {
@@ -265,6 +286,12 @@ void main() {
 
     test('returns 0 for 3-segment delete key', () {
       expect(Store.parseDeferredRetries('FILE||row1||someFile'), 0);
+    });
+
+    test('accepts malformed and extra-segment keys without throwing', () {
+      expect(Store.parseDeferredRetries(''), 0);
+      expect(Store.parseDeferredRetries('DOC||row||path||name||9'), 9);
+      expect(Store.parseDeferredRetries('FILE||row||path||name||-1'), -1);
     });
   });
 

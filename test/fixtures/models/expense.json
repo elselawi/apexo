@@ -1,0 +1,15 @@
+{
+    "id": "exp001expense1",
+    "title": "supplier: Dental Supplies Co.",
+    "archived": false,
+    "isSupplier": true,
+    "supplierName": "Dental Supplies Co.",
+    "supplierId": "",
+    "date": 1700000000000,
+    "items": [],
+    "cost": 0,
+    "paidAmount": 0,
+    "processed": false,
+    "photos": [],
+    "notes": "Preferred supplier for composites."
+}

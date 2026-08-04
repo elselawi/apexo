@@ -94,7 +94,7 @@ void main() {
       final testPath =
           '/test/unchanged-${DateTime.now().microsecondsSinceEpoch}.dcm';
       final mtime = DateTime.utc(2025, 7, 25, 12, 0, 0);
-      final size = 288366;
+      const size = 288366;
 
       final meta = DicomCachedMeta(
         mtime: mtime,
@@ -115,7 +115,7 @@ void main() {
           '/test/mtime-change-${DateTime.now().microsecondsSinceEpoch}.dcm';
       final oldMtime = DateTime.utc(2025, 7, 25, 12, 0, 0);
       final newMtime = DateTime.utc(2025, 7, 25, 13, 0, 0);
-      final size = 288366;
+      const size = 288366;
 
       final meta = DicomCachedMeta(
         mtime: oldMtime,

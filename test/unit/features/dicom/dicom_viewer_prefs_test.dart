@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/dicom/dicom_viewer_prefs.dart';
@@ -57,7 +56,7 @@ void main() {
     });
 
     test('full round-trip preserves all fields', () {
-      final original = DicomViewerPrefs(
+      const original = DicomViewerPrefs(
         windowCenter: 40,
         windowWidth: 400,
         colorMap: DicomColorMap.bone,
@@ -92,10 +91,10 @@ void main() {
     });
 
     test('rotationSteps clamped to 0–3', () {
-      expect(DicomViewerPrefs.fromJson({'rotationSteps': -1}).rotationSteps, 0);
-      expect(DicomViewerPrefs.fromJson({'rotationSteps': 5}).rotationSteps, 3);
-      expect(DicomViewerPrefs.fromJson({'rotationSteps': 2}).rotationSteps, 2);
-      expect(DicomViewerPrefs.fromJson({}).rotationSteps, 0);
+      expect(DicomViewerPrefs.fromJson(const {'rotationSteps': -1}).rotationSteps, 0);
+      expect(DicomViewerPrefs.fromJson(const {'rotationSteps': 5}).rotationSteps, 3);
+      expect(DicomViewerPrefs.fromJson(const {'rotationSteps': 2}).rotationSteps, 2);
+      expect(DicomViewerPrefs.fromJson(const {}).rotationSteps, 0);
     });
 
     test('int windowCenter accepted (not just double)', () {
@@ -139,7 +138,7 @@ void main() {
     test('empty prefs → no-op (invert stays off, rotation stays 0)', () {
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      final p = DicomViewerPrefs.empty;
+      const p = DicomViewerPrefs.empty;
       p.applyTo(controller);
       expect(controller.invert, isFalse);
       expect(controller.rotationSteps, 0);
@@ -148,7 +147,7 @@ void main() {
     test('invert=true toggles invert on', () async {
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      await DicomViewerPrefs(invert: true).applyTo(controller);
+      await const DicomViewerPrefs(invert: true).applyTo(controller);
       expect(controller.invert, isTrue);
     });
 
@@ -156,14 +155,14 @@ void main() {
         () async {
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      await DicomViewerPrefs(rotationSteps: 2).applyTo(controller);
+      await const DicomViewerPrefs(rotationSteps: 2).applyTo(controller);
       expect(controller.rotationSteps, 2);
     });
 
     test('rotationSteps=3 wraps correctly (3 clockwise from 0)', () async {
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      await DicomViewerPrefs(rotationSteps: 3).applyTo(controller);
+      await const DicomViewerPrefs(rotationSteps: 3).applyTo(controller);
       expect(controller.rotationSteps, 3);
     });
 
@@ -173,7 +172,7 @@ void main() {
       // applyTo must skip the windowing branch rather than throw.
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      await DicomViewerPrefs(windowCenter: 50, windowWidth: 200)
+      await const DicomViewerPrefs(windowCenter: 50, windowWidth: 200)
           .applyTo(controller);
       // windowCenter/Width remain null (not applied).
       expect(controller.windowCenter, isNull);
@@ -186,7 +185,7 @@ void main() {
       // controller; applyTo must not choke on it even without data.
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      await DicomViewerPrefs(colorMap: DicomColorMap.grayscale)
+      await const DicomViewerPrefs(colorMap: DicomColorMap.grayscale)
           .applyTo(controller);
       expect(controller.colorMap, DicomColorMap.grayscale);
     });
@@ -203,7 +202,7 @@ void main() {
       // in this test environment, we treat color-map application as
       // best-effort and still verify invert.
       try {
-        await DicomViewerPrefs(
+        await const DicomViewerPrefs(
           colorMap: DicomColorMap.bone,
           invert: true,
         ).applyTo(controller);

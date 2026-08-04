@@ -1,0 +1,23 @@
+{
+    "id": "pat001patient1",
+    "title": "John Doe",
+    "archived": false,
+    "birth": 1990,
+    "gender": 1,
+    "phone": "+1234567890",
+    "email": "john@example.com",
+    "address": "123 Main St, Springfield",
+    "tags": [
+        "diabetic",
+        "smoker"
+    ],
+    "notes": "Allergic to penicillin.",
+    "teeth": {
+        "11": "filling",
+        "21": "crown",
+        "36": "extraction"
+    },
+    "teethExtraNotes": {
+        "11": "Deep cavity, monitor"
+    }
+}

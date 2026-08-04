@@ -1,0 +1,22 @@
+{
+    "items": [
+        {
+            "id": "rec001record1",
+            "data": "{\"id\":\"rec001record1\",\"title\":\"Test Record 1\"}",
+            "store": "test",
+            "created": "2026-01-15 10:30:00.000Z",
+            "updated": "2026-01-15 10:30:00.000Z"
+        },
+        {
+            "id": "rec002record2",
+            "data": "{\"id\":\"rec002record2\",\"title\":\"Test Record 2\"}",
+            "store": "test",
+            "created": "2026-01-15 11:00:00.000Z",
+            "updated": "2026-01-15 11:00:00.000Z"
+        }
+    ],
+    "page": 1,
+    "perPage": 900,
+    "totalItems": 2,
+    "totalPages": 1
+}

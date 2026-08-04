@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 
 void main() {
@@ -34,6 +35,57 @@ void main() {
       String input = 'a' * 1000;
       String hash = simpleHash(input);
       expect(hash.length, 17); // "h" + 16 characters
+    });
+
+    test('uses the documented prefix and alphabet', () {
+      final hash = simpleHash('alphabet check');
+
+      expect(hash, startsWith('h'));
+      expect(hash.split('').every(alphabet.contains), isTrue);
+    });
+
+    test('supports Unicode deterministically', () {
+      expect(simpleHash('مرحبا 🌍'), simpleHash('مرحبا 🌍'));
+    });
+
+    test('honours custom lengths of two or more', () {
+      expect(simpleHash('test', length: 2).length, 2);
+      expect(simpleHash('test', length: 64).length, 64);
+    });
+
+    test('documents the minimum output length for zero and negative lengths',
+        () {
+      expect(simpleHash('test', length: 0), 'ha');
+      expect(simpleHash('test', length: -1), 'ha');
+    });
+  });
+
+  group('secureHash', () {
+    test('is deterministic, exact-length, and uses its documented alphabet',
+        () {
+      final hash = secureHash('secure 🌍', length: 128);
+
+      expect(hash, secureHash('secure 🌍', length: 128));
+      expect(hash.length, 128);
+      expect(hash.split('').every(RegExp(r'^[a-zA-Z0-9]$').hasMatch), isTrue);
+    });
+
+    test('supports empty input and distinguishes representative inputs', () {
+      expect(secureHash('').length, 100);
+      expect(secureHash('first', length: 32),
+          isNot(secureHash('second', length: 32)));
+    });
+
+    test('returns an empty hash when zero length is requested', () {
+      expect(secureHash('test', length: 0), isEmpty);
+    });
+
+    test('different requested lengths produce independent prefixes', () {
+      final shortHash = secureHash('same input', length: 16);
+      final longHash = secureHash('same input', length: 64);
+
+      expect(longHash.substring(0, shortHash.length), shortHash);
+      expect(longHash.length, 64);
     });
   });
 }

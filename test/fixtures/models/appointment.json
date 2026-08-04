@@ -1,0 +1,43 @@
+{
+    "id": "abc123def456789",
+    "title": "John Doe",
+    "archived": false,
+    "patientID": "pat001patient1",
+    "operatorsIDs": [
+        "op001operator1",
+        "op002operator2"
+    ],
+    "date": 28400400,
+    "duration": 30,
+    "price": 150.0,
+    "paid": 100.0,
+    "isDone": false,
+    "preOpNotes": "Patient reports sensitivity on #11.",
+    "postOpNotes": "",
+    "prescriptions": [
+        "Amoxicillin 500mg"
+    ],
+    "teeth": {
+        "11": "filling",
+        "21": "crown"
+    },
+    "teethExtraNotes": {
+        "11": "Deep cavity"
+    },
+    "hasLabwork": true,
+    "labName": "Crown Lab",
+    "labworkNotes": "PFM crown #21",
+    "labworkReceived": false,
+    "imgs": [
+        "img001_intraoral.jpg",
+        "img002_xray.png"
+    ],
+    "dcmImgs": [
+        "scan001_pano.dcm",
+        "scan001_pano.dcm.png"
+    ],
+    "drawings": {
+        "11": "outline"
+    },
+    "firstAppointmentForThisPatient": true
+}

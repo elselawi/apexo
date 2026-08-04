@@ -1,79 +1,115 @@
-import 'package:flutter_test/flutter_test.dart';
-import 'package:apexo/services/admins.dart';
+import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-import '../../secret.dart';
-
 void main() {
-  group('Admins Service Tests', () {
-    const testEmail = 'test_admin@example.com';
-    const testPassword = 'test123456';
-    String createdAdminId = '';
+  group('Accounts Controller — observable defaults', () {
+    test('accounts singleton exists', () {
+      expect(accounts, isNotNull);
+    });
 
-    setUpAll(() async {
-      // Initialize PocketBase with your test server
-      login.pb = PocketBase(testPBServer);
+    test('list is an ObservableState', () {
+      expect(accounts.list, isNotNull);
+      expect(accounts.list(), isEmpty);
+    });
 
-      // Login as admin first
-      await login.pb!.collection("_superusers").authWithPassword(testPBEmail, testPBPassword);
-      login.token = login.pb!.authStore.token;
-      final allAdmins = await login.pb!.collection("_superusers").getFullList();
-      for (var admin in allAdmins) {
-        if (admin.data['email'] != testPBEmail) {
-          await login.pb!.collection("_superusers").delete(admin.id);
-        }
+    test('loaded starts as false', () {
+      expect(accounts.loaded(), false);
+    });
+
+    test('loading starts as false', () {
+      expect(accounts.loading(), false);
+    });
+
+    test('creating starts as false', () {
+      expect(accounts.creating(), false);
+    });
+
+    test('updating starts as empty map', () {
+      expect(accounts.updating(), isEmpty);
+    });
+
+    test('deleting starts as empty map', () {
+      expect(accounts.deleting(), isEmpty);
+    });
+
+    test('nameOrEmailFromID returns a string for any ID', () {
+      final name = accounts.nameOrEmailFromID('nonexistent');
+      expect(name, isNotNull);
+    });
+
+    test('operators is a list', () {
+      final ops = accounts.operators;
+      expect(ops, isNotNull);
+    });
+
+    test('name prefers profile name and falls back to email', () {
+      final named = RecordModel.fromJson({
+        'id': 'named',
+        'name': 'Dr Name',
+        'email': 'name@example.com',
+      });
+      final unnamed = RecordModel.fromJson({
+        'id': 'unnamed',
+        'name': '',
+        'email': 'email@example.com',
+      });
+
+      expect(accounts.name(named), 'Dr Name');
+      expect(accounts.name(unnamed), 'email@example.com');
+    });
+
+    test('operators includes only records with operate=1', () {
+      final previous = accounts.list();
+      try {
+        accounts.list([
+          RecordModel.fromJson({'id': 'operator', 'operate': 1}),
+          RecordModel.fromJson({'id': 'non-operator', 'operate': 0}),
+        ]);
+
+        expect(accounts.operators.map((record) => record.id), ['operator']);
+      } finally {
+        accounts.list(previous);
       }
     });
 
-    test('Create new admin', () async {
-      await admins.newAdmin(testEmail, testPassword);
-      await admins.reloadFromRemote();
-      expect(admins.creating(), false);
-      expect(admins.errorMessage(), '');
+    test('nameOrEmailFromID falls back to the first available account', () {
+      final previous = accounts.list();
+      try {
+        accounts.list([
+          RecordModel.fromJson({
+            'id': 'admin',
+            'type': 'admin',
+            'name': 'Admin',
+            'email': 'admin@example.com',
+          }),
+          RecordModel.fromJson({
+            'id': 'user',
+            'name': 'User',
+            'email': 'user@example.com',
+          }),
+        ]);
 
-      final adminsList = admins.list();
-      final createdAdmin = adminsList.firstWhere((admin) => admin.data['email'] == testEmail);
-
-      createdAdminId = createdAdmin.id;
-      expect(createdAdmin.data['email'], equals(testEmail));
+        expect(accounts.nameOrEmailFromID('admin'), 'Admin');
+        expect(accounts.nameOrEmailFromID('missing'), 'Admin');
+      } finally {
+        accounts.list(previous);
+      }
     });
 
-    test('Update admin', () async {
-      const newEmail = 'updated_admin@example.com';
-      await admins.update(createdAdminId, newEmail, '');
+    test('reloadFromRemote exits cleanly without authenticated PocketBase',
+        () async {
+      final oldPb = login.pb;
+      final oldToken = login.token;
+      login.pb = null;
+      login.token = '';
+      await accounts.reloadFromRemote();
 
-      expect(admins.updating()[createdAdminId], null);
-      expect(admins.errorMessage(), '');
-
-      final adminsList = admins.list();
-      final updatedAdmin = adminsList.firstWhere((admin) => admin.id == createdAdminId);
-
-      expect(updatedAdmin.data['email'], equals(newEmail));
-    });
-
-    test('Reload from remote', () async {
-      await admins.reloadFromRemote();
-
-      expect(admins.loaded(), true);
-      expect(admins.loading(), false);
-      expect(admins.list().isNotEmpty, true);
-    });
-
-    test('Delete admin', () async {
-      final adminToDelete = admins.list().firstWhere((admin) => admin.id == createdAdminId);
-
-      await admins.delete(adminToDelete);
-
-      expect(admins.deleting()[createdAdminId], null);
-      expect(admins.list().where((admin) => admin.id == createdAdminId).isEmpty, true);
-    });
-
-    test('Error handling with invalid data', () async {
-      await admins.newAdmin('invalid-email', 'short');
-
-      expect(admins.errorMessage().isNotEmpty, true);
-      expect(admins.creating(), false);
+      expect(accounts.loading(), isFalse);
+      expect(accounts.loaded(), isFalse);
+      login.pb = oldPb;
+      login.token = oldToken;
     });
   });
 }

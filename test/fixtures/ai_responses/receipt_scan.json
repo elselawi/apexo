@@ -1,0 +1,33 @@
+{
+    "data": {
+        "supplierName": "Dental Supplies Co.",
+        "date": "2026-01-15",
+        "items": [
+            {
+                "name": "Composite Kit (A2 shade)",
+                "quantity": 2,
+                "unitPrice": 45.00,
+                "total": 90.00
+            },
+            {
+                "name": "Nitrile Gloves (Box of 100)",
+                "quantity": 5,
+                "unitPrice": 8.50,
+                "total": 42.50
+            },
+            {
+                "name": "Disposable Bibs (Pack of 50)",
+                "quantity": 3,
+                "unitPrice": 12.00,
+                "total": 36.00
+            },
+            {
+                "name": "Suction Tips (Box of 100)",
+                "quantity": 2,
+                "unitPrice": 15.00,
+                "total": 30.00
+            }
+        ],
+        "total": 198.50
+    }
+}

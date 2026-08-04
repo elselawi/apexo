@@ -1,0 +1,12 @@
+{
+    "data": {
+        "teeth": {
+            "11": "filling",
+            "12": "crown",
+            "21": "veneer",
+            "36": "extraction",
+            "46": "root canal"
+        },
+        "extra_notes": "Patient reports sensitivity to cold on upper right quadrant. Previous filling on #36 feels high."
+    }
+}

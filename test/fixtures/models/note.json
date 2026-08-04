@@ -1,0 +1,32 @@
+{
+    "id": "note001kanban1",
+    "title": "Order supplies",
+    "archived": false,
+    "isColumn": false,
+    "columnName": "",
+    "tint": null,
+    "order": 1.0,
+    "columnID": "col001inbox001",
+    "date": 4722,
+    "note": "Order composite kit and gloves for next week.",
+    "comments": [
+        [
+            "op001operator1",
+            "Will do by Friday"
+        ],
+        [
+            "op002operator2",
+            "Added to purchase list"
+        ]
+    ],
+    "done": false,
+    "attachments": [
+        "order_list.pdf"
+    ],
+    "createdBy": "op001operator1",
+    "assignedTo": "op002operator2",
+    "dueDate": 4750,
+    "forPatient": "",
+    "recurringInterval": null,
+    "parentID": null
+}

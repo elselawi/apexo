@@ -3,7 +3,6 @@ import 'dart:typed_data';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/dicom/dicom_controller.dart';
 import 'package:apexo/features/patients/patient_model.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/dicom/dicom_file_cache.dart';
 import 'package:apexo/services/dicom/dicom_importer.dart';
 import 'package:apexo/services/dicom/dicom_io_service.dart';
@@ -81,7 +80,7 @@ class _MockImporter {
 
   void _setAppointment(Appointment a) {
     // Deep-copy so the caller's mutations don't affect our log.
-    _setAppointmentLog.add(Appointment.fromJson(a.toJson() ?? {}));
+    _setAppointmentLog.add(Appointment.fromJson(a.toJson()));
   }
 
   List<Appointment> _appointmentsForPatient(String id) => [];

@@ -1,0 +1,15 @@
+{
+    "data": {
+        "notes": "Extraction of #36 completed under local anesthesia. Hemostasis achieved. Post-op instructions given.",
+        "prescriptions": "Amoxicillin 500mg 3x/day for 7 days\nIbuprofen 400mg as needed for pain",
+        "price": 250.0,
+        "paid": 250.0,
+        "teeth": {
+            "36": "extraction"
+        },
+        "labwork": {
+            "name": "",
+            "notes": ""
+        }
+    }
+}

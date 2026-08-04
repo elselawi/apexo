@@ -1,4 +1,5 @@
-import 'package:test/test.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/uuid.dart';
 
 void main() {
@@ -10,9 +11,8 @@ void main() {
 
     test('generates a string containing only valid characters', () {
       final id = uuid();
-      const validCharacters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
       for (var char in id.split('')) {
-        expect(validCharacters.contains(char), isTrue);
+        expect(alphabet.contains(char), isTrue);
       }
     });
 
@@ -25,6 +25,19 @@ void main() {
     test('generates a non-empty string', () {
       final id = uuid();
       expect(id.isNotEmpty, isTrue);
+    });
+
+    test('creates a unique moderate batch under normal randomness', () {
+      final ids = List.generate(250, (_) => uuid()).toSet();
+
+      expect(ids.length, 250);
+    });
+
+    test('does not generate an all-zero or all-identical batch', () {
+      final ids = List.generate(32, (_) => uuid());
+
+      expect(ids.every((id) => id == ids.first), isFalse);
+      expect(ids.every((id) => id.split('').every((c) => c == '0')), isFalse);
     });
   });
 }

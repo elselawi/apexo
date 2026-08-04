@@ -9,11 +9,28 @@ void main() {
     });
 
     test('Returns red when paid is less than price', () {
-      expect(colorBasedOnPayments(50.0, 100.0), Colors.red);
+      expect(colorBasedOnPayments(50.0, 100.0), Colors.warningPrimaryColor);
     });
 
     test('Returns grey when paid is equal to price', () {
-      expect(colorBasedOnPayments(100.0, 100.0), Colors.grey);
+      expect(colorBasedOnPayments(100.0, 100.0), null);
+    });
+
+    test('treats zero totals according to the comparison result', () {
+      expect(colorBasedOnPayments(0, 0), isNull);
+      expect(colorBasedOnPayments(1, 0), Colors.blue);
+      expect(colorBasedOnPayments(0, 1), Colors.warningPrimaryColor);
+    });
+
+    test('compares negative totals without special casing', () {
+      expect(colorBasedOnPayments(-5, -10), Colors.blue);
+      expect(colorBasedOnPayments(-10, -5), Colors.warningPrimaryColor);
+      expect(colorBasedOnPayments(-5, -5), isNull);
+    });
+
+    test('returns null when a comparison contains NaN', () {
+      expect(colorBasedOnPayments(double.nan, 100), isNull);
+      expect(colorBasedOnPayments(100, double.nan), isNull);
     });
   });
 }

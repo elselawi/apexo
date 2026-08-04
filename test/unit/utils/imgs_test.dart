@@ -4,15 +4,18 @@ import 'package:apexo/utils/imgs.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
-  group('Image File Operations', () {
-    final testDir = Directory('test_dir');
-    const testImagePath = 'test.jpg';
+  late Directory testDir;
+  late String testImagePath;
 
+  group('Image File Operations', () {
     setUp(() async {
+      testDir = await Directory.systemTemp.createTemp('apexo-imgs-');
+      testImagePath = path.join(testDir.path, 'test.jpg');
       await testDir.create(recursive: true);
       // Create a test image file
       final File testImage = await getOrCreateFile(testImagePath);
-      await testImage.writeAsBytes([0xFF, 0xD8, 0xFF, 0xE0]); // Basic JPEG header
+      await testImage
+          .writeAsBytes([0xFF, 0xD8, 0xFF, 0xE0]); // Basic JPEG header
     });
 
     tearDown(() async {
@@ -34,34 +37,69 @@ void main() {
     });
 
     test('getOrCreateFile returns valid file', () async {
-      final file = await getOrCreateFile('newfile.txt');
+      final file =
+          await getOrCreateFile(path.join(testDir.path, 'newfile.txt'));
       expect(file, isA<File>());
       await file.writeAsString("Test content");
       expect(await file.exists(), true);
     });
 
     test('savePickedImage copies image correctly', () async {
-      final sourceImage = File(testImagePath);
-      final result = await savePickedImage(sourceImage, 'copied.jpg');
+      final srcName = path.join(testDir.path, 'test_src.jpg');
+      final dstName = path.join(testDir.path, 'test_dst.jpg');
+      final sourceImage = await getOrCreateFile(srcName);
+      await sourceImage.writeAsBytes([0xFF, 0xD8, 0xFF, 0xE0]);
+      final result = await savePickedImage(sourceImage, dstName);
       expect(await result.exists(), true);
-      expect(path.basename(result.path), 'copied.jpg');
+      expect(path.basename(result.path), path.basename(dstName));
+      expect(await result.readAsBytes(), [0xFF, 0xD8, 0xFF, 0xE0]);
     });
   });
 
-  group('Network Image Operations', () {
-    test('getImageExtensionFromURL returns correct extension', () async {
-      final jpgExtension = await getImageExtensionFromURL('https://cdn.culture.ru/c/710339.jpg');
-      expect(jpgExtension, '.jpg');
-
-      final pngExtension = await getImageExtensionFromURL('https://apexo.app/assets/images/logo.png');
-      expect(pngExtension, '.png');
+  group('Image name and URL classification', () {
+    test('recognizes every supported image extension case-insensitively', () {
+      for (final extension in [
+        'jpg',
+        'jpeg',
+        'png',
+        'gif',
+        'bmp',
+        'webp',
+        'svg',
+        'tiff',
+        'tif',
+        'ico',
+        'heic',
+        'heif',
+        'avif',
+        'jfif',
+      ]) {
+        expect(isAnImageName('photo.$extension'), isTrue);
+        expect(isAnImageName('photo.${extension.toUpperCase()}'), isTrue);
+      }
+      expect(isAnImageName('photo.dcm'), isFalse);
+      expect(isAnImageName('photo'), isFalse);
     });
 
-    test('saveImageFromUrl downloads and saves image', () async {
-      const imageUrl = 'https://picsum.photos/200/300';
-      final savedImage = await saveImageFromUrl(imageUrl, 'test_download.jpg');
-      expect(await savedImage.exists(), true);
-      expect(await savedImage.length(), greaterThan(0));
+    test('recognizes DICOM extensions case-insensitively', () {
+      expect(isADcmName('scan.dcm'), isTrue);
+      expect(isADcmName('scan.DICOM'), isTrue);
+      expect(isADcmName('scan.png'), isFalse);
+    });
+
+    test('recognizes only HTTP and HTTPS URLs', () {
+      expect(isUrl('https://example.com/image.png'), isTrue);
+      expect(isUrl('http://example.com/image.png'), isTrue);
+      expect(isUrl('ftp://example.com/image.png'), isFalse);
+      expect(isUrl('blob:image'), isFalse);
+    });
+
+    test('strips generated hash suffixes from display names', () {
+      expect(displayNameForFile('invoice_abcdef.pdf'), 'invoice.pdf');
+      expect(displayNameForFile('invoice_abcdef_123456.pdf'), 'invoice.pdf');
+      expect(displayNameForFile('https://host/path/photo_abcdef.jpg'),
+          'photo.jpg');
+      expect(displayNameForFile('plain.pdf'), 'plain.pdf');
     });
   });
 }

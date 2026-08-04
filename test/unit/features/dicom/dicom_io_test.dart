@@ -9,7 +9,7 @@ void main() {
   // These tests exercise DicomIO.scanDirectory which uses dart:io.
   // They run in the Dart VM test runner (not web). On web, the conditional
   // import stub returns empty — skip there.
-  final canRunIoTests = !kIsWeb;
+  const canRunIoTests = !kIsWeb;
 
   group('DicomIO.scanDirectory (partial-write skip)', () {
     late io.Directory tempDir;

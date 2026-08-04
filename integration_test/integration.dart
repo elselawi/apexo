@@ -5,7 +5,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import '../test/test_utils.dart';
+import '../test/live_backend/test_utils.dart';
 import 'base.dart';
 
 void main() async {

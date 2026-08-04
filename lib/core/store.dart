@@ -1092,12 +1092,6 @@ class Store<G extends Model> {
   /// semantics are additive (multi-assignment) belong here.
   static const _unionListFields = ['operatorsIDs'];
 
-  /// List fields that are NOT merged — they keep whole-field LWW.
-  /// Free-text lists edited via whole-list replacement (tags,
-  /// prescriptions) are unsafe to union because deletions are expressed
-  /// only by absence and would be silently un-deleted.
-  static const _lwwListFields = ['tags', 'prescriptions'];
-
   /// Merges two JSON representations of the same record after a sync
   /// conflict, instead of discarding one entire version.
   ///
@@ -1146,8 +1140,6 @@ class Store<G extends Model> {
 
       final localVal = localJson[key];
       final remoteVal = remoteJson[key];
-      final localHas = localJson.containsKey(key);
-      final remoteHas = remoteJson.containsKey(key);
 
       // ── Image fields: reconcile against the server's actual files ──
       if (_imageFields.contains(key)) {

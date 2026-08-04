@@ -2,6 +2,19 @@
 
 - New Features & Enhancements
     - **DICOM / RVG X-Ray Import (Windows)**: One-click workflow to import X-rays from RVG sensors. Configure watch folders once, then Apexo scans for new `.dcm` files every 90 seconds. Smart matching suggests which patient each X-ray belongs to based on embedded metadata. Once a DICOM patient ID is linked, future X-rays auto-import without manual steps. Includes a full cross-platform interactive viewer with windowing, rotation, color-map presets, invert, and measurement tools (ROI statistics, ruler in mm). Imported X-rays sync to all devices via PocketBase.
+    - **Smarter Offline Conflict Resolution**: Concurrent offline edits now use field-level merging so non-conflicting changes from different devices are preserved, while conflicting values continue to use last-write-wins behavior. Pending image uploads are retained during reconciliation.
+    - **More Reliable Offline Sync**: Hardened store sessions, deferred file uploads, local persistence, reactive caches, and file lookup by content hash to improve synchronization reliability across intermittent connections.
+    - **Safer Patient-Side Access**: Strengthened patient-side access and country-code lookup handling.
+    - **Dashboard Accuracy**: Archived appointments are now excluded from dashboard results and summaries.
+
+- Testing & Developer Experience
+    - Added broad unit and live-backend test coverage across core models, stores, synchronization, locking, DICOM workflows, AI services, notifications, localization, and utility features.
+    - Reorganized tests into clearer unit and live-backend suites, added deterministic fixtures and test helpers, configured live-test tags, and enabled parallel execution where safe.
+    - Improved notification callback handling and reactive state cleanup to make runtime behavior more robust.
+
+- Bug Fixes
+    - Fixed observable dictionary copying after item removal.
+    - Standardized localization strings so new entries begin with a lowercase letter.
 
 ### ____0.13.0____
 

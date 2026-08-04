@@ -42,8 +42,23 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 
 ## Testing
 
-- [How to run ___unit testing___](https://github.com/elselawi/apexo/blob/master/test/unit_test_readme.md).
-- [How to run ___integration testing___](https://github.com/elselawi/apexo/blob/master/integration_test/readme.md).
+### Unit tests
+
+From the project root, run the complete unit suite with:
+
+```bash
+flutter test test/unit --exclude-tags live_backend -j 1
+```
+
+The above command excludes live PocketBase tests. To run those tests, provide the
+required credentials in `test/secret.dart`, as per `test/secret.dart.example` and use:
+
+```bash
+flutter test --tags live_backend test/live_backend -j 1
+```
+
+See [`integration_test/readme.md`](integration_test/readme.md) for end-to-end
+testing.
 
 
 ## Building & Distribution

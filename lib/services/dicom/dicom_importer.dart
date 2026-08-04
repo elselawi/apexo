@@ -22,7 +22,7 @@ import 'package:flutter/foundation.dart';
 /// Extracts the last path component for debug logging.
 String _shortName(String path) => path.split(RegExp(r'[/\\]')).last;
 
-// â”€â”€ Data classes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Data classes ------------------
 
 class DicomParsedFile {
   final String path;
@@ -119,7 +119,7 @@ class DicomPendingImport {
   int get fileCount => files.length;
 }
 
-// â”€â”€ Isolate message types â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Isolate message types ----------------------
 
 class _ScanMessage {
   final String watchDir;
@@ -187,7 +187,7 @@ class _ScanResult {
 /// Minimum confidence to surface a fuzzy suggestion.
 const double _suggestionThreshold = 0.4;
 
-// â”€â”€ Scan phase â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Scan phase ---------------------
 
 enum ScanPhase {
   idle,
@@ -198,7 +198,7 @@ enum ScanPhase {
   matching,
 }
 
-// â”€â”€ Core scan + parse + match â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Core scan + parse + match ------------------------------------------------------------------
 
 Future<_ScanResult> _doScan({
   required String watchDir,
@@ -234,7 +234,7 @@ Future<_ScanResult> _doScan({
 
   final totalEntries = entries.length;
   debugPrint(
-      'â•â• DICOM scan: ${scanDirSw.elapsedMilliseconds}ms to list $totalEntries .dcm files in "$watchDir"');
+      'DICOM scan: ${scanDirSw.elapsedMilliseconds}ms to list $totalEntries .dcm files in "$watchDir"');
 
   final parseLoopSw = Stopwatch()..start();
   var cacheHits = 0;
@@ -247,7 +247,7 @@ Future<_ScanResult> _doScan({
     allScannedPaths.add(entry.path);
     if (shouldCancel != null && shouldCancel()) {
       debugPrint(
-          'â•â• DICOM scan: CANCELLED at file $idx/$totalEntries after ${parseLoopSw.elapsedMilliseconds}ms');
+          'DICOM scan: CANCELLED at file $idx/$totalEntries after ${parseLoopSw.elapsedMilliseconds}ms');
       break;
     }
 
@@ -279,14 +279,14 @@ Future<_ScanResult> _doScan({
       onFileProgress?.call(idx, totalEntries, entry.path, true);
       if (idx % 200 == 0 || idx == totalEntries) {
         debugPrint(
-            'â•â• DICOM scan: $idx/$totalEntries (cache hit: "${_shortName(entry.path)}")');
+            'DICOM scan: $idx/$totalEntries (cache hit: "${_shortName(entry.path)}")');
       }
     } else {
       cacheMisses++;
       final fileSw = Stopwatch()..start();
       onFileProgress?.call(idx, totalEntries, entry.path, false);
       debugPrint(
-          'â•â• DICOM scan: $idx/$totalEntries parsing "${_shortName(entry.path)}"â€¦');
+          'DICOM scan: $idx/$totalEntries parsing "${_shortName(entry.path)}"');
       final Uint8List bytes;
       try {
         final b = await readFn(entry.path);
@@ -351,7 +351,7 @@ Future<_ScanResult> _doScan({
       fileSw.stop();
       perFileMs[entry.path] = fileSw.elapsedMilliseconds;
       debugPrint(
-          'â•â• DICOM scan: $idx/$totalEntries parsed "${_shortName(entry.path)}" in ${fileSw.elapsedMilliseconds}ms (${(entry.size / 1024).toStringAsFixed(0)}KB)');
+          'DICOM scan: $idx/$totalEntries parsed "${_shortName(entry.path)}" in ${fileSw.elapsedMilliseconds}ms (${(entry.size / 1024).toStringAsFixed(0)}KB)');
     }
 
     if (importedKeys.contains(dk)) continue;
@@ -369,15 +369,15 @@ Future<_ScanResult> _doScan({
 
   parseLoopSw.stop();
   debugPrint(
-      'â•â• DICOM scan: parse loop done â†’ $cacheHits hits, $cacheMisses misses, ${parsed.length} pending, ${skipped.length} skipped in ${parseLoopSw.elapsedMilliseconds}ms');
+      'DICOM scan: parse loop done $cacheHits hits, $cacheMisses misses, ${parsed.length} pending, ${skipped.length} skipped in ${parseLoopSw.elapsedMilliseconds}ms');
 
-  // â”€â”€ Build pending list inside the isolate â”€â”€
+  // --------------- Build pending list inside the isolate ---
   final matchSw = Stopwatch()..start();
   final pending = _buildPending(parsed, patientSnapshots, links, pendingMatches,
       unmatchedIds, appointmentDayMap);
   matchSw.stop();
   debugPrint(
-      'â•â• DICOM scan: matching done â†’ ${pending.length} imports in ${matchSw.elapsedMilliseconds}ms');
+      'DICOM scan: matching done ${pending.length} imports in ${matchSw.elapsedMilliseconds}ms');
 
   return _ScanResult(
     parsed: parsed,
@@ -541,7 +541,7 @@ List<DicomPendingImport> _buildPending(
   return pending;
 }
 
-// â”€â”€ Isolate entry point â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- Isolate entry point -------------------------
 
 class _IsolateProgress {
   final int current;
@@ -601,7 +601,7 @@ void _isolateScan(_ScanMessage msg) async {
   msg.resultPort.send(result);
 }
 
-// â”€â”€ DicomImporter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// --------------- DicomImporter ----------------------------------
 
 class DicomImporter {
   final Future<Set<String>> Function() _allImportedKeys;
@@ -729,7 +729,7 @@ class DicomImporter {
             ((id) =>
                 appointments.byPatient[id]?["all"] ?? const <Appointment>[]);
 
-  // â”€â”€ Scan â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------- Scan ---------------------
 
   Future<List<DicomPendingImport>> scanAndBuildPending() async {
     final totalSw = Stopwatch()..start();
@@ -744,7 +744,7 @@ class DicomImporter {
         '${watchDirs.map((d) => '"$d"').join(", ")}');
     debugPrint('');
     debugPrint(
-        'â•â• DICOM scan START: ${watchDirs.length} director${watchDirs.length == 1 ? 'y' : 'ies'} â•â•');
+        'DICOM scan START: ${watchDirs.length} director${watchDirs.length == 1 ? 'y' : 'ies'}');
 
     scanPhase(ScanPhase.snapshotting);
     final snapSw = Stopwatch()..start();
@@ -770,7 +770,7 @@ class DicomImporter {
 
     scanPhase(ScanPhase.listingDir);
 
-    // â”€â”€ Scan each directory, merge results â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // --------------- Scan each directory, merge results ---------------------------------------
     final allResults = <_ScanResult>[];
     var grandScanDirMs = 0;
     var grandParseLoopMs = 0;
@@ -836,8 +836,7 @@ class DicomImporter {
     final allSkipped = allResults.expand((r) => r.skipped).toList();
     final allPending = allResults.expand((r) => r.pending).toList();
 
-    log.info(
-        'DicomImporter.scan: all ${watchDirs.length} directories scanned â€” '
+    log.info('DicomImporter.scan: all ${watchDirs.length} directories scanned '
         '${grandScanDirMs}ms dir listing, ${grandParseLoopMs}ms parse loop, '
         '${allPaths.length} discovered, '
         '$grandCacheHits cache hits, $grandCacheMisses misses, '
@@ -875,10 +874,10 @@ class DicomImporter {
     resolveSw.stop();
     totalSw.stop();
     log.info(
-        'DicomImporter.scan: resolved patients in ${resolveSw.elapsedMilliseconds}ms â†’ '
+        'DicomImporter.scan: resolved patients in ${resolveSw.elapsedMilliseconds}ms '
         '${pending.length} pending imports. TOTAL ${totalSw.elapsedMilliseconds}ms.');
     debugPrint(
-        'â•â• DICOM scan DONE: ${pending.length} pending imports in ${totalSw.elapsedMilliseconds}ms â•â•');
+        'DICOM scan DONE: ${pending.length} pending imports in ${totalSw.elapsedMilliseconds}ms');
     debugPrint('');
 
     _finishScan();
@@ -920,7 +919,7 @@ class DicomImporter {
   // name-only. The UI's date-match indicators still work because they read
   // appointments.byPatient on the main isolate via the controller.
 
-  // â”€â”€ Scan runner (isolate / direct) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------- Scan runner (isolate / direct) ------------------------------------------------------
 
   /// Runs the scan via isolate (native) or directly (web), depending on
   /// [_useIsolate]. The caller handles cleanup on error.
@@ -968,7 +967,7 @@ class DicomImporter {
   }
 
   /// Spawns an isolate, wires progress + cancel ports, and returns the
-  /// [_ScanResult] when the isolate finishes. Does NOT catch errors â€” the
+  /// [_ScanResult] when the isolate finishes. Does NOT catch errors the
   /// caller is responsible for [_killIsolate] + [_finishScan] on failure.
   Future<_ScanResult> _scanInIsolate({
     required String watchDir,
@@ -1040,7 +1039,7 @@ class DicomImporter {
     return completer.future;
   }
 
-  // â”€â”€ Approve â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // --------------- Approve ------------------
 
   Future<void> approveImport(
     DicomPendingImport pending, {
@@ -1049,14 +1048,13 @@ class DicomImporter {
     final targetId = apexoPatientId ?? pending.matchedPatient?.id;
     if (targetId == null || targetId.isEmpty) {
       throw StateError(
-          'approveImport: no target patient â€” call manualMatch first or pass '
+          'approveImport: no target patient call manualMatch first or pass '
           'apexoPatientId');
     }
 
     final approveSw = Stopwatch()..start();
     log.info(
-        'DicomImporter.approveImport: starting for dicomPatient="${pending.dicomPatientId}" '
-        'â†’ apexoPatient="$targetId" (${pending.files.length} files)');
+        'DicomImporter.approveImport: starting for dicomPatient="${pending.dicomPatientId}" apexoPatient="$targetId" (${pending.files.length} files)');
 
     try {
       final toProcess = <DicomParsedFile>[];
@@ -1072,7 +1070,7 @@ class DicomImporter {
         } catch (e, st) {
           logger(
               'DicomImporter.approveImport: markImported failed for '
-              '"${_shortName(f.path)}", skipping â€” $e',
+              '"${_shortName(f.path)}", skipping $e',
               st,
               2);
         }
@@ -1086,7 +1084,7 @@ class DicomImporter {
       } catch (e, st) {
         logger(
             'DicomImporter.approveImport: linkPatient failed for '
-            '${pending.dicomPatientId} â†’ $targetId â€” $e',
+            '${pending.dicomPatientId} $targetId $e',
             st,
             2);
       }
@@ -1141,7 +1139,7 @@ class DicomImporter {
                 await _handleNewDcm(rowID: appt.id, sourcePath: f.path);
             fileSw.stop();
             log.info(
-                'DicomImporter.approveImport: handleNewDcm "${_shortName(f.path)}" â†’ '
+                'DicomImporter.approveImport: handleNewDcm "${_shortName(f.path)}" '
                 '"$dcmName" in ${fileSw.elapsedMilliseconds}ms');
             // If upload succeeded online the returned name is the PB name.
             // If upload was deferred the returned name is the local name —
@@ -1153,7 +1151,7 @@ class DicomImporter {
           } catch (e, st) {
             logger(
                 'DicomImporter.approveImport: failed for "${_shortName(f.path)}", '
-                'unmarking â€” $e',
+                'unmarking $e',
                 st,
                 2);
           }
@@ -1169,14 +1167,14 @@ class DicomImporter {
         await appointments.synchronize();
       }
 
-      // Note: progress is left at (total, total) â€” callers are responsible
+      // Note: progress is left at (total, total) callers are responsible
       // for resetting to (0, 0) when appropriate (see batchApprove).
       approveSw.stop();
       log.info(
-          'DicomImporter.approveImport: done â€” $done/$total files imported in '
+          'DicomImporter.approveImport: done $done/$total files imported in '
           '${approveSw.elapsedMilliseconds}ms');
     } catch (e, _) {
-      // Unexpected error â€” reset progress so isImporting doesn't stay stuck.
+      // Unexpected error reset progress so isImporting doesn't stay stuck.
       importProgress((current: 0, total: 0));
       rethrow;
     }

@@ -37,7 +37,6 @@ import 'package:apexo/utils/uuid.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:image_picker/image_picker.dart';
 
 void closeAppointmentsPanels() {
   List<String> toClose = [];

@@ -1,6 +1,5 @@
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';

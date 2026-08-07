@@ -15,13 +15,11 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
-import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/money_editing_controller.dart';
 import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:image_picker/image_picker.dart';
 
 class OrderRow extends StatefulWidget {
   const OrderRow({

@@ -3,6 +3,7 @@ library;
 
 import 'dart:typed_data';
 
+import 'package:apexo/core/save_remote.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';
@@ -24,8 +25,10 @@ class _FakeLinksStore {
   Future<Set<String>> get allImportedKeys async => _allKeys;
   Future<bool> isImported(String key) async => _allKeys.contains(key);
 
-  Future<void> linkFile(String dicomPatientId, String key) async {
+  Future<bool> linkFile(String dicomPatientId, String key) async {
+    if (_registry.containsKey(key)) return false;
     _registry[key] = dicomPatientId;
+    return true;
   }
 
   Future<void> setPatient(String dicomPatientId, String apexoPatientId) async {
@@ -119,6 +122,23 @@ class _Harness {
 
   /// Recorded handleNewDcm results (sourcePath assigned dcmName).
   final Map<String, String> handleNewDcmResults = {};
+  final Map<String, String> configuredDcmNames = {};
+
+  /// Source paths for which file processing should fail.
+  final Set<String> failedDcmUploads = {};
+  final Set<String> emptyDcmUploads = {};
+
+  /// When true, simulates failure while persisting the DICOM patient link.
+  bool failPatientLink = false;
+
+  /// When true, the injected appointment persistence callback throws.
+  bool failAppointmentPersistence = false;
+
+  /// Records the order of appointment and upload operations.
+  final List<String> persistenceEvents = [];
+
+  /// When true, removeKey throws during rollback.
+  bool failRemoveKey = false;
 
   /// In-memory patient roster (id patient).
   final Map<String, Patient> patients = {};
@@ -149,6 +169,9 @@ class _Harness {
   /// In-memory fake links store.
   final _FakeLinksStore fakeLinks = _FakeLinksStore();
 
+  /// Cached metadata entries injected directly to exercise cache-hit paths.
+  final Map<String, DicomCachedMeta> injectedCache = {};
+
   /// The current importer. Reassign via [rebuild] after mutating the fake
   /// filesystem / registry to refresh the closures' captured state.
   late DicomImporter importer;
@@ -162,12 +185,25 @@ class _Harness {
       useIsolate: false,
       allImportedKeys: () async => fakeLinks._registry.keys.toSet(),
       isImported: (k) async => fakeLinks._registry.containsKey(k),
-      linkFile: (dicomId, key) async => fakeLinks._registry[key] = dicomId,
-      setPatient: (dicomId, apexoId) async =>
-          fakeLinks._patientLinks[dicomId] = apexoId,
+      linkFile: (dicomId, key) => fakeLinks.linkFile(dicomId, key),
+      setPatient: (dicomId, apexoId) async {
+        persistenceEvents.add('patient:$dicomId:$apexoId');
+        if (failPatientLink) {
+          throw StateError('fake patient-link persistence failed');
+        }
+        fakeLinks._patientLinks[dicomId] = apexoId;
+      },
       linkedPatients: () => Map.of(fakeLinks._patientLinks),
       pendingMatches: () async => Map.of(fakeLinks._pendingMatches),
       unmatchedIds: () async => fakeLinks._unmatchedIds,
+      clearPendingMatch: (patientId) async {
+        persistenceEvents.add('clear-pending:$patientId');
+        fakeLinks._pendingMatches.remove(patientId);
+      },
+      clearUnmatched: (patientId) async {
+        persistenceEvents.add('clear-unmatched:$patientId');
+        fakeLinks._unmatchedIds.remove(patientId);
+      },
       appointmentDayMap: () => appointmentDates,
       scanDirectory: (dir) async {
         // Simulate scanDirectory: list files whose path starts with `dir`.
@@ -203,7 +239,10 @@ class _Harness {
         }
         return f.meta;
       },
-      cacheSnapshot: () async => Map.of(cache),
+      cacheSnapshot: () async => {
+        ...cache,
+        ...injectedCache,
+      },
       cachePut: (p, meta) async => cache[p] = meta,
       cachePrune: (currentPaths) async {
         cache.removeWhere((k, _) => !currentPaths.contains(k));
@@ -215,11 +254,31 @@ class _Harness {
       allPatients: () => patients.values.toList(),
       getWatchDirs: () => watchDirs,
       handleNewDcm: ({required rowID, required sourcePath}) async {
-        final name = 'dcm_${sourcePath.hashCode}.dcm';
+        persistenceEvents.add('upload:$sourcePath');
+        if (failedDcmUploads.contains(sourcePath)) {
+          throw StateError('fake upload failed for $sourcePath');
+        }
+        if (emptyDcmUploads.contains(sourcePath)) return '';
+        final name =
+            configuredDcmNames[sourcePath] ?? 'dcm_${sourcePath.hashCode}.dcm';
         handleNewDcmResults[sourcePath] = name;
         return name;
       },
-      setAppointment: (appt) => appointments[appt.id] = appt,
+      removeKey: (key) async {
+        if (failRemoveKey) throw StateError('fake removeKey failed');
+        final patientId = fakeLinks._registry.remove(key);
+        return patientId != null;
+      },
+      setAppointment: (appt) {
+        persistenceEvents.add('set:${appt.id}:${appt.dcmImgs.length}');
+        appointments[appt.id] = appt;
+      },
+      ensureAppointmentPersisted: () async {
+        persistenceEvents.add('persist');
+        if (failAppointmentPersistence) {
+          throw StateError('fake appointment persistence failed');
+        }
+      },
       appointmentsForPatient: (id) =>
           appointments.values.where((a) => a.patientID == id).toList(),
     );
@@ -248,6 +307,43 @@ _Harness _harnessWithWatchDirs(List<String> dirs) {
   h.importer = h.rebuild();
   return h;
 }
+
+DicomParsedFile _parsedFile({
+  String path = '/fake/watch/file.dcm',
+  String dedupKey = 'sop:file',
+  String patientId = 'P1',
+  String patientName = 'Patient Name',
+  DateTime? date,
+}) =>
+    DicomParsedFile(
+      path: path,
+      mtime: DateTime(2025, 1, 1),
+      size: 1,
+      dedupKey: dedupKey,
+      patientName: patientName,
+      patientId: patientId,
+      dcmDate: date ?? DateTime(2025, 1, 1),
+    );
+
+DicomPendingImport _pendingForTest({
+  List<DicomParsedFile>? files,
+  Patient? matchedPatient,
+  String patientId = 'P1',
+  String patientName = 'Patient Name',
+}) =>
+    DicomPendingImport(
+      dicomPatientId: patientId,
+      dicomPatientName: patientName,
+      dicomPatientNames: {patientName},
+      dates: (files ?? [_parsedFile(patientId: patientId)])
+          .map((f) => f.dcmDate)
+          .whereType<DateTime>()
+          .toList(),
+      files: files ?? [_parsedFile(patientId: patientId)],
+      matchedPatient: matchedPatient,
+      matchedPatientId: matchedPatient?.id,
+      matchedPatientName: matchedPatient?.title,
+    );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -304,6 +400,64 @@ void main() {
       expect(pending.length, 2);
       final ids = pending.map((p) => p.dicomPatientId).toSet();
       expect(ids, {'P1', 'P2'});
+    });
+  });
+
+  group('scanAndBuildPending workflow updates', () {
+    test('a later file for the same patient joins the existing pending batch',
+        () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/first.dcm',
+          _meta(
+              sopInstanceUid: 's-first',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+
+      final firstScan = await h.importer.scanAndBuildPending();
+      expect(firstScan, hasLength(1));
+      expect(firstScan.single.files, hasLength(1));
+
+      h.addFile(_FakeFile(
+          '/fake/watch/second.dcm',
+          _meta(
+              sopInstanceUid: 's-second',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250102')));
+      final secondScan = await h.importer.scanAndBuildPending();
+
+      expect(secondScan, hasLength(1));
+      expect(secondScan.single.files.map((file) => file.dedupKey),
+          ['sop:s-first', 'sop:s-second']);
+      expect(secondScan.single.dates,
+          [DateTime(2025, 1, 1), DateTime(2025, 1, 2)]);
+    });
+
+    test('a new file for a different patient stays in a separate batch',
+        () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/first.dcm',
+          _meta(
+              sopInstanceUid: 's-first',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      await h.importer.scanAndBuildPending();
+
+      h.addFile(_FakeFile(
+          '/fake/watch/other.dcm',
+          _meta(
+              sopInstanceUid: 's-other',
+              patientId: 'P200',
+              patientName: 'B',
+              studyDate: '20250101')));
+      final scan = await h.importer.scanAndBuildPending();
+
+      expect(scan, hasLength(2));
+      expect(scan.map((item) => item.dicomPatientId).toSet(), {'P100', 'P200'});
     });
   });
 
@@ -545,6 +699,115 @@ void main() {
       expect(h.parseCalls, parsesBeforeSecond,
           reason: 'cache hit must skip parseMetadata entirely');
     });
+
+    test('blank DICOM identity is skipped and not grouped or linked', () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/blank-a.dcm',
+          _meta(
+              sopInstanceUid: '',
+              studyInstanceUid: '',
+              seriesInstanceUid: '',
+              instanceNumber: '',
+              patientId: '',
+              patientName: 'A',
+              studyDate: '20250101')));
+
+      final pending = await h.importer.scanAndBuildPending();
+
+      expect(pending, isEmpty);
+      expect(h.skipped['/fake/watch/blank-a.dcm'], contains('identity'));
+    });
+
+    test('multiple blank-patient files remain isolated by dedup identity',
+        () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/blank-a.dcm',
+          _meta(
+              sopInstanceUid: 'blank-a',
+              patientId: '',
+              patientName: 'A',
+              studyDate: '20250101')));
+      h.addFile(_FakeFile(
+          '/fake/watch/blank-b.dcm',
+          _meta(
+              sopInstanceUid: 'blank-b',
+              patientId: '',
+              patientName: 'B',
+              studyDate: '20250101')));
+
+      final pending = await h.importer.scanAndBuildPending();
+
+      expect(pending, hasLength(2));
+      expect(pending.every((item) => item.dicomPatientId.isEmpty), isTrue);
+      expect(pending.map((item) => item.files.single.dedupKey).toSet(),
+          {'sop:blank-a', 'sop:blank-b'});
+    });
+
+    test('complete composite identity is accepted when SOP is blank', () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/composite.dcm',
+          _meta(
+              sopInstanceUid: '',
+              studyInstanceUid: 'study',
+              seriesInstanceUid: 'series',
+              instanceNumber: '7',
+              patientId: 'P1',
+              patientName: 'A',
+              studyDate: '20250101')));
+
+      final pending = await h.importer.scanAndBuildPending();
+
+      expect(pending, hasLength(1));
+      expect(pending.single.files.single.dedupKey, 'composite:study|series|7');
+    });
+
+    test('cached invalid identities remain skipped without parsing', () async {
+      final h = _newHarness();
+      const path = '/fake/watch/cached-invalid.dcm';
+      final mtime = DateTime(2025, 1, 1);
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 'would-not-be-used',
+              patientId: 'P1',
+              patientName: 'A',
+              studyDate: '20250101'),
+          mtime: mtime));
+      h.injectedCache[path] = DicomCachedMeta(
+        mtime: mtime,
+        size: 1024,
+        dedupKey: 'composite:study||missing',
+        patientName: 'A',
+        patientId: 'P1',
+        dcmDate: DateTime(2025, 1, 1),
+      );
+
+      final pending = await h.importer.scanAndBuildPending();
+
+      expect(pending, isEmpty);
+      expect(h.parseCalls, 0);
+      expect(h.skipped[path], contains('identity'));
+    });
+
+    test('partial composite identity is skipped', () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/partial.dcm',
+          _meta(
+              sopInstanceUid: '',
+              studyInstanceUid: 'study-only',
+              seriesInstanceUid: '',
+              instanceNumber: '1',
+              patientId: 'P1',
+              patientName: 'A',
+              studyDate: '20250101')));
+
+      expect(await h.importer.scanAndBuildPending(), isEmpty);
+      expect(h.skipped['/fake/watch/partial.dcm'], contains('identity'));
+    });
   });
 
   group('scanAndBuildPending matching', () {
@@ -708,6 +971,83 @@ void main() {
     });
   });
 
+  group('full DICOM approval workflows', () {
+    test('linked patient import creates a new appointment automatically',
+        () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] =
+          Patient.fromJson({'id': 'apexo-1', 'title': 'Linked Patient'});
+      h.fakeLinks._patientLinks['P100'] = 'apexo-1';
+      h.addFile(_FakeFile(
+          '/fake/watch/linked-new.dcm',
+          _meta(
+              sopInstanceUid: 's-linked-new',
+              patientId: 'P100',
+              patientName: 'Linked Patient',
+              studyDate: '20250101')));
+
+      final pending = await h.importer.scanAndBuildPending();
+      expect(pending.single.autoLinked, isTrue);
+      final result = await h.importer.approveImport(pending.single);
+
+      expect(result.complete, isTrue);
+      final created = h.appointments.values.single;
+      expect(created.patientID, 'apexo-1');
+      expect(created.date, DateTime(2025, 1, 1, 12));
+      expect(created.dcmImgs, hasLength(1));
+    });
+
+    test('linked patient import reuses an existing same-day appointment',
+        () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] = Patient.fromJson({'id': 'apexo-1'});
+      h.fakeLinks._patientLinks['P100'] = 'apexo-1';
+      final existing =
+          Appointment.fromJson({'id': 'existing', 'patientID': 'apexo-1'})
+            ..date = DateTime(2025, 1, 1, 9);
+      h.appointments[existing.id] = existing;
+      h.addFile(_FakeFile(
+          '/fake/watch/linked-existing.dcm',
+          _meta(
+              sopInstanceUid: 's-linked-existing',
+              patientId: 'P100',
+              patientName: 'Linked Patient',
+              studyDate: '20250101')));
+
+      final pending = await h.importer.scanAndBuildPending();
+      expect(pending.single.autoLinked, isTrue);
+      await h.importer.approveImport(pending.single);
+
+      expect(h.appointments, hasLength(1));
+      expect(h.appointments['existing']!.dcmImgs, hasLength(1));
+    });
+
+    test('unmatched scan remains pending until manually matched and approved',
+        () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/manual.dcm',
+          _meta(
+              sopInstanceUid: 's-manual',
+              patientId: 'P100',
+              patientName: 'Unknown',
+              studyDate: '20250101')));
+
+      final pending = (await h.importer.scanAndBuildPending()).single;
+      expect(pending.matchedPatient, isNull);
+
+      final patient = Patient.fromJson({'id': 'apexo-manual'});
+      pending.matchedPatient = patient;
+      pending.matchedPatientId = patient.id;
+      pending.matchedPatientName = patient.title;
+      pending.isConfirmed = true;
+      await h.importer.approveImport(pending);
+
+      expect(h.appointments.values.single.patientID, 'apexo-manual');
+      expect(h.appointments.values.single.dcmImgs, hasLength(1));
+    });
+  });
+
   group('approveImport', () {
     test('creates one appointment per study date with correct dcmImgs',
         () async {
@@ -753,6 +1093,55 @@ void main() {
 
       // Link persisted for future auto-imports.
       expect(h.fakeLinks._patientLinks['P100'], 'apexo-1');
+    });
+
+    test('new appointment is persisted before its upload starts', () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] = Patient.fromJson({'id': 'apexo-1'});
+      const path = '/fake/watch/order.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 's-order',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      await h.importer.approveImport(pending, apexoPatientId: 'apexo-1');
+
+      final persistIndex = h.persistenceEvents.indexOf('persist');
+      final uploadIndex =
+          h.persistenceEvents.indexWhere((event) => event == 'upload:$path');
+      expect(persistIndex, greaterThanOrEqualTo(0));
+      expect(uploadIndex, greaterThan(persistIndex));
+    });
+
+    test('appointment changes are persisted after each study-date group',
+        () async {
+      final h = _newHarness();
+      const firstPath = '/fake/watch/first-date.dcm';
+      const secondPath = '/fake/watch/second-date.dcm';
+      h.addFile(_FakeFile(
+          firstPath,
+          _meta(
+              sopInstanceUid: 's-first-date',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      h.addFile(_FakeFile(
+          secondPath,
+          _meta(
+              sopInstanceUid: 's-second-date',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250201')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      await h.importer.approveImport(pending, apexoPatientId: 'apexo-1');
+
+      expect(h.persistenceEvents.where((event) => event == 'persist'),
+          hasLength(4));
     });
 
     test('appends to an existing same-day appointment (no new appointment)',
@@ -833,6 +1222,296 @@ void main() {
               'progress stays at (total, total) after import callers reset to idle');
     });
 
+    test(
+        'empty filename is returned as a failed file and marker is rolled back',
+        () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] = Patient.fromJson({'id': 'apexo-1'});
+      const path = '/fake/watch/empty-name.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 's-empty',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      h.emptyDcmUploads.add(path);
+
+      final pending = (await h.importer.scanAndBuildPending()).single;
+      final result = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.complete, isFalse);
+      expect(result.failedFiles.single.path, path);
+      expect(h.fakeLinks._registry, isEmpty);
+    });
+
+    test('file rollback failure is surfaced separately from the upload failure',
+        () async {
+      final h = _newHarness();
+      h.failRemoveKey = true;
+      h.failedDcmUploads.add('/fake/watch/rollback-failure.dcm');
+      h.addFile(_FakeFile(
+          '/fake/watch/rollback-failure.dcm',
+          _meta(
+              sopInstanceUid: 's-rollback-failure',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      final result = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.complete, isFalse);
+      expect(result.failedFiles, hasLength(1));
+      expect(result.rollbackFailures, hasLength(1));
+      expect(result.rollbackFailures.single, isA<StateError>());
+    });
+
+    test('failed file processing rolls back its imported marker', () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] =
+          Patient.fromJson({'id': 'apexo-1', 'title': 'John Smith'});
+      const path = '/fake/watch/failing.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 's-failing',
+              patientId: 'P100',
+              patientName: 'Smith^John',
+              studyDate: '20250101')));
+      h.failedDcmUploads.add(path);
+
+      final pending = await h.importer.scanAndBuildPending();
+      final result = await h.importer.approveImport(
+        pending.single,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.complete, isFalse);
+      expect(result.successfulFiles, 0);
+      expect(result.failedFiles.single.dedupKey, 'sop:s-failing');
+      expect(h.fakeLinks._registry, isEmpty);
+      expect(h.fakeLinks._patientLinks['P100'], 'apexo-1',
+          reason:
+              'file-marker rollback must preserve the confirmed patient link');
+      expect(h.appointments, hasLength(1));
+      expect(h.appointments.values.single.archived, isNull,
+          reason:
+              'new appointments intentionally remain unarchived after failed upload');
+
+      // A subsequent scan must surface the file as auto-linked, not as an
+      // unlinked/manual-match import.
+      h.importer = h.rebuild();
+      final rediscovered = await h.importer.scanAndBuildPending();
+      expect(rediscovered.single.autoLinked, isTrue);
+      expect(rediscovered.single.matchedPatient?.id, 'apexo-1');
+    });
+
+    test('mixed batch keeps successful file imported and retries failed file',
+        () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] =
+          Patient.fromJson({'id': 'apexo-1', 'title': 'John Smith'});
+      const failedPath = '/fake/watch/failed.dcm';
+      const successfulPath = '/fake/watch/success.dcm';
+      h.addFile(_FakeFile(
+          failedPath,
+          _meta(
+              sopInstanceUid: 's-failed',
+              patientId: 'P100',
+              patientName: 'Smith^John',
+              studyDate: '20250101')));
+      h.addFile(_FakeFile(
+          successfulPath,
+          _meta(
+              sopInstanceUid: 's-success',
+              patientId: 'P100',
+              patientName: 'Smith^John',
+              studyDate: '20250101')));
+      h.failedDcmUploads.add(failedPath);
+
+      final pending = await h.importer.scanAndBuildPending();
+      final result = await h.importer.approveImport(
+        pending.single,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.successfulFiles, 1);
+      expect(result.failedFiles.map((file) => file.dedupKey), ['sop:s-failed']);
+      expect(h.fakeLinks._registry, {'sop:s-success': 'P100'});
+      expect(h.fakeLinks._patientLinks['P100'], 'apexo-1');
+      final appointment =
+          h.appointments.values.where((item) => item.archived != true).single;
+      expect(appointment.dcmImgs, hasLength(1));
+
+      h.importer = h.rebuild();
+      final retry = await h.importer.scanAndBuildPending();
+      expect(retry.single.files.single.dedupKey, 'sop:s-failed');
+      expect(retry.single.autoLinked, isTrue);
+    });
+
+    test('patient-link persistence is awaited before file processing',
+        () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] = Patient.fromJson({'id': 'apexo-1'});
+      const path = '/fake/watch/link-success.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 's-link-success',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+
+      final pending = (await h.importer.scanAndBuildPending()).single;
+      await h.importer.approveImport(pending, apexoPatientId: 'apexo-1');
+
+      final patientIndex = h.persistenceEvents
+          .indexWhere((event) => event == 'patient:P100:apexo-1');
+      final uploadIndex = h.persistenceEvents.indexOf('upload:$path');
+      expect(patientIndex, greaterThanOrEqualTo(0));
+      expect(uploadIndex, greaterThan(patientIndex));
+      expect(h.fakeLinks._patientLinks['P100'], 'apexo-1');
+    });
+
+    test('patient-link rollback failure throws DicomApprovalRollbackException',
+        () async {
+      final h = _newHarness();
+      h.failPatientLink = true;
+      h.failRemoveKey = true;
+      h.addFile(_FakeFile(
+          '/fake/watch/link-rollback-failure.dcm',
+          _meta(
+              sopInstanceUid: 's-link-rollback-failure',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      await expectLater(
+        h.importer.approveImport(pending, apexoPatientId: 'apexo-1'),
+        throwsA(isA<DicomApprovalRollbackException>()),
+      );
+    });
+
+    test('link persistence failure rolls back every imported marker', () async {
+      final h = _newHarness();
+      const path = '/fake/watch/link-failure.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 's-link-failure',
+              patientId: 'P100',
+              patientName: 'Smith^John',
+              studyDate: '20250101')));
+      h.failPatientLink = true;
+
+      final pending = await h.importer.scanAndBuildPending();
+      await expectLater(
+        () =>
+            h.importer.approveImport(pending.single, apexoPatientId: 'apexo-1'),
+        throwsA(isA<StateError>()),
+      );
+      expect(h.fakeLinks._registry, isEmpty);
+      expect(h.fakeLinks._patientLinks, isEmpty);
+    });
+
+    test('unexpected appointment persistence failure rolls back claims',
+        () async {
+      final h = _newHarness();
+      h.failAppointmentPersistence = true;
+      h.addFile(_FakeFile(
+          '/fake/watch/persistence-failure.dcm',
+          _meta(
+              sopInstanceUid: 's-persist-failure',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      await expectLater(
+        h.importer.approveImport(pending, apexoPatientId: 'apexo-1'),
+        throwsA(isA<StateError>()),
+      );
+      expect(h.fakeLinks._registry, isEmpty);
+    });
+
+    test('online appointment persistence must converge', () async {
+      final h = _newHarness();
+      h.failAppointmentPersistence = true;
+      h.addFile(_FakeFile(
+          '/fake/watch/nonconverged.dcm',
+          _meta(
+              sopInstanceUid: 's-nonconverged',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      await expectLater(
+        h.importer.approveImport(pending, apexoPatientId: 'apexo-1'),
+        throwsA(isA<StateError>()),
+      );
+      expect(h.fakeLinks._registry, isEmpty);
+    });
+
+    test('offline-style persistence callback can complete locally', () async {
+      final h = _newHarness();
+      // The injected callback is the offline/local path: it completes without
+      // requiring remote convergence.
+      h.addFile(_FakeFile(
+          '/fake/watch/offline.dcm',
+          _meta(
+              sopInstanceUid: 's-offline',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      final result = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.complete, isTrue);
+      expect(h.appointments, hasLength(1));
+    });
+
+    test('returns a complete result for idempotent re-approval', () async {
+      final h = _newHarness();
+      h.patients['apexo-1'] =
+          Patient.fromJson({'id': 'apexo-1', 'title': 'John Smith'});
+      const path = '/fake/watch/idempotent.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 's-idempotent',
+              patientId: 'P100',
+              patientName: 'Smith^John',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+      final first = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+      final second = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(first.complete, isTrue);
+      expect(first.successfulFiles, 1);
+      expect(second.complete, isTrue);
+      expect(second.successfulFiles, 0);
+      expect(second.failedFiles, isEmpty);
+    });
+
     test('idempotency: re-approve no duplicates, no new appointments',
         () async {
       final h = _newHarness();
@@ -872,6 +1551,34 @@ void main() {
           reason: 'no duplicate dcmImgs on re-approve (registry guard)');
     });
 
+    test('replaces an existing reference with the same logical upload identity',
+        () async {
+      final h = _newHarness();
+      final existing =
+          Appointment.fromJson({'id': 'existing', 'patientID': 'apexo-1'})
+            ..date = DateTime(2025, 1, 1)
+            ..dcmImgs = ['dcm_hash_1.dcm'];
+      h.appointments[existing.id] = existing;
+      const path = '/fake/watch/replacement.dcm';
+      h.addFile(_FakeFile(
+          path,
+          _meta(
+              sopInstanceUid: 'replacement',
+              patientId: 'P100',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final oldName = 'dcm_${path.hashCode}.dcm';
+      final newName = 'dcm_${path.hashCode}_replacement.dcm';
+      existing.dcmImgs = [oldName];
+      h.configuredDcmNames[path] = newName;
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      await h.importer.approveImport(pending, apexoPatientId: 'apexo-1');
+
+      expect(h.appointments['existing']!.dcmImgs, [newName]);
+      expect(h.appointments['existing']!.dcmImgs.toSet(), hasLength(1));
+    });
+
     test('duplicate SOP UID: first-wins during approve (second skipped)',
         () async {
       final h = _newHarness();
@@ -906,6 +1613,284 @@ void main() {
           h.appointments.values.where((a) => a.patientID == 'apexo-1').toList();
       expect(forPatient.length, 1);
       expect(forPatient.single.dcmImgs.length, 1);
+    });
+  });
+
+  group('DicomApprovalResult and pending-item reduction', () {
+    test('complete is true only when failedFiles is empty', () {
+      const complete = DicomApprovalResult(
+        successfulFiles: 0,
+        failedFiles: [],
+      );
+      final failed = DicomApprovalResult(
+        successfulFiles: 0,
+        failedFiles: [_parsedFile()],
+      );
+
+      expect(complete.complete, isTrue);
+      expect(failed.complete, isFalse);
+      expect(failed.successfulFiles, 0);
+      expect(failed.failedFiles.single.dedupKey, 'sop:file');
+    });
+
+    test('copyWithFiles retains match metadata and recalculates names/dates',
+        () {
+      final patient = Patient.fromJson({'id': 'apexo-1', 'title': 'Apexo'});
+      final first = _parsedFile(
+        path: '/first.dcm',
+        patientName: 'First',
+        date: DateTime(2025, 2, 2),
+      );
+      final second = _parsedFile(
+        path: '/second.dcm',
+        dedupKey: 'sop:second',
+        patientName: 'Second',
+        date: DateTime(2025, 1, 1),
+      );
+      final original = DicomPendingImport(
+        dicomPatientId: 'P1',
+        dicomPatientName: 'Original',
+        dicomPatientNames: const {'Original'},
+        dates: [DateTime(2025, 3, 3)],
+        files: [first, second],
+        matchedPatient: patient,
+        matchedPatientId: 'apexo-1',
+        matchedPatientName: 'Apexo',
+        confidence: .8,
+        isConfirmed: true,
+        autoLinked: true,
+      );
+
+      final reduced = original.copyWithFiles([second]);
+
+      expect(reduced.files, [second]);
+      expect(reduced.dicomPatientId, 'P1');
+      expect(reduced.dicomPatientName, 'Second');
+      expect(reduced.dicomPatientNames, {'Second'});
+      expect(reduced.dates, [DateTime(2025, 1, 1)]);
+      expect(reduced.matchedPatient, same(patient));
+      expect(reduced.matchedPatientId, 'apexo-1');
+      expect(reduced.matchedPatientName, 'Apexo');
+      expect(reduced.confidence, .8);
+      expect(reduced.isConfirmed, isTrue);
+      expect(reduced.autoLinked, isTrue);
+    });
+
+    test('copyWithFiles with no names or dates produces empty derived fields',
+        () {
+      final file = DicomParsedFile(
+        path: '/no-date.dcm',
+        mtime: DateTime(2025, 1, 1),
+        size: 1,
+        dedupKey: 'sop:no-date',
+        patientName: '',
+        patientId: 'P1',
+        dcmDate: null,
+      );
+      final original = _pendingForTest(files: [file]);
+
+      final reduced = original.copyWithFiles([file]);
+
+      expect(reduced.dicomPatientName, isEmpty);
+      expect(reduced.dicomPatientNames, isEmpty);
+      expect(reduced.dates, isEmpty);
+    });
+  });
+
+  group('DicomImporter identity and registry claims', () {
+    test('normalizes DICOM originals, previews, extensions, and suffixes', () {
+      expect(DicomImporter.dcmUploadIdentity('dcm_hash.dcm'), 'dcm_hash');
+      expect(DicomImporter.dcmUploadIdentity('dcm_hash.dicom'), 'dcm_hash');
+      expect(DicomImporter.dcmUploadIdentity('dcm_hash_1.dcm.png'), 'dcm_hash');
+      expect(
+          DicomImporter.dcmUploadIdentity('DCM_HASH_2.DICOM.PNG'), 'dcm_hash');
+      expect(DicomImporter.dcmUploadIdentity('photo_hash.jpg'), isNull);
+      expect(DicomImporter.dcmUploadIdentity('dcm_hash'), isNull);
+    });
+
+    test('same identity requires matching original or preview extension', () {
+      expect(
+          DicomImporter.sameDcmUploadIdentity('dcm_hash.dcm', 'dcm_hash_1.dcm'),
+          isTrue);
+      expect(
+          DicomImporter.sameDcmUploadIdentity(
+              'dcm_hash.dcm.png', 'dcm_hash_1.dcm.png'),
+          isTrue);
+      expect(
+          DicomImporter.sameDcmUploadIdentity('dcm_hash.dcm', 'dcm_hash.dicom'),
+          isTrue);
+      expect(
+          DicomImporter.sameDcmUploadIdentity('dcm_hash.dcm', 'dcm_other.dcm'),
+          isFalse);
+      expect(
+          DicomImporter.sameDcmUploadIdentity('dcm_hash.dcm', 'photo_hash.jpg'),
+          isFalse);
+    });
+
+    test('Importer and SaveRemote use identical identity semantics', () {
+      final pairs = [
+        ('dcm_hash.dcm', 'dcm_hash_1.dcm'),
+        ('dcm_hash.dicom', 'dcm_hash_1.dicom'),
+        ('dcm_hash.dcm.png', 'dcm_hash_1.dcm.png'),
+        ('dcm_hash.dicom.png', 'dcm_hash_1.dicom.png'),
+        ('DCM_HASH.DCM', 'dcm_hash_2.dcm'),
+      ];
+      for (final pair in pairs) {
+        expect(DicomImporter.dcmUploadIdentity(pair.$1),
+            SaveRemote.dcmUploadIdentity(pair.$1));
+        expect(DicomImporter.dcmUploadIdentity(pair.$2),
+            SaveRemote.dcmUploadIdentity(pair.$2));
+        expect(DicomImporter.sameDcmUploadIdentity(pair.$1, pair.$2),
+            SaveRemote.sameDcmUploadIdentity(pair.$1, pair.$2));
+      }
+      expect(
+        DicomImporter.sameDcmUploadIdentity('dcm_hash.dcm', 'dcm_hash.dicom'),
+        SaveRemote.sameDcmUploadIdentity('dcm_hash.dcm', 'dcm_hash.dicom'),
+      );
+    });
+
+    test('linkFile claim is first-wins and duplicate claim is skipped',
+        () async {
+      final h = _newHarness();
+      expect(await h.fakeLinks.linkFile('P1', 'sop:one'), isTrue);
+      expect(await h.fakeLinks.linkFile('P2', 'sop:one'), isFalse);
+      expect(h.fakeLinks._registry, {'sop:one': 'P1'});
+    });
+
+    test('concurrent-style duplicate files process only one claim', () async {
+      final h = _newHarness();
+      h.addFile(_FakeFile(
+          '/fake/watch/one.dcm',
+          _meta(
+              sopInstanceUid: 'same',
+              patientId: 'P1',
+              patientName: 'A',
+              studyDate: '20250101')));
+      h.addFile(_FakeFile(
+          '/fake/watch/two.dcm',
+          _meta(
+              sopInstanceUid: 'same',
+              patientId: 'P1',
+              patientName: 'A',
+              studyDate: '20250101')));
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      final result = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.successfulFiles, 1);
+      expect(h.handleNewDcmResults, hasLength(1));
+      expect(h.fakeLinks._registry.keys, {'sop:same'});
+    });
+  });
+
+  group('DicomImporter.unregisterFile', () {
+    test('returns true when metadata marker is removed', () async {
+      final h = _newHarness();
+      h.fakeLinks._registry['sop:unregister'] = 'P1';
+      final importer = DicomImporter(
+        useIsolate: false,
+        allImportedKeys: () async => h.fakeLinks._registry.keys.toSet(),
+        isImported: (key) async => h.fakeLinks._registry.containsKey(key),
+        removeKey: (key) async => h.fakeLinks._registry.remove(key) != null,
+        fileExistsOverrideForTesting: (_) async => true,
+        readBytes: (_) async => Uint8List.fromList([1]),
+        parseMetadata: (_) async => _meta(
+          sopInstanceUid: 'unregister',
+          patientId: 'P1',
+          patientName: 'A',
+          studyDate: '20250101',
+        ),
+      );
+
+      expect(await importer.unregisterFile('dcm_file.dcm'), isTrue);
+      expect(h.fakeLinks._registry, isEmpty);
+    });
+
+    test('already absent marker is treated as idempotent success', () async {
+      final h = _newHarness();
+      final importer = DicomImporter(
+        useIsolate: false,
+        allImportedKeys: () async => h.fakeLinks._registry.keys.toSet(),
+        isImported: (key) async => h.fakeLinks._registry.containsKey(key),
+        removeKey: (_) async => false,
+        fileExistsOverrideForTesting: (_) async => true,
+        readBytes: (_) async => Uint8List.fromList([1]),
+        parseMetadata: (_) async => _meta(
+          sopInstanceUid: 'already-absent',
+          patientId: 'P1',
+          patientName: 'A',
+          studyDate: '20250101',
+        ),
+      );
+
+      expect(await importer.unregisterFile('dcm_file.dcm'), isTrue);
+    });
+
+    test('returns false when local file is missing or unreadable', () async {
+      final importer = DicomImporter(
+        useIsolate: false,
+        fileExistsOverrideForTesting: (_) async => false,
+      );
+      expect(await importer.unregisterFile('missing.dcm'), isFalse);
+
+      final unreadable = DicomImporter(
+        useIsolate: false,
+        fileExistsOverrideForTesting: (_) async => true,
+        readBytes: (_) async => null,
+      );
+      expect(await unreadable.unregisterFile('unreadable.dcm'), isFalse);
+    });
+
+    test('returns false when metadata parsing or registry persistence fails',
+        () async {
+      final parseFailure = DicomImporter(
+        useIsolate: false,
+        fileExistsOverrideForTesting: (_) async => true,
+        readBytes: (_) async => Uint8List.fromList([1]),
+        parseMetadata: (_) async => null,
+      );
+      expect(await parseFailure.unregisterFile('corrupt.dcm'), isFalse);
+
+      final persistenceFailure = DicomImporter(
+        useIsolate: false,
+        fileExistsOverrideForTesting: (_) async => true,
+        readBytes: (_) async => Uint8List.fromList([1]),
+        parseMetadata: (_) async => _meta(
+          sopInstanceUid: 'persistence-failure',
+          patientId: 'P1',
+          patientName: 'A',
+          studyDate: '20250101',
+        ),
+        removeKey: (_) async => throw StateError('persistence failed'),
+      );
+      expect(await persistenceFailure.unregisterFile('failure.dcm'), isFalse);
+    });
+  });
+
+  group('approveImport blank-patient safety', () {
+    test('blank-patient approval does not persist a patient mapping', () async {
+      final h = _newHarness();
+      final file = _FakeFile(
+          '/fake/watch/anonymous.dcm',
+          _meta(
+              sopInstanceUid: 'anonymous-sop',
+              patientId: '',
+              patientName: 'Anonymous',
+              studyDate: '20250101'));
+      h.addFile(file);
+      final pending = (await h.importer.scanAndBuildPending()).single;
+
+      final result = await h.importer.approveImport(
+        pending,
+        apexoPatientId: 'apexo-1',
+      );
+
+      expect(result.complete, isTrue);
+      expect(h.fakeLinks._patientLinks, isEmpty);
+      expect(h.fakeLinks._registry, {'sop:anonymous-sop': ''});
     });
   });
 

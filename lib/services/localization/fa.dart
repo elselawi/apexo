@@ -346,6 +346,11 @@ class Fa implements En {
     "dicomNoMatch": "بیمار منطبق یافت نشد — به صورت دستی انتخاب کنید",
     "dicomSelectPatient": "انتخاب بیمار مطابق",
     "dicomSearchPatient": "جستجوی بیمار بر اساس نام…",
+    "dicomSearchLinkedPatients": "جستجوی بیماران پیوند‌شده…",
+    "dicomShowDeletedLinks": "نمایش حذف‌شده‌ها",
+    "dicomNoMatchingLinks": "هیچ بیمار پیوند‌شده‌ای با جستجو مطابقت ندارد.",
+    "dicomLinkActive": "فعال",
+    "dicomLinkBroken": "قطع‌شده",
     "dicomNoLinks": "هنوز بیمار پیوند‌شده‌ای وجود ندارد.",
     "dicomPatientDeleted": "بیمار حذف شده",
     "dicomPatientDeleted_desc":

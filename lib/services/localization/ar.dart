@@ -343,6 +343,11 @@ class Ar implements En {
     "dicomNoMatch": "لم يتم العثور على مريض مطابق — اختر واحدًا يدويًا",
     "dicomSelectPatient": "اختر المريض المطابق",
     "dicomSearchPatient": "ابحث عن مريض بالاسم…",
+    "dicomSearchLinkedPatients": "ابحث في المرضى المرتبطين…",
+    "dicomShowDeletedLinks": "إظهار المحذوفين",
+    "dicomNoMatchingLinks": "لا يوجد مرضى مرتبطون يطابقون البحث.",
+    "dicomLinkActive": "نشط",
+    "dicomLinkBroken": "منقطع",
     "dicomNoLinks": "لا يوجد مرضى مرتبطون بعد.",
     "dicomPatientDeleted": "تم حذف المريض",
     "dicomPatientDeleted_desc":

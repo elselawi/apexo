@@ -347,6 +347,11 @@ class En {
     "dicomNoMatch": "No matching patient found — pick one manually",
     "dicomSelectPatient": "Select patient matching",
     "dicomSearchPatient": "Search patient by name…",
+    "dicomSearchLinkedPatients": "Search linked patients…",
+    "dicomShowDeletedLinks": "Show deleted",
+    "dicomNoMatchingLinks": "No linked patients match your search.",
+    "dicomLinkActive": "Active",
+    "dicomLinkBroken": "Broken",
     "dicomNoLinks": "No linked patients yet.",
     "dicomPatientDeleted": "Patient deleted",
     "dicomPatientDeleted_desc":

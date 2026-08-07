@@ -13,7 +13,7 @@ import 'package:apexo/services/dicom/persistence/dicom_unmatched_store.dart';
 import 'package:apexo/services/dicom/dicom_importer.dart';
 import 'package:apexo/services/login.dart' show login, onLogoutCallbacks;
 import 'package:apexo/utils/logger.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 
 /// Controller for the DICOM Import screen.///
 /// A thin reactive shell over [DicomImporter] — holds the pending-list,
@@ -26,6 +26,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// call on other platforms (they no-op / return early when the watch dir is
 /// empty), but the UI never reaches them off-Windows.
 class DicomController {
+  static DicomController? _registeredController;
+
   /// Pending imports surfaced by the last scan. Empty until [refresh] runs.
   final ObservableState<List<DicomPendingImport>> pending =
       ObservableState<List<DicomPendingImport>>(const <DicomPendingImport>[]);
@@ -56,37 +58,75 @@ class DicomController {
   }
 
   final DicomImporter _importer;
+  final Future<List<SyncResult>> Function() _synchronizeAppointments;
+  final Future<bool> Function() _appointmentsInSync;
+  late final Future<Future<void> Function()> Function() _dicomActivator;
+  late final void Function() _logoutCallback;
+  late final void Function(String filename) _deadLetterCallback;
 
   /// Creates a controller backed by [importer] (defaults to the global
   /// [dicomImporter] singleton). The optional parameter exists so tests can
   /// inject a mock importer without touching the real stores.
-  DicomController({DicomImporter? importer})
-      : _importer = importer ?? dicomImporter {
+  DicomController({
+    DicomImporter? importer,
+    Future<List<SyncResult>> Function()? synchronizeAppointments,
+    Future<bool> Function()? appointmentsInSync,
+  })  : _importer = importer ?? dicomImporter,
+        _synchronizeAppointments =
+            synchronizeAppointments ?? appointments.synchronize,
+        _appointmentsInSync = appointmentsInSync ?? appointments.inSync {
+    final previous = _registeredController;
+    if (previous != null && !identical(previous, this)) {
+      previous.dispose();
+    }
+    _registeredController = this;
+
     // Register the periodic-scan lifecycle with the login system.
     // The activator's first stage runs during login.activate(); the second
     // stage (returned callback) runs only when online and not in demo mode.
-    login.activators['dicom'] = () async {
+    _dicomActivator = () async {
       // First stage: stop any timer from a previous session (covers
       // re-login to same or different server). Hive boxes are already
       // opened in dicom_init.dart — no additional setup needed here.
       stopPeriodicScan();
+      _healed = false;
+      _healing = false;
       return () async {
         // Second stage (online, non-demo): start the periodic timer
         // if auto-import is enabled and watch dirs are configured.
         startPeriodicScan();
       };
     };
+    login.activators['dicom'] = _dicomActivator;
 
     // Register a logout callback so the timer stops when the user
     // signs out — prevents cross-server contamination.
-    onLogoutCallbacks.add(stopPeriodicScan);
+    _logoutCallback = stopPeriodicScan;
+    onLogoutCallbacks.add(_logoutCallback);
 
     // When a DICOM file's upload permanently fails (dead-letter),
     // also clear the import registry so the file re-appears in the
     // pending list on the next directory scan.
-    Store.onFileDeadLettered.add((filename) {
-      _importer.unregisterFile(filename);
-    });
+    _deadLetterCallback = (filename) {
+      unawaited(_importer.unregisterFile(filename));
+    };
+    Store.onFileDeadLettered.add(_deadLetterCallback);
+  }
+
+  /// Releases global lifecycle callbacks owned by this controller.
+  ///
+  /// The application singleton lives for the process lifetime; injected or
+  /// test controllers should call this when their owner is disposed.
+  void dispose() {
+    stopPeriodicScan();
+    onLogoutCallbacks.remove(_logoutCallback);
+    Store.onFileDeadLettered.remove(_deadLetterCallback);
+    if (identical(login.activators['dicom'], _dicomActivator)) {
+      login.activators.remove('dicom');
+    }
+    if (identical(_registeredController, this)) {
+      _registeredController = null;
+    }
   }
 
   // ── Date-matching helpers ────────────────────────────────────────────
@@ -136,13 +176,18 @@ class DicomController {
     final batchTotal = toApprove.length;
     var batchDone = 0;
     var approved = 0;
-    final succeeded = <String>{};
+    final succeeded = <DicomPendingImport>{};
 
+    final partial = <DicomPendingImport, DicomPendingImport>{};
     for (final pi in toApprove) {
       try {
-        await _importer.approveImport(pi);
-        approved++;
-        succeeded.add(pi.dicomPatientId);
+        final result = await _importer.approveImport(pi);
+        if (result.complete) {
+          approved++;
+          succeeded.add(pi);
+        } else {
+          partial[pi] = pi.copyWithFiles(result.failedFiles);
+        }
       } catch (e, s) {
         logger(
             'DicomController.batchApprove error for ${pi.dicomPatientId}: $e',
@@ -158,9 +203,10 @@ class DicomController {
     importProgress((current: 0, total: 0));
 
     // Only remove items that were actually approved successfully.
-    if (succeeded.isNotEmpty) {
+    if (succeeded.isNotEmpty || partial.isNotEmpty) {
       pending(pending()
-          .where((x) => !succeeded.contains(x.dicomPatientId))
+          .where((x) => !succeeded.contains(x))
+          .map((x) => partial[x] ?? x)
           .toList());
     }
     return approved;
@@ -205,6 +251,7 @@ class DicomController {
   static const _pollInterval = Duration(seconds: 90);
 
   Timer? _periodicTimer;
+  int _periodicGeneration = 0;
 
   /// Whether the periodic scan timer is currently active.
   bool get isTimerRunning => _periodicTimer != null;
@@ -228,9 +275,10 @@ class DicomController {
     }
     log.info('DicomController: periodic scan started, '
         'interval=${_pollInterval.inSeconds}s');
-    _periodicTimer = Timer.periodic(_pollInterval, (_) => _tick());
+    final generation = ++_periodicGeneration;
+    _periodicTimer = Timer.periodic(_pollInterval, (_) => _tick(generation));
     // Fire the first tick immediately.
-    _tick();
+    _tick(generation);
   }
 
   /// Stops the periodic scan timer and cancels any in-flight scan.
@@ -238,11 +286,15 @@ class DicomController {
   /// Safe to call when no timer is running. Called on logout and when
   /// the activator re-runs (re-login to same or different server).
   void stopPeriodicScan() {
-    if (_periodicTimer == null) return;
-    _periodicTimer!.cancel();
-    _periodicTimer = null;
-    cancelScan();
-    log.info('DicomController: periodic scan stopped');
+    ++_periodicGeneration;
+    if (_periodicTimer != null) {
+      _periodicTimer!.cancel();
+      _periodicTimer = null;
+      cancelScan();
+      log.info('DicomController: periodic scan stopped');
+    }
+    _healed = false;
+    _healing = false;
   }
 
   /// One tick of the periodic timer: scans for new files and auto-approves
@@ -250,7 +302,9 @@ class DicomController {
   ///
   /// Self-stops if watch dirs become empty or auto-import is turned off
   /// mid-session (e.g., settings changed on another device and synced).
-  Future<void> _tick() async {
+  Future<void> _tick(int generation) async {
+    if (generation != _periodicGeneration) return;
+
     // Re-guard against config changes since the timer was started.
     if (watchDirs.isEmpty || !autoImport) {
       log.info('DicomController._tick: stopping timer '
@@ -259,81 +313,190 @@ class DicomController {
       return;
     }
 
-    // One-time cleanup: remove dangling dcmImgs entries left behind by
-    // deferred uploads that never completed (e.g. app killed mid-import).
-    if (!_healed) {
-      _healed = true;
-      await _healDanglingDcmImgs();
+    // One-time cleanup: remove stale dcmImgs entries only after verifying
+    // each file against PocketBase. Never infer missing files from a local
+    // model mismatch or from an unavailable server.
+    if (!_healed && !_healing) {
+      _healing = true;
+      try {
+        if (await _healStaleDcmImgs(
+          shouldContinue: () => generation == _periodicGeneration,
+        )) {
+          _healed = true;
+        }
+      } finally {
+        _healing = false;
+      }
     }
 
+    // Logout/re-login can cancel the timer while healing is awaiting I/O.
+    // Never continue into a scan under the old session.
+    if (generation != _periodicGeneration) return;
     await refresh();
   }
 
-  /// One-time cleanup pass: removes `dcmImgs` entries whose files are not
-  /// confirmed in the appointment's `imgs` field (i.e. the DCM upload was
-  /// deferred and never completed). The files remain on disk and will be
-  /// re-discovered on the next directory scan if still in a watch folder.
-  Future<void> _healDanglingDcmImgs() async {
-    // Ensure the local imgs state reflects PB before we treat missing
-    // entries as dangling. Without this a stale local cache could
-    // incorrectly remove dcmImgs entries for files that DO exist on PB.
-    try {
-      await appointments.synchronize();
-    } catch (_) {
-      // Offline or sync error — skip healing; we can't trust imgs state.
-      return;
+  /// One-time cleanup pass: removes `dcmImgs` entries whose files are
+  /// definitively absent from PocketBase (for example, an upload failed).
+  /// The server file list is checked before changing either model state or
+  /// the registry. DicomLinksStore.removeKey preserves the patient link.
+  Future<bool> _healStaleDcmImgs({bool Function()? shouldContinue}) async {
+    bool isCurrent() => shouldContinue?.call() ?? true;
+    if (!isCurrent()) return false;
+
+    final remote = appointments.remote;
+    if (remote == null || !remote.isOnline) {
+      // Never infer that a file is missing while the server is unavailable.
+      return false;
     }
 
-    final toFix = <String, List<String>>{}; // apptId → dangling names
+    // Synchronize the appointment JSON first, then require convergence. A
+    // synchronize call can return a sync error without throwing.
+    try {
+      await _synchronizeAppointments();
+      if (!isCurrent() || !await _appointmentsInSync()) return false;
+    } catch (_) {
+      // Offline or sync error — the server state is unknown.
+      return false;
+    }
 
-    // Collect filenames currently queued for deferred upload — these are
-    // legitimately not yet in `imgs` and must not be treated as dangling.
     final deferred = await appointments.local?.getDeferred() ?? {};
-    final pendingUploadFilenames = Store.filenamesFromDeferred(deferred);
+    final toFix = <String, List<String>>{}; // apptId → stale names
+    var inspectionComplete = true;
 
-    for (final appt in appointments.present.values) {
+    // Use PocketBase's actual file field, not Appointment.imgs. DICOM files
+    // are stored in the PB `imgs` field but intentionally listed separately
+    // in Appointment.dcmImgs, so `appt.imgs.contains(dcm)` is normally false
+    // even after a successful upload.
+    for (final appt in appointments.docs.values) {
+      if (!isCurrent()) return false;
       if (appt.dcmImgs.isEmpty) continue;
-      final dangling = appt.dcmImgs
-          .where((d) =>
-              !appt.imgs.contains(d) && !pendingUploadFilenames.contains(d))
-          .toList();
-      if (dangling.isNotEmpty) {
-        toFix[appt.id] = dangling;
+
+      final List<String> serverNames;
+      try {
+        serverNames = await remote.getFileNames(appt.id);
+      } catch (e, s) {
+        // A failed row lookup is not evidence of a missing file.
+        logger(
+            'DicomController._healStaleDcmImgs: could not inspect '
+            'appointment ${appt.id}: $e',
+            s,
+            1);
+        inspectionComplete = false;
+        continue;
+      }
+      final pendingUploadFilenames =
+          Store.filenamesFromDeferredForRow(deferred, appt.id);
+      final stale = staleDcmFileNames(
+        appointmentDcmFiles: appt.dcmImgs,
+        serverFiles: serverNames,
+        pendingUploadFiles: pendingUploadFilenames,
+      );
+      if (stale.isNotEmpty) {
+        toFix[appt.id] = stale;
       }
     }
-    if (toFix.isEmpty) return;
+    if (!isCurrent() || toFix.isEmpty) return inspectionComplete;
 
-    log.info('DicomController._healDanglingDcmImgs: cleaning '
+    log.info('DicomController._healStaleDcmImgs: cleaning '
         '${toFix.length} appointment(s) with '
-        '${toFix.values.fold<int>(0, (s, l) => s + l.length)} dangling '
+        '${toFix.values.fold<int>(0, (s, l) => s + l.length)} stale '
         'dcmImgs entries');
-    var unregistered = 0;
+
+    var changed = false;
     for (final entry in toFix.entries) {
+      if (!isCurrent()) return false;
       final appt = appointments.docs[entry.key];
-      if (appt == null) continue;
-      // For each dangling filename whose local DCM copy still exists
-      // on disk, clear its registry entry so the file can be
-      // re-discovered on the next directory scan.
+      if (appt == null) {
+        inspectionComplete = false;
+        continue;
+      }
+
+      // Re-read the authoritative file list immediately before mutation. A
+      // concurrent import may have uploaded or referenced a candidate after
+      // the initial inspection.
+      final List<String> currentServerNames;
+      try {
+        currentServerNames = await remote.getFileNames(appt.id);
+      } catch (e, s) {
+        logger(
+            'DicomController._healStaleDcmImgs: could not re-inspect '
+            'appointment ${appt.id}: $e',
+            s,
+            1);
+        inspectionComplete = false;
+        continue;
+      }
+      if (!isCurrent()) return false;
+      final currentDeferred = await appointments.local?.getDeferred() ?? {};
+      final currentPending = Store.filenamesFromDeferredForRow(
+        currentDeferred,
+        appt.id,
+      );
+      final stillStale = staleDcmFileNames(
+        appointmentDcmFiles: appt.dcmImgs,
+        serverFiles: currentServerNames,
+        pendingUploadFiles: currentPending,
+      ).toSet();
+      final unregistered = <String>{};
       for (final dcmName in entry.value) {
+        if (!isCurrent()) return false;
+        if (!stillStale.contains(dcmName)) continue;
+        // Clear the dedup marker so a source file can be rediscovered.
+        // DicomLinksStore.removeKey preserves any confirmed patient link.
         if (await _importer.unregisterFile(dcmName)) {
-          unregistered++;
+          unregistered.add(dcmName);
+        } else {
+          // Without a confirmed registry result, retain the appointment
+          // reference so the one-time pass can retry safely later.
+          inspectionComplete = false;
         }
       }
-      appt.dcmImgs.removeWhere((d) => entry.value.contains(d));
-      appointments.set(appt);
+      if (unregistered.isNotEmpty) {
+        appt.dcmImgs.removeWhere((d) => unregistered.contains(d));
+        appointments.set(appt);
+        changed = true;
+      }
     }
-    if (unregistered > 0) {
-      log.info('DicomController._healDanglingDcmImgs: unregistered '
-          '$unregistered file(s) from DICOM registry — they will '
-          're-appear in pending on the next scan');
-    }
-    if (toFix.isNotEmpty) {
-      await appointments.waitUntilChangesAreProcessed();
-      await appointments.synchronize();
-    }
+    if (!changed) return inspectionComplete && isCurrent();
+    await appointments.waitUntilChangesAreProcessed();
+    await _synchronizeAppointments();
+    return inspectionComplete && isCurrent() && await _appointmentsInSync();
+  }
+
+  @visibleForTesting
+  Future<bool> debugHealStaleDcmImgs({bool Function()? shouldContinue}) =>
+      _healStaleDcmImgs(shouldContinue: shouldContinue);
+
+  @visibleForTesting
+  Future<void> debugTick(int generation) => _tick(generation);
+
+  @visibleForTesting
+  int get debugPeriodicGeneration => _periodicGeneration;
+
+  @visibleForTesting
+  bool get debugHealed => _healed;
+
+  @visibleForTesting
+  bool get debugHealing => _healing;
+
+  @visibleForTesting
+  static List<String> staleDcmFileNames({
+    required List<String> appointmentDcmFiles,
+    required List<String> serverFiles,
+    required Set<String> pendingUploadFiles,
+  }) {
+    final serverSet = serverFiles.map((name) => name.toLowerCase()).toSet();
+    final pendingSet =
+        pendingUploadFiles.map((name) => name.toLowerCase()).toSet();
+    return appointmentDcmFiles
+        .where((name) =>
+            !serverSet.contains(name.toLowerCase()) &&
+            !pendingSet.contains(name.toLowerCase()))
+        .toList();
   }
 
   bool _healed = false;
+  bool _healing = false;
 
   /// Auto-approves any [DicomPendingImport] items in the current pending
   /// list that are [DicomPendingImport.autoLinked] (i.e. the DICOM patient
@@ -351,11 +514,16 @@ class DicomController {
 
     log.info('DicomController.autoApproveLinked: auto-approving '
         '${autoLinked.length} linked patient(s)');
-    final approvedIds = <String>{};
+    final approvedItems = <DicomPendingImport>{};
+    final partial = <DicomPendingImport, DicomPendingImport>{};
     for (final pi in autoLinked) {
       try {
-        await _importer.approveImport(pi);
-        approvedIds.add(pi.dicomPatientId);
+        final result = await _importer.approveImport(pi);
+        if (result.complete) {
+          approvedItems.add(pi);
+        } else {
+          partial[pi] = pi.copyWithFiles(result.failedFiles);
+        }
       } catch (e, s) {
         logger(
             'DicomController.autoApproveLinked: failed for '
@@ -364,10 +532,12 @@ class DicomController {
             2);
       }
     }
-    // Remove auto-approved items from the pending list.
-    if (approvedIds.isNotEmpty) {
+    // Remove only complete approvals. Partial outcomes remain as a reduced
+    // pending item so the failed files can be retried immediately.
+    if (approvedItems.isNotEmpty || partial.isNotEmpty) {
       pending(current
-          .where((x) => !approvedIds.contains(x.dicomPatientId))
+          .where((x) => !approvedItems.contains(x))
+          .map((x) => partial[x] ?? x)
           .toList());
     }
   }
@@ -381,9 +551,19 @@ class DicomController {
   Future<void> approve(DicomPendingImport p, {String? apexoPatientId}) async {
     if (isImporting) return;
     try {
-      await _importer.approveImport(p, apexoPatientId: apexoPatientId);
-      // Remove the approved batch from the pending list.
-      pending(pending().where((x) => !identical(x, p)).toList());
+      final result = await _importer.approveImport(
+        p,
+        apexoPatientId: apexoPatientId,
+      );
+      if (result.complete) {
+        // Remove the approved batch from the pending list.
+        pending(pending().where((x) => !identical(x, p)).toList());
+      } else {
+        pending(pending()
+            .map((x) =>
+                identical(x, p) ? p.copyWithFiles(result.failedFiles) : x)
+            .toList());
+      }
     } catch (e, s) {
       logger('DicomController.approve error: $e', s, 2);
     } finally {

@@ -350,6 +350,11 @@ class El implements En {
     "dicomNoMatch": "Δεν βρέθηκε ασθενής — επιλέξτε έναν χειροκίνητα",
     "dicomSelectPatient": "Επιλογή αντίστοιχου ασθενούς",
     "dicomSearchPatient": "Αναζήτηση ασθενούς ανά όνομα…",
+    "dicomSearchLinkedPatients": "Αναζήτηση συνδεδεμένων ασθενών…",
+    "dicomShowDeletedLinks": "Εμφάνιση διαγραμμένων",
+    "dicomNoMatchingLinks": "Κανένας συνδεδεμένος ασθενής δεν ταιριάζει.",
+    "dicomLinkActive": "Ενεργό",
+    "dicomLinkBroken": "Κατεστραμμένο",
     "dicomNoLinks": "Δεν υπάρχουν συνδεδεμένοι ασθενείς ακόμα.",
     "dicomPatientDeleted": "Ο ασθενής διαγράφηκε",
     "dicomPatientDeleted_desc":

@@ -352,6 +352,12 @@ class Es implements En {
         "No se encontró paciente coincidente — elige uno manualmente",
     "dicomSelectPatient": "Seleccionar paciente coincidente",
     "dicomSearchPatient": "Buscar paciente por nombre…",
+    "dicomSearchLinkedPatients": "Buscar pacientes vinculados…",
+    "dicomShowDeletedLinks": "Mostrar eliminados",
+    "dicomNoMatchingLinks":
+        "Ningún paciente vinculado coincide con la búsqueda.",
+    "dicomLinkActive": "Activo",
+    "dicomLinkBroken": "Roto",
     "dicomNoLinks": "Aún no hay pacientes vinculados.",
     "dicomPatientDeleted": "Paciente eliminado",
     "dicomPatientDeleted_desc":

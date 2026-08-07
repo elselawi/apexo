@@ -11,6 +11,7 @@ import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';
 import 'package:apexo/services/dicom/persistence/dicom_matched_store.dart';
 import 'package:apexo/services/dicom/persistence/dicom_unmatched_store.dart';
 import 'package:apexo/services/dicom/dicom_file_cache.dart';
+import 'package:apexo/services/dicom/dicom_helpers.dart' as dcm_helpers;
 import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/services/dicom/dicom_normalize.dart';
 import 'package:apexo/services/dicom/dicom_skipped.dart';
@@ -117,6 +118,66 @@ class DicomPendingImport {
   });
 
   int get fileCount => files.length;
+
+  DicomPendingImport copyWithFiles(List<DicomParsedFile> nextFiles) {
+    final nextNames = nextFiles
+        .map((file) => file.patientName)
+        .where((name) => name.isNotEmpty)
+        .toSet();
+    final nextDates = nextFiles
+        .map((file) => file.dcmDate)
+        .whereType<DateTime>()
+        .toSet()
+        .toList()
+      ..sort();
+    final nextName = nextNames.isNotEmpty ? nextNames.first : '';
+    final nextMatched = matchedPatient;
+    return DicomPendingImport(
+      dicomPatientId: dicomPatientId,
+      dicomPatientName: nextName,
+      dicomPatientNames: nextNames,
+      dates: nextDates,
+      files: nextFiles,
+      matchedPatient: nextMatched,
+      matchedPatientId: nextMatched?.id ?? matchedPatientId,
+      matchedPatientName: nextMatched?.title ?? matchedPatientName,
+      confidence: confidence,
+      isConfirmed: isConfirmed,
+      autoLinked: autoLinked,
+    );
+  }
+}
+
+/// Outcome of one approval attempt. A batch is complete when [failedFiles]
+/// is empty; already-imported files therefore produce a successful,
+/// idempotent result with no failed files.
+class DicomApprovalResult {
+  final int successfulFiles;
+  final List<DicomParsedFile> failedFiles;
+  final List<Object> rollbackFailures;
+
+  const DicomApprovalResult({
+    required this.successfulFiles,
+    required this.failedFiles,
+    this.rollbackFailures = const [],
+  });
+
+  bool get complete => failedFiles.isEmpty && rollbackFailures.isEmpty;
+}
+
+class DicomApprovalRollbackException implements Exception {
+  final Object cause;
+  final List<Object> rollbackFailures;
+
+  const DicomApprovalRollbackException({
+    required this.cause,
+    required this.rollbackFailures,
+  });
+
+  @override
+  String toString() =>
+      'DicomApprovalRollbackException: ${rollbackFailures.length} '
+      'rollback failure(s); cause: $cause';
 }
 
 // --------------- Isolate message types ----------------------
@@ -233,8 +294,6 @@ Future<_ScanResult> _doScan({
   scanDirSw.stop();
 
   final totalEntries = entries.length;
-  debugPrint(
-      'DICOM scan: ${scanDirSw.elapsedMilliseconds}ms to list $totalEntries .dcm files in "$watchDir"');
 
   final parseLoopSw = Stopwatch()..start();
   var cacheHits = 0;
@@ -246,8 +305,6 @@ Future<_ScanResult> _doScan({
     idx++;
     allScannedPaths.add(entry.path);
     if (shouldCancel != null && shouldCancel()) {
-      debugPrint(
-          'DICOM scan: CANCELLED at file $idx/$totalEntries after ${parseLoopSw.elapsedMilliseconds}ms');
       break;
     }
 
@@ -265,8 +322,16 @@ Future<_ScanResult> _doScan({
       cacheHits++;
       dk = cached.dedupKey;
       patientName = cached.patientName;
-      patientId = cached.patientId;
+      patientId = cached.patientId.trim();
       dcmDateRaw = cached.dcmDate;
+
+      // Cached files with no complete DICOM identity remain skipped without
+      // being grouped into a shared or partially specified identity.
+      if (!_hasUsableDedupKey(cached.dedupKey)) {
+        skipped.add(DicomSkippedRecord(
+            entry.path, 'missing DICOM instance identity, skipped'));
+        continue;
+      }
 
       // Cached volumetric files are skipped just like freshly-parsed ones.
       if (cached.isVolumetric) {
@@ -277,16 +342,10 @@ Future<_ScanResult> _doScan({
       }
 
       onFileProgress?.call(idx, totalEntries, entry.path, true);
-      if (idx % 200 == 0 || idx == totalEntries) {
-        debugPrint(
-            'DICOM scan: $idx/$totalEntries (cache hit: "${_shortName(entry.path)}")');
-      }
     } else {
       cacheMisses++;
       final fileSw = Stopwatch()..start();
       onFileProgress?.call(idx, totalEntries, entry.path, false);
-      debugPrint(
-          'DICOM scan: $idx/$totalEntries parsing "${_shortName(entry.path)}"');
       final Uint8List bytes;
       try {
         final b = await readFn(entry.path);
@@ -337,8 +396,26 @@ Future<_ScanResult> _doScan({
 
       dk = meta.dedupKey;
       patientName = meta.patientName;
-      patientId = meta.patientId;
+      patientId = meta.patientId.trim();
       dcmDateRaw = meta.dcmDate;
+
+      if (meta.sopInstanceUid.trim().isEmpty &&
+          (meta.studyInstanceUid.trim().isEmpty ||
+              meta.seriesInstanceUid.trim().isEmpty ||
+              meta.instanceNumber.trim().isEmpty)) {
+        skipped.add(DicomSkippedRecord(
+            entry.path, 'missing DICOM instance identity, skipped'));
+        newCacheEntries[entry.path] = DicomCachedMeta(
+          mtime: entry.mtime,
+          size: entry.size,
+          dedupKey: dk,
+          patientName: meta.patientName,
+          patientId: patientId,
+          dcmDate: dcmDateRaw,
+          isVolumetric: false,
+        );
+        continue;
+      }
 
       newCacheEntries[entry.path] = DicomCachedMeta(
         mtime: entry.mtime,
@@ -350,8 +427,6 @@ Future<_ScanResult> _doScan({
       );
       fileSw.stop();
       perFileMs[entry.path] = fileSw.elapsedMilliseconds;
-      debugPrint(
-          'DICOM scan: $idx/$totalEntries parsed "${_shortName(entry.path)}" in ${fileSw.elapsedMilliseconds}ms (${(entry.size / 1024).toStringAsFixed(0)}KB)');
     }
 
     if (importedKeys.contains(dk)) continue;
@@ -368,16 +443,12 @@ Future<_ScanResult> _doScan({
   }
 
   parseLoopSw.stop();
-  debugPrint(
-      'DICOM scan: parse loop done $cacheHits hits, $cacheMisses misses, ${parsed.length} pending, ${skipped.length} skipped in ${parseLoopSw.elapsedMilliseconds}ms');
 
   // --------------- Build pending list inside the isolate ---
   final matchSw = Stopwatch()..start();
   final pending = _buildPending(parsed, patientSnapshots, links, pendingMatches,
       unmatchedIds, appointmentDayMap);
   matchSw.stop();
-  debugPrint(
-      'DICOM scan: matching done ${pending.length} imports in ${matchSw.elapsedMilliseconds}ms');
 
   return _ScanResult(
     parsed: parsed,
@@ -391,6 +462,15 @@ Future<_ScanResult> _doScan({
     perFileMs: perFileMs,
     pending: pending,
   );
+}
+
+bool _hasUsableDedupKey(String key) {
+  if (key.startsWith('sop:')) {
+    return key.substring('sop:'.length).trim().isNotEmpty;
+  }
+  if (!key.startsWith('composite:')) return false;
+  final parts = key.substring('composite:'.length).split('|');
+  return parts.length == 3 && parts.every((part) => part.trim().isNotEmpty);
 }
 
 /// Fraction of [dicomDates] that match existing appointments for
@@ -417,13 +497,19 @@ List<DicomPendingImport> _buildPending(
 ) {
   final groups = <String, List<DicomParsedFile>>{};
   for (final f in parsed) {
-    groups.putIfAbsent(f.patientId, () => []).add(f);
+    // Blank DICOM patient IDs are not a usable link identity. Keep such files
+    // isolated by their file identity instead of grouping unrelated patients
+    // into one approval batch.
+    final groupKey = f.patientId.trim().isEmpty
+        ? 'anonymous:${f.dedupKey}'
+        : 'patient:${f.patientId.trim()}';
+    groups.putIfAbsent(groupKey, () => []).add(f);
   }
 
   final pending = <DicomPendingImport>[];
   for (final entry in groups.entries) {
-    final dicomPatientId = entry.key;
     final files = entry.value;
+    final dicomPatientId = files.first.patientId.trim();
 
     final nameCounts = <String, int>{};
     for (final f in files) {
@@ -450,7 +536,7 @@ List<DicomPendingImport> _buildPending(
     bool isConfirmed = false;
     bool autoLinked = false;
 
-    final linkedApexoId = links[dicomPatientId];
+    final linkedApexoId = dicomPatientId.isEmpty ? null : links[dicomPatientId];
     if (linkedApexoId != null && linkedApexoId.isNotEmpty) {
       final snap = patientSnapshots.firstWhere((p) => p.id == linkedApexoId,
           orElse: () => const _PatientSnapshot('', ''));
@@ -465,7 +551,8 @@ List<DicomPendingImport> _buildPending(
 
     if (matchedId == null && dicomPatientName.isNotEmpty) {
       // Check pending manual matches as a hint (not an approved link).
-      final pendingId = pendingMatches[dicomPatientId];
+      final pendingId =
+          dicomPatientId.isEmpty ? null : pendingMatches[dicomPatientId];
       if (pendingId != null && pendingId.isNotEmpty) {
         final snap = patientSnapshots.firstWhere((p) => p.id == pendingId,
             orElse: () => const _PatientSnapshot('', ''));
@@ -482,7 +569,7 @@ List<DicomPendingImport> _buildPending(
     if (matchedId == null && dicomPatientName.isNotEmpty) {
       // If the dentist previously rejected the fuzzy suggestion, don't
       // suggest it again — leave the match empty so they pick manually.
-      if (!unmatchedIds.contains(dicomPatientId)) {
+      if (dicomPatientId.isEmpty || !unmatchedIds.contains(dicomPatientId)) {
         String? bestId;
         String? bestName;
         double bestNameScore = 0.0;
@@ -606,13 +693,13 @@ void _isolateScan(_ScanMessage msg) async {
 class DicomImporter {
   final Future<Set<String>> Function() _allImportedKeys;
   final Future<bool> Function(String) _isImported;
-  final Future<void> Function(String dicomPatientId, String key) _linkFile;
   final Future<void> Function(String dicomPatientId, String apexoPatientId)
       _setPatient;
   final Map<String, String> Function() _linkedPatients;
   final Future<Map<String, String>> Function() _pendingMatches;
   final Future<Set<String>> Function() _unmatchedIds;
   final Map<String, Set<DateTime>> Function() _appointmentDayMap;
+  final Future<bool> Function(String dicomPatientId, String key) _linkFile;
   final Future<List<DicomFileEntry>> Function(String) _scanDirectory;
   final Future<Uint8List?> Function(String) _readBytes;
   final Future<DicomParsedMeta?> Function(Uint8List) _parseMetadata;
@@ -629,7 +716,21 @@ class DicomImporter {
   final void Function(Appointment) _setAppointment;
   final List<Appointment> Function(String apexoPatientId)
       _appointmentsForPatient;
+  final Future<void> Function() _ensureAppointmentPersisted;
+  final Future<bool> Function(String dedupKey)? _removeKey;
   final bool _useIsolate;
+  @visibleForTesting
+  final Future<DicomApprovalResult> Function(
+          DicomPendingImport pending, String? apexoPatientId)?
+      approvalOverrideForTesting;
+  @visibleForTesting
+  final Future<bool> Function(String filename)? unregisterOverrideForTesting;
+  @visibleForTesting
+  final Future<bool> Function(String filename)? fileExistsOverrideForTesting;
+  @visibleForTesting
+  final Future<List<DicomPendingImport>> Function()? scanOverrideForTesting;
+  final Future<void> Function(String patientId) _clearPendingMatch;
+  final Future<void> Function(String patientId) _clearUnmatched;
 
   final ObservableState<({int current, int total})> importProgress =
       ObservableState<({int current, int total})>((current: 0, total: 0));
@@ -657,13 +758,13 @@ class DicomImporter {
     bool useIsolate = !kIsWeb,
     Future<Set<String>> Function()? allImportedKeys,
     Future<bool> Function(String)? isImported,
-    Future<void> Function(String dicomPatientId, String key)? linkFile,
     Future<void> Function(String dicomPatientId, String apexoPatientId)?
         setPatient,
     Map<String, String> Function()? linkedPatients,
     Future<Map<String, String>> Function()? pendingMatches,
     Future<Set<String>> Function()? unmatchedIds,
     Map<String, Set<DateTime>> Function()? appointmentDayMap,
+    Future<bool> Function(String dicomPatientId, String key)? linkFile,
     Future<List<DicomFileEntry>> Function(String)? scanDirectory,
     Future<Uint8List?> Function(String)? readBytes,
     Future<DicomParsedMeta?> Function(Uint8List)? parseMetadata,
@@ -680,6 +781,14 @@ class DicomImporter {
         handleNewDcm,
     void Function(Appointment)? setAppointment,
     List<Appointment> Function(String)? appointmentsForPatient,
+    Future<void> Function()? ensureAppointmentPersisted,
+    Future<bool> Function(String)? removeKey,
+    this.approvalOverrideForTesting,
+    this.unregisterOverrideForTesting,
+    this.fileExistsOverrideForTesting,
+    this.scanOverrideForTesting,
+    Future<void> Function(String patientId)? clearPendingMatch,
+    Future<void> Function(String patientId)? clearUnmatched,
   })  : _allImportedKeys =
             allImportedKeys ?? (() => dicomLinks.allImportedKeys),
         _isImported = isImported ?? dicomLinks.isImported,
@@ -727,11 +836,29 @@ class DicomImporter {
         _setAppointment = setAppointment ?? appointments.set,
         _appointmentsForPatient = appointmentsForPatient ??
             ((id) =>
-                appointments.byPatient[id]?["all"] ?? const <Appointment>[]);
+                appointments.byPatient[id]?["all"] ?? const <Appointment>[]),
+        _ensureAppointmentPersisted = ensureAppointmentPersisted ??
+            (() async {
+              await appointments.waitUntilChangesAreProcessed();
+              final remote = appointments.remote;
+              if (remote == null || !remote.isOnline) return;
+              await appointments.synchronize();
+              if (!await appointments.inSync()) {
+                throw StateError(
+                    'Appointment persistence did not converge with PocketBase');
+              }
+            }),
+        _removeKey = removeKey ?? dicomLinks.removeKey,
+        _clearPendingMatch = clearPendingMatch ??
+            ((patientId) => dicomPendingMatches.remove(patientId)),
+        _clearUnmatched =
+            clearUnmatched ?? ((patientId) => dicomUnmatched.remove(patientId));
 
   // --------------- Scan ---------------------
 
   Future<List<DicomPendingImport>> scanAndBuildPending() async {
+    final scanOverride = scanOverrideForTesting;
+    if (scanOverride != null) return scanOverride();
     final totalSw = Stopwatch()..start();
     final watchDirs = _getWatchDirs();
     if (watchDirs.isEmpty) return const <DicomPendingImport>[];
@@ -742,9 +869,6 @@ class DicomImporter {
     log.info('DicomImporter.scan: starting scan of ${watchDirs.length} '
         'director${watchDirs.length == 1 ? 'y' : 'ies'}: '
         '${watchDirs.map((d) => '"$d"').join(", ")}');
-    debugPrint('');
-    debugPrint(
-        'DICOM scan START: ${watchDirs.length} director${watchDirs.length == 1 ? 'y' : 'ies'}');
 
     scanPhase(ScanPhase.snapshotting);
     final snapSw = Stopwatch()..start();
@@ -876,9 +1000,6 @@ class DicomImporter {
     log.info(
         'DicomImporter.scan: resolved patients in ${resolveSw.elapsedMilliseconds}ms '
         '${pending.length} pending imports. TOTAL ${totalSw.elapsedMilliseconds}ms.');
-    debugPrint(
-        'DICOM scan DONE: ${pending.length} pending imports in ${totalSw.elapsedMilliseconds}ms');
-    debugPrint('');
 
     _finishScan();
     return pending;
@@ -1041,10 +1162,14 @@ class DicomImporter {
 
   // --------------- Approve ------------------
 
-  Future<void> approveImport(
+  Future<DicomApprovalResult> approveImport(
     DicomPendingImport pending, {
     String? apexoPatientId,
   }) async {
+    final override = approvalOverrideForTesting;
+    if (override != null) {
+      return override(pending, apexoPatientId);
+    }
     final targetId = apexoPatientId ?? pending.matchedPatient?.id;
     if (targetId == null || targetId.isEmpty) {
       throw StateError(
@@ -1056,6 +1181,11 @@ class DicomImporter {
     log.info(
         'DicomImporter.approveImport: starting for dicomPatient="${pending.dicomPatientId}" apexoPatient="$targetId" (${pending.files.length} files)');
 
+    final claimedFiles = <DicomParsedFile>[];
+    final failedFiles = <DicomParsedFile>[];
+    final rollbackFailures = <Object>[];
+    var successfulFiles = 0;
+
     try {
       final toProcess = <DicomParsedFile>[];
       for (final f in pending.files) {
@@ -1065,35 +1195,70 @@ class DicomImporter {
           continue;
         }
         try {
-          await _linkFile(pending.dicomPatientId, f.dedupKey);
-          toProcess.add(f);
+          final claimed = await _linkFile(pending.dicomPatientId, f.dedupKey);
+          if (claimed) {
+            claimedFiles.add(f);
+            toProcess.add(f);
+          } else {
+            log.info('DicomImporter.approveImport: key claimed concurrently, '
+                'skipping "${f.path}"');
+          }
         } catch (e, st) {
+          failedFiles.add(f);
           logger(
               'DicomImporter.approveImport: markImported failed for '
-              '"${_shortName(f.path)}", skipping $e',
+              '"${_shortName(f.path)}", keeping it retryable: $e',
               st,
               2);
         }
       }
 
       try {
-        _setPatient(pending.dicomPatientId, targetId);
-        // Clean up any pending manual match — the real link replaces it.
-        dicomPendingMatches.remove(pending.dicomPatientId);
-        dicomUnmatched.remove(pending.dicomPatientId);
+        if (pending.dicomPatientId.trim().isNotEmpty) {
+          await _setPatient(pending.dicomPatientId.trim(), targetId);
+          // Clean up any pending manual match — the real link replaces it.
+          await _clearPendingMatch(pending.dicomPatientId.trim());
+          await _clearUnmatched(pending.dicomPatientId.trim());
+        }
       } catch (e, st) {
+        // Do not continue with imported markers if the patient link could not
+        // be persisted. Otherwise the next scan hides these files while the
+        // DICOM patient remains unlinked.
+        for (final f in toProcess) {
+          try {
+            await _removeKey?.call(f.dedupKey);
+          } catch (rollbackError, rollbackStack) {
+            rollbackFailures.add(rollbackError);
+            logger(
+                'DicomImporter.approveImport: rollback failed for '
+                '"${_shortName(f.path)}": $rollbackError',
+                rollbackStack,
+                2);
+          }
+        }
         logger(
             'DicomImporter.approveImport: linkPatient failed for '
             '${pending.dicomPatientId} $targetId $e',
             st,
             2);
+        if (rollbackFailures.isNotEmpty) {
+          throw DicomApprovalRollbackException(
+            cause: e,
+            rollbackFailures: List.unmodifiable(rollbackFailures),
+          );
+        }
+        rethrow;
       }
 
       if (toProcess.isEmpty) {
         log.info(
             'DicomImporter.approveImport: nothing to do (all ${pending.files.length} '
             'files already imported or failed) in ${approveSw.elapsedMilliseconds}ms');
-        return;
+        return DicomApprovalResult(
+          successfulFiles: 0,
+          failedFiles: List.unmodifiable(failedFiles),
+          rollbackFailures: List.unmodifiable(rollbackFailures),
+        );
       }
 
       // Group by calendar day (normalize to date-only to avoid time-component
@@ -1109,8 +1274,6 @@ class DicomImporter {
       var done = 0;
       importProgress((current: 0, total: total));
 
-      var newAppointments = false;
-
       for (final dateEntry in byDate.entries) {
         final studyDate = dateEntry.key;
         final files = dateEntry.value;
@@ -1123,13 +1286,16 @@ class DicomImporter {
         if (existing.isNotEmpty) {
           appt = existing.first;
         } else {
+          // The PocketBase row must exist before an online file upload can
+          // target it. New appointments remain unarchived according to the
+          // appointment lifecycle policy, even if an upload later fails.
           appt = Appointment.fromJson({})
             ..patientID = targetId
             ..isDone = true
             ..date =
                 DateTime(studyDate.year, studyDate.month, studyDate.day, 12);
           _setAppointment(appt);
-          newAppointments = true;
+          await _ensureAppointmentPersisted();
         }
 
         for (final f in files) {
@@ -1141,30 +1307,44 @@ class DicomImporter {
             log.info(
                 'DicomImporter.approveImport: handleNewDcm "${_shortName(f.path)}" '
                 '"$dcmName" in ${fileSw.elapsedMilliseconds}ms');
-            // If upload succeeded online the returned name is the PB name.
-            // If upload was deferred the returned name is the local name —
-            // Store._syncTry will reconcile dcmImgs once the deferred
-            // upload completes (see _ensureDcmInModel / _patchModelFilename).
-            if (dcmName.isNotEmpty && !appt.dcmImgs.contains(dcmName)) {
-              appt.dcmImgs.add(dcmName);
+            if (dcmName.isEmpty) {
+              throw StateError('handleNewDcm returned an empty filename');
             }
+
+            // check the existing dcmImgs
+            // remove those that has the same upload identitiy
+            // those are leftovers from previous upload
+            appt.dcmImgs = appt.dcmImgs
+                .where((x) => !DicomImporter.sameDcmUploadIdentity(x, dcmName))
+                .toList();
+            appt.dcmImgs.add(dcmName);
+            successfulFiles++;
           } catch (e, st) {
+            try {
+              // The registry marker is a reservation, not proof that the
+              // upload succeeded. Failed processing must be retryable.
+              await _removeKey?.call(f.dedupKey);
+            } catch (rollbackError, rollbackStack) {
+              rollbackFailures.add(rollbackError);
+              logger(
+                  'DicomImporter.approveImport: file rollback failed for '
+                  '"${_shortName(f.path)}": $rollbackError',
+                  rollbackStack,
+                  2);
+            }
+            failedFiles.add(f);
             logger(
                 'DicomImporter.approveImport: failed for "${_shortName(f.path)}", '
-                'unmarking $e',
+                'unmarking and keeping it retryable: $e',
                 st,
                 2);
           }
           done++;
           importProgress((current: done, total: total));
         }
+        // Persist the final file list after processing this date group.
         _setAppointment(appt);
-      }
-
-      // ── Batch sync: confirm all new appointments exist on PB ──
-      if (newAppointments) {
-        await appointments.waitUntilChangesAreProcessed();
-        await appointments.synchronize();
+        await _ensureAppointmentPersisted();
       }
 
       // Note: progress is left at (total, total) callers are responsible
@@ -1173,12 +1353,43 @@ class DicomImporter {
       log.info(
           'DicomImporter.approveImport: done $done/$total files imported in '
           '${approveSw.elapsedMilliseconds}ms');
+      return DicomApprovalResult(
+        successfulFiles: successfulFiles,
+        failedFiles: List.unmodifiable(failedFiles),
+        rollbackFailures: List.unmodifiable(rollbackFailures),
+      );
     } catch (e, _) {
       // Unexpected error reset progress so isImporting doesn't stay stuck.
       importProgress((current: 0, total: 0));
+      for (final f in claimedFiles) {
+        try {
+          await _removeKey?.call(f.dedupKey);
+        } catch (rollbackError, rollbackStack) {
+          rollbackFailures.add(rollbackError);
+          logger(
+              'DicomImporter.approveImport: outer rollback failed for '
+              '"${_shortName(f.path)}": $rollbackError',
+              rollbackStack,
+              2);
+        }
+      }
+      if (rollbackFailures.isNotEmpty) {
+        throw DicomApprovalRollbackException(
+          cause: e,
+          rollbackFailures: List.unmodifiable(rollbackFailures),
+        );
+      }
       rethrow;
     }
   }
+
+  @visibleForTesting
+  static bool sameDcmUploadIdentity(String a, String b) =>
+      dcm_helpers.sameDcmUploadIdentity(a, b);
+
+  @visibleForTesting
+  static String? dcmUploadIdentity(String filename) =>
+      dcm_helpers.dcmUploadIdentity(filename);
 
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -1192,20 +1403,29 @@ class DicomImporter {
   ///
   /// Returns `true` if the registry entry was found and removed.
   Future<bool> unregisterFile(String dcmFilename) async {
+    final override = unregisterOverrideForTesting;
+    if (override != null) return override(dcmFilename);
     try {
-      if (!await imgs.checkIfFileExists(dcmFilename)) return false;
+      final exists = fileExistsOverrideForTesting != null
+          ? await fileExistsOverrideForTesting!(dcmFilename)
+          : await imgs.checkIfFileExists(dcmFilename);
+      if (!exists) return false;
       final file = await imgs.getOrCreateFile(dcmFilename);
       final bytes = await _readBytes(file.path);
       if (bytes == null || bytes.isEmpty) return false;
       final meta = await _parseMetadata(bytes);
       if (meta == null) return false;
       final key = meta.dedupKey;
-      final removed = await dicomLinks.removeKey(key);
+      final removed = await _removeKey?.call(key) ?? false;
       if (removed) {
         log.info('DicomImporter.unregisterFile: "$dcmFilename" → '
             'removed dedup key "$key" from registry');
+        return true;
       }
-      return removed;
+      // A marker may already be absent after a previous cleanup. Treat that
+      // idempotent state as success, but let persistence exceptions reach the
+      // catch block above and remain retryable.
+      return !await _isImported(key);
     } catch (e, s) {
       logger('DicomImporter.unregisterFile error: $e', s, 2);
       return false;

@@ -215,12 +215,16 @@ class _DicomPageState extends State<_DicomPage> {
                         title: Txt(linkedTxt),
                         content: const _LinkedPatients(),
                         actions: [
-                          Button(
-                            onPressed: () => Navigator.of(ctx).pop(false),
-                            child: ButtonContent(
-                              FluentIcons.cancel,
-                              txt("close"),
-                            ),
+                          Row(
+                            children: [
+                              Button(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: ButtonContent(
+                                  FluentIcons.cancel,
+                                  txt("close"),
+                                ),
+                              ),
+                            ],
                           ),
                           Row(
                             spacing: 10,
@@ -234,7 +238,7 @@ class _DicomPageState extends State<_DicomPage> {
                           ),
                         ],
                         constraints:
-                            const BoxConstraints(maxHeight: 400, maxWidth: 350),
+                            const BoxConstraints(maxHeight: 560, maxWidth: 720),
                       );
                     });
                   });
@@ -308,32 +312,233 @@ class _DicomPageState extends State<_DicomPage> {
   }
 }
 
-class _LinkedPatients extends StatelessWidget {
+class _LinkedPatients extends StatefulWidget {
   const _LinkedPatients();
+
+  @override
+  State<_LinkedPatients> createState() => _LinkedPatientsState();
+}
+
+class _LinkedPatientsState extends State<_LinkedPatients> {
+  final _searchController = TextEditingController();
+  String _query = '';
+  _LinkedPatientsSort _sort = _LinkedPatientsSort.dicomId;
+  bool _ascending = true;
+  bool _showDeleted = true;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<MapEntry<String, String>> _entries() {
+    final entries = dicomCtrl.linkedPatients.entries.where((entry) {
+      final patient = patients.get(entry.value);
+      if (!_showDeleted && patient == null) return false;
+      if (_query.isEmpty) return true;
+      final query = _query.toLowerCase();
+      return entry.key.toLowerCase().contains(query) ||
+          (patient?.title.toLowerCase().contains(query) ?? false) ||
+          entry.value.toLowerCase().contains(query);
+    }).toList();
+
+    int compare(MapEntry<String, String> a, MapEntry<String, String> b) {
+      final aPatient = patients.get(a.value);
+      final bPatient = patients.get(b.value);
+      final result = switch (_sort) {
+        _LinkedPatientsSort.dicomId =>
+          a.key.toLowerCase().compareTo(b.key.toLowerCase()),
+        _LinkedPatientsSort.patient => (aPatient?.title ??
+                txt('dicomPatientDeleted'))
+            .toLowerCase()
+            .compareTo(
+                (bPatient?.title ?? txt('dicomPatientDeleted')).toLowerCase()),
+        _LinkedPatientsSort.files => dicomLinks
+            .importedFileCountFor(a.key)
+            .compareTo(dicomLinks.importedFileCountFor(b.key)),
+        _LinkedPatientsSort.status =>
+          (aPatient == null ? 1 : 0).compareTo(bPatient == null ? 1 : 0),
+      };
+      return _ascending ? result : -result;
+    }
+
+    entries.sort(compare);
+    return entries;
+  }
+
+  void _toggleSort(_LinkedPatientsSort column) {
+    setState(() {
+      if (_sort == column) {
+        _ascending = !_ascending;
+      } else {
+        _sort = column;
+        _ascending = true;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-      stream: dicomCtrl.pending.stream,
-      builder: (context, snapshot) => dicomCtrl.linkedPatients.isEmpty
-          ? Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(txt("dicomNoLinks"),
-                  style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      color: const Color.fromARGB(255, 12, 12, 11)
-                          .withAlpha(180))),
-            )
-          : ListView.builder(
-              itemCount: dicomCtrl.linkedPatients.entries.length,
-              itemBuilder: (context, index) {
-                final entry = dicomCtrl.linkedPatients.entries.elementAt(index);
-                return _LinkedPatientRow(
-                  dicomId: entry.key,
-                  apexoId: entry.value,
-                );
-              },
+      stream: dicomLinks.version.stream,
+      builder: (context, snapshot) {
+        final theme = FluentTheme.of(context);
+        final entries = _entries();
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      controller: _searchController,
+                      onChanged: (value) => setState(() => _query = value),
+                      placeholder: txt('dicomSearchLinkedPatients'),
+                      prefix: const Padding(
+                        padding: EdgeInsetsDirectional.only(start: 8),
+                        child: Icon(FluentIcons.search, size: 14),
+                      ),
+                      suffix: _query.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(FluentIcons.clear, size: 12),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() => _query = '');
+                              },
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ToggleButton(
+                    checked: _showDeleted,
+                    onChanged: (value) => setState(() => _showDeleted = value),
+                    child: Txt(txt('dicomShowDeletedLinks')),
+                  ),
+                ],
+              ),
             ),
+            Row(
+              children: [
+                Expanded(
+                    child: _LinkedHeaderCell(
+                  label: txt('dicomPatientId'),
+                  active: _sort == _LinkedPatientsSort.dicomId,
+                  ascending: _ascending,
+                  onPressed: () => _toggleSort(_LinkedPatientsSort.dicomId),
+                )),
+                Expanded(
+                    child: _LinkedHeaderCell(
+                  label: txt('patient'),
+                  active: _sort == _LinkedPatientsSort.patient,
+                  ascending: _ascending,
+                  onPressed: () => _toggleSort(_LinkedPatientsSort.patient),
+                )),
+                SizedBox(
+                  width: 100,
+                  child: _LinkedHeaderCell(
+                    label: txt('dicomImportedFiles'),
+                    active: _sort == _LinkedPatientsSort.files,
+                    ascending: _ascending,
+                    onPressed: () => _toggleSort(_LinkedPatientsSort.files),
+                  ),
+                ),
+                SizedBox(
+                  width: 92,
+                  child: _LinkedHeaderCell(
+                    label: txt('status'),
+                    active: _sort == _LinkedPatientsSort.status,
+                    ascending: _ascending,
+                    onPressed: () => _toggleSort(_LinkedPatientsSort.status),
+                  ),
+                ),
+                const SizedBox(width: 36),
+              ],
+            ),
+            Container(
+              height: 1,
+              color: theme.resources.dividerStrokeColorDefault,
+            ),
+            if (entries.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 28),
+                child: Text(
+                  dicomCtrl.linkedPatients.isEmpty
+                      ? txt('dicomNoLinks')
+                      : txt('dicomNoMatchingLinks'),
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: theme.resources.textFillColorSecondary,
+                  ),
+                ),
+              )
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    return _LinkedPatientRow(
+                      dicomId: entry.key,
+                      apexoId: entry.value,
+                    );
+                  },
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+enum _LinkedPatientsSort { dicomId, patient, files, status }
+
+class _LinkedHeaderCell extends StatelessWidget {
+  const _LinkedHeaderCell({
+    required this.label,
+    required this.active,
+    required this.ascending,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool active;
+  final bool ascending;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return IconButton(
+      onPressed: onPressed,
+      icon: Row(
+        children: [
+          if (active)
+            Icon(
+              ascending ? FluentIcons.sort_up : FluentIcons.sort_down,
+              size: 12,
+              color: theme.accentColor,
+            ),
+          Expanded(
+            child: Text(
+              label,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                color: active
+                    ? theme.accentColor
+                    : theme.resources.textFillColorSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1238,39 +1443,106 @@ class _LinkedPatientRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
     final apexoPatient = patients.get(apexoId);
-    final apexoName = apexoPatient?.title ?? txt("dicomPatientDeleted");
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+    final apexoName = apexoPatient?.title ?? txt('dicomPatientDeleted');
+    final linked = apexoPatient != null;
+    final statusColor = linked ? Colors.green : Colors.red;
+    final importedFileCount = dicomLinks.importedFileCountFor(dicomId);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 4),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: theme.resources.dividerStrokeColorDefault,
+            width: 0.6,
+          ),
+        ),
+      ),
       child: Row(
         children: [
-          Icon(WindowsIcons.folder,
-              size: 14,
-              color: FluentTheme.of(context).resources.textFillColorDisabled),
-          const SizedBox(width: 8),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Tooltip(
+              message: dicomId,
+              child: Text(
+                dicomId,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ),
+          Expanded(
+            child: Row(
               children: [
-                Text('$dicomId → $apexoName',
-                    style: const TextStyle(fontSize: 13)),
-                if (apexoPatient == null)
-                  Text(txt("dicomPatientDeleted_desc"),
+                Icon(
+                  linked ? FluentIcons.contact : FluentIcons.warning,
+                  size: 13,
+                  color: statusColor,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Tooltip(
+                    message: apexoName,
+                    child: Text(
+                      apexoName,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                          fontSize: 11, color: Colors.red.withAlpha(180))),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: linked
+                            ? theme.resources.textFillColorPrimary
+                            : statusColor,
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          Button(
-            onPressed: () => dicomCtrl.unlinkPatient(dicomId),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(FluentIcons.remove_link, size: 12),
-                const SizedBox(width: 6),
-                Txt(txt("dicomUnlink")),
-              ],
+          SizedBox(
+            width: 100,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Tooltip(
+                message: '$importedFileCount ${txt('dicomFiles')}',
+                child: Text(
+                  importedFileCount.toString(),
+                  style: const TextStyle(fontSize: 12),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 92,
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                decoration: BoxDecoration(
+                  color: statusColor.withAlpha(24),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  txt(linked ? 'dicomLinkActive' : 'dicomLinkBroken'),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: statusColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 36,
+            child: Tooltip(
+              message: txt('dicomUnlink'),
+              child: IconButton(
+                icon: const Icon(FluentIcons.remove_link, size: 13),
+                onPressed: () => dicomCtrl.unlinkPatient(dicomId),
+              ),
             ),
           ),
         ],

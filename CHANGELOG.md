@@ -1,3 +1,21 @@
+### ____0.14.1____
+
+- New Features & Enhancements
+    - **DICOM / RVG Hardening**: Improved scan caching, patient matching, automatic imports, appointment reuse, DICOM identity handling, and linked-patient management.
+    - **Linked Patient Management**: Added search, deleted-link filtering, sortable columns, active/broken status indicators, unlink actions, and per-patient imported-file counts.
+    - **DICOM Viewer & File Sync**: Improved original/preview upload deduplication, companion-file deletion, deferred uploads, conflict reconciliation, and stale-file healing.
+    - **HIPAA & GDPR Planning**: Added a compliance planning document covering patient data, DICOM metadata, AI processing, and required safeguards.
+
+- Testing & Developer Experience
+    - Added extensive deterministic tests for DICOM scanning, approval, rollback, registry persistence and concurrency, controller lifecycle, file synchronization, deferred uploads, conflict merging, and localization.
+    - Removed verbose per-file DICOM scan debug output from normal test and application logs.
+
+- Bug Fixes
+    - Fixed DICOM approval rollback and retry behavior so failed files remain discoverable.
+    - Fixed blank-patient batch collisions and unified DICOM upload identity handling across importer and remote sync.
+    - Fixed file-only deferred uploads, authoritative remote file reconciliation, and DICOM original/preview cleanup.
+    - Updated `dicom_toolkit` to 0.2.8.
+
 ### ____0.14.0____
 
 - New Features & Enhancements

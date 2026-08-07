@@ -46,7 +46,7 @@ dependencies:
   xml: ^6.5.0
   record: ^6.2.1
   shamsi_date: ^1.0.3
-  dicom_toolkit: ^0.2.7
+  dicom_toolkit: ^0.2.8
 
 dependency_overrides:
   intl: 0.20.2

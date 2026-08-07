@@ -197,10 +197,10 @@ packages:
     dependency: "direct main"
     description:
       name: dicom_toolkit
-      sha256: "7cde1026fe70b442ec93b10f66ad4623a5c1bf3d8b99c5cf1a9a8b74c64fd0da"
+      sha256: "87c3466f922fbc194de5408977467eb478cc2de9f04a47cd870abc88b5826973"
       url: "https://pub.dev"
     source: hosted
-    version: "0.2.7"
+    version: "0.2.8"
   equatable:
     dependency: transitive
     description:

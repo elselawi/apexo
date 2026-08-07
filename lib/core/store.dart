@@ -346,20 +346,24 @@ class Store<G extends Model> {
       });
 
       // Second pass: async field-level merge for each conflict.
-      final pendingUploadsAll =
-          filenamesFromDeferred(deferred).where((f) => f.isNotEmpty).toSet();
+      // Pending uploads are row-scoped: the same filename can legitimately
+      // be queued for different appointments and must not protect a file
+      // reference on the wrong row.
       for (final c in conflictsFound) {
         final localJson =
             jsonDecode(await local!.get(c.dfID)) as Map<String, dynamic>;
         final remoteJson = jsonDecode(c.remoteData) as Map<String, dynamic>;
         final serverFiles = remote!.fullNamesCache[c.dfID] ?? const <String>[];
+        final pendingUploads = filenamesFromDeferredForRow(deferred, c.dfID)
+            .where((f) => f.isNotEmpty)
+            .toSet();
 
         final mergedJson = mergeConflict(
           localJson: localJson,
           remoteJson: remoteJson,
           localWins: c.localWins,
           serverFiles: serverFiles,
-          pendingUploads: pendingUploadsAll,
+          pendingUploads: pendingUploads,
         );
 
         final mergedStr = jsonEncode(mergedJson);
@@ -386,19 +390,35 @@ class Store<G extends Model> {
       Map<String, String> toRemoteWrite = {};
 
       final List<Future Function()> fileHandling = [];
-      // Track FILE keys whose upload succeeds so we can safely clear
+      // Track FILE keys whose operation succeeds so we can safely clear
       // them at the end without wiping re-queued failure entries.
       final succeededFileKeys = <String>{};
 
       for (var entry in deferred.entries) {
         if (entry.key.startsWith("FILE")) {
-          List<String> deferredFile = entry.key.split("||");
+          final deferredFile = entry.key.split("||");
+          // Uploads have FILE||row||path||filename[||retries]. Deletes use
+          // FILE||row||filename. Ignore malformed entries rather than
+          // allowing one corrupt queue key to abort the entire sync pass.
+          if (!isValidDeferredFileKey(entry.key, entry.value)) {
+            logger('Deferred file: discarding malformed key "${entry.key}"',
+                null, 1);
+            succeededFileKeys.add(entry.key);
+            continue;
+          }
           final bool upload = entry.value == 1;
           final String rowID = deferredFile[1];
           final String pathOrName = deferredFile[2];
-          final String filename =
-              deferredFile.length >= 4 ? deferredFile[3] : "";
+          final String filename = upload ? deferredFile[3] : "";
           final int retries = parseDeferredRetries(entry.key);
+          if (retries < 0) {
+            logger(
+                'Deferred file: discarding negative retry key "${entry.key}"',
+                null,
+                1);
+            succeededFileKeys.add(entry.key);
+            continue;
+          }
           const maxRetries = 5;
           final newKey = buildDeferredRetryKey(entry.key, retries + 1);
 
@@ -418,23 +438,26 @@ class Store<G extends Model> {
                 return;
               }
 
-              MultipartFile multipart;
-              if (!pathOrName.startsWith("http")) {
-                multipart = await MultipartFile.fromPath(
-                  "imgs+",
-                  pathOrName,
-                  filename: filename,
-                );
-              } else {
-                multipart = MultipartFile.fromBytes(
-                  "imgs+",
-                  (await http.get(Uri.parse(
-                          'https://imgs.apexo.app/?url=${Uri.encodeComponent(pathOrName)}')))
-                      .bodyBytes,
-                  filename: filename,
-                );
-              }
               try {
+                final MultipartFile multipart;
+                if (pathOrName.startsWith("http") ||
+                    pathOrName.startsWith("blob:")) {
+                  final uri = pathOrName.startsWith("blob:")
+                      ? Uri.parse(pathOrName)
+                      : Uri.parse(
+                          'https://imgs.apexo.app/?url=${Uri.encodeComponent(pathOrName)}');
+                  multipart = MultipartFile.fromBytes(
+                    "imgs+",
+                    (await http.get(uri)).bodyBytes,
+                    filename: filename,
+                  );
+                } else {
+                  multipart = await MultipartFile.fromPath(
+                    "imgs+",
+                    pathOrName,
+                    filename: filename,
+                  );
+                }
                 final pbName = await remote!.uploadImage(
                   rowID: rowID,
                   filename: filename,
@@ -468,6 +491,7 @@ class Store<G extends Model> {
               }
             } else {
               await remote!.deleteImage(rowID, pathOrName);
+              succeededFileKeys.add(entry.key);
             }
           });
         } else {
@@ -498,8 +522,12 @@ class Store<G extends Model> {
         await deferredPush.clearByStore(remote!.storeName);
       }
 
-      // when all json related updates are done, we can handle files
-      await Future.wait(fileHandling.map((f) => f()));
+      // When all JSON-related updates are done, handle files serially. Each
+      // failed upload updates the shared deferred map; running these in
+      // parallel can cause one failure to overwrite another failure's retry.
+      for (final handleFile in fileHandling) {
+        await handleFile();
+      }
 
       // Clean up deferred entries that were successfully processed.
       // - Non-FILE entries were handled via toRemoteWrite above.
@@ -907,10 +935,13 @@ class Store<G extends Model> {
       }
     }
 
-    // Defer: "FILE||{rowID}||{path}||{filename}||{retries}" → 1 (upload)
+    // Defer: "FILE||{rowID}||{path}||{filename}||{retries}" → 1 (upload).
+    // Preserve an XFile's path when no native filesystem path was supplied;
+    // this is required for blob/web uploads to remain retryable.
+    final deferredPath = path ?? file?.path ?? '';
     await local!.putDeferred({
       ...lastDeferred,
-      "FILE||$rowID||${path ?? ''}||$filename||0": 1,
+      "FILE||$rowID||$deferredPath||$filename||0": 1,
     });
     deferredPresent = true;
     onSyncEnd?.call();
@@ -933,28 +964,29 @@ class Store<G extends Model> {
   /// upload failure (retries exhausted or local file deleted).
   void _cleanDanglingFileRef(String rowID, String filename) {
     final model = observableMap.docs[rowID];
-    if (model == null) return;
-    final json = model.toJson();
-    var changed = false;
-    for (final field in ['imgs', 'dcmImgs']) {
-      final list = (json[field] as List?)?.cast<String>();
-      if (list != null && list.remove(filename)) {
-        if (list.isEmpty) {
-          json.remove(field);
-        } else {
-          json[field] = list;
+    if (model != null) {
+      final json = model.toJson();
+      var changed = false;
+      for (final field in ['imgs', 'dcmImgs']) {
+        final list = (json[field] as List?)?.cast<String>();
+        if (list != null && list.remove(filename)) {
+          if (list.isEmpty) {
+            json.remove(field);
+          } else {
+            json[field] = list;
+          }
+          changed = true;
         }
-        changed = true;
       }
-    }
-    if (changed) {
-      observableMap.set(modeling(json));
+      if (changed) {
+        observableMap.set(modeling(json));
+      }
     }
     // If this was a DICOM file, notify listeners so the import registry
     // can be cleared — otherwise the file stays locked as "imported" and
     // never re-appears in the pending list.
     if (_isDcmFile(filename)) {
-      for (final cb in onFileDeadLettered) {
+      for (final cb in List<void Function(String)>.from(onFileDeadLettered)) {
         cb(filename);
       }
     }
@@ -1034,7 +1066,32 @@ class Store<G extends Model> {
   @visibleForTesting
   bool debugIsDcmFile(String name) => _isDcmFile(name);
 
+  @visibleForTesting
+  Future<SyncResult> debugSyncTry() => _syncTry();
+
   // ── Static helpers (extracted from _syncTry / _healDanglingDcmImgs) ─
+
+  /// Returns whether a deferred FILE key has a supported shape and value.
+  /// Uploads use `FILE||rowID||path||filename[||retries]`; deletes use
+  /// `FILE||rowID||filename` and carry value 0.
+  @visibleForTesting
+  static bool isValidDeferredFileKey(String key, int value) {
+    final parts = key.split('||');
+    if (!key.startsWith('FILE||') || parts.length < 3 || parts[1].isEmpty) {
+      return false;
+    }
+    if (value == 0) return parts.length == 3 && parts[2].isNotEmpty;
+    if (value != 1 ||
+        (parts.length != 4 && parts.length != 5) ||
+        parts[2].isEmpty ||
+        parts[3].isEmpty) {
+      return false;
+    }
+    if (parts.length == 5 && (int.tryParse(parts[4]) ?? -1) < 0) {
+      return false;
+    }
+    return true;
+  }
 
   /// Returns the retry count embedded in a deferred FILE key, or 0 for
   /// legacy 4-segment keys.  Format: `FILE||rowID||path||filename||retries`.
@@ -1069,12 +1126,26 @@ class Store<G extends Model> {
   /// are currently queued for upload.
   @visibleForTesting
   static Set<String> filenamesFromDeferred(Map<String, int> deferred) {
-    return deferred.keys
-        .where((k) => k.startsWith('FILE') && (deferred[k] ?? 0) == 1)
-        .map((k) {
-      final parts = k.split('||');
-      return parts.length >= 4 ? parts[3] : '';
-    }).toSet();
+    return deferred.entries
+        .where((entry) => isValidDeferredFileKey(entry.key, entry.value))
+        .where((entry) => entry.value == 1)
+        .map((entry) => entry.key.split('||')[3])
+        .toSet();
+  }
+
+  /// Returns deferred upload filenames belonging to one model row.
+  ///
+  /// Cleanup must scope this check to the appointment being inspected. A
+  /// filename queued for another row must not protect a missing file here.
+  static Set<String> filenamesFromDeferredForRow(
+      Map<String, int> deferred, String rowID) {
+    return deferred.entries
+        .where((entry) =>
+            isValidDeferredFileKey(entry.key, entry.value) &&
+            entry.value == 1 &&
+            entry.key.startsWith('FILE||$rowID||'))
+        .map((entry) => entry.key.split('||')[3])
+        .toSet();
   }
 
   /// Field names that store image filenames in the model JSON.  These are
@@ -1228,13 +1299,19 @@ class Store<G extends Model> {
     // files in one list.  Filter to the relevant subtype.
     final serverRelevant = serverFiles
         .where(isDcm ? _isDcmFileStatic : _isNotDcmFileStatic)
+        .map((name) => name.toLowerCase())
         .toSet();
+    final pendingUploadNames =
+        pendingUploads.map((name) => name.toLowerCase()).toSet();
 
     final kept = <String>[];
     for (final name in candidates) {
       // Keep if the server actually has the file, or if it's pending
-      // upload (deferred FILE entry not yet processed).
-      if (serverRelevant.contains(name) || pendingUploads.contains(name)) {
+      // upload (deferred FILE entry not yet processed). PocketBase filenames
+      // are treated case-insensitively throughout the DICOM paths.
+      final lowerName = name.toLowerCase();
+      if (serverRelevant.contains(lowerName) ||
+          pendingUploadNames.contains(lowerName)) {
         kept.add(name);
       }
     }

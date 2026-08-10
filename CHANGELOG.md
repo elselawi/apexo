@@ -1,5 +1,8 @@
 ### ____0.15.0____
 
+- New Features & Enhancements
+    - **Automatic Server Schema Reconciliation**: On administrator sign-in the app now safely applies the latest PocketBase collection definitions (rules, fields) to existing clinics via a non-destructive, version-gated schema import that runs once per app release per clinic. This is the mechanism that delivers rule changes — such as the patient portal scoping — to already-installed clinics.
+
 - Security & Compliance
     - **Patient Portal Access Scoping**: The patient-facing `public` view is now scoped server-side to a required `pid` query parameter — a patient can only ever retrieve their own appointments, and the full appointment list can no longer be enumerated. Patient identifiers taken from links/QR codes are strictly validated to block filter injection. Existing links and QR codes keep working unchanged.
 

@@ -225,3 +225,9 @@ const ruleEitherLoggedOrSettings =
 /// instead of a client-supplied filter that anyone could omit or alter.
 const rulePublicPatientScoped =
     "@request.query.pid != \"\" && pid = @request.query.pid";
+
+/// Bump this whenever the PocketBase collection definitions in this file
+/// change (rules, fields, indexes). On admin login the app re-imports the
+/// schema (pure upsert — never deletes) when this version is newer than the
+/// version last applied for the clinic.
+const int schemaVersion = 1;

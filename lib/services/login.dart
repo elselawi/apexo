@@ -290,6 +290,19 @@ class _LoginService extends ObservablePersistingObject {
           throw Exception("Error while creating the profile collections: $e");
         }
 
+        // Reconcile the server schema with the app's current collection
+        // definitions (rules/fields) when an admin is logged in. This is
+        // what ships rule changes to existing clinics. Pure upsert — it can
+        // never delete anything, and a failure never blocks login.
+        try {
+          if (isAdmin) {
+            loginCtrl.loadingIndicator("Updating server schema");
+            await reconcileSchema(pb!, clinicServer: url);
+          }
+        } catch (e, s) {
+          logger("Schema reconcile failed (continuing login): $e", s);
+        }
+
         // notifications relay
         loginCtrl.loadingIndicator("Initializing notifications");
         try {

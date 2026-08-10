@@ -239,6 +239,26 @@ void main() {
       expect(loginCtrl.loadingPatientSide(), isFalse);
     });
 
+    test('malicious patientID is rejected before any HTTP request', () async {
+      var requests = 0;
+      final side = PatientSide(
+        server: 'https://clinic.example',
+        name: 'Patient',
+        patientID: 'abc" OR 1=1 --',
+        relayKey: 'relay',
+        httpGet: (_) async {
+          requests++;
+          return http.Response('{}', 200);
+        },
+      );
+
+      await side.activate();
+
+      expect(requests, 0);
+      expect(loginCtrl.loginError(), 'Invalid patient link');
+      expect(loginCtrl.loadingPatientSide(), isFalse);
+    });
+
     test('successful activation parses API data and does not duplicate links',
         () async {
       var request = 0;

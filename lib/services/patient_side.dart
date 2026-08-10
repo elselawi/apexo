@@ -157,6 +157,15 @@ class PatientSide extends ObservablePersistingObject {
 
     loginCtrl.loginError("");
 
+    // The patient ID comes from an untrusted link/QR and is interpolated
+    // into a PocketBase filter + query param. Restrict it to a safe
+    // identifier charset so it can never inject filter syntax.
+    if (!RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(patientID)) {
+      loginCtrl.loginError("Invalid patient link");
+      loginCtrl.loadingPatientSide(false);
+      return;
+    }
+
     try {
       // Initialize deferred push storage early so stores can safely
       // defer push notifications throughout the rest of activate().
@@ -191,7 +200,7 @@ class PatientSide extends ObservablePersistingObject {
 
       // getting appointments
       final appointmentsRes = await _httpGet(Uri.parse(
-          "$server/api/collections/public/records?page=1&perPage=9999&filter=pid%3D%22$patientID%22"));
+          "$server/api/collections/public/records?page=1&perPage=9999&filter=pid%3D%22$patientID%22&pid=$patientID"));
       if (activation != _activationGeneration) return;
 
       final appointmentsJson = jsonDecode(appointmentsRes.body);

@@ -142,9 +142,9 @@ void main() {
       expect(q, contains('FROM data'));
     });
 
-    test('is a read-only view with intentionally empty public rules', () {
-      expect(publicCollectionImport.listRule, '');
-      expect(publicCollectionImport.viewRule, '');
+    test('is a read-only view scoped to a required pid query param', () {
+      expect(publicCollectionImport.listRule, rulePublicPatientScoped);
+      expect(publicCollectionImport.viewRule, rulePublicPatientScoped);
       expect(publicCollectionImport.createRule, isNull);
       expect(publicCollectionImport.updateRule, isNull);
       expect(publicCollectionImport.deleteRule, isNull);

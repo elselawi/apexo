@@ -96,8 +96,8 @@ final dataCollectionImport = CollectionModel(
 final publicCollectionImport = CollectionModel(
   name: "public",
   type: "view",
-  listRule: "",
-  viewRule: "",
+  listRule: rulePublicPatientScoped,
+  viewRule: rulePublicPatientScoped,
   createRule: null,
   updateRule: null,
   deleteRule: null,
@@ -218,3 +218,10 @@ const ruleLoggedUsersExceptForSettings =
     "@request.auth.id != \"\" && store != \"settings_global\"";
 const ruleEitherLoggedOrSettings =
     "@request.auth.id != \"\" || store = \"settings_global\"";
+
+/// The patient portal view is only reachable when the request carries a
+/// `pid` query param matching the row's patient ID. The patient ID thus
+/// becomes an unguessable, patient-scoped capability (server-enforced)
+/// instead of a client-supplied filter that anyone could omit or alter.
+const rulePublicPatientScoped =
+    "@request.query.pid != \"\" && pid = @request.query.pid";

@@ -1,3 +1,11 @@
+### ____0.15.0____
+
+- Security & Compliance
+    - **Patient Portal Access Scoping**: The patient-facing `public` view is now scoped server-side to a required `pid` query parameter — a patient can only ever retrieve their own appointments, and the full appointment list can no longer be enumerated. Patient identifiers taken from links/QR codes are strictly validated to block filter injection. Existing links and QR codes keep working unchanged.
+
+- Bug Fixes
+    - Fixed the patient portal's appointment view being publicly queryable without patient scoping.
+
 ### ____0.14.1____
 
 - New Features & Enhancements

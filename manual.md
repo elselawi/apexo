@@ -25,8 +25,8 @@ Using the link above (which is an affiliate link) you can get 200$ of credit in 
 
 3. After creating the droplet, you must allow up to 3 minutes for the server to start.
 
-4. Next, head to your droplet page and click on "access" then "launch droplet console".
-    ![Access](https://raw.githubusercontent.com/elselawi/apexo/master/docs/manual_imgs/access.png)
+4. Next, head to your droplet page and click on the "Web Console" button at the top right.
+    ![Web Console](https://raw.githubusercontent.com/elselawi/apexo/master/docs/manual_imgs/web-console.png)
 
 5. Once you have access to the console, run the following command:
     ```

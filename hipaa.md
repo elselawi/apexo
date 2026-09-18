@@ -106,24 +106,47 @@ The **Health Insurance Portability and Accountability Act** sets standards for p
 
 ### GDPR (European Union)
 
-The **General Data Protection Regulation** applies to any organization processing personal data of EU residents. Key principles:
+The **General Data Protection Regulation** applies to **any organization processing personal data of EU residents** — including a US clinic with a single EU patient, and Apexo itself where it processes data on behalf of clinics. GDPR is therefore a **parallel compliance track, not an add-on to HIPAA**: every safeguard below is evaluated against both regimes.
 
-| Principle | Requirement |
-|-----------|-------------|
-| **Lawfulness, Fairness, Transparency** | Clear consent, privacy notices |
-| **Purpose Limitation** | Data collected for specified, explicit purposes |
-| **Data Minimization** | Only collect what's necessary |
-| **Accuracy** | Keep data accurate and up to date |
-| **Storage Limitation** | Don't keep data longer than needed |
-| **Integrity & Confidentiality** | Appropriate security measures |
-| **Accountability** | Demonstrate compliance |
+**Key scope fact for Apexo:** health data is a **special category** under **Art. 9** (data concerning health), which is *more* restricted than ordinary personal data — it requires a lawful basis from Art. 9(2) (most commonly **explicit consent** or **provision of health care**, Art. 9(2)(h)) plus strict security under **Art. 32**.
+
+**Principles (Art. 5):**
+
+| Principle | Requirement | Apexo Application |
+|-----------|-------------|-------------------|
+| **Lawfulness, Fairness, Transparency** | A lawful basis (Art. 6) for each processing activity; privacy notices | Consent tracking for photos, AI, portal, marketing (Phase 4.2) |
+| **Purpose Limitation** | Data collected for specified, explicit purposes | AI/portal processing purposes must be documented and limited |
+| **Data Minimization** | Only collect what's necessary | Selective/field-level sync (Phase 4.1); minimize push payloads (Phase 5.2) |
+| **Accuracy** | Keep data accurate and up to date | Right to Rectification (Art. 16) via portal |
+| **Storage Limitation** | Don't keep data longer than needed | Retention policies (Phase 4.3) |
+| **Integrity & Confidentiality** | Appropriate technical measures (Art. 32) | Encryption at rest/in transit (Phase 1) |
+| **Accountability** | Demonstrate compliance (Art. 5(2)) | Audit logging (Phase 2), RoPA (Art. 30), DPIA (Art. 35) |
+
+**Lawful Bases (Art. 6) — preliminary mapping for Apexo processing activities:**
+
+| Processing Activity | Primary Lawful Basis | Notes |
+|---------------------|---------------------|-------|
+| Core clinical records & scheduling | **Contract / health care provision (Art. 6(1)(b) + Art. 9(2)(h))** | Treatment relationship |
+| Photo storage & AI processing | **Explicit consent (Art. 9(2)(a))** | Consent tracking required (Phase 4.2) |
+| Patient web portal | **Explicit consent** | Portal access must be consent-gated and revocable |
+| Staff accounts & permissions | **Contract / legitimate interest (Art. 6(1)(f))** | Document in RoPA |
+| Marketing communications | **Consent** (ePrivacy) | Opt-in, revocable |
+| Error monitoring (Sentry) | **Legitimate interest** | Redact PHI; document in RoPA |
 
 **Key Data Subject Rights:**
-- Right to Access (Art. 15)
+- Right to Access (Art. 15) — including a copy of the data and processing info
 - Right to Rectification (Art. 16)
 - Right to Erasure / "Right to be Forgotten" (Art. 17)
-- Right to Data Portability (Art. 20)
+- Right to Data Portability (Art. 20) — structured, machine-readable
 - Right to Object (Art. 21)
+- Right not to be subject to automated decision-making (Art. 22) — relevant to AI features
+
+**Operational Obligations:**
+- **Records of Processing Activities (RoPA, Art. 30):** document what Apexo processes, why, and with whom
+- **DPIA (Art. 35):** required for high-risk processing — health data processing almost always triggers one, especially AI and the patient portal
+- **Data Protection Officer (Art. 37):** may be required for clinics processing health data at scale; Apexo should provide the documentation to support it
+- **Breach notification (Art. 33/34):** notify the supervisory authority within **72 hours**; inform data subjects without undue delay
+- **International transfers (Art. 44–49):** any transfer of EU personal data outside the EEA requires adequacy or **Standard Contractual Clauses (SCCs)** — see Gap §14
 
 ---
 
@@ -175,6 +198,8 @@ The `logger()` function in `lib/utils/logger.dart` only sends exceptions to Sent
 | **Patient portal** | URL format: `https://web.apexo.app/{base64(patientID|name|server|relayKey)}`. No authentication. | Anyone with the URL has full access. No expiration. No access revocation. |
 | **Server admin** | PocketBase `_superusers` have full access. Admin panel at `https://SERVER/_/`. | No MFA for admin panel. No audit of admin actions. |
 
+**GDPR overlay:** dental health records are **special-category data (Art. 9)**. The open `public` collection therefore violates not just HIPAA but GDPR Art. 5 (lawfulness), Art. 25 (data protection by design), and Art. 32 (security of processing). The `Perm` system must also enforce **purpose limitation** — e.g., a receptionist must never be able to read clinical notes for which there is no clinical need.
+
 **PocketBase rules detail** (`lib/utils/constants.dart` lines 217-219):
 ```dart
 const ruleLoggedUsersExceptForSettings =
@@ -194,6 +219,8 @@ The push notification system sends patient-identifiable data through:
 The `PushData` class (`lib/services/notifications/model_push_data.dart`) includes `readableIdentifier` (patient/appointment title), `updatedFields`, `oldVals`, and `newVals`. These are plain JSON — not encrypted, not minimized.
 
 The push relay server (`push_relay.dart`) sends the full `PushData.toJson()` payload.
+
+**GDPR overlay:** transmitting full identifiers over push violates **data minimization (Art. 5(1)(c))** and exposes data to sub-processors (Cloudflare, Google) without documented safeguards — see Gap §14 on transfers.
 
 ### 6. 🟡 AI Services & Third-Party Processing — HIGH
 
@@ -272,6 +299,35 @@ The following security measures are already in place:
 | Offline-first resilience | Data accessible offline; syncs when connectivity returns |
 | Self-hosted backend | Clinics own their data — no vendor lock-in |
 
+### 13. 🟡 GDPR Lawful Basis & Consent — HIGH
+
+| Issue | Detail |
+|-------|--------|
+| No lawful-basis mapping | No documented Art. 6 basis for each processing activity (clinical, photos, AI, portal, marketing, monitoring) |
+| No consent management | No record of *when* or *for what* a patient consented; no withdrawal mechanism |
+| No consent proof | No timestamped, immutable record of consent — required for the Art. 9(2)(a) explicit-consent basis |
+| ePrivacy | No consent for non-essential cookies/storage on the web portal |
+| Portal = no basis | The unauthenticated patient portal (see Gap §4) processes PHI with **no lawful basis at all** |
+
+### 14. 🟡 GDPR International Data Transfers — HIGH
+
+| Issue | Detail |
+|-------|--------|
+| No transfer analysis | PHI of EU residents flows to PocketBase (server location = clinic's choice), Cloudflare Workers (US), Firebase/Google (US), Sentry (US) |
+| No SCCs | No Standard Contractual Clauses or adequacy assessment documented for US-based sub-processors |
+| No data-subprocessor register | No per-subprocessor record of purpose, location, and safeguards (feeds the RoPA) |
+| Self-hosted ambiguity | Apexo can't control where clinics host — but must ship SCC/adequacy **guidance and templates** for clinic admins |
+
+### 15. 🟡 GDPR Operational Compliance (DPIA, DPO, RoPA) — MEDIUM
+
+| Issue | Detail |
+|-------|--------|
+| No RoPA | No Art. 30 Record of Processing Activities — the foundational accountability artifact |
+| No DPIA screening | Health data (Art. 9) + AI + portal = high-risk processing; no DPIA exists or is planned in the current plan |
+| No DPO guidance | No guidance on when a clinic needs an Art. 37 DPO and what documentation to prepare |
+| No Art. 22 analysis | AI features may constitute automated decision-making — no assessment of whether they produce legal/significant effects |
+| No sub-processor register | No consolidated list mapping each sub-processor to purpose, location, and safeguard |
+
 ---
 
 ## Implementation Plan
@@ -290,6 +346,12 @@ Before implementing any security features, establish the foundation.
 - [ ] Document the **data retention policy**
 - [ ] Create a **Business Associate Agreement (BAA)** for the AI Worker service
 - [ ] Publish a **list of sub-processors** (PocketBase, Firebase/Google, Cloudflare, Sentry)
+- [ ] Create the **GDPR Record of Processing Activities (RoPA, Art. 30)** — one entry per processing activity: purpose, lawful basis, data categories, recipients, retention, safeguards
+- [ ] Perform a **GDPR lawful-basis mapping (Art. 6)** for every processing activity (see Regulatory Context)
+- [ ] Run **DPIA screening (Art. 35)** for high-risk processing: health records, AI, patient portal, transfers — write full DPIAs where triggered
+- [ ] Draft **Standard Contractual Clauses (SCCs)** and adequacy guidance for US-based sub-processors (Cloudflare, Google, Sentry)
+- [ ] Add **DPO guidance** for clinics (when Art. 37 applies, and what Apexo documentation supports it)
+- [ ] Add **Art. 22 automated-decision-making assessment** for AI features
 
 #### 0.2 Technical Foundation
 
@@ -373,6 +435,7 @@ These are the highest-risk items that must be addressed first.
 5. Allow patient to revoke portal access
 6. Rate-limit portal access attempts
 7. Add a privacy notice on the portal page
+8. **GDPR**: gate portal activation on **explicit consent** (Art. 9(2)(a)); add a consent-withdrawal action that immediately revokes the token; log the consent event (Phase 2.1)
 
 ### Phase 2: Audit & Accountability (Week 4–6)
 
@@ -407,6 +470,12 @@ These are the highest-risk items that must be addressed first.
 5. Add audit log viewer in Settings (admin-only)
 6. Add audit log export functionality
 
+**GDPR overlay (accountability, Art. 5(2) / Art. 30):**
+7. Log **consent events** — grant, scope, withdrawal, timestamped and immutable (needed for the Art. 9(2)(a) explicit-consent basis)
+8. Log **data-subject requests** — access, rectification, erasure, portability, objection — with status and resolution (Art. 12–21)
+9. Log **erasure propagation** — which stores/devices/backups were purged and when
+10. Log **AI processing events** — what was sent, for which lawful basis, and the retention window
+
 #### 2.2 PHI-Safe Logging 🔴
 
 **Files to modify:**
@@ -427,6 +496,7 @@ These are the highest-risk items that must be addressed first.
 - Log all permission changes
 - Log all account creation/deletion
 - Log all password changes
+- Record **session/device metadata** (Art. 15 access): store enough to tell a data subject *which devices* hold their data and *when sessions were active*, and to revoke/erase a specific device on request
 
 ### Phase 3: Access Control Hardening (Week 6–8)
 
@@ -454,6 +524,7 @@ These are the highest-risk items that must be addressed first.
    - **Level 2 (full):** Can read/write all fields
 3. Implement field masking in `Model.toJson()` based on viewer permissions
 4. Implement data filtering in Store queries
+5. **GDPR purpose limitation**: encode role → purpose → fields so access is tied to a documented purpose (e.g., a receptionist can't read clinical notes with no clinical need)
 
 #### 3.3 PocketBase Server Hardening 🟡
 
@@ -484,21 +555,28 @@ These are the highest-risk items that must be addressed first.
 2. **On-demand loading**: Load dental charts and photos only when viewing a patient
 3. Implement **pagination** improvements for large datasets
 
-#### 4.2 GDPR Data Subject Rights 🟡
+#### 4.2 GDPR Data Subject Rights & Operational Compliance 🟡
 
 **Implementation:**
-1. **Right to Access**: Create a "Download My Data" feature that exports all patient data in structured JSON format
-2. **Right to Erasure**: Create a "Delete Patient Data" feature with:
+1. **Right to Access (Art. 15)**: Create a "Download My Data" feature that exports all patient data in structured JSON format, plus a human-readable summary of *what* is processed, *why* (lawful basis), *by whom* (recipients), and *for how long* (retention)
+2. **Right to Erasure (Art. 17)**: Create a "Delete Patient Data" feature with:
    - Anonymization option (replace name with ID, clear contact info)
    - Full deletion option (hard delete from server and all devices)
    - Cascade deletion of appointments, photos, X-rays
-3. **Right to Portability**: Export in FHIR or openEHR-compatible format
-4. **Right to Rectification**: Allow patients to request corrections (via patient portal)
-5. **Consent Management**: Add consent tracking for:
+   - **Erasure propagation**: purge from Hive boxes on all synced devices, PocketBase, *and* backups within the retention window — audit each purge (see Phase 2.1)
+   - Time-boxed erasure SLA (e.g., ≤ 30 days) with a status tracker for data-subject requests
+3. **Right to Portability (Art. 20)**: Export in FHIR or openEHR-compatible format
+4. **Right to Rectification (Art. 16)**: Allow patients to request corrections (via patient portal)
+5. **Consent Management (Art. 7)**: Add consent tracking for:
    - Photo storage
    - AI processing
    - Patient portal access
    - Marketing communications
+   - Store consent as **timestamped, immutable audit entries** with scope, version of the notice, and withdrawal — never silently inferred
+6. **Lawful-basis enforcement**: gate each processing activity on its mapped Art. 6 basis (see Regulatory Context); block AI/photo/portal use when consent is absent or withdrawn
+7. **DPIA output (Art. 35)**: attach the completed DPIAs for AI, portal, and data transfers to the Settings → Compliance area for clinic admins
+8. **RoPA export (Art. 30)**: generate the clinic's record of processing activities from the actual configured integrations (sub-processors, purposes, retention) — kept current automatically
+9. **Automated decision-making (Art. 22)**: document that AI output is clinician-reviewed and not autonomous, with human-in-the-loop confirmation
 
 #### 4.3 Data Retention 🟡
 
@@ -509,6 +587,7 @@ These are the highest-risk items that must be addressed first.
    - Auto-delete sent messages/notifications after Z days
 2. Add retention policy configuration in Settings
 3. Implement scheduled cleanup tasks
+4. **GDPR storage limitation (Art. 5(1)(e))**: retention defaults must reflect the clinic's stated lawful basis (e.g., clinical/legal minimums), be configurable per category, and support erasure-on-request that overrides scheduled retention
 
 #### 4.4 Backup Encryption 🟡
 
@@ -558,8 +637,10 @@ These are the highest-risk items that must be addressed first.
    - Strip patient names from audio transcriptions before sending
    - Replace patient IDs with session tokens
    - Don't send full appointment JSON — only relevant fields
-5. Add clear **privacy notice** in-app when enabling AI services
+5. Add clear **privacy notice** in-app when enabling AI services — including the lawful basis (explicit consent), sub-processor identity, and retention
 6. Log all AI service usage for audit
+7. **GDPR transfer safeguards**: document SCCs/adequacy for the AI Worker and each sub-processor; surface them in the RoPA (Phase 4.2)
+8. **DPIA for AI (Art. 35)**: complete the DPIA covering transcription/scanning/assistant processing, including the Art. 22 human-in-the-loop analysis
 
 ### Phase 6: Monitoring & Incident Response (Week 12–14)
 
@@ -587,7 +668,7 @@ These are the highest-risk items that must be addressed first.
 **Implementation:**
 1. Create notification templates for data breaches
 2. Implement user notification mechanism (in-app + email)
-3. Document regulatory reporting timelines (HIPAA: 60 days; GDPR: 72 hours)
+3. Document regulatory reporting timelines (HIPAA: 60 days; GDPR: 72 hours to the supervisory authority under Art. 33, plus data-subject notification under Art. 34 when risk is high)
 
 ### Phase 7: Platform-Specific Security (Ongoing)
 
@@ -635,6 +716,11 @@ These are the highest-risk items that must be addressed first.
 - [ ] Security configuration guide for clinic admins
 - [ ] HIPAA compliance checklist for clinics
 - [ ] GDPR compliance guide for EU clinics
+- [ ] GDPR lawful-basis & consent notice templates (Art. 6/7)
+- [ ] DPIA template + completed examples (Art. 35)
+- [ ] RoPA template and maintenance guide (Art. 30)
+- [ ] SCC/adequacy guidance for US sub-processors (Art. 44–49)
+- [ ] Data-subject rights request handling guide (Art. 12–21)
 
 #### 8.3 Developer Documentation
 
@@ -687,6 +773,9 @@ These are the highest-risk items that must be addressed first.
 | 12 | Backup files unencrypted | LOW | MEDIUM | 🟡 P2 | Phase 4 |
 | 13 | No certificate pinning | LOW | MEDIUM | 🟢 P3 | Phase 5 |
 | 14 | No GDPR data subject rights | MEDIUM | MEDIUM | 🟡 P2 | Phase 4 |
+| 15 | No GDPR lawful basis / consent records | HIGH | HIGH | 🔴 P0 | Phase 4 |
+| 16 | No GDPR international transfer safeguards (SCCs) | MEDIUM | HIGH | 🟡 P1 | Phase 5 |
+| 17 | No DPIA / RoPA / DPO guidance (Art. 30/35/37) | MEDIUM | MEDIUM | 🟡 P2 | Phase 4 |
 
 ---
 
@@ -705,6 +794,8 @@ These are the highest-risk items that must be addressed first.
 | Phase 8: Documentation | Ongoing | — |
 
 **Total estimated effort: 14 weeks for core compliance + ongoing platform & documentation work.**
+
+> **GDPR note:** the GDPR operational track (RoPA, lawful-basis mapping, DPIA, SCCs — Phase 0.1) runs **in parallel** from day one and costs mostly documentation effort, not code. The GDPR code work is folded into Phases 1, 2, 4, and 5 above; it does **not** add a separate phase.
 
 ---
 
@@ -746,7 +837,7 @@ These are the highest-risk items that must be addressed first.
 
 ## Appendix B: Third-Party Services & Compliance Status
 
-| Service | Purpose | PHI Exposure | BAA/DPA | Mitigation |
+| Service | Purpose | PHI Exposure | BAA/DPA/SCC | Mitigation |
 |---------|---------|-------------|---------|------------|
 | **PocketBase** (self-hosted) | Backend database | ALL PHI stored | N/A (self-hosted) | Clinic's responsibility |
 | **Firebase Cloud Messaging** | Push notifications | Patient identifiers, appointment data | Google's BAA covers FCM | Minimize payload, encrypt |
@@ -755,6 +846,8 @@ These are the highest-risk items that must be addressed first.
 | **Sentry** | Error monitoring | Exception messages (may contain PHI) | BAA available (Enterprise) | Redact PHI before sending |
 | **S3 providers** (various) | File storage (photos, X-rays) | Photos, DICOM files | Depends on provider | Enforce server-side encryption |
 | **SMTP providers** | Email sending | Email content | Depends on provider | Minimize PHI in emails |
+
+**GDPR transfer note:** for EU residents' data, every row above is a *data transfer* that must be covered by adequacy or **SCCs (Art. 44–49)** and recorded in the RoPA (Phase 4.2). Cloudflare, Google, and Sentry are US-based; the clinic must hold the SCC addenda and the app must surface them to admins in Settings → Compliance.
 
 ---
 

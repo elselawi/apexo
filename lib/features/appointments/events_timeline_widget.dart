@@ -977,7 +977,7 @@ class _TimelineChipState extends State<TimelineChip> {
     );
   }
 
-  Widget _buildOperatorsFlyoutContent(BuildContext ctx, List ops) {
+  Widget _buildOperatorsFlyoutContent(BuildContext ctx, List<RecordModel> ops) {
     return StatefulBuilder(
       builder: (ctx, flyoutSetState) {
         final selectedIds = widget.item.operatorsIDs.toSet();
@@ -1017,7 +1017,7 @@ class _TimelineChipState extends State<TimelineChip> {
                       if (checked) {
                         widget.item.operatorsIDs.remove(op.id);
                       } else {
-                        widget.item.operatorsIDs.add(op.id as String);
+                        widget.item.operatorsIDs.add(op.id);
                       }
                       appointments.set(widget.item);
                       flyoutSetState(() {});
@@ -1035,7 +1035,7 @@ class _TimelineChipState extends State<TimelineChip> {
                             onChanged: (_) => toggle(),
                           ),
                           const SizedBox(width: 8),
-                          Text(accounts.name(op as RecordModel),
+                          Text(accounts.name(op),
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: checked

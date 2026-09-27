@@ -75,7 +75,16 @@ class WSVoiceTranscriptionService extends AIService {
 
   // Stream that consumers subscribe to for live state updates.
   final _streamCtrl = StreamController<TranscriptionSession>.broadcast();
-  Stream<TranscriptionSession> get stream => _streamCtrl.stream;
+
+  /// The broadcast stream of session updates.
+  ///
+  /// Held rather than handed out by a getter: `.stream` on a broadcast
+  /// controller returns a **new** object on every access, and
+  /// `live_transcription_button.dart` passes this straight to a `StreamBuilder`
+  /// inside `build()`. A `StreamBuilder` treats a different object as a
+  /// different stream, so a getter made it drop its subscription and re-subscribe
+  /// on every rebuild — losing whatever arrived in the gap.
+  late final Stream<TranscriptionSession> stream = _streamCtrl.stream;
 
   TranscriptionSession _session =
       const TranscriptionSession(state: TranscriptionState.idle);

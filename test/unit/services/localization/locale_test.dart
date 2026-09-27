@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:flutter_test/flutter_test.dart';

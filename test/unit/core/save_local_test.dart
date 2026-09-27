@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:io';
 import 'package:apexo/core/save_local.dart';
 import 'package:test/test.dart';

@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';

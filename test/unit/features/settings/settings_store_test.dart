@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';

@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:convert';
 
 import 'package:apexo/features/settings/settings_stores.dart';

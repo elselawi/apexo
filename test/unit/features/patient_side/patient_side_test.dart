@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:async';
 
 import 'package:apexo/services/patient_side.dart';

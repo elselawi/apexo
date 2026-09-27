@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:convert';
 import 'dart:io';
 

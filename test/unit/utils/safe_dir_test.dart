@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;

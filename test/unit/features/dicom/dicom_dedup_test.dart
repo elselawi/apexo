@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:io';
 
 import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';

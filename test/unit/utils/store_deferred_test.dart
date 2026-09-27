@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:io';
 
 import 'package:apexo/core/model.dart';

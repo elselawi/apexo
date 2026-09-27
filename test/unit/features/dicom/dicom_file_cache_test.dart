@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:convert';
 
 import 'package:apexo/services/dicom/dicom_file_cache.dart';

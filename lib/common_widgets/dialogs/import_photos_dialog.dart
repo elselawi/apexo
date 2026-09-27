@@ -85,7 +85,7 @@ class _ImportDialogState extends State<ImportDialog> {
         throw Exception(response.body);
       }
       if (!mounted) return;
-      final res = List<String>.from(jsonDecode(response.body));
+      final res = List<String>.from(jsonDecode(response.body) as List<dynamic>);
       if (mounted) Navigator.pop(context, res);
     } catch (e) {
       if (!mounted) return;

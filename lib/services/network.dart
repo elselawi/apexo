@@ -1,10 +1,6 @@
 import 'package:apexo/core/observable.dart';
 
 class _Network {
-  Map<String, void Function()> onOnline = {};
-  Map<String, void Function()> onOffline = {};
-  final isOnline = ObservableState(false);
-
   _Network() {
     isOnline.observe((_) {
       if (isOnline()) {
@@ -18,6 +14,9 @@ class _Network {
       }
     });
   }
+  Map<String, void Function()> onOnline = {};
+  Map<String, void Function()> onOffline = {};
+  final isOnline = ObservableState(false);
 }
 
 final network = _Network();

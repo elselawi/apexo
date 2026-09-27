@@ -18,23 +18,6 @@ class MouseEnabledScrollBehavior extends MaterialScrollBehavior {
 
 /// PageView for swiping through a list of images
 class EasyImageViewPager extends StatefulWidget {
-  final EasyImageProvider easyImageProvider;
-  final PageController pageController;
-  final bool doubleTapZoomable;
-  final bool infinitelyScrollable;
-
-  /// Callback for when the scale has changed, only invoked at the end of
-  /// an interaction.
-  final void Function(double)? onScaleChanged;
-
-  final Map<String, String>? drawings;
-  final List<String>? imageIds;
-  final void Function(String, String)? onSaveDrawing;
-  final bool isDrawingMode;
-  final bool showDrawings;
-  final Color selectedColor;
-  final bool isEraserMode;
-
   /// Create new instance, using the [easyImageProvider] to populate the [PageView],
   /// and the [pageController] to control the initial image index to display.
   /// The optional [doubleTapZoomable] boolean defaults to false and allows double tap to zoom.
@@ -53,6 +36,22 @@ class EasyImageViewPager extends StatefulWidget {
     this.selectedColor = const Color(0xFF000000),
     this.isEraserMode = false,
   });
+  final EasyImageProvider easyImageProvider;
+  final PageController pageController;
+  final bool doubleTapZoomable;
+  final bool infinitelyScrollable;
+
+  /// Callback for when the scale has changed, only invoked at the end of
+  /// an interaction.
+  final void Function(double)? onScaleChanged;
+
+  final Map<String, String>? drawings;
+  final List<String>? imageIds;
+  final void Function(String, String)? onSaveDrawing;
+  final bool isDrawingMode;
+  final bool showDrawings;
+  final Color selectedColor;
+  final bool isEraserMode;
 
   @override
   State<EasyImageViewPager> createState() => _EasyImageViewPagerState();

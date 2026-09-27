@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:pdf/widgets.dart' as pw;
 
-Future<void> printingQRCode(BuildContext context, String link, String title, String description) async {
+Future<void> printingQRCode(
+    BuildContext context, String link, String title, String description) async {
   // Generate QR code image for PDF
   final qrImage = await QrPainter(
     data: link,

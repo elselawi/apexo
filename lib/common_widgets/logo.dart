@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -32,7 +33,7 @@ class _AppLogoState extends State<AppLogo> {
   }
 
   void _onVersionTap() {
-    showChangelogDialog(context);
+    unawaited(showChangelogDialog(context));
   }
 
   @override
@@ -51,17 +52,24 @@ class _AppLogoState extends State<AppLogo> {
         padding: const EdgeInsets.all(8.0),
         child: GestureDetector(
           onTap: _onVersionTap,
-          child: Row(
-            children: [
-              Image.asset(
-                "assets/app_icon.png",
-                height: 50,
-              ),
-              const SizedBox(width: 5),
-              Text("Apexo", style: textStyle),
-              const SizedBox(width: 5),
-              Text(version, style: versionStyle),
-            ],
+          // `scaleDown`: the logo also sits in the navigation pane's header,
+          // and a pane that has gone compact (a panel open on a 1280px window)
+          // is narrower than the icon, the name and the version together. It
+          // used to overflow the row by ~99px there.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              children: [
+                Image.asset(
+                  "assets/app_icon.png",
+                  height: 50,
+                ),
+                const SizedBox(width: 5),
+                Text("Apexo", style: textStyle),
+                const SizedBox(width: 5),
+                Text(version, style: versionStyle),
+              ],
+            ),
           ),
         ),
       ),

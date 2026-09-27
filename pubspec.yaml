@@ -47,6 +47,9 @@ dependencies:
   record: ^6.2.1
   shamsi_date: ^1.0.3
   dicom_toolkit: ^0.2.8
+  # Imported directly by lib/services/g_audio_transcription.dart and
+  # lib/utils/ws_platform/*; named here to satisfy depend_on_referenced_packages.
+  web_socket_channel: ^2.4.0
 
 dependency_overrides:
   intl: 0.20.2

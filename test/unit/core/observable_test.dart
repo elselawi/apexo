@@ -633,7 +633,7 @@ class _PersistingTestObj extends ObservablePersistingObject {
 
   @override
   void fromJson(Map<String, dynamic> json) {
-    value = json['value'] ?? '';
+    value = json['value'] as String? ?? '';
   }
 
   @override
@@ -645,8 +645,8 @@ class MyClass extends Model {
   int age = 0;
 
   MyClass.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    name = json['name'] ?? name;
-    age = json['age'] ?? age;
+    name = json['name'] as String? ?? name;
+    age = json['age'] as int? ?? age;
   }
 
   @override

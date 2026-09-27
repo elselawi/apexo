@@ -65,23 +65,41 @@
 		#fcm-custom-container {
 			position: absolute;
 			z-index: 9999;
-			top: 20%;
+			/* Anchored to the bottom of the window, NOT to the middle of it.
+			   At `top: 20%` the prompt sat exactly over the app's command bar
+			   (search box, filters, screen actions): the container itself no
+			   longer swallows events, but the dialog inside it still took
+			   every click in its own bounds, so the toolbar was unusable until
+			   the prompt was answered — with no scrim to explain why. Bottom
+			   centre keeps it clear of the chrome. */
+			top: auto;
+			bottom: 24px;
 			left: 50%;
-			transform: translate(-50%, -50%);
+			transform: translateX(-50%);
 			display: none;
+			/* The container is a positioning box, not a click target: without
+			   this it sat over the app's own chrome (it is drawn above the
+			   Flutter glass pane) and swallowed every pointer event inside its
+			   bounds, so the app was unreachable until the prompt was dismissed.
+			   Only the dialog itself takes pointer events. */
+			pointer-events: none;
 			font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
 			animation: fluentFadeIn 0.2s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+		}
+
+		.fcm-dialog {
+			pointer-events: auto;
 		}
 
 		@keyframes fluentFadeIn {
 			0% {
 				opacity: 0;
-				transform: translate(-50%, calc(-50% + 20px));
+				transform: translateX(-50%) translateY(20px);
 			}
 
 			100% {
 				opacity: 1;
-				transform: translate(-50%, -50%);
+				transform: translateX(-50%) translateY(0);
 			}
 		}
 

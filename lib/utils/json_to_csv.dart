@@ -56,7 +56,7 @@ String jsonListToCsv(List<dynamic> data,
 }
 
 /// Recursively flattens JSON trees into a single-level map using reference passing.
-void _flatten(String path, dynamic value, Map<String, dynamic> out) {
+void _flatten(String path, Object? value, Map<String, dynamic> out) {
   if (value is Map) {
     for (final entry in value.entries) {
       final newPath =

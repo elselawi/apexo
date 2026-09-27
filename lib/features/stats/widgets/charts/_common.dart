@@ -20,7 +20,9 @@ FlTitlesData titles(List<String> labels, BuildContext context) {
                 angle: math.pi / -4,
                 child: Txt(
                   labels[value.toInt()],
-                  style:  TextStyle(fontSize: 12, color: FluentTheme.of(context).inactiveColor),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: FluentTheme.of(context).inactiveColor),
                 ),
               ),
             ),
@@ -40,7 +42,8 @@ FlTitlesData titles(List<String> labels, BuildContext context) {
             meta: meta,
             child: Text(
               value.toInt().toString(),
-              style: TextStyle(fontSize: 12, color: FluentTheme.of(context).inactiveColor),
+              style: TextStyle(
+                  fontSize: 12, color: FluentTheme.of(context).inactiveColor),
             ),
           );
         },
@@ -89,7 +92,10 @@ BarTouchData barTouchData(List<String> labels) {
           children: <TextSpan>[
             TextSpan(
               text: rod.toY.round().toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w100),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w100),
             ),
           ],
         );

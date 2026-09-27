@@ -34,7 +34,7 @@ Future<void> flyoutFocusFix(BuildContext? context) async {
 
       try {
         await completer.future;
-        await Future.delayed(const Duration(milliseconds: 50));
+        await Future<void>.delayed(const Duration(milliseconds: 50));
       } finally {
         WidgetsBinding.instance.removeObserver(observer);
       }
@@ -47,10 +47,9 @@ Future<void> flyoutFocusFix(BuildContext? context) async {
 /// Standalone observer that listens to platform metric updates
 /// and signals when the specific view's bottom inset hits zero.
 class _KeyboardObserver extends WidgetsBindingObserver {
+  _KeyboardObserver({required this.view, required this.onClosed});
   final FlutterView view;
   final VoidCallback onClosed;
-
-  _KeyboardObserver({required this.view, required this.onClosed});
 
   @override
   void didChangeMetrics() {

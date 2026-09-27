@@ -3,11 +3,11 @@
 // Re-export everything that the rest of the app needs to consume:
 //   - Parser + renderer wrappers (all platforms)
 //   - IO facade (conditional import — Windows scans, web no-ops)
-//   - Dedup registry + dedupKey (Hive-backed)
-//   - File cache (Hive-backed — stat-based skip on re-scan)
+//   - Dedup registry + dedupKey
+//   - File cache (stat-based skip on re-scan)
 //   - Name normalization + similarity
-//   - Skipped-files log (Hive-backed)
-//   - LRU cache for downloaded .dcm originals (Hive-backed)
+//   - Skipped-files log
+//   - LRU cache for downloaded .dcm originals
 //   - Viewer prefs (per-user windowing/color/invert/rotation persistence)
 
 export 'dicom_parser.dart';

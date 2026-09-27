@@ -5,7 +5,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/core_firebase_messaging.dart';
 import 'package:apexo/services/notifications/core_local_notification.dart';
-import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -29,9 +28,6 @@ class Messaging {
   }
 
   static Future<void> identifyDevice({bool isPatient = false}) async {
-    // initialize deferred push
-    deferredPush.init(isPatient ? patientSide.server : login.url);
-
     // ensure clinic key.. which is a key needed to communicate with the relay server
     final relayKey =
         isPatient ? patientSide.relayKey : await PushRelay.ensureKey();

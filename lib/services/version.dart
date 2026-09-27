@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -11,14 +12,6 @@ import 'package:apexo/utils/logger.dart';
 // --- Models ---
 
 class ReleaseMetadata {
-  final String latestVersion;
-  final List<String> changelog;
-  final String msStoreUrl;
-  final String macosUrl;
-  final String iosUrl;
-  final String androidUrl;
-  final String webUrl;
-
   ReleaseMetadata({
     required this.latestVersion,
     required this.changelog,
@@ -32,20 +25,31 @@ class ReleaseMetadata {
   factory ReleaseMetadata.fromJson(Map<String, dynamic> json) {
     final downloads = json['downloads'] as Map<String, dynamic>;
     return ReleaseMetadata(
-      latestVersion: json['latest_version'] ?? "0.0.0",
-      changelog: List<String>.from(json['changelog'] ?? []),
-      msStoreUrl: downloads['ms_store'] ?? "",
-      macosUrl: downloads['macos'] ?? "",
-      iosUrl: downloads['ios'] ?? "",
-      androidUrl: downloads['android'] ?? "",
-      webUrl: downloads['web'] ?? "",
+      latestVersion: json['latest_version'] as String? ?? "0.0.0",
+      changelog:
+          List<String>.from(json['changelog'] as List<dynamic>? ?? const []),
+      msStoreUrl: downloads['ms_store'] as String? ?? "",
+      macosUrl: downloads['macos'] as String? ?? "",
+      iosUrl: downloads['ios'] as String? ?? "",
+      androidUrl: downloads['android'] as String? ?? "",
+      webUrl: downloads['web'] as String? ?? "",
     );
   }
+  final String latestVersion;
+  final List<String> changelog;
+  final String msStoreUrl;
+  final String macosUrl;
+  final String iosUrl;
+  final String androidUrl;
+  final String webUrl;
 }
 
 // --- Service ---
 
 class _VersionService {
+  _VersionService() {
+    unawaited(init());
+  }
   // Observables
   final current = ObservableState("0.0.0");
   final isOutdated = ObservableState(false);
@@ -63,10 +67,6 @@ class _VersionService {
   String get downloadLink => _macosDownloadLink;
 
   final String metadataUrl = "https://download.apexo.app/metadata.json";
-
-  _VersionService() {
-    init();
-  }
 
   Future<void> init() async {
     await _setCurrentVersion();
@@ -90,7 +90,8 @@ class _VersionService {
         throw Exception('Failed to fetch metadata: ${response.statusCode}');
       }
 
-      final data = ReleaseMetadata.fromJson(json.decode(response.body));
+      final data = ReleaseMetadata.fromJson(
+          json.decode(response.body) as Map<String, dynamic>);
 
       // Store data
       latestVersion(data.latestVersion);
@@ -106,14 +107,18 @@ class _VersionService {
 
   /// Simple semantic version comparison
   bool _isVersionNewer(String latest, String current) {
-    List<int> latestParts =
+    final List<int> latestParts =
         latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-    List<int> currentParts =
+    final List<int> currentParts =
         current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
     // Ensure we have at least 3 parts (major.minor.patch)
-    while (latestParts.length < 3) latestParts.add(0);
-    while (currentParts.length < 3) currentParts.add(0);
+    while (latestParts.length < 3) {
+      latestParts.add(0);
+    }
+    while (currentParts.length < 3) {
+      currentParts.add(0);
+    }
 
     for (var i = 0; i < 3; i++) {
       if (latestParts[i] > currentParts[i]) return true;

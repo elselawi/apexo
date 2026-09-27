@@ -1,15 +1,30 @@
 import 'dart:io' show File, Platform;
 import 'dart:typed_data';
 
+import 'package:apexo/features/dicom/dicom_controller.dart';
 import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';
-import 'package:apexo/services/dicom/persistence/dicom_matched_store.dart';
-import 'package:apexo/services/dicom/persistence/dicom_unmatched_store.dart';
 import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/services/dicom/dicom_parser.dart';
 import 'package:apexo/services/dicom/dicom_skipped.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+
+/// Registers the DICOM scan lifecycle with the login system, before any login
+/// can run.
+///
+/// The periodic auto-scan is started by the `login.activators['dicom']` entry
+/// the [DicomController] constructor installs. [dicomCtrl] is a
+/// lazily-initialized top-level `final` — a Dart file-level `final` is only
+/// created on first *use* — and nothing touched it that early: the DICOM route
+/// and screen reference it only when the dentist opens that page. So the
+/// activator was registered **after** `login.activate()` had already run its
+/// callbacks, the periodic scan never started, and X-rays were only ever picked
+/// up by the manual scan on the DICOM page.
+///
+/// `main()` calls this at startup. Returns the controller, so the call cannot
+/// be mistaken for a no-op.
+DicomController initializeDicomScan() => dicomCtrl;
 
 /// Initializes the `dicom_toolkit` native (Rust/WASM) engine.
 ///
@@ -70,7 +85,7 @@ Future<bool> verifyHeadlessExport({String? filePath}) async {
   final Uint8List bytes;
   try {
     final file = File(path);
-    if (!await file.exists()) {
+    if (!file.existsSync()) {
       log.severe(
         'verifyHeadlessExport: file not found at "$path". '
         'Pass an explicit filePath, or run via `flutter run` from the '
@@ -135,7 +150,7 @@ Future<bool> verifyHeadlessExport({String? filePath}) async {
 /// Manual verification helper — scans [dirPath] for `.dcm` files and parses
 /// each, logging the extracted metadata (patientName, patientId, studyDate,
 /// sopInstanceUid, modality, dimensions) for valid files, and logging
-/// failures to the `dicom_skipped` Hive box.
+/// failures to the `dicom_skipped` log.
 ///
 /// This is a **manual verification helper** — not wired to any automated
 /// test (the Rust FFI library isn't loaded under `flutter test`). The user

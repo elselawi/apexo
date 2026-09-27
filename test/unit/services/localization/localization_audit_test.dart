@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:apexo/services/localization/en.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Re-integration of `lib/services/localization/verify.dart` logic into the
+/// Re-integration of `tools/localization_verify.dart` logic into the
 /// test suite. This test performs the same audits as the standalone script:
 ///   1. All locale files have identical dictionary keys
 ///   2. No `txt("...")` calls reference missing keys
@@ -107,11 +107,11 @@ bool _keyAppearsInCodebase(String key, List<File> codeFiles) {
 // ── Data class ──────────────────────────────────────────────────────
 
 class TxtCall {
+  const TxtCall(this.file, this.line, this.key, this.excerpt);
   final String file;
   final int line;
   final String? key;
   final String excerpt;
-  const TxtCall(this.file, this.line, this.key, this.excerpt);
 
   @override
   bool operator ==(Object other) =>

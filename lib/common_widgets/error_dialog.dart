@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/app/app.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
@@ -13,12 +14,13 @@ void showErrorMessage(Object message, String when) {
   // Returns true if it's a new unique error, false if duplicate.
   final isNewError = networkActions.addError(message, when);
 
-  if (!isNewError)
+  if (!isNewError) {
     return; // duplicate error — already handled by controller (pulse)
+  }
 
   if (errorDialogShown) return;
   errorDialogShown = true;
-  showDialog(
+  unawaited(showDialog(
       barrierDismissible: true,
       dismissWithEsc: true,
       context: bContext,
@@ -46,5 +48,5 @@ void showErrorMessage(Object message, String when) {
             ),
           ],
         );
-      }).then((_) => errorDialogShown = false);
+      }).then((_) => errorDialogShown = false));
 }

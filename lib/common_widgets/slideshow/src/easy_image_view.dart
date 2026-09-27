@@ -3,29 +3,6 @@ import 'drawing_canvas.dart';
 
 /// A full-sized view that displays the given image, supporting pinch & zoom
 class EasyImageView extends StatefulWidget {
-  /// The image widget to display
-  final Widget imageWidget;
-
-  /// Minimum scale factor
-  final double minScale;
-
-  /// Maximum scale factor
-  final double maxScale;
-
-  /// Whether to allow double tap to zoom in and out
-  final bool doubleTapZoomable;
-
-  /// Callback for when the scale has changed, only invoked at the end of
-  /// an interaction.
-  final void Function(double)? onScaleChanged;
-
-  final String? initialDrawing;
-  final Function(String)? onSaveDrawing;
-  final bool isDrawingMode;
-  final bool showDrawings;
-  final Color selectedColor;
-  final bool isEraserMode;
-
   /// Create a new instance that accepts an [ImageProvider]
   EasyImageView({
     Key? key,
@@ -35,7 +12,7 @@ class EasyImageView extends StatefulWidget {
     bool doubleTapZoomable = false,
     void Function(double)? onScaleChanged,
     String? initialDrawing,
-    Function(String)? onSaveDrawing,
+    void Function(String)? onSaveDrawing,
     bool isDrawingMode = false,
     bool showDrawings = true,
     Color selectedColor = Colors.red,
@@ -71,6 +48,29 @@ class EasyImageView extends StatefulWidget {
     this.selectedColor = Colors.red,
     this.isEraserMode = false,
   });
+
+  /// The image widget to display
+  final Widget imageWidget;
+
+  /// Minimum scale factor
+  final double minScale;
+
+  /// Maximum scale factor
+  final double maxScale;
+
+  /// Whether to allow double tap to zoom in and out
+  final bool doubleTapZoomable;
+
+  /// Callback for when the scale has changed, only invoked at the end of
+  /// an interaction.
+  final void Function(double)? onScaleChanged;
+
+  final String? initialDrawing;
+  final void Function(String)? onSaveDrawing;
+  final bool isDrawingMode;
+  final bool showDrawings;
+  final Color selectedColor;
+  final bool isEraserMode;
 
   @override
   State<EasyImageView> createState() => _EasyImageViewState();
@@ -115,7 +115,7 @@ class _EasyImageViewState extends State<EasyImageView>
       );
     }
 
-    Widget result = SizedBox.expand(
+    final Widget result = SizedBox.expand(
       key: const Key('easy_image_sized_box'),
       child: InteractiveViewer(
         key: const Key('easy_image_interactive_viewer'),
@@ -126,7 +126,8 @@ class _EasyImageViewState extends State<EasyImageView>
         scaleEnabled: !widget.isDrawingMode,
         child: Center(child: content),
         onInteractionEnd: (scaleEndDetails) {
-          double scale = _transformationController.value.getMaxScaleOnAxis();
+          final double scale =
+              _transformationController.value.getMaxScaleOnAxis();
 
           if (widget.onScaleChanged != null) {
             widget.onScaleChanged!(scale);
@@ -154,15 +155,15 @@ class _EasyImageViewState extends State<EasyImageView>
     _doubleTapAnimation?.removeListener(_animationListener);
     _doubleTapAnimation?.removeStatusListener(_animationStatusListener);
 
-    double scale = _transformationController.value.getMaxScaleOnAxis();
+    final double scale = _transformationController.value.getMaxScaleOnAxis();
 
     if (scale < 2.0) {
       // If we are not at a 2x scale yet, zoom in all the way to 2x.
       final position = _doubleTapDetails.localPosition;
       final begin = _transformationController.value;
       final end = Matrix4.identity()
-        ..translate(-position.dx, -position.dy)
-        ..scale(2.0);
+        ..translateByDouble(-position.dx, -position.dy, 0.0, 1.0)
+        ..scaleByDouble(2.0, 2.0, 2.0, 1.0);
 
       _updateDoubleTapAnimation(begin, end);
       _animationController.forward(from: 0.0);
@@ -192,7 +193,7 @@ class _EasyImageViewState extends State<EasyImageView>
   void _animationStatusListener(AnimationStatus status) {
     if (status == AnimationStatus.completed ||
         status == AnimationStatus.dismissed) {
-      double scale = _transformationController.value.getMaxScaleOnAxis();
+      final double scale = _transformationController.value.getMaxScaleOnAxis();
 
       if (widget.onScaleChanged != null) {
         widget.onScaleChanged!(scale);

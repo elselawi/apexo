@@ -8,9 +8,6 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 
 class DentalHistoryData {
-  final Map<String, String> teeth;
-  final Map<String, String> teethExtraNotes;
-
   DentalHistoryData({required this.teeth, required this.teethExtraNotes});
 
   factory DentalHistoryData.fromJson(Map<String, dynamic> json) =>
@@ -22,6 +19,8 @@ class DentalHistoryData {
                 ?.map((k, v) => MapEntry(k, v as String)) ??
             {},
       );
+  final Map<String, String> teeth;
+  final Map<String, String> teethExtraNotes;
 }
 
 // ============================================================================

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/language_picker.dart';
@@ -8,7 +9,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/utils/save_file_multiplatform.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:apexo/utils/open_external.dart';
 import 'package:http/http.dart' as http;
 
 class PatientSideScreen extends StatefulWidget {
@@ -236,14 +237,14 @@ class _HeroHeaderState extends State<_HeroHeader> {
                         _HeaderCommunicationAction(
                           icon: FluentIcons.phone,
                           label: txt("call"),
-                          onTap: () =>
-                              launchUrl(Uri.parse("tel:${widget.phone}")),
+                          onTap: () => unawaited(
+                              openExternal(Uri.parse("tel:${widget.phone}"))),
                         ),
                         _HeaderCommunicationAction(
                           icon: FluentIcons.message,
                           label: txt("text"),
-                          onTap: () =>
-                              launchUrl(Uri.parse("sms:${widget.phone}")),
+                          onTap: () => unawaited(
+                              openExternal(Uri.parse("sms:${widget.phone}"))),
                         ),
                         _HeaderCommunicationAction(
                           icon: FluentIcons.chat,
@@ -253,8 +254,8 @@ class _HeroHeaderState extends State<_HeroHeader> {
                                 widget.countryCode.replaceAll('+', '').trim();
                             final cleanPhone =
                                 widget.phone.replaceAll(RegExp(r'\D'), '');
-                            launchUrl(Uri.parse(
-                                "https://wa.me/$cleanCode$cleanPhone"));
+                            unawaited(openExternal(Uri.parse(
+                                "https://wa.me/$cleanCode$cleanPhone")));
                           },
                         ),
                       ],
@@ -1051,7 +1052,7 @@ class _PhotoTile extends StatelessWidget {
   }
 
   void _showFullImage(BuildContext context) {
-    showDialog(
+    unawaited(showDialog(
       dismissWithEsc: true,
       barrierDismissible: true,
       context: context,
@@ -1092,7 +1093,7 @@ class _PhotoTile extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ));
   }
 
   Future<void> _saveImage(String url, BuildContext context) async {

@@ -6,14 +6,6 @@ import 'package:flutter/material.dart'
     show showTimePicker, showDatePicker, TimeOfDay;
 
 class DateTimePicker extends StatefulWidget {
-  final DateTime initValue;
-  final bool pickTime;
-  final bool showButton;
-  final String buttonText;
-  final IconData buttonIcon;
-  final void Function(DateTime value) onChange;
-  final TextStyle? textStyle;
-  final bool enabled;
   const DateTimePicker({
     super.key,
     required this.initValue,
@@ -25,6 +17,14 @@ class DateTimePicker extends StatefulWidget {
     this.enabled = true,
     this.textStyle,
   });
+  final DateTime initValue;
+  final bool pickTime;
+  final bool showButton;
+  final String buttonText;
+  final IconData buttonIcon;
+  final void Function(DateTime value) onChange;
+  final TextStyle? textStyle;
+  final bool enabled;
 
   @override
   State<DateTimePicker> createState() => DateTimePickerState();
@@ -71,12 +71,12 @@ class DateTimePickerState extends State<DateTimePicker> {
     );
   }
 
-  pick() async {
+  Future<void> pick() async {
     if (!widget.enabled) return;
     DateTime selected = value;
 
     if (widget.pickTime) {
-      TimeOfDay time = await showTimePicker(
+      final TimeOfDay time = await showTimePicker(
             context: context,
             initialTime: TimeOfDay(hour: value.hour, minute: value.minute),
           ) ??

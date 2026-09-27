@@ -299,6 +299,7 @@ class Es implements En {
     "paidIn": "Pagado en",
     "gallery": "Galería",
     "link": "Enlace",
+    "couldNotOpenLink": "No se pudo abrir el enlace",
     "upload": "Subir",
     "camera": "Cámara",
     "emptyGallery": "Galería vacía",
@@ -768,6 +769,10 @@ class Es implements En {
     // login required
     "loginRequired": "Se requiere inicio de sesión",
     "loginRequiredDesc": "Por favor inicia sesión para continuar",
+    "localDatabaseFailed":
+        "No se pudo abrir la base de datos local. Si Apexo está abierto en otra pestaña, ciérrela; de lo contrario, reinicie el navegador y vuelva a iniciar sesión.",
+    "alreadyRunningInAnotherTab":
+        "Apexo ya está abierto en otra pestaña. Ciérrela y vuelva a cargar esta página.",
 
     // server help flyout
     "whatIsAServer": "¿Qué es un servidor?",

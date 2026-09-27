@@ -1,16 +1,15 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 class SwipeDetector extends StatelessWidget {
-  final Widget child;
-  final void Function() onSwipePrev;
-  final void Function() onSwipeNext;
-
   const SwipeDetector({
     super.key,
     required this.onSwipePrev,
     required this.onSwipeNext,
     required this.child,
   });
+  final Widget child;
+  final void Function() onSwipePrev;
+  final void Function() onSwipeNext;
 
   @override
   Widget build(BuildContext context) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -44,7 +45,7 @@ class _DeleteButtonState extends State<DeleteButton> {
             icon: widget.child,
             onPressed: () async {
               await flyoutFocusFix(context);
-              flyoutController.showFlyout(builder: (ctx) {
+              unawaited(flyoutController.showFlyout<void>(builder: (ctx) {
                 return ConfirmDeleteFlyout(
                   restorable: widget.restorable,
                   controller: flyoutController,
@@ -53,7 +54,7 @@ class _DeleteButtonState extends State<DeleteButton> {
                   preview: widget.preview,
                   onConfirm: widget.onConfirm,
                 );
-              });
+              }));
             }));
   }
 }
@@ -104,7 +105,7 @@ class ConfirmDeleteFlyout extends StatelessWidget {
             children: [
               FilledButton(
                 onPressed: () {
-                  controller.close();
+                  controller.close<void>();
                   onConfirm();
                 },
                 style: const ButtonStyle(
@@ -124,7 +125,7 @@ class ConfirmDeleteFlyout extends StatelessWidget {
               FilledButton(
                 onPressed: () {
                   if (controller.isOpen) {
-                    controller.close();
+                    controller.close<void>();
                   }
                 },
                 style: const ButtonStyle(

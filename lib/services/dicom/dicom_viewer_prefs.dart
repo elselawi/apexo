@@ -19,21 +19,6 @@ import 'package:flutter/foundation.dart';
 /// ```
 @immutable
 class DicomViewerPrefs {
-  /// Window center (level). `null` → use the DICOM header value on load.
-  final double? windowCenter;
-
-  /// Window width. `null` → use the DICOM header value on load.
-  final double? windowWidth;
-
-  /// Color map name (matches [DicomColorMap.name]). `null` → grayscale.
-  final DicomColorMap? colorMap;
-
-  /// Whether grayscale inversion is active.
-  final bool invert;
-
-  /// Number of 90° clockwise rotation steps (0–3).
-  final int rotationSteps;
-
   const DicomViewerPrefs({
     this.windowCenter,
     this.windowWidth,
@@ -41,9 +26,6 @@ class DicomViewerPrefs {
     this.invert = false,
     this.rotationSteps = 0,
   });
-
-  /// Empty prefs — viewer opens with DICOM header / controller defaults.
-  static const DicomViewerPrefs empty = DicomViewerPrefs();
 
   /// Parses [LocalSettings.dicomViewerPrefs] (a JSON string). Returns
   /// [empty] on a null/blank/malformed string — never throws.
@@ -78,18 +60,6 @@ class DicomViewerPrefs {
     );
   }
 
-  /// Serializes to the JSON shape persisted in [LocalSettings.dicomViewerPrefs].
-  Map<String, dynamic> toJson() => {
-        if (windowCenter != null) 'windowCenter': windowCenter,
-        if (windowWidth != null) 'windowWidth': windowWidth,
-        if (colorMap != null) 'colorMap': colorMap!.name,
-        'invert': invert,
-        'rotationSteps': rotationSteps,
-      };
-
-  /// Serializes to the JSON string form stored in [LocalSettings.dicomViewerPrefs].
-  String toJsonString() => jsonEncode(toJson());
-
   /// Reads the current state of [controller] into a new prefs instance.
   /// Used by the debounced persist-on-change listener.
   factory DicomViewerPrefs.fromController(DicomViewerController controller) {
@@ -101,6 +71,36 @@ class DicomViewerPrefs {
       rotationSteps: controller.rotationSteps,
     );
   }
+
+  /// Window center (level). `null` → use the DICOM header value on load.
+  final double? windowCenter;
+
+  /// Window width. `null` → use the DICOM header value on load.
+  final double? windowWidth;
+
+  /// Color map name (matches [DicomColorMap.name]). `null` → grayscale.
+  final DicomColorMap? colorMap;
+
+  /// Whether grayscale inversion is active.
+  final bool invert;
+
+  /// Number of 90° clockwise rotation steps (0–3).
+  final int rotationSteps;
+
+  /// Empty prefs — viewer opens with DICOM header / controller defaults.
+  static const DicomViewerPrefs empty = DicomViewerPrefs();
+
+  /// Serializes to the JSON shape persisted in [LocalSettings.dicomViewerPrefs].
+  Map<String, dynamic> toJson() => {
+        if (windowCenter != null) 'windowCenter': windowCenter,
+        if (windowWidth != null) 'windowWidth': windowWidth,
+        if (colorMap != null) 'colorMap': colorMap!.name,
+        'invert': invert,
+        'rotationSteps': rotationSteps,
+      };
+
+  /// Serializes to the JSON string form stored in [LocalSettings.dicomViewerPrefs].
+  String toJsonString() => jsonEncode(toJson());
 
   /// True when every field is at its default (nothing to apply).
   bool get isEmpty =>

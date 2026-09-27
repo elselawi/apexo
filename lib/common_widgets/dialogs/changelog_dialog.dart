@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/changelog.dart';
@@ -15,12 +16,12 @@ Future<void> showChangelogDialog(
 
   if (!context.mounted) return;
 
-  showDialog(
+  unawaited(showDialog(
     barrierDismissible: true,
     dismissWithEsc: true,
     context: context,
     builder: (ctx) => _ChangelogDialog(entry: entry!),
-  );
+  ));
 }
 
 class _ChangelogDialog extends StatefulWidget {

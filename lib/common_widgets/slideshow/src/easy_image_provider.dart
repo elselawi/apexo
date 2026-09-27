@@ -21,7 +21,8 @@ abstract class EasyImageProvider {
   Widget imageWidgetBuilder(BuildContext context, int index) {
     return Image(
       image: imageBuilder(context, index),
-      frameBuilder: (BuildContext context, Widget child, int? frame, bool wasSynchronouslyLoaded) {
+      frameBuilder: (BuildContext context, Widget child, int? frame,
+          bool wasSynchronouslyLoaded) {
         if (wasSynchronouslyLoaded) {
           return child;
         }
@@ -32,8 +33,9 @@ abstract class EasyImageProvider {
           child: child,
         );
       },
-      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-        bool shouldShowLoading = loadingProgress != null;
+      loadingBuilder: (BuildContext context, Widget child,
+          ImageChunkEvent? loadingProgress) {
+        final bool shouldShowLoading = loadingProgress != null;
         return IndexedStack(
           index: shouldShowLoading ? 1 : 0,
           alignment: Alignment.center,
@@ -43,7 +45,8 @@ abstract class EasyImageProvider {
               context,
               index,
               value: loadingProgress?.expectedTotalBytes != null
-                  ? loadingProgress!.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                  ? loadingProgress!.cumulativeBytesLoaded /
+                      loadingProgress.expectedTotalBytes!
                   : shouldShowLoading
                       ? null
                       : 0.0,
@@ -64,7 +67,8 @@ abstract class EasyImageProvider {
   /// If [value] is null, the progress indicator is in indeterminate mode.
   /// The [index] parameter is the index of the image being loaded.
   /// The [context] parameter is the build context.
-  Widget progressIndicatorWidgetBuilder(BuildContext context, int index, {double? value}) {
+  Widget progressIndicatorWidgetBuilder(BuildContext context, int index,
+      {double? value}) {
     return CircularProgressIndicator(
       value: value,
     );
@@ -75,7 +79,8 @@ abstract class EasyImageProvider {
   /// The [context] parameter is the build context.
   /// The [error] parameter is the error object that occurred while loading the image.
   /// The [stackTrace] parameter is the stack trace associated with the error.
-  Widget errorWidgetBuilder(BuildContext context, int index, Object error, StackTrace? stackTrace) {
+  Widget errorWidgetBuilder(
+      BuildContext context, int index, Object error, StackTrace? stackTrace) {
     return const Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

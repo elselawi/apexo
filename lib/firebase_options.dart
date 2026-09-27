@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'apexo-14f90.firebasestorage.app',
     iosBundleId: 'app.apexo.mobile.apexo',
   );
-
 }

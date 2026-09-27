@@ -10,7 +10,7 @@ class DicomDirectoryManager extends StatefulWidget {
   });
 
   final List<String> dirs;
-  final Function(List<String> dirs) onChanged;
+  final void Function(List<String> dirs) onChanged;
 
   @override
   State<DicomDirectoryManager> createState() => _DicomDirectoryManagerState();

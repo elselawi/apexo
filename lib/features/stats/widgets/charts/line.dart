@@ -6,16 +6,15 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'dart:convert';
 
 class StyledLineChart extends StatelessWidget {
-  final List<String> labels;
-  final List<List<double>> datasets;
-  final List<String> datasetLabels;
-
   const StyledLineChart({
     super.key,
     required this.labels,
     required this.datasets,
     required this.datasetLabels,
   });
+  final List<String> labels;
+  final List<List<double>> datasets;
+  final List<String> datasetLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +93,9 @@ class StyledLineChart extends StatelessWidget {
 
   T getDeterministicItem<T>(List<T> items, String input) {
     input = input.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '');
-    int hash = utf8.encode(input).fold(0, (prev, element) => prev + element);
-    int index = hash % items.length;
+    final int hash =
+        utf8.encode(input).fold(0, (prev, element) => prev + element);
+    final int index = hash % items.length;
     return items[index];
   }
 }

@@ -24,7 +24,7 @@ class DicomIOImpl {
     final results = <DicomFileEntry>[];
     final dir = io.Directory(path);
 
-    if (!await dir.exists()) {
+    if (!dir.existsSync()) {
       log.warning(
           'DicomIOImpl.scanDirectory: directory does not exist: "$path"');
       return results;
@@ -42,7 +42,7 @@ class DicomIOImpl {
 
         io.FileStat stat;
         try {
-          stat = await entity.stat();
+          stat = entity.statSync();
         } catch (e, s) {
           // stat failed (file deleted between list and stat, or permission)
           logger(

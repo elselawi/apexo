@@ -86,7 +86,7 @@ class WSVoiceTranscriptionService extends AIService {
 
   final _recorder = AudioRecorder();
   WebSocketChannel? _ws;
-  StreamSubscription? _wsSub;
+  StreamSubscription<dynamic>? _wsSub;
   StreamSubscription<Uint8List>? _audioSub;
   Completer<void>? _setupCompleter;
   Timer? _maxTimer;
@@ -148,7 +148,7 @@ class WSVoiceTranscriptionService extends AIService {
     // finish transcribing the last audio it already received.
     // Only wait if the socket is still healthy (skip if it closed on us).
     if (_ws?.closeCode == null) {
-      await Future.delayed(const Duration(seconds: 3));
+      await Future<void>.delayed(const Duration(seconds: 3));
     }
 
     // Bail if a new session was started while we were waiting.
@@ -165,7 +165,7 @@ class WSVoiceTranscriptionService extends AIService {
     _disposed = true;
     await _cleanup();
     await _streamCtrl.close();
-    _recorder.dispose();
+    unawaited(_recorder.dispose());
   }
 
   // -------------------------------------------------------------------------
@@ -252,7 +252,7 @@ class WSVoiceTranscriptionService extends AIService {
   // Message handling
   // -------------------------------------------------------------------------
 
-  void _onMessage(dynamic raw) {
+  void _onMessage(Object? raw) {
     // Messages arrive as Uint8List bytes on Android — decode before parsing.
     final String text;
     if (raw is String) {
@@ -332,8 +332,8 @@ class WSVoiceTranscriptionService extends AIService {
       if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
         _setupCompleter!.completeError(Exception(detail));
       } else {
-        _cleanup().then((_) =>
-            _emit(state: TranscriptionState.error, error: Exception(detail)));
+        unawaited(_cleanup().then((_) =>
+            _emit(state: TranscriptionState.error, error: Exception(detail))));
       }
       return;
     }
@@ -346,7 +346,7 @@ class WSVoiceTranscriptionService extends AIService {
   void _onSetupComplete() {
     _setupCompleter?.complete();
 
-    _startMic().then((_) {
+    unawaited(_startMic().then((_) {
       _emit(state: TranscriptionState.recording);
       final start = DateTime.now();
 
@@ -360,8 +360,9 @@ class WSVoiceTranscriptionService extends AIService {
         _emit(elapsedSeconds: DateTime.now().difference(start).inSeconds);
       });
     }).catchError((Object e) {
-      _cleanup().then((_) => _emit(state: TranscriptionState.error, error: e));
-    });
+      unawaited(_cleanup()
+          .then((_) => _emit(state: TranscriptionState.error, error: e)));
+    }));
   }
 
   // ---------------------------------------------------------------------
@@ -420,8 +421,8 @@ class WSVoiceTranscriptionService extends AIService {
       return;
     }
     if (isActive) {
-      _cleanup()
-          .then((_) => _emit(state: TranscriptionState.error, error: error));
+      unawaited(_cleanup()
+          .then((_) => _emit(state: TranscriptionState.error, error: error)));
     }
   }
 
@@ -438,7 +439,7 @@ class WSVoiceTranscriptionService extends AIService {
       return;
     }
     if (_session.state == TranscriptionState.recording) {
-      stopTranscription();
+      unawaited(stopTranscription());
     }
   }
 

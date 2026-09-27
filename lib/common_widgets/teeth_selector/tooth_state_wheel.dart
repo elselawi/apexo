@@ -4,18 +4,9 @@ import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'dart:math' as math;
 
 class ToothStateWheel extends StatefulWidget {
-  final String toothName;
-  final String iso;
-  final String? initialValue;
-  final ValueChanged<String?> onSet;
-  final VoidCallback onTapClose;
-  final String? oldNote;
-  final StateType type;
-
   const ToothStateWheel({
     super.key,
     required this.initialValue,
@@ -26,6 +17,13 @@ class ToothStateWheel extends StatefulWidget {
     required this.oldNote,
     required this.type,
   });
+  final String toothName;
+  final String iso;
+  final String? initialValue;
+  final ValueChanged<String?> onSet;
+  final VoidCallback onTapClose;
+  final String? oldNote;
+  final StateType type;
 
   @override
   State<ToothStateWheel> createState() => _ToothStateWheelState();
@@ -219,17 +217,16 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
 }
 
 class _RadialButton extends StatelessWidget {
-  final TxOption state;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final bool transparent;
-
   const _RadialButton({
     required this.state,
     required this.isSelected,
     required this.onTap,
     required this.transparent,
   });
+  final TxOption state;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final bool transparent;
 
   @override
   Widget build(BuildContext context) {

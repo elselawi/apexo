@@ -17,7 +17,7 @@ import 'package:http/testing.dart';
 /// Creates a [MockClient] that responds with [body] (JSON-encoded) and
 /// [statusCode] for every request. Useful for simple one-off mocks.
 MockClient mockClientWith(
-  dynamic body, {
+  Object? body, {
   int statusCode = 200,
 }) {
   return MockClient((request) async {

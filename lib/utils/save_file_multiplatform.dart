@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/app/app.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -16,7 +17,7 @@ Future<String?> saveFileUtility({
       lockParentWindow: true,
     );
     if (bContext.mounted && outputFilePath != null) {
-      displayInfoBar(
+      unawaited(displayInfoBar(
         bContext,
         builder: (context, close) => InfoBar(
           title: const Text('Saved!'),
@@ -24,11 +25,11 @@ Future<String?> saveFileUtility({
           severity: InfoBarSeverity.success,
           onClose: close,
         ),
-      );
+      ));
     }
   } catch (e) {
     if (bContext.mounted) {
-      displayInfoBar(
+      unawaited(displayInfoBar(
         bContext,
         builder: (context, close) => InfoBar(
           title: const Text('file saving photo'),
@@ -36,7 +37,7 @@ Future<String?> saveFileUtility({
           severity: InfoBarSeverity.error,
           onClose: close,
         ),
-      );
+      ));
     }
   }
 

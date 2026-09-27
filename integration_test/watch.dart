@@ -1,100 +1,76 @@
 // ignore_for_file: avoid_print
 
-import 'dart:io';
 import 'dart:async';
+import 'dart:io';
 
-class ProcessManager {
-  final List<int> _startedProcesses = [];
-  bool _actionLock = false;
-  Future<void> terminateProcess(int pid) async {
-    try {
-      final result = await Process.run('taskkill', ['/F', '/PID', pid.toString()]);
-      if (result.exitCode == 0) {
-        print('Successfully terminated process with PID: $pid');
-      } else {
-        print('Failed to terminate process with PID $pid');
-      }
-    } catch (e) {
-      print('Error terminating process with PID $pid: $e');
-    }
-  }
-
-  Future<void> terminateAllProcesses() async {
-    if (_startedProcesses.isNotEmpty) {
-      print('Terminating tracked processes... $_startedProcesses');
-      for (var pid in _startedProcesses) {
-        await terminateProcess(pid);
-      }
-      _startedProcesses.clear();
-    }
-    await terminateChildProcess();
-  }
-
-  Future<void> terminateChildProcess() async {
-    try {
-      final processes = await Process.run('tasklist', []);
-      final lines = processes.stdout.toString().split('\n');
-      for (var line in lines) {
-        if (line.contains('apexo') || line.contains('flutter')) {
-          final parts = line.split(RegExp(r'\s+'));
-          if (parts.length >= 2) {
-            final pid = int.tryParse(parts[1]);
-            if (pid != null) {
-              print('Terminating "apexo" or "flutter" process with PID: $pid');
-              await terminateProcess(pid);
-            }
-          }
-        }
-      }
-    } catch (e) {
-      print('Failed to terminate "apexo" process: $e');
-    }
-  }
-
-  Future<void> startIntegrationTest() async {
-    try {
-      print('Starting Flutter integration test process...');
-      final process = await Process.start(
-        'C:\\flutter\\flutter\\bin\\flutter.bat',
-        ['test', 'integration_test/integration.dart', '-d', 'windows'],
-        mode: ProcessStartMode.detachedWithStdio,
-      );
-      _startedProcesses.add(process.pid); // Track the PID
-      print('Started process with PID: ${process.pid}');
-    } catch (e) {
-      print('Failed to start Flutter integration test: $e');
-    }
-  }
-}
-
+/// Re-runs the end-to-end suite when a file under `integration_test/` changes.
+///
+/// ```bash
+/// dart integration_test/watch.dart              # the whole suite
+/// dart integration_test/watch.dart login        # only tests whose full name contains "login"
+/// ```
+///
+/// It runs `tools/run_e2e.ps1`, so the device, the credentials (from
+/// `test/secret.dart`) and — for web runs — chromedriver come from the one
+/// place that already knows about them.
 void main(List<String> args) async {
-  final mode = args.firstOrNull ?? "--regular";
-  final file = File("./integration_test/mode");
-  await file.writeAsString(mode);
+  final filter = args.where((a) => !a.startsWith('-')).join(' ');
+  final manager = _RunManager();
 
-  final processManager = ProcessManager();
-  final watcher = Directory("${Directory.current.path}/integration_test")
-      .watch(events: FileSystemEvent.create | FileSystemEvent.modify | FileSystemEvent.delete);
+  var running = false;
+  final watcher = Directory("${Directory.current.path}/integration_test").watch(
+      events: FileSystemEvent.create |
+          FileSystemEvent.modify |
+          FileSystemEvent.delete);
+
   watcher.listen((event) async {
     if (!event.path.endsWith(".dart")) return;
-    if (processManager._actionLock) {
-      print('Action is already running. Skipping this event.');
+    if (running) {
+      print('A run is already in progress; ignoring ${event.path}');
       return;
     }
-    processManager._actionLock = true;
-
+    running = true;
     try {
       print('Change detected: ${event.type} on ${event.path}');
-      await processManager.terminateAllProcesses();
-      await processManager.startIntegrationTest();
+      await manager.restart(filter);
     } catch (e) {
-      print('Error handling file system event: $e');
+      print('Could not run the suite: $e');
     } finally {
-      processManager._actionLock = false;
+      running = false;
     }
   });
 
-  print('File watcher started. Monitoring changes in ${Directory.current.path}.');
-  await processManager.startIntegrationTest();
-  await Future.delayed(const Duration(days: 365)); // Keep the process running indefinitely
+  print('Watching ${Directory.current.path}/integration_test — '
+      'running the suite once to start.');
+  await manager.restart(filter);
+  await Completer<void>().future; // keep the process alive
+}
+
+class _RunManager {
+  Process? _process;
+
+  /// Stops the previous run (and its children) and starts a new one.
+  Future<void> restart(String filter) async {
+    await _stop();
+    final args = [
+      '-File',
+      'tools/run_e2e.ps1',
+      if (filter.isNotEmpty) ...['-Group', filter],
+    ];
+    print('==> pwsh ${args.join(' ')}');
+    _process = await Process.start(
+      'pwsh',
+      args,
+      mode: ProcessStartMode.detachedWithStdio,
+    );
+  }
+
+  Future<void> _stop() async {
+    final process = _process;
+    _process = null;
+    if (process == null) return;
+    print('Stopping the previous run (pid ${process.pid})');
+    // /T kills the whole tree: the run owns a flutter test/ drive child.
+    await Process.run('taskkill', ['/F', '/T', '/PID', '${process.pid}']);
+  }
 }

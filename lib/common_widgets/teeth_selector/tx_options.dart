@@ -25,39 +25,59 @@ class ColorsDictionary {
 enum StateType { treatment, state, both }
 
 class TxOption {
+  TxOption(this.label, this.icon, this.color, this.type);
   final String label;
   final Color color;
   final IconData icon;
   final StateType type;
-  TxOption(this.label, this.icon, this.color, this.type);
 }
 
 final List<TxOption> txOptions = [
-  TxOption('missing', DentalIcons.question, ColorsDictionary.c01, StateType.state),
-  TxOption('extraction', DentalIcons.exo, ColorsDictionary.c01, StateType.treatment),
-  TxOption('filling', DentalIcons.filling, ColorsDictionary.c02, StateType.both),
-  TxOption('pulpotomy', DentalIcons.pulpotomy, ColorsDictionary.c03, StateType.treatment),
+  TxOption(
+      'missing', DentalIcons.question, ColorsDictionary.c01, StateType.state),
+  TxOption(
+      'extraction', DentalIcons.exo, ColorsDictionary.c01, StateType.treatment),
+  TxOption(
+      'filling', DentalIcons.filling, ColorsDictionary.c02, StateType.both),
+  TxOption('pulpotomy', DentalIcons.pulpotomy, ColorsDictionary.c03,
+      StateType.treatment),
   TxOption('caries', DentalIcons.caries, ColorsDictionary.c03, StateType.state),
   TxOption('rCT', DentalIcons.rct, ColorsDictionary.c04, StateType.both),
-  TxOption('fractured', DentalIcons.fractured, ColorsDictionary.c05, StateType.state),
-  TxOption('re-RCT', DentalIcons.rerct, ColorsDictionary.c05, StateType.treatment),
-  TxOption('mobility', DentalIcons.mobility, ColorsDictionary.c10, StateType.state),
-  TxOption('ortho', DentalIcons.ortho, ColorsDictionary.c10, StateType.treatment),
-  TxOption('recession', DentalIcons.recession, ColorsDictionary.c06, StateType.state),
-  TxOption('whitening', DentalIcons.whiten, ColorsDictionary.c06, StateType.treatment),
-  TxOption('rroot', DentalIcons.retainedroot, ColorsDictionary.c07, StateType.state),
-  TxOption('clean', DentalIcons.clean, ColorsDictionary.c07, StateType.treatment),
-  TxOption('implant', DentalIcons.implant, ColorsDictionary.c08, StateType.both),
-  TxOption('rprimary', DentalIcons.retainedprimary, ColorsDictionary.c09, StateType.state),
-  TxOption('surgery', DentalIcons.apiceoctomy, ColorsDictionary.c09, StateType.treatment),
-  TxOption('malposition', DentalIcons.crowding, ColorsDictionary.c09, StateType.state),
+  TxOption('fractured', DentalIcons.fractured, ColorsDictionary.c05,
+      StateType.state),
+  TxOption(
+      're-RCT', DentalIcons.rerct, ColorsDictionary.c05, StateType.treatment),
+  TxOption(
+      'mobility', DentalIcons.mobility, ColorsDictionary.c10, StateType.state),
+  TxOption(
+      'ortho', DentalIcons.ortho, ColorsDictionary.c10, StateType.treatment),
+  TxOption('recession', DentalIcons.recession, ColorsDictionary.c06,
+      StateType.state),
+  TxOption('whitening', DentalIcons.whiten, ColorsDictionary.c06,
+      StateType.treatment),
+  TxOption(
+      'rroot', DentalIcons.retainedroot, ColorsDictionary.c07, StateType.state),
+  TxOption(
+      'clean', DentalIcons.clean, ColorsDictionary.c07, StateType.treatment),
+  TxOption(
+      'implant', DentalIcons.implant, ColorsDictionary.c08, StateType.both),
+  TxOption('rprimary', DentalIcons.retainedprimary, ColorsDictionary.c09,
+      StateType.state),
+  TxOption('surgery', DentalIcons.apiceoctomy, ColorsDictionary.c09,
+      StateType.treatment),
+  TxOption('malposition', DentalIcons.crowding, ColorsDictionary.c09,
+      StateType.state),
   TxOption('crown', DentalIcons.crown, ColorsDictionary.c11, StateType.both),
   TxOption('veneer', DentalIcons.veneer, ColorsDictionary.c12, StateType.both),
-  TxOption('overlay', DentalIcons.overlay, ColorsDictionary.c16, StateType.both),
-  TxOption('impacted', DentalIcons.impacted, ColorsDictionary.c17, StateType.state),
-  TxOption('temporary', DentalIcons.temp, ColorsDictionary.c17, StateType.treatment),
+  TxOption(
+      'overlay', DentalIcons.overlay, ColorsDictionary.c16, StateType.both),
+  TxOption(
+      'impacted', DentalIcons.impacted, ColorsDictionary.c17, StateType.state),
+  TxOption(
+      'temporary', DentalIcons.temp, ColorsDictionary.c17, StateType.treatment),
   TxOption('bridge', DentalIcons.bridge, ColorsDictionary.c13, StateType.both),
-  TxOption('abutment', DentalIcons.abutment, ColorsDictionary.c14, StateType.both),
+  TxOption(
+      'abutment', DentalIcons.abutment, ColorsDictionary.c14, StateType.both),
   TxOption('pontic', DentalIcons.pontic, ColorsDictionary.c15, StateType.both),
   TxOption('other', DentalIcons.question, ColorsDictionary.c18, StateType.both),
 ];

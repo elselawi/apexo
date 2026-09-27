@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:apexo/services/notifications/model_push_data.dart';
+import 'package:apexo/services/notifications/push_data.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:flutter_test/flutter_test.dart';
 

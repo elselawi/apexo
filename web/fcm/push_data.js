@@ -1,7 +1,28 @@
 /**
+ * The web's reading of a push payload.
+ *
+ * This one file mirrors *two* Dart files, because the web app only ever
+ * **displays** a payload — nothing here produces one, and JavaScript has no
+ * extension members to hang a method on a class from another file:
+ *
+ *   * `lib/services/notifications/push_data.dart` — the JSON field names and
+ *     `fromJson`.
+ *   * `lib/services/notifications/push_interpretation.dart` — `_interpret()`,
+ *     `displayTuple()` and the translations, *including their fallbacks*: a
+ *     payload the Dart side would call uninterpretable must read as the generic
+ *     notice here too, or the same push says two different things on two
+ *     clients.
+ *
+ * Deliberately absent, because there is no producer on this side:
+ * `PushData.fromChange`, `notifiableFields` and `sameNotifiableValue` (see
+ * `lib/services/notifications/notifiable_fields.dart`). A field added, renamed
+ * or removed in the Dart payload has to be added, renamed or removed here.
+ */
+
+/**
  * Mocking the Enums as Objects
  */
-const PushInterpetation = {
+const PushInterpretation = {
     newAppointmentForYou: "newAppointmentForYou",
     newNoteForYou: "newNoteForYou",
     newNotification: "newNotification",
@@ -46,6 +67,12 @@ export class PushData {
         this.oldVals = oldVals;
         this.newVals = newVals;
         this.targetIDs = targetIDs;
+
+        // Whether an uninterpretable payload has already been reported for this
+        // datum. `displayTuple()` is called again for the same payload — the
+        // notification click handler re-reads it — so the diagnosis is reported
+        // once and not once per call. Mirrors `PushData.uninterpretableReported`.
+        this.uninterpretableReported = false;
     }
 
     displayTuple() {
@@ -61,82 +88,140 @@ export class PushData {
     }
 
     /**
-     * Returns [oldVal, newVal]
+     * Returns [oldVal, newVal].
+     *
+     * Both are `null` when the payload does not carry the value. This is not a
+     * defensive nicety: `updatedFields`, `oldVals` and `newVals` are three
+     * independent lists on the wire, and this reads a payload a *remote* sender
+     * produced, so a short list or a missing before-side must degrade to
+     * "unknown" rather than throw or — worse — report a direction that is not
+     * there.
      */
     _valsTuple(field) {
         const i = this.updatedFields.indexOf(field);
-        return [this.oldVals[i], this.newVals[i]];
+        if (i < 0) return [null, null];
+        return [
+            i < this.oldVals.length ? this.oldVals[i] : null,
+            i < this.newVals.length ? this.newVals[i] : null,
+        ];
     }
 
     _interpret() {
         if (this.isCreation && this.store === "appointments") {
-            return PushInterpetation.newAppointmentForYou;
+            return PushInterpretation.newAppointmentForYou;
         }
 
         if (this.isCreation && this.store === "notes") {
-            return PushInterpetation.newNoteForYou;
+            return PushInterpretation.newNoteForYou;
         }
 
         if (this.isUpdate && this.store === "appointments") {
             if (this.updatedFields.includes("date")) {
-                const [oldV, newV] = this._valsTuple("date");
-                return oldV > newV
-                    ? PushInterpetation.appointmentDateHasBeenMovedEarlier
-                    : PushInterpetation.appointmentDateHasBeenMovedLater;
+                const [oldDate, newDate] = this._valsTuple("date");
+                // `date` travels as minutes since the epoch (`Appointments.toWire`),
+                // so this is an integer comparison, not a chronological one, and
+                // both sides must be present before there is a direction to
+                // report.
+                if (Number.isInteger(oldDate) && Number.isInteger(newDate)) {
+                    return oldDate > newDate
+                        ? PushInterpretation.appointmentDateHasBeenMovedEarlier
+                        : PushInterpretation.appointmentDateHasBeenMovedLater;
+                }
             }
             if (this.updatedFields.includes("isDone")) {
-                const [, newV] = this._valsTuple("isDone");
-                return newV === true
-                    ? PushInterpetation.appointmentIsNowDone
-                    : PushInterpetation.appointmentStatusBeenChanged;
+                const [, newVal] = this._valsTuple("isDone");
+                return newVal === true
+                    ? PushInterpretation.appointmentIsNowDone
+                    : PushInterpretation.appointmentStatusBeenChanged;
             }
             if (this.updatedFields.includes("archived")) {
-                const [, newV] = this._valsTuple("archived");
-                return newV === true
-                    ? PushInterpetation.appointmentHasBeenCancelled
-                    : PushInterpetation.appointmentStatusBeenChanged;
+                const [, newVal] = this._valsTuple("archived");
+                return newVal === true
+                    ? PushInterpretation.appointmentHasBeenCancelled
+                    : PushInterpretation.appointmentStatusBeenChanged;
             }
             if (this.updatedFields.includes("operatorsIDs")) {
-                const newOperators = this.newVals[this.updatedFields.indexOf("operatorsIDs")];
-                return newOperators.includes(self.currentAccountID)
-                    ? PushInterpetation.appointmentHasBeenAssignedToYou
-                    : PushInterpetation.appointmentStatusBeenChanged;
+                const [, newOperators] = this._valsTuple("operatorsIDs");
+                // An array, not a string list: a payload that round-tripped
+                // through JSON holds an array of anything, and a payload that
+                // carries no array at all must not throw.
+                if (
+                    Array.isArray(newOperators) &&
+                    newOperators.includes(self.currentAccountID)
+                ) {
+                    return PushInterpretation.appointmentHasBeenAssignedToYou;
+                } else {
+                    return PushInterpretation.appointmentStatusBeenChanged;
+                }
             }
         }
 
         if (this.isUpdate && this.store === "notes") {
             if (this.updatedFields.includes("comments")) {
-                return PushInterpetation.newCommentAddedToYourNote;
+                return PushInterpretation.newCommentAddedToYourNote;
             }
             if (this.updatedFields.includes("attachments")) {
-                return PushInterpetation.newAttachmentsAddedToYourNote;
+                return PushInterpretation.newAttachmentsAddedToYourNote;
             }
             if (this.updatedFields.includes("done")) {
-                const [, newV] = this._valsTuple("done");
-                return newV === true
-                    ? PushInterpetation.noteHasBeenMarkedAsDone
-                    : PushInterpetation.noteHasBeenMarkedAsPending;
+                const [, newVal] = this._valsTuple("done");
+                return newVal === true
+                    ? PushInterpretation.noteHasBeenMarkedAsDone
+                    : PushInterpretation.noteHasBeenMarkedAsPending;
             }
             if (this.updatedFields.includes("assignedTo")) {
-                const val = this.newVals[this.updatedFields.indexOf("assignedTo")];
+                const [, val] = this._valsTuple("assignedTo");
                 return val === self.currentAccountID
-                    ? PushInterpetation.aNewNoteHasBeenAssignedToYou
-                    : PushInterpetation.assigneeOnYourNoteHasChanged;
+                    ? PushInterpretation.aNewNoteHasBeenAssignedToYou
+                    : PushInterpretation.assigneeOnYourNoteHasChanged;
             }
             if (this.updatedFields.includes("dueDate")) {
-                const [oldV, newV] = this._valsTuple("dueDate");
-                if (oldV > newV) return PushInterpetation.dueDateOnYourNoteHasBeenMovedEarlier;
-                if (oldV < newV) return PushInterpetation.dueDateOnYourNoteHasBeenMovedLater;
+                const [oldDue, newDue] = this._valsTuple("dueDate");
+                // `dueDate` travels as hours since the epoch (`Notes.toWire`).
+                if (Number.isInteger(oldDue) && Number.isInteger(newDue)) {
+                    if (oldDue > newDue)
+                        return PushInterpretation.dueDateOnYourNoteHasBeenMovedEarlier;
+                    if (oldDue < newDue)
+                        return PushInterpretation.dueDateOnYourNoteHasBeenMovedLater;
+                }
             }
             if (this.updatedFields.includes("archived")) {
-                const [, newV] = this._valsTuple("archived");
-                return newV === true
-                    ? PushInterpetation.yourNoteHasBeenArchived
-                    : PushInterpetation.yourNoteHasBeenUnarchived;
+                const [, newVal] = this._valsTuple("archived");
+                return newVal === true
+                    ? PushInterpretation.yourNoteHasBeenArchived
+                    : PushInterpretation.yourNoteHasBeenUnarchived;
             }
         }
 
-        return PushInterpetation.newNotification;
+        // Nothing matched. For a store we *do* notify about, an update that
+        // reached this point is malformed — a field list or value list that is
+        // absent, the wrong type, or shorter than the field list it indexes. The
+        // wording below degrades to the generic "new notification", which is the
+        // right *display* but must not hide a sender-side regression, so it is
+        // reported once.
+        if (
+            this.isUpdate &&
+            (this.store === "appointments" || this.store === "notes")
+        ) {
+            this._reportUninterpretable();
+        }
+        return PushInterpretation.newNotification;
+    }
+
+    /**
+     * Reports (once per datum) that a payload could not be interpreted.
+     */
+    _reportUninterpretable() {
+        if (this.uninterpretableReported) return;
+        this.uninterpretableReported = true;
+        console.warn(
+            `Push payload could not be interpreted — store "${this.store}", ` +
+            `isCreation=${this.isCreation}, isUpdate=${this.isUpdate}, ` +
+            `updatedFields=${JSON.stringify(this.updatedFields)}, ` +
+            `oldVals=${JSON.stringify(this.oldVals)}, ` +
+            `newVals=${JSON.stringify(this.newVals)}. ` +
+            `Falling back to the generic notification.`
+        );
     }
 
     toJson() {
@@ -172,66 +257,66 @@ export class PushData {
  */
 const translations = {
     [Langs.en]: {
-        [PushInterpetation.newNotification]: ["Notifications", "You have a new notification"],
-        [PushInterpetation.newAppointmentForYou]: ["Appointments", "You have a new appointment"],
-        [PushInterpetation.newNoteForYou]: ["Notes", "You have a new note"],
-        [PushInterpetation.appointmentDateHasBeenMovedEarlier]: ["Your appointment", "Your appointments has been moved earlier"],
-        [PushInterpetation.appointmentDateHasBeenMovedLater]: ["Your appointment", "Your appointments has been moved later"],
-        [PushInterpetation.appointmentIsNowDone]: ["Your appointment", "Your appointment is now done"],
-        [PushInterpetation.appointmentHasBeenCancelled]: ["Your appointment", "Your appointment has been cancelled"],
-        [PushInterpetation.appointmentStatusBeenChanged]: ["Your appointment", "Your appointment status has been changed"],
-        [PushInterpetation.appointmentHasBeenAssignedToYou]: ["Appointments", "An appointment has been assigned to you"],
-        [PushInterpetation.newCommentAddedToYourNote]: ["Your note", "A new comment has been added to your note"],
-        [PushInterpetation.noteHasBeenMarkedAsDone]: ["Your note", "Your note has been marked as done"],
-        [PushInterpetation.noteHasBeenMarkedAsPending]: ["Your note", "Your note has been marked as pending"],
-        [PushInterpetation.newAttachmentsAddedToYourNote]: ["Your note", "New attachments have been added to your note"],
-        [PushInterpetation.aNewNoteHasBeenAssignedToYou]: ["Notes", "A new note has been assigned to you"],
-        [PushInterpetation.assigneeOnYourNoteHasChanged]: ["Your note", "The assignee on your note has changed"],
-        [PushInterpetation.dueDateOnYourNoteHasBeenMovedEarlier]: ["Your note", "The due date on your note has been moved earlier"],
-        [PushInterpetation.dueDateOnYourNoteHasBeenMovedLater]: ["Your note", "The due date on your note has been moved later"],
-        [PushInterpetation.yourNoteHasBeenArchived]: ["Your note", "Your note has been archived"],
-        [PushInterpetation.yourNoteHasBeenUnarchived]: ["Your note", "Your note has been unarchived"],
+        [PushInterpretation.newNotification]: ["Notifications", "You have a new notification"],
+        [PushInterpretation.newAppointmentForYou]: ["Appointments", "You have a new appointment"],
+        [PushInterpretation.newNoteForYou]: ["Notes", "You have a new note"],
+        [PushInterpretation.appointmentDateHasBeenMovedEarlier]: ["Your appointment", "Your appointments has been moved earlier"],
+        [PushInterpretation.appointmentDateHasBeenMovedLater]: ["Your appointment", "Your appointments has been moved later"],
+        [PushInterpretation.appointmentIsNowDone]: ["Your appointment", "Your appointment is now done"],
+        [PushInterpretation.appointmentHasBeenCancelled]: ["Your appointment", "Your appointment has been cancelled"],
+        [PushInterpretation.appointmentStatusBeenChanged]: ["Your appointment", "Your appointment status has been changed"],
+        [PushInterpretation.appointmentHasBeenAssignedToYou]: ["Appointments", "An appointment has been assigned to you"],
+        [PushInterpretation.newCommentAddedToYourNote]: ["Your note", "A new comment has been added to your note"],
+        [PushInterpretation.noteHasBeenMarkedAsDone]: ["Your note", "Your note has been marked as done"],
+        [PushInterpretation.noteHasBeenMarkedAsPending]: ["Your note", "Your note has been marked as pending"],
+        [PushInterpretation.newAttachmentsAddedToYourNote]: ["Your note", "New attachments have been added to your note"],
+        [PushInterpretation.aNewNoteHasBeenAssignedToYou]: ["Notes", "A new note has been assigned to you"],
+        [PushInterpretation.assigneeOnYourNoteHasChanged]: ["Your note", "The assignee on your note has changed"],
+        [PushInterpretation.dueDateOnYourNoteHasBeenMovedEarlier]: ["Your note", "The due date on your note has been moved earlier"],
+        [PushInterpretation.dueDateOnYourNoteHasBeenMovedLater]: ["Your note", "The due date on your note has been moved later"],
+        [PushInterpretation.yourNoteHasBeenArchived]: ["Your note", "Your note has been archived"],
+        [PushInterpretation.yourNoteHasBeenUnarchived]: ["Your note", "Your note has been unarchived"],
     },
     [Langs.ar]: {
-        [PushInterpetation.newNotification]: ["الإشعارات", "لديك إشعار جديد"],
-        [PushInterpetation.newAppointmentForYou]: ["المواعيد", "لديك موعد جديد"],
-        [PushInterpetation.newNoteForYou]: ["الملاحظات", "لديك ملاحظة جديدة"],
-        [PushInterpetation.appointmentDateHasBeenMovedEarlier]: ["موعدك", "تم نقل موعدك إلى وقت أبكر"],
-        [PushInterpetation.appointmentDateHasBeenMovedLater]: ["موعدك", "تم نقل موعدك إلى وقت لاحق"],
-        [PushInterpetation.appointmentIsNowDone]: ["موعدك", "تم إنجاز موعدك"],
-        [PushInterpetation.appointmentHasBeenCancelled]: ["موعدك", "تم إلغاء موعدك"],
-        [PushInterpetation.appointmentStatusBeenChanged]: ["موعدك", "تم تغيير حالة موعدك"],
-        [PushInterpetation.appointmentHasBeenAssignedToYou]: ["المواعيد", "تم تعيين موعد لك"],
-        [PushInterpetation.newCommentAddedToYourNote]: ["ملاحظتك", "تم إضافة تعليق جديد إلى ملاحظتك"],
-        [PushInterpetation.noteHasBeenMarkedAsDone]: ["ملاحظتك", "تم تأشير ملاحظتك كمنجزة"],
-        [PushInterpetation.noteHasBeenMarkedAsPending]: ["ملاحظتك", "تم تأشير ملاحظتك كمعلقة"],
-        [PushInterpetation.newAttachmentsAddedToYourNote]: ["ملاحظتك", "تم إضافة مرفقات جديدة إلى ملاحظتك"],
-        [PushInterpetation.aNewNoteHasBeenAssignedToYou]: ["الملاحظات", "تم تعيين ملاحظة جديدة لك"],
-        [PushInterpetation.assigneeOnYourNoteHasChanged]: ["ملاحظتك", "تم تغيير المسؤول عن ملاحظتك"],
-        [PushInterpetation.dueDateOnYourNoteHasBeenMovedEarlier]: ["ملاحظتك", "تم نقل تاريخ الاستحقاق لملاحظتك إلى وقت أبكر"],
-        [PushInterpetation.dueDateOnYourNoteHasBeenMovedLater]: ["ملاحظتك", "تم نقل تاريخ الاستحقاق لملاحظتك إلى وقت لاحق"],
-        [PushInterpetation.yourNoteHasBeenArchived]: ["ملاحظتك", "تم أرشفة ملاحظتك"],
-        [PushInterpetation.yourNoteHasBeenUnarchived]: ["ملاحظتك", "تم إلغاء أرشفة ملاحظتك"],
+        [PushInterpretation.newNotification]: ["الإشعارات", "لديك إشعار جديد"],
+        [PushInterpretation.newAppointmentForYou]: ["المواعيد", "لديك موعد جديد"],
+        [PushInterpretation.newNoteForYou]: ["الملاحظات", "لديك ملاحظة جديدة"],
+        [PushInterpretation.appointmentDateHasBeenMovedEarlier]: ["موعدك", "تم نقل موعدك إلى وقت أبكر"],
+        [PushInterpretation.appointmentDateHasBeenMovedLater]: ["موعدك", "تم نقل موعدك إلى وقت لاحق"],
+        [PushInterpretation.appointmentIsNowDone]: ["موعدك", "تم إنجاز موعدك"],
+        [PushInterpretation.appointmentHasBeenCancelled]: ["موعدك", "تم إلغاء موعدك"],
+        [PushInterpretation.appointmentStatusBeenChanged]: ["موعدك", "تم تغيير حالة موعدك"],
+        [PushInterpretation.appointmentHasBeenAssignedToYou]: ["المواعيد", "تم تعيين موعد لك"],
+        [PushInterpretation.newCommentAddedToYourNote]: ["ملاحظتك", "تم إضافة تعليق جديد إلى ملاحظتك"],
+        [PushInterpretation.noteHasBeenMarkedAsDone]: ["ملاحظتك", "تم تأشير ملاحظتك كمنجزة"],
+        [PushInterpretation.noteHasBeenMarkedAsPending]: ["ملاحظتك", "تم تأشير ملاحظتك كمعلقة"],
+        [PushInterpretation.newAttachmentsAddedToYourNote]: ["ملاحظتك", "تم إضافة مرفقات جديدة إلى ملاحظتك"],
+        [PushInterpretation.aNewNoteHasBeenAssignedToYou]: ["الملاحظات", "تم تعيين ملاحظة جديدة لك"],
+        [PushInterpretation.assigneeOnYourNoteHasChanged]: ["ملاحظتك", "تم تغيير المسؤول عن ملاحظتك"],
+        [PushInterpretation.dueDateOnYourNoteHasBeenMovedEarlier]: ["ملاحظتك", "تم نقل تاريخ الاستحقاق لملاحظتك إلى وقت أبكر"],
+        [PushInterpretation.dueDateOnYourNoteHasBeenMovedLater]: ["ملاحظتك", "تم نقل تاريخ الاستحقاق لملاحظتك إلى وقت لاحق"],
+        [PushInterpretation.yourNoteHasBeenArchived]: ["ملاحظتك", "تم أرشفة ملاحظتك"],
+        [PushInterpretation.yourNoteHasBeenUnarchived]: ["ملاحظتك", "تم إلغاء أرشفة ملاحظتك"],
     },
     [Langs.es]: {
-        [PushInterpetation.newNotification]: ["Notificaciones", "Tienes una nueva notificación"],
-        [PushInterpetation.newAppointmentForYou]: ["Citas", "Tienes una nueva cita"],
-        [PushInterpetation.newNoteForYou]: ["Notas", "Tienes una nueva nota"],
-        [PushInterpetation.appointmentDateHasBeenMovedEarlier]: ["Tu cita", "Tu cita ha sido movida a una fecha anterior"],
-        [PushInterpetation.appointmentDateHasBeenMovedLater]: ["Tu cita", "Tu cita ha sido movida a una fecha posterior"],
-        [PushInterpetation.appointmentIsNowDone]: ["Tu cita", "Tu cita ha sido completada"],
-        [PushInterpetation.appointmentHasBeenCancelled]: ["Tu cita", "Tu cita ha sido cancelada"],
-        [PushInterpetation.appointmentStatusBeenChanged]: ["Tu cita", "El estado de tu cita ha sido cambiado"],
-        [PushInterpetation.appointmentHasBeenAssignedToYou]: ["Citas", "Una cita ha sido asignada a ti"],
-        [PushInterpetation.newCommentAddedToYourNote]: ["Tu nota", "Se ha añadido un nuevo comentario a tu nota"],
-        [PushInterpetation.noteHasBeenMarkedAsDone]: ["Tu nota", "Tu nota ha sido marcada como completada"],
-        [PushInterpetation.noteHasBeenMarkedAsPending]: ["Tu nota", "Tu nota ha sido marcada como pendiente"],
-        [PushInterpetation.newAttachmentsAddedToYourNote]: ["Tu nota", "Se han añadido nuevos archivos adjuntos a tu nota"],
-        [PushInterpetation.aNewNoteHasBeenAssignedToYou]: ["Notas", "Se te ha asignado una nueva nota"],
-        [PushInterpetation.assigneeOnYourNoteHasChanged]: ["Tu nota", "El responsable de tu nota ha cambiado"],
-        [PushInterpetation.dueDateOnYourNoteHasBeenMovedEarlier]: ["Tu nota", "La fecha de vencimiento de tu nota ha sido movida a una fecha anterior"],
-        [PushInterpetation.dueDateOnYourNoteHasBeenMovedLater]: ["Tu nota", "La fecha de vencimiento de tu nota ha sido movida a una fecha posterior"],
-        [PushInterpetation.yourNoteHasBeenArchived]: ["Tu nota", "Tu nota ha sido archivada"],
-        [PushInterpetation.yourNoteHasBeenUnarchived]: ["Tu nota", "Tu nota ha sido desarchivada"],
+        [PushInterpretation.newNotification]: ["Notificaciones", "Tienes una nueva notificación"],
+        [PushInterpretation.newAppointmentForYou]: ["Citas", "Tienes una nueva cita"],
+        [PushInterpretation.newNoteForYou]: ["Notas", "Tienes una nueva nota"],
+        [PushInterpretation.appointmentDateHasBeenMovedEarlier]: ["Tu cita", "Tu cita ha sido movida a una fecha anterior"],
+        [PushInterpretation.appointmentDateHasBeenMovedLater]: ["Tu cita", "Tu cita ha sido movida a una fecha posterior"],
+        [PushInterpretation.appointmentIsNowDone]: ["Tu cita", "Tu cita ha sido completada"],
+        [PushInterpretation.appointmentHasBeenCancelled]: ["Tu cita", "Tu cita ha sido cancelada"],
+        [PushInterpretation.appointmentStatusBeenChanged]: ["Tu cita", "El estado de tu cita ha sido cambiado"],
+        [PushInterpretation.appointmentHasBeenAssignedToYou]: ["Citas", "Una cita ha sido asignada a ti"],
+        [PushInterpretation.newCommentAddedToYourNote]: ["Tu nota", "Se ha añadido un nuevo comentario a tu nota"],
+        [PushInterpretation.noteHasBeenMarkedAsDone]: ["Tu nota", "Tu nota ha sido marcada como completada"],
+        [PushInterpretation.noteHasBeenMarkedAsPending]: ["Tu nota", "Tu nota ha sido marcada como pendiente"],
+        [PushInterpretation.newAttachmentsAddedToYourNote]: ["Tu nota", "Se han añadido nuevos archivos adjuntos a tu nota"],
+        [PushInterpretation.aNewNoteHasBeenAssignedToYou]: ["Notas", "Se te ha asignado una nueva nota"],
+        [PushInterpretation.assigneeOnYourNoteHasChanged]: ["Tu nota", "El responsable de tu nota ha cambiado"],
+        [PushInterpretation.dueDateOnYourNoteHasBeenMovedEarlier]: ["Tu nota", "La fecha de vencimiento de tu nota ha sido movida a una fecha anterior"],
+        [PushInterpretation.dueDateOnYourNoteHasBeenMovedLater]: ["Tu nota", "La fecha de vencimiento de tu nota ha sido movida a una fecha posterior"],
+        [PushInterpretation.yourNoteHasBeenArchived]: ["Tu nota", "Tu nota ha sido archivada"],
+        [PushInterpretation.yourNoteHasBeenUnarchived]: ["Tu nota", "Tu nota ha sido desarchivada"],
     }
 };

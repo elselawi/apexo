@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
@@ -28,7 +29,7 @@ const _defaultCloseButtonTooltip = 'Close';
 /// The [closeButtonTooltip] text is displayed when the user long-presses on the
 /// close button and is used for accessibility.
 /// The [closeButtonColor] defaults to white, but can be set to any other color.
-showImageViewer(
+dynamic showImageViewer(
   BuildContext context,
   ImageProvider imageProvider, {
   bool immersive = true,
@@ -82,7 +83,8 @@ showImageViewer(
 /// The [closeButtonTooltip] text is displayed when the user long-presses on the
 /// close button and is used for accessibility.
 /// The [closeButtonColor] defaults to white, but can be set to any other color.
-showImageViewerPager(BuildContext context, EasyImageProvider imageProvider,
+Future<Object?> showImageViewerPager(
+    BuildContext context, EasyImageProvider imageProvider,
     {bool immersive = true,
     void Function(int)? onPageChanged,
     void Function(int)? onViewerDismissed,
@@ -101,7 +103,7 @@ showImageViewerPager(BuildContext context, EasyImageProvider imageProvider,
     void Function(String, String)? onSaveDrawing}) {
   if (immersive) {
     // Hide top and bottom bars
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive);
+    unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersive));
   }
 
   return showDialog(

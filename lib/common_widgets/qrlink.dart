@@ -2,14 +2,13 @@ import 'package:qr_flutter/qr_flutter.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class QRLink extends StatelessWidget {
-  final String link;
-  final double size;
-
   const QRLink({
     super.key,
     required this.link,
     this.size = 200.0,
   });
+  final String link;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +32,8 @@ class QRLink extends StatelessWidget {
           size: size,
           backgroundColor: Colors.white,
           errorCorrectionLevel: QrErrorCorrectLevel.H,
-          embeddedImageStyle: null, // Optional: You can add a logo in the center
+          embeddedImageStyle:
+              null, // Optional: You can add a logo in the center
           semanticsLabel: 'QR Code for $link',
         ),
       ),

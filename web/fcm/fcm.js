@@ -94,7 +94,16 @@ class FCMManager {
 
                         if (supported) {
                             if (window.Notification.permission !== "granted") {
-                                this.showPrompt();
+                                // Asked once, ever. The prompt used to come back on
+                                // every login (and every page load while logins
+                                // were not persisted), which read as a modal the
+                                // user could not get rid of. "Not now" is a
+                                // decision, so it is remembered.
+                                if (this.promptDismissed()) {
+                                    this.setup();
+                                } else {
+                                    this.showPrompt();
+                                }
                             } else {
                                 this.setup();
                             }
@@ -132,7 +141,7 @@ class FCMManager {
 
     bindEvents() {
         document.getElementById('btn-grant-fcm')?.addEventListener('click', () => this.requestPermission());
-        document.getElementById('btn-later-fcm')?.addEventListener('click', () => this.hidePrompt());
+        document.getElementById('btn-later-fcm')?.addEventListener('click', () => this.rememberPromptDismissed());
     }
 
     localize() {
@@ -173,6 +182,25 @@ class FCMManager {
         if (el) el.style.display = 'none';
     }
 
+    // Whether the user has already answered the prompt with "Not now".
+    promptDismissed() {
+        try {
+            return window.localStorage.getItem('apexo-fcm-prompt-dismissed') === '1';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    // Records "Not now" so the prompt is never shown again on this device.
+    rememberPromptDismissed() {
+        try {
+            window.localStorage.setItem('apexo-fcm-prompt-dismissed', '1');
+        } catch (e) {
+            // Private mode / storage disabled: the prompt is simply asked again.
+        }
+        this.hidePrompt();
+    }
+
     async requestPermission() {
         this.hidePrompt();
 
@@ -190,7 +218,10 @@ class FCMManager {
         if (permission === 'granted') {
             await this.setup();
         } else {
+            // A refusal cannot be undone from inside the app, so asking again on
+            // the next login would only be noise.
             console.warn("Permission denied");
+            this.rememberPromptDismissed();
         }
     }
 

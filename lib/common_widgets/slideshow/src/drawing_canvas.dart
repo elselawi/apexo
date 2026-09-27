@@ -2,13 +2,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 
 class DrawingCanvas extends StatefulWidget {
-  final String? initialDrawing;
-  final Function(String) onSave;
-  final bool isDrawingMode;
-  final bool showDrawings;
-  final Color selectedColor;
-  final bool isEraserMode;
-
   const DrawingCanvas({
     super.key,
     this.initialDrawing,
@@ -18,23 +11,43 @@ class DrawingCanvas extends StatefulWidget {
     this.selectedColor = Colors.red,
     this.isEraserMode = false,
   });
+  final String? initialDrawing;
+  final void Function(String) onSave;
+  final bool isDrawingMode;
+  final bool showDrawings;
+  final Color selectedColor;
+  final bool isEraserMode;
 
   @override
   State<DrawingCanvas> createState() => _DrawingCanvasState();
 }
 
 class Stroke {
-  final List<Offset> points;
-  final Color color;
-  final bool isEraser;
-  final double strokeWidth;
-
   Stroke({
     required this.points,
     required this.color,
     this.isEraser = false,
     this.strokeWidth = 3.0,
   });
+
+  factory Stroke.fromJson(Map<String, dynamic> json) {
+    return Stroke(
+      points: (json['points'] as List<dynamic>)
+          .map((p) => _point(p as Map<String, dynamic>))
+          .toList(),
+      color: json['color'] != null ? Color(json['color'] as int) : Colors.red,
+      isEraser: json['isEraser'] as bool? ?? false,
+      strokeWidth: (json['strokeWidth'] as num?)?.toDouble() ?? 3.0,
+    );
+  }
+
+  /// One stored point, in the `{'dx': num, 'dy': num}` shape [toJson] writes.
+  static Offset _point(Map<String, dynamic> p) =>
+      Offset((p['dx'] as num).toDouble(), (p['dy'] as num).toDouble());
+  final List<Offset> points;
+  final Color color;
+  final bool isEraser;
+  final double strokeWidth;
 
   Map<String, dynamic> toJson() => {
         'points': points
@@ -43,22 +56,10 @@ class Stroke {
                   'dy': (p.dy * 1000).round() / 1000
                 })
             .toList(),
-        'color': color.value,
+        'color': color.toARGB32(),
         'isEraser': isEraser,
         'strokeWidth': strokeWidth,
       };
-
-  factory Stroke.fromJson(Map<String, dynamic> json) {
-    return Stroke(
-      points: (json['points'] as List<dynamic>)
-          .map((p) =>
-              Offset((p['dx'] as num).toDouble(), (p['dy'] as num).toDouble()))
-          .toList(),
-      color: json['color'] != null ? Color(json['color'] as int) : Colors.red,
-      isEraser: json['isEraser'] as bool? ?? false,
-      strokeWidth: (json['strokeWidth'] as num?)?.toDouble() ?? 3.0,
-    );
-  }
 }
 
 class _DrawingCanvasState extends State<DrawingCanvas> {
@@ -86,7 +87,8 @@ class _DrawingCanvasState extends State<DrawingCanvas> {
   void _loadDrawing() {
     if (widget.initialDrawing != null && widget.initialDrawing!.isNotEmpty) {
       try {
-        final List<dynamic> decoded = jsonDecode(widget.initialDrawing!);
+        final List<dynamic> decoded =
+            jsonDecode(widget.initialDrawing!) as List<dynamic>;
         _strokes = decoded.map((item) {
           if (item is List) {
             // Backwards compatibility for old format: List<List<Offset>>
@@ -117,7 +119,7 @@ class _DrawingCanvasState extends State<DrawingCanvas> {
   Widget build(BuildContext context) {
     if (!widget.showDrawings) return const SizedBox.shrink();
 
-    Widget canvas = LayoutBuilder(builder: (context, constraints) {
+    final Widget canvas = LayoutBuilder(builder: (context, constraints) {
       return CustomPaint(
         size: Size(constraints.maxWidth, constraints.maxHeight),
         painter: _DrawingPainter(_strokes, _currentStroke,
@@ -215,13 +217,12 @@ class _DrawingCanvasState extends State<DrawingCanvas> {
 }
 
 class _DrawingPainter extends CustomPainter {
+  _DrawingPainter(
+      this.strokes, this.currentStroke, this.mousePosition, this.eraserSize);
   final List<Stroke> strokes;
   final Stroke? currentStroke;
   final Offset? mousePosition;
   final double eraserSize;
-
-  _DrawingPainter(
-      this.strokes, this.currentStroke, this.mousePosition, this.eraserSize);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -241,13 +242,13 @@ class _DrawingPainter extends CustomPainter {
 
     if (mousePosition != null) {
       final paint = Paint()
-        ..color = Colors.black.withOpacity(0.5)
+        ..color = Colors.black.withValues(alpha: 0.5)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.0;
       canvas.drawCircle(mousePosition!, eraserSize / 2, paint);
 
       final innerPaint = Paint()
-        ..color = Colors.white.withOpacity(0.5)
+        ..color = Colors.white.withValues(alpha: 0.5)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.0;
       canvas.drawCircle(mousePosition!, (eraserSize / 2) - 1, innerPaint);

@@ -9,16 +9,6 @@ import 'package:http/http.dart' as http;
 // ============================================================================
 
 class PostOpData {
-  final String postOpNotes;
-  final List<String> prescriptions;
-  final double price;
-  final double paid;
-  final Map<String, String> teeth;
-  final Map<String, String> teethExtraNotes;
-  final bool hasLabwork;
-  final String labName;
-  final String labworkNotes;
-
   PostOpData({
     required this.postOpNotes,
     required this.prescriptions,
@@ -49,6 +39,15 @@ class PostOpData {
         labName: json['labName'] as String? ?? '',
         labworkNotes: json['labworkNotes'] as String? ?? '',
       );
+  final String postOpNotes;
+  final List<String> prescriptions;
+  final double price;
+  final double paid;
+  final Map<String, String> teeth;
+  final Map<String, String> teethExtraNotes;
+  final bool hasLabwork;
+  final String labName;
+  final String labworkNotes;
 
   Map<String, dynamic> toJson() => {
         'postOpNotes': postOpNotes,

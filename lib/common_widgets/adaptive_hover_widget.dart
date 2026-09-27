@@ -8,11 +8,6 @@ import 'package:flutter/material.dart';
 /// On touch devices (no mouse), [onEnter] fires on long-press and
 /// [onExit] fires when the user taps outside the widget.
 class AdaptiveHoverWidget extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onEnter;
-  final VoidCallback? onExit;
-  final MouseCursor cursor;
-
   const AdaptiveHoverWidget({
     super.key,
     required this.child,
@@ -20,6 +15,10 @@ class AdaptiveHoverWidget extends StatefulWidget {
     this.onExit,
     this.cursor = SystemMouseCursors.click,
   });
+  final Widget child;
+  final VoidCallback? onEnter;
+  final VoidCallback? onExit;
+  final MouseCursor cursor;
 
   @override
   State<AdaptiveHoverWidget> createState() => _AdaptiveHoverWidgetState();

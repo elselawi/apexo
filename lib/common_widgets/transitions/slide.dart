@@ -1,20 +1,20 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 class SlideTransitionWrapper extends StatefulWidget {
-  final Widget child;
-  final Axis direction;
-
   const SlideTransitionWrapper({
     super.key,
     required this.child,
     this.direction = Axis.vertical,
   });
+  final Widget child;
+  final Axis direction;
 
   @override
   SlideTransitionWrapperState createState() => SlideTransitionWrapperState();
 }
 
-class SlideTransitionWrapperState extends State<SlideTransitionWrapper> with SingleTickerProviderStateMixin {
+class SlideTransitionWrapperState extends State<SlideTransitionWrapper>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Offset> _slideAnimation;
 
@@ -26,7 +26,9 @@ class SlideTransitionWrapperState extends State<SlideTransitionWrapper> with Sin
       duration: const Duration(milliseconds: 400), // Adjust duration as needed
     );
     _slideAnimation = Tween<Offset>(
-      begin: widget.direction == Axis.horizontal ? const Offset(-1, 0) : const Offset(0, 1), // Slide in from left
+      begin: widget.direction == Axis.horizontal
+          ? const Offset(-1, 0)
+          : const Offset(0, 1), // Slide in from left
       end: Offset.zero,
     ).animate(_controller);
 

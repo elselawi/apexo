@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/services/g_audio_transcription.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -33,7 +34,7 @@ class _LiveTranscriptionButtonState extends State<LiveTranscriptionButton> {
 
   @override
   void dispose() {
-    liveTranscriptionService.dispose();
+    unawaited(liveTranscriptionService.dispose());
     super.dispose();
   }
 

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:apexo/services/perm.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -89,6 +91,28 @@ void main() {
       final source = [1, 1, 1, 1, 1, 1, 1, 1, 1];
       final result = Perm.parse(source);
       expect(result, source);
+    });
+
+    test('an already-decoded JSON array is understood, not read as zeroes', () {
+      // `jsonDecode('[2,1,0]')` is a `List<dynamic>`, not a `List<int>`. It used
+      // to fall through to `zeroes`, which silently granted the account nothing.
+      final decoded = jsonDecode('[2, 1, 0]');
+      expect(decoded, isA<List<dynamic>>());
+      expect(decoded, isNot(isA<List<int>>()));
+
+      final result = Perm.parse(decoded);
+      expect(result[0], 2);
+      expect(result[1], 1);
+      expect(result[2], 0);
+      expect(result.length, 9);
+    });
+
+    test('numeric strings inside a list are accepted', () {
+      expect(Perm.parse(<dynamic>['2', 1]).take(2).toList(), [2, 1]);
+    });
+
+    test('a list holding a non-numeric entry → zeroes', () {
+      expect(Perm.parse(<dynamic>[2, 'x']), Perm.zeroes);
     });
   });
 

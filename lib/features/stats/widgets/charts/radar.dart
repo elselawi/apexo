@@ -6,9 +6,9 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class StyledRadarChart extends StatefulWidget {
+  const StyledRadarChart({required this.data, required this.labels, super.key});
   final List<List<double>> data;
   final List<String> labels;
-  const StyledRadarChart({required this.data, required this.labels, super.key});
 
   @override
   State<StyledRadarChart> createState() => _StyledRadarChartState();
@@ -64,7 +64,7 @@ class _StyledRadarChartState extends State<StyledRadarChart> {
                 color: FluentTheme.of(context).inactiveColor, fontSize: 11),
             radarShape: RadarShape.polygon,
             dataSets: List.generate(widget.data.length, (setIndex) {
-              Color color = getDeterministicItem(colorsWithoutYellow,
+              final Color color = getDeterministicItem(colorsWithoutYellow,
                   widget.labels.join() + setIndex.toString());
               return RadarDataSet(
                 borderColor: color,

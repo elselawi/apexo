@@ -19,7 +19,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (await testDir.exists()) {
+      if (testDir.existsSync()) {
         await testDir.delete(recursive: true);
       }
     });
@@ -27,7 +27,7 @@ void main() {
     test('createDirectory creates directory if not exists', () async {
       final newDir = '${testDir.path}/newdir';
       await createDirectory(newDir);
-      expect(await Directory(newDir).exists(), true);
+      expect(Directory(newDir).existsSync(), true);
     });
 
     test('checkIfFileExists returns correct existence status', () async {
@@ -41,7 +41,7 @@ void main() {
           await getOrCreateFile(path.join(testDir.path, 'newfile.txt'));
       expect(file, isA<File>());
       await file.writeAsString("Test content");
-      expect(await file.exists(), true);
+      expect(file.existsSync(), true);
     });
 
     test('savePickedImage copies image correctly', () async {
@@ -50,7 +50,7 @@ void main() {
       final sourceImage = await getOrCreateFile(srcName);
       await sourceImage.writeAsBytes([0xFF, 0xD8, 0xFF, 0xE0]);
       final result = await savePickedImage(sourceImage, dstName);
-      expect(await result.exists(), true);
+      expect(result.existsSync(), true);
       expect(path.basename(result.path), path.basename(dstName));
       expect(await result.readAsBytes(), [0xFF, 0xD8, 0xFF, 0xE0]);
     });

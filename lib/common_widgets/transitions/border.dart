@@ -1,22 +1,22 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 class BorderColorTransition extends StatefulWidget {
-  final Widget child;
-  final Duration duration;
-  final bool animate;
-
   const BorderColorTransition({
     super.key,
     required this.child,
     required this.animate,
     this.duration = const Duration(milliseconds: 500),
   });
+  final Widget child;
+  final Duration duration;
+  final bool animate;
 
   @override
   BorderColorTransitionState createState() => BorderColorTransitionState();
 }
 
-class BorderColorTransitionState extends State<BorderColorTransition> with SingleTickerProviderStateMixin {
+class BorderColorTransitionState extends State<BorderColorTransition>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<Color?> _colorAnimation;
 
@@ -48,7 +48,10 @@ class BorderColorTransitionState extends State<BorderColorTransition> with Singl
         return Container(
           decoration: BoxDecoration(
             border: Border.all(
-                color: widget.animate ? (_colorAnimation.value ?? Colors.red) : Colors.transparent, width: 1),
+                color: widget.animate
+                    ? (_colorAnimation.value ?? Colors.red)
+                    : Colors.transparent,
+                width: 1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: widget.child,

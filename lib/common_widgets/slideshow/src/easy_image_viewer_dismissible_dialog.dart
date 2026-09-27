@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -12,6 +13,22 @@ import 'easy_image_view_pager.dart';
 /// the user needs to be able to pan around on a zoomed-in image without triggering the
 /// swipe-to-dismiss gesture.
 class EasyImageViewerDismissibleDialog extends StatefulWidget {
+  /// Refer to [showImageViewerPager] for the arguments
+  const EasyImageViewerDismissibleDialog(this.imageProvider,
+      {super.key,
+      this.immersive = true,
+      this.onPageChanged,
+      this.onViewerDismissed,
+      this.swipeDismissible = false,
+      this.doubleTapZoomable = false,
+      this.infinitelyScrollable = false,
+      required this.canDelete,
+      required this.onPressDelete,
+      required this.backgroundColor,
+      required this.closeButtonTooltip,
+      this.drawings,
+      this.imageIds,
+      this.onSaveDrawing});
   final EasyImageProvider imageProvider;
   final bool immersive;
   final void Function(int) onPressDelete;
@@ -27,23 +44,6 @@ class EasyImageViewerDismissibleDialog extends StatefulWidget {
   final Map<String, String>? drawings;
   final List<String>? imageIds;
   final void Function(String, String)? onSaveDrawing;
-
-  /// Refer to [showImageViewerPager] for the arguments
-  EasyImageViewerDismissibleDialog(this.imageProvider,
-      {super.key,
-      this.immersive = true,
-      this.onPageChanged,
-      this.onViewerDismissed,
-      this.swipeDismissible = false,
-      this.doubleTapZoomable = false,
-      this.infinitelyScrollable = false,
-      required this.canDelete,
-      required this.onPressDelete,
-      required this.backgroundColor,
-      required this.closeButtonTooltip,
-      this.drawings,
-      this.imageIds,
-      this.onSaveDrawing});
 
   @override
   State<EasyImageViewerDismissibleDialog> createState() =>
@@ -140,11 +140,11 @@ class _EasyImageViewerDismissibleDialogState
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                         borderRadius: BorderRadius.circular(30),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.5),
+                            color: Colors.black.withValues(alpha: 0.5),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           )
@@ -201,7 +201,7 @@ class _EasyImageViewerDismissibleDialogState
                             Container(
                                 width: 1,
                                 height: 24,
-                                color: Colors.white.withOpacity(0.54)),
+                                color: Colors.white.withValues(alpha: 0.54)),
                             const SizedBox(width: 8),
                             IconButton(
                               icon: Row(
@@ -238,7 +238,7 @@ class _EasyImageViewerDismissibleDialogState
                             Container(
                                 width: 1,
                                 height: 24,
-                                color: Colors.white.withOpacity(0.54)),
+                                color: Colors.white.withValues(alpha: 0.54)),
                             const SizedBox(width: 8),
                           ],
                           if (_hasDrawings() || _isDrawingMode) ...[
@@ -247,7 +247,7 @@ class _EasyImageViewerDismissibleDialogState
                               Container(
                                   width: 1,
                                   height: 24,
-                                  color: Colors.white.withOpacity(0.54)),
+                                  color: Colors.white.withValues(alpha: 0.54)),
                               const SizedBox(width: 8),
                             ],
                             IconButton(
@@ -259,7 +259,7 @@ class _EasyImageViewerDismissibleDialogState
                                         : FluentIcons.hide,
                                     color: _showDrawings
                                         ? Colors.white
-                                        : Colors.white.withOpacity(0.54),
+                                        : Colors.white.withValues(alpha: 0.54),
                                     size: 18,
                                   ),
                                   const SizedBox(width: 4),
@@ -271,7 +271,8 @@ class _EasyImageViewerDismissibleDialogState
                                         .copyWith(
                                           color: _showDrawings
                                               ? Colors.white
-                                              : Colors.white.withOpacity(0.54),
+                                              : Colors.white
+                                                  .withValues(alpha: 0.54),
                                           fontSize: 16,
                                         ),
                                   ),
@@ -301,11 +302,11 @@ class _EasyImageViewerDismissibleDialogState
                     padding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.7),
+                      color: Colors.black.withValues(alpha: 0.7),
                       borderRadius: BorderRadius.circular(30),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         )
@@ -429,7 +430,7 @@ class _EasyImageViewerDismissibleDialogState
     }
 
     if (widget.immersive) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      unawaited(SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge));
     }
     if (_internalPageChangeListener != null) {
       _pageController.removeListener(_internalPageChangeListener!);
@@ -448,7 +449,7 @@ class _EasyImageViewerDismissibleDialogState
   }
 
   Widget _buildColorButton(Color color) {
-    bool isSelected = _selectedColor == color && !_isEraserMode;
+    final bool isSelected = _selectedColor == color && !_isEraserMode;
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -464,13 +465,14 @@ class _EasyImageViewerDismissibleDialogState
           color: color,
           shape: BoxShape.circle,
           border: Border.all(
-            color: isSelected ? Colors.blue : Colors.white.withOpacity(0.54),
+            color:
+                isSelected ? Colors.blue : Colors.white.withValues(alpha: 0.54),
             width: isSelected ? 3 : 1,
           ),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.blue.withOpacity(0.5),
+                    color: Colors.blue.withValues(alpha: 0.5),
                     blurRadius: 6,
                     spreadRadius: 2,
                   )

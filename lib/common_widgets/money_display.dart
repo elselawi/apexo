@@ -12,10 +12,10 @@ String formatMoneyInText(String text) {
   // Replace the found numbers with their formatted versions
   return text.replaceAllMapped(numberRegex, (Match match) {
     // Get the matched string (the raw number)
-    String rawNumber = match.group(0)!;
+    final String rawNumber = match.group(0)!;
 
     // Parse it to a double
-    double? parsedNumber = double.tryParse(rawNumber);
+    final double? parsedNumber = double.tryParse(rawNumber);
 
     // If it's a valid number, format it. Otherwise, leave it alone.
     if (parsedNumber != null) {

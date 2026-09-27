@@ -78,7 +78,7 @@ void main() {
       final q = TaskQueue(delayBetweenTasks: Duration.zero);
       final results = <int>[];
 
-      final futures = <Future>[];
+      final futures = <Future<void>>[];
       for (int i = 0; i < 10; i++) {
         final idx = i;
         futures.add(q.add(() async => results.add(idx)));

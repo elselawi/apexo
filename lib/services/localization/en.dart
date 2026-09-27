@@ -290,6 +290,7 @@ class En {
     "paidIn": "Paid in",
     "gallery": "Gallery",
     "link": "Link",
+    "couldNotOpenLink": "Could not open the link",
     "upload": "Upload",
     "camera": "Camera",
     "emptyGallery": "Empty gallery",
@@ -645,7 +646,7 @@ class En {
     "revenue": "Revenue",
     "canSee": "Can see",
     "canNotSee": "Can not see",
-    "accounts": "ِAccounts",
+    "accounts": "Accounts",
     "account": "Account",
     "user": "User",
     "operatesOnPatients": "Operates on patients",
@@ -756,6 +757,10 @@ class En {
     // login required
     "loginRequired": "Login required",
     "loginRequiredDesc": "Please login to continue",
+    "localDatabaseFailed":
+        "Could not open the local database. If Apexo is open in another tab, close it; otherwise restart the browser, then log in again.",
+    "alreadyRunningInAnotherTab":
+        "Apexo is already open in another tab. Close it and reload this page.",
 
     // server help flyout
     "whatIsAServer": "What is a server?",

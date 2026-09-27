@@ -292,6 +292,7 @@ class El implements En {
     "paidIn": "Πληρωμή σε",
     "gallery": "Συλλογή",
     "link": "Σύνδεσμος",
+    "couldNotOpenLink": "Δεν ήταν δυνατό το άνοιγμα του συνδέσμου",
     "upload": "Μεταφόρτωση",
     "camera": "Κάμερα",
     "emptyGallery": "Άδεια συλλογή",
@@ -767,6 +768,10 @@ class El implements En {
     // login required
     "loginRequired": "Απαιτείται σύνδεση",
     "loginRequiredDesc": "Συνδεθείτε για να συνεχίσετε",
+    "localDatabaseFailed":
+        "Δεν ήταν δυνατό το άνοιγμα της τοπικής βάσης δεδομένων. Αν το Apexo είναι ανοιχτό σε άλλη καρτέλα, κλείστε την· διαφορετικά επανεκκινήστε το πρόγραμμα περιήγησης και συνδεθείτε ξανά.",
+    "alreadyRunningInAnotherTab":
+        "Το Apexo είναι ήδη ανοιχτό σε άλλη καρτέλα. Κλείστε την και φορτώστε ξανά αυτή τη σελίδα.",
 
     // server help flyout
     "whatIsAServer": "Τι είναι ο server;",

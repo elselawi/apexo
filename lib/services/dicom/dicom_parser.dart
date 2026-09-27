@@ -6,10 +6,10 @@ import 'package:dicom_toolkit/dicom_toolkit.dart';
 
 /// Thin wrapper around `dicom_toolkit`'s [DicomParser].
 ///
-/// All methods return `null` on failure (graceful skipping — failures are
-/// Parse failures are logged to the `dicom_skipped` Hive box with the
-/// optional [sourcePath] and the failure reason, so the dentist can see
-/// why a file was skipped via the DICOM screen's "Skipped files" section.
+/// All methods return `null` on failure (graceful skipping). Parse failures are
+/// logged to the skipped-files log with the optional [sourcePath] and the
+/// failure reason, so the reason a file never reached the gallery is recorded —
+/// read today by the manual `verifyDicomScan` helper.
 ///
 /// Use [parseMetadata] for the fast header-only scan (no GPU, no pixel
 /// decode) — perfect for directory sweeps. Use [parse] for the full parse

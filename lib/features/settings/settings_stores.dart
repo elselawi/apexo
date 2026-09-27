@@ -212,12 +212,12 @@ class LocalSettings extends ObservablePersistingObject {
 
   @override
   fromJson(Map<String, dynamic> json) {
-    selectedLocale = json["selectedLocale"] ?? selectedLocale;
-    dateFormat = json["dateFormat"] ?? dateFormat;
-    calendarSystem = json["calendarSystem"] ?? calendarSystem;
+    selectedLocale = json["selectedLocale"] as int? ?? selectedLocale;
+    dateFormat = json["dateFormat"] as String? ?? dateFormat;
+    calendarSystem = json["calendarSystem"] as String? ?? calendarSystem;
     transcriptionLocaleNonFinal =
-        json["transcriptionLocale"] ?? transcriptionLocaleNonFinal;
-    dentalNotation = json["dentalNotation"] ?? dentalNotation;
+        json["transcriptionLocale"] as String? ?? transcriptionLocaleNonFinal;
+    dentalNotation = json["dentalNotation"] as String? ?? dentalNotation;
     selectedTheme =
         json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
     aiToken = json["aiToken"] as String?;
@@ -225,8 +225,8 @@ class LocalSettings extends ObservablePersistingObject {
         ? DateTime.fromMillisecondsSinceEpoch(json["aiTokenExpiry"] as int)
         : null;
     calendarEventsViewMode =
-        EventsViewMode.values[json["calendarEventsViewMode"] ?? 0];
-    lastSeenVersion = json["lastSeenVersion"] ?? lastSeenVersion;
+        EventsViewMode.values[json["calendarEventsViewMode"] as int? ?? 0];
+    lastSeenVersion = json["lastSeenVersion"] as String? ?? lastSeenVersion;
     dicomViewerPrefs = json["dicomViewerPrefs"] as String? ?? "";
   }
 
@@ -289,42 +289,42 @@ abstract class DF {
   static bool get isPersianCalendar =>
       localSettings.calendarSystem == "persian";
 
-  static String jalaliDate(date) {
+  static String jalaliDate(DateTime date) {
     if (isPersianCalendar) {
       return JalaliUtils.formatJalaliDMY(date);
     }
     return allNumbers(date);
   }
 
-  static String jalaliDay(date) {
+  static String jalaliDay(DateTime date) {
     if (isPersianCalendar) {
       return JalaliUtils.formatDay(date);
     }
     return DateFormat("d", locale.s.$code).format(date);
   }
 
-  static String jalaliMonthYear(date) {
+  static String jalaliMonthYear(DateTime date) {
     if (isPersianCalendar) {
       return JalaliUtils.formatMonthYear(date);
     }
     return DateFormat('MMMM yyyy', locale.s.$code).format(date);
   }
 
-  static String jalaliDayOfWeek(date) {
+  static String jalaliDayOfWeek(DateTime date) {
     if (isPersianCalendar) {
       return JalaliUtils.dayOfWeekName(date.weekday);
     }
     return DateFormat("EE", locale.s.$code).format(date);
   }
 
-  static String jalaliDayOfWeekAbbr(date) {
+  static String jalaliDayOfWeekAbbr(DateTime date) {
     if (isPersianCalendar) {
       return JalaliUtils.dayOfWeekAbbr(date.weekday);
     }
     return DateFormat("EE", locale.s.$code).format(date);
   }
 
-  static String jalaliCommonDate(date) {
+  static String jalaliCommonDate(DateTime date) {
     if (isPersianCalendar) {
       final jDate = JalaliUtils.formatJalaliDMY(date);
       final dayName = JalaliUtils.dayOfWeekAbbr(date.weekday);

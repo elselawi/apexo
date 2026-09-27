@@ -21,7 +21,7 @@ void main() {
 
     tearDown(() async {
       if (!canRunIoTests) return;
-      if (await tempDir.exists()) {
+      if (tempDir.existsSync()) {
         await tempDir.delete(recursive: true);
       }
     });

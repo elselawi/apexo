@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/svg.dart';
@@ -5,27 +6,14 @@ import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:path_drawing/path_drawing.dart';
 import 'package:xml/xml.dart';
 
 typedef Data = ({Size size, Map<String, _Tooth> teeth});
 
 class TeethSelector extends StatefulWidget {
-  final Map<String, String> currentNotes;
-  final Map<String, String> oldNotes;
-  final Map<String, String> extraNotes;
-  final String leftString;
-  final String rightString;
-  final void Function(String tooth, String? note) onNote;
-  final void Function(String tooth, String extraNote)? onExtraNote;
-  final String Function(String isoString) notation;
-  final TextStyle? textStyle;
-  final TextStyle? tooltipTextStyle;
-  final bool showPrimary;
-  final StateType type;
-
   const TeethSelector({
     super.key,
     this.currentNotes = const {},
@@ -41,6 +29,18 @@ class TeethSelector extends StatefulWidget {
     this.onExtraNote,
     required this.type,
   });
+  final Map<String, String> currentNotes;
+  final Map<String, String> oldNotes;
+  final Map<String, String> extraNotes;
+  final String leftString;
+  final String rightString;
+  final void Function(String tooth, String? note) onNote;
+  final void Function(String tooth, String extraNote)? onExtraNote;
+  final String Function(String isoString) notation;
+  final TextStyle? textStyle;
+  final TextStyle? tooltipTextStyle;
+  final bool showPrimary;
+  final StateType type;
 
   @override
   State<TeethSelector> createState() => _TeethSelectorState();
@@ -287,67 +287,86 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
       ),
       child: FlyoutTarget(
         controller: wheelController,
-        child: GestureDetector(
-          key: Key(
-              "tooth-iso-${widget.toothNote.key}-${widget.tooth.selected ? "selected" : "not-selected"}"),
-          onTap: () async {
-            if (MediaQuery.of(context).size.width > 900) {
-              await flyoutFocusFix(context);
-              wheelController.showFlyout(
-                builder: (context) => _showStateWheel(context, tKey),
-                barrierDismissible: true,
-                dismissWithEsc: true,
-              );
-              return;
-            }
-            showDialog(
-                barrierDismissible: true,
-                dismissWithEsc: true,
-                context: context,
-                builder: (context) => _showStateWheel(context, tKey));
-          },
-          child: Tooltip(
-            message: widget.notation(tKey),
-            child: Stack(
-              children: [
-                if (note != null)
-                  Center(
-                    child: Icon(
-                      widget.oldNote != null && widget.currentNote == null
-                          ? WindowsIcons.history
-                          : labelToIcon(note),
+        child: Semantics(
+          // One semantics node per tooth, with the **action** attached to the
+          // tooth itself. `Tooltip` only contributes a label, and an assistive
+          // activation of a label-only node is delivered as a synthesized
+          // pointer event at the node's centre — which, for the incisors whose
+          // bounding-box centre falls outside their own path, landed on the
+          // sibling drawn after them (the node for tooth 11 opened 12, the node
+          // for 12 opened 13). Attaching the action removes the ambiguity.
+          button: true,
+          label: widget.notation(tKey),
+          onTap: () => unawaited(_open(context, tKey)),
+          excludeSemantics: true,
+          child: GestureDetector(
+            key: WK.tooth(tKey, selected: widget.tooth.selected),
+            onTap: () => unawaited(_open(context, tKey)),
+            child: Tooltip(
+              message: widget.notation(tKey),
+              excludeFromSemantics: true,
+              child: Stack(
+                children: [
+                  if (note != null)
+                    Center(
+                      child: Icon(
+                        widget.oldNote != null && widget.currentNote == null
+                            ? WindowsIcons.history
+                            : labelToIcon(note),
+                        color: darkMode
+                            ? Colors.white
+                            : tColor.toAccentColor().darkest,
+                      ),
+                    )
+                  else
+                    Center(
+                        child: DentalNotation(
+                      iso: tKey,
+                      withTooltip: false,
                       color: darkMode
-                          ? Colors.white
-                          : tColor.toAccentColor().darkest,
-                    ),
-                  )
-                else
-                  Center(
-                      child: DentalNotation(
-                    iso: tKey,
-                    withTooltip: false,
-                    color: darkMode
-                        ? FluentTheme.of(context).inactiveBackgroundColor
-                        : Colors.grey,
-                  )),
-                Container(
-                  decoration: ShapeDecoration(
-                    color: FluentTheme.of(context).brightness == Brightness.dark
-                        ? Colors.transparent
-                        : tColor,
-                    shape: _ToothBorder(
-                      widget.tooth.path,
-                      strokeColor: Colors.transparent,
-                      strokeWidth: 1,
+                          ? FluentTheme.of(context).inactiveBackgroundColor
+                          : Colors.grey,
+                    )),
+                  Container(
+                    decoration: ShapeDecoration(
+                      color:
+                          FluentTheme.of(context).brightness == Brightness.dark
+                              ? Colors.transparent
+                              : tColor,
+                      shape: _ToothBorder(
+                        widget.tooth.path,
+                        strokeColor: Colors.transparent,
+                        strokeWidth: 1,
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  /// Opens the treatment-state picker for [tKey] — a flyout on a wide screen,
+  /// a dialog otherwise. Shared by the pointer gesture and the semantics
+  /// action so both routes do exactly the same thing.
+  Future<void> _open(BuildContext context, String tKey) async {
+    if (MediaQuery.of(context).size.width > 900) {
+      await flyoutFocusFix(context);
+      unawaited(wheelController.showFlyout<void>(
+        builder: (context) => _showStateWheel(context, tKey),
+        barrierDismissible: true,
+        dismissWithEsc: true,
+      ));
+      return;
+    }
+    unawaited(showDialog(
+        barrierDismissible: true,
+        dismissWithEsc: true,
+        context: context,
+        builder: (context) => _showStateWheel(context, tKey)));
   }
 
   Widget _showStateWheel(BuildContext context, String tKey) {
@@ -396,15 +415,14 @@ class _Tooth {
 }
 
 class _ToothBorder extends ShapeBorder {
-  final Path path;
-  final double strokeWidth;
-  final Color strokeColor;
-
   const _ToothBorder(
     this.path, {
     required this.strokeWidth,
     required this.strokeColor,
   });
+  final Path path;
+  final double strokeWidth;
+  final Color strokeColor;
 
   @override
   EdgeInsetsGeometry get dimensions => EdgeInsets.zero;

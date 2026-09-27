@@ -7,16 +7,15 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class StyledStackedChart extends StatelessWidget {
-  final List<String> labels;
-  final List<List<double>> datasets;
-  final List<String> datasetLabels;
-
   const StyledStackedChart({
     super.key,
     required this.labels,
     required this.datasets,
     required this.datasetLabels,
   });
+  final List<String> labels;
+  final List<List<double>> datasets;
+  final List<String> datasetLabels;
 
   @override
   Widget build(BuildContext context) {

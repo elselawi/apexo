@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 class PulseWrapper extends StatefulWidget {
+  const PulseWrapper({super.key, required this.child, this.pulse = false});
   final Widget child;
   final bool pulse;
-
-  const PulseWrapper({super.key, required this.child, this.pulse = false});
 
   @override
   PulseWrapperState createState() => PulseWrapperState();

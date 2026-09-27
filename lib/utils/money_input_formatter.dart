@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
 class _NaturalCurrencyInputFormatter extends TextInputFormatter {
-  final NumberFormat _nf;
   _NaturalCurrencyInputFormatter(this._nf);
+  final NumberFormat _nf;
 
   double parse(String text) {
     return double.tryParse(text.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0;
@@ -20,16 +20,16 @@ class _NaturalCurrencyInputFormatter extends TextInputFormatter {
     if (newValue.text.isEmpty) return newValue;
 
     // Get raw digits and decimal point
-    String text = newValue.text.replaceAll(RegExp(r'[^\d.]'), '');
+    final String text = newValue.text.replaceAll(RegExp(r'[^\d.]'), '');
     if (text.isEmpty) return newValue;
 
     // Split integer and fractional parts
     final parts = text.split('.');
-    String integerPart = parts[0];
-    String? fractionalPart = parts.length > 1 ? parts[1] : null;
+    final String integerPart = parts[0];
+    final String? fractionalPart = parts.length > 1 ? parts[1] : null;
 
     // Format the integer part with thousands separators
-    double? intVal = double.tryParse(integerPart);
+    final double? intVal = double.tryParse(integerPart);
     if (intVal == null && integerPart.isNotEmpty) return oldValue;
 
     String formattedInt = intVal == null

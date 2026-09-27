@@ -60,7 +60,7 @@ void main() {
   /// Attaches the server's current collection ids to the given definitions
   /// (imports over existing collections fail when the id is empty — see the
   /// comment in reconcileSchema).
-  Future<List<CollectionModel>> _withServerIds(
+  Future<List<CollectionModel>> withServerIds(
       List<CollectionModel> models) async {
     final existing = await pb.collections.getFullList();
     final idByName = {for (final c in existing) c.name: c.id};
@@ -96,7 +96,7 @@ void main() {
           CollectionModel.fromJson(publicCollectionImport.toJson())
             ..listRule = ''
             ..viewRule = '';
-      await pb.collections.import(await _withServerIds([
+      await pb.collections.import(await withServerIds([
         dataCollectionImport,
         oldPublic,
         profilesCollectionImport,

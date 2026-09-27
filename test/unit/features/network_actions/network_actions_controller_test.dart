@@ -39,7 +39,8 @@ void main() {
     });
 
     test('reconnectCallbacks is a map', () {
-      expect(networkActions.reconnectCallbacks, isA<Map>());
+      expect(networkActions.reconnectCallbacks,
+          isA<Map<String, void Function()>>());
     });
 
     test('reconnectCallbacks can register callbacks', () {

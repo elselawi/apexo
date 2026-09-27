@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:apexo/core/save_local.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/services/notifications/model_push_data.dart';
+import 'package:apexo/services/notifications/push_data.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';

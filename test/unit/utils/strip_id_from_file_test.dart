@@ -53,4 +53,67 @@ void main() {
           'https://host/file.png?x=1');
     });
   });
+
+  group('sameStoredFileName', () {
+    test('matches a name to itself', () {
+      expect(sameStoredFileName('photo.jpg', 'photo.jpg'), isTrue);
+    });
+
+    test("matches a name to PocketBase's suffixed spelling of it", () {
+      // The exact case from the field: the record's column held the name from
+      // before the upload was reported back, the reference PocketBase's.
+      expect(
+        sameStoredFileName(
+            'heyg28i6whd4xnsun.jpg', 'heyg28i6whd4xnsun_avvm29b32h.jpg'),
+        isTrue,
+      );
+      // …and the other way round.
+      expect(
+        sameStoredFileName(
+            'heyg28i6whd4xnsun_avvm29b32h.jpg', 'heyg28i6whd4xnsun.jpg'),
+        isTrue,
+      );
+    });
+
+    test('matches a DICOM preview that carries a second suffix', () {
+      // Also from the field: `dcmImgs` holds the original, the app derives the
+      // preview's name from it, and PocketBase stored the preview with the
+      // suffix of the *already suffixed* original.
+      expect(
+        sameStoredFileName(
+          'dcm_h2bf0s59j7h6j5by1_18hy0rnie6.dcm.png',
+          'dcm_h2bf0s59j7h6j5by1_18hy0rnie6_0cizfojiej.dcm.png',
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not match different files', () {
+      expect(sameStoredFileName('photo.jpg', 'xray.jpg'), isFalse);
+      expect(sameStoredFileName('photo.jpg', 'photo.png'), isFalse);
+      expect(sameStoredFileName('photo.jpg', ''), isFalse);
+    });
+  });
+
+  group('withoutStoredFileSuffix', () {
+    test('takes the suffix off wherever a dot follows it', () {
+      expect(withoutStoredFileSuffix('x_ab12cd34ef.png'), 'x.png');
+      expect(
+        withoutStoredFileSuffix('dcm_h2bf0s59j7h6j5by1_18hy0rnie6.dcm'),
+        'dcm_h2bf0s59j7h6j5by1.dcm',
+      );
+      // The doubly-suffixed preview: only the first suffix is taken off, and
+      // that is enough to recognise the name the column derives.
+      expect(
+        withoutStoredFileSuffix(
+            'dcm_h2bf0s59j7h6j5by1_18hy0rnie6_0cizfojiej.dcm.png'),
+        'dcm_h2bf0s59j7h6j5by1_18hy0rnie6.dcm.png',
+      );
+    });
+
+    test('is null when there is no suffix to take off', () {
+      expect(withoutStoredFileSuffix('photo.jpg'), isNull);
+      expect(withoutStoredFileSuffix('dcm_x.dcm'), isNull);
+    });
+  });
 }

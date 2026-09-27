@@ -70,7 +70,11 @@ class DentalNotation extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0),
       child: Center(
         child: Text(
-          isPalmer ? tooth : isISO ? iso : _isoToUniversal(iso),
+          isPalmer
+              ? tooth
+              : isISO
+                  ? iso
+                  : _isoToUniversal(iso),
           softWrap: false,
           style: TextStyle(color: color, fontWeight: FontWeight.w700),
         ),
@@ -84,8 +88,8 @@ String _isoToUniversal(String iso) {
     throw ArgumentError('ISO code must be 2 digits');
   }
 
-  int quadrant = int.parse(iso[0]);
-  int position = int.parse(iso[1]);
+  final int quadrant = int.parse(iso[0]);
+  final int position = int.parse(iso[1]);
 
   // Permanent teeth (quadrants 1–4)
   if (quadrant >= 1 && quadrant <= 4) {

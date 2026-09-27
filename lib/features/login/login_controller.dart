@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/services/launch.dart';
@@ -6,6 +7,13 @@ import 'package:apexo/utils/logger.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 class _LoginScreenState {
+  _LoginScreenState() {
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (launch.isDemo) {
+        loginButton("", "", "");
+      }
+    });
+  }
   final loginError = ObservableState("");
   final loadingIndicator = ObservableState("");
   final selectedTab = ObservableState(0);
@@ -40,16 +48,8 @@ class _LoginScreenState {
       [bool online = true]) {
     server = server.replaceFirst(RegExp(r'/+$'), "");
     email = email.trim().toLowerCase();
-    login.activate(server, [email, password], online);
+    unawaited(login.activate(server, [email, password], online));
     routes.reset();
-  }
-
-  _LoginScreenState() {
-    Future.delayed(const Duration(milliseconds: 300), () {
-      if (launch.isDemo) {
-        loginButton("", "", "");
-      }
-    });
   }
 }
 

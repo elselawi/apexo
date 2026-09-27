@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/core/observable.dart';
 
 Widget _dir(Widget child) => Directionality(
       textDirection: TextDirection.ltr,
@@ -29,8 +30,8 @@ void main() {
       expect(capturedData.length, 2);
       expect(capturedData, [null, null]);
 
-      controller1.close();
-      controller2.close();
+      unawaited(controller1.close());
+      unawaited(controller2.close());
     });
 
     testWidgets('should update when streams emit values', (tester) async {
@@ -49,16 +50,18 @@ void main() {
         ),
       );
 
+      // `data` is a snapshot taken at build time, so the assertion has to wait for
+      // the frame the delivery triggers — not the pump that starts it.
       controller1.add('test1');
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(capturedData, ['test1', null]);
 
       controller2.add('test2');
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(capturedData, ['test1', 'test2']);
 
-      controller1.close();
-      controller2.close();
+      unawaited(controller1.close());
+      unawaited(controller2.close());
     });
 
     testWidgets('should handle stream updates in correct order',
@@ -84,20 +87,20 @@ void main() {
       );
 
       controller2.add(2);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(capturedData, [null, 2, null]);
 
       controller1.add(1);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(capturedData, [1, 2, null]);
 
       controller3.add(3);
-      await tester.pump();
+      await tester.pumpAndSettle();
       expect(capturedData, [1, 2, 3]);
 
-      controller1.close();
-      controller2.close();
-      controller3.close();
+      unawaited(controller1.close());
+      unawaited(controller2.close());
+      unawaited(controller3.close());
     });
 
     testWidgets('should cleanup subscriptions on dispose', (tester) async {
@@ -118,8 +121,8 @@ void main() {
       controller2.add(2);
       await tester.pump();
 
-      controller1.close();
-      controller2.close();
+      unawaited(controller1.close());
+      unawaited(controller2.close());
     });
 
     testWidgets('handles empty stream list — builder receives empty list',
@@ -159,7 +162,7 @@ void main() {
       controller.add('only');
       await tester.pumpAndSettle();
       expect(find.text('only'), findsOneWidget);
-      controller.close();
+      unawaited(controller.close());
     });
 
     testWidgets('re-emission on the same stream updates only that slot',
@@ -184,8 +187,8 @@ void main() {
       c2.add(9);
       await tester.pumpAndSettle();
       expect(find.text('2-9'), findsOneWidget);
-      c1.close();
-      c2.close();
+      unawaited(c1.close());
+      unawaited(c2.close());
     });
 
     testWidgets('emits values in arrival order across streams', (tester) async {
@@ -212,9 +215,9 @@ void main() {
       c1.add(10);
       await tester.pumpAndSettle();
       expect(find.text('10.20.30'), findsOneWidget);
-      c1.close();
-      c2.close();
-      c3.close();
+      unawaited(c1.close());
+      unawaited(c2.close());
+      unawaited(c3.close());
     });
 
     testWidgets('replacing the widget updates subscriptions for new streams',
@@ -253,10 +256,10 @@ void main() {
       replacement2.add(6);
       await tester.pumpAndSettle();
       expect(find.text('5-6'), findsOneWidget);
-      c1.close();
-      c2.close();
-      replacement1.close();
-      replacement2.close();
+      unawaited(c1.close());
+      unawaited(c2.close());
+      unawaited(replacement1.close());
+      unawaited(replacement2.close());
     });
 
     testWidgets('preserves data when parent rebuilds with equivalent streams',
@@ -283,7 +286,7 @@ void main() {
       expect(find.text('42'), findsOneWidget);
       expect(builds, greaterThan(buildsBeforeParentRebuild));
 
-      await controller.close();
+      unawaited(controller.close());
     });
 
     testWidgets('ignores events from old streams during replacement',
@@ -321,8 +324,8 @@ void main() {
       expect(find.text('3'), findsOneWidget);
       expect(find.text('2'), findsNothing);
 
-      await oldController.close();
-      await newController.close();
+      unawaited(oldController.close());
+      unawaited(newController.close());
     });
 
     testWidgets('ignores events after the widget is disposed', (tester) async {
@@ -342,7 +345,7 @@ void main() {
       await tester.pump();
       expect(tester.takeException(), isNull);
 
-      await controller.close();
+      unawaited(controller.close());
     });
     testWidgets('broadcast streams can serve multiple MStreamBuilders',
         (tester) async {
@@ -371,7 +374,124 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('A:42'), findsOneWidget);
       expect(find.text('B:42'), findsOneWidget);
-      controller.close();
+      unawaited(controller.close());
+    });
+
+    testWidgets('a stream that only moves keeps its subscription and value',
+        (tester) async {
+      final c1 = StreamController<int>.broadcast();
+      final c2 = StreamController<int>.broadcast();
+      final s1 = c1.stream;
+      final s2 = c2.stream;
+
+      Widget build(List<Stream<int>> streams) => _dir(
+            MStreamBuilder<int>(
+              key: const Key('msb-reorder'),
+              streams: streams,
+              builder: (context, data) => Text('${data[0]}-${data[1]}'),
+            ),
+          );
+
+      await tester.pumpWidget(build([s1, s2]));
+      c1.add(1);
+      c2.add(2);
+      await tester.pumpAndSettle();
+      expect(find.text('1-2'), findsOneWidget);
+
+      // The same two stream objects, positions swapped: matching by identity
+      // means both keep their subscription and the value each already held.
+      await tester.pumpWidget(build([s2, s1]));
+      expect(find.text('2-1'), findsOneWidget);
+
+      unawaited(c1.close());
+      unawaited(c2.close());
+    });
+
+    testWidgets('inserting a stream at the head keeps the others',
+        (tester) async {
+      final c1 = StreamController<int>.broadcast();
+      final c2 = StreamController<int>.broadcast();
+      final inserted = StreamController<int>.broadcast();
+
+      // A raw controller's `.stream` is a new wrapper on every access, so the
+      // instances have to be held for the reconciliation to see them again.
+      final s1 = c1.stream;
+      final s2 = c2.stream;
+      final sInserted = inserted.stream;
+
+      Widget build(List<Stream<int>> streams) => _dir(
+            MStreamBuilder<int>(
+              key: const Key('msb-insert'),
+              streams: streams,
+              builder: (context, data) =>
+                  Text(data.map((v) => v ?? '_').join('-')),
+            ),
+          );
+
+      await tester.pumpWidget(build([s1, s2]));
+      c1.add(1);
+      c2.add(2);
+      await tester.pumpAndSettle();
+      expect(find.text('1-2'), findsOneWidget);
+
+      // Both existing streams shift one index to the right. They must not be
+      // torn down, and their values must move with them.
+      await tester.pumpWidget(build([sInserted, s1, s2]));
+      expect(find.text('_-1-2'), findsOneWidget);
+
+      inserted.add(0);
+      await tester.pumpAndSettle();
+      expect(find.text('0-1-2'), findsOneWidget);
+
+      unawaited(c1.close());
+      unawaited(c2.close());
+      unawaited(inserted.close());
+    });
+
+    testWidgets('a stream list mutated in place is still reconciled',
+        (tester) async {
+      final c1 = StreamController<int>.broadcast();
+      final c2 = StreamController<int>.broadcast();
+      final s1 = c1.stream;
+      final s2 = c2.stream;
+
+      // One list instance, mutated in place: by the time didUpdateWidget runs,
+      // `oldWidget.streams` and `widget.streams` are the same object, so the
+      // check has to be against the slots that are actually subscribed.
+      final streams = <Stream<int>>[s1];
+      Widget build() => _dir(
+            MStreamBuilder<int>(
+              key: const Key('msb-mutate'),
+              streams: streams,
+              builder: (context, data) =>
+                  Text(data.map((v) => v ?? '_').join('-')),
+            ),
+          );
+
+      await tester.pumpWidget(build());
+      c1.add(1);
+      await tester.pumpAndSettle();
+      expect(find.text('1'), findsOneWidget);
+
+      streams.add(s2);
+      await tester.pumpWidget(build());
+      expect(find.text('1-_'), findsOneWidget);
+
+      c2.add(2);
+      await tester.pumpAndSettle();
+      expect(find.text('1-2'), findsOneWidget);
+
+      unawaited(c1.close());
+      unawaited(c2.close());
+    });
+
+    test('an observable hands out the same stream object every time', () {
+      // What makes the identity matching above work: a caller that writes
+      // `streams: [x.stream]` inside `build()` must not look like it swapped its
+      // stream on every rebuild.
+      final state = ObservableState<int>(0);
+      expect(identical(state.stream, state.stream), isTrue);
+      state.dispose();
     });
   });
 }

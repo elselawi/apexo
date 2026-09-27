@@ -9,6 +9,11 @@ import 'package:apexo/services/login.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 class _Accounts extends ObservablePersistingObject {
+  /// **Not encrypted.** The audit found no credential here: this object holds
+  /// the cached `profiles_view` records (name, email, permissions, operate),
+  /// and PocketBase never returns a password or a PIN to the client — the
+  /// passwords in `newAccount`/`update` travel the other way, into the server.
+  _Accounts() : super("accounts");
   final list = ObservableState(
       List<RecordModel>.from(launch.isDemo ? demoAccounts(10) : []));
   final loaded = ObservableState(false);
@@ -136,7 +141,7 @@ class _Accounts extends ObservablePersistingObject {
     }
     loaded(true);
     loading(false);
-    notifyAndPersist();
+    await notifyAndPersist();
   }
 
   String name(RecordModel account) {
@@ -164,11 +169,9 @@ class _Accounts extends ObservablePersistingObject {
     return list().where((e) => e.getIntValue("operate") == 1).toList();
   }
 
-  _Accounts() : super("accounts");
-
   @override
-  fromJson(Map<String, dynamic> json) {
-    list(List<Map<String, dynamic>>.from(json["list"])
+  void fromJson(Map<String, dynamic> json) {
+    list(List<Map<String, dynamic>>.from(json["list"] as List<dynamic>)
         .map((e) => RecordModel.fromJson(e))
         .toList());
   }

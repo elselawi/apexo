@@ -4,10 +4,6 @@ import 'easy_image_provider.dart';
 
 /// Convenience provider for a list of [ImageProvider]s
 class MultiImageProvider extends EasyImageProvider {
-  final List<ImageProvider> imageProviders;
-  @override
-  final int initialIndex;
-
   MultiImageProvider(this.imageProviders, {this.initialIndex = 0}) {
     if (initialIndex < 0 || initialIndex >= imageProviders.length) {
       throw ArgumentError.value(initialIndex, 'initialIndex',
@@ -19,6 +15,9 @@ class MultiImageProvider extends EasyImageProvider {
           'The imageProviders list must not be empty.');
     }
   }
+  final List<ImageProvider> imageProviders;
+  @override
+  final int initialIndex;
 
   @override
   ImageProvider imageBuilder(BuildContext context, int index) {

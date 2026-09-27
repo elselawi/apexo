@@ -286,6 +286,7 @@ class Ar implements En {
     "paidIn": "مدفوع بـ",
     "gallery": "معرض الصور",
     "link": "رابط",
+    "couldNotOpenLink": "تعذّر فتح الرابط",
     "upload": "إختيار للرفع",
     "camera": "كاميرا",
     "emptyGallery": "معرض فارغ",
@@ -532,7 +533,7 @@ class Ar implements En {
     "all": "الكل",
     "you": "أنت",
     "system": "النظام",
-    "initialSynchronization": "مزامة أولية",
+    "initialSynchronization": "مزامنة أولية",
     "synchronizing": "مزامنة مع الخادم",
     "clearingLocalData": "إزالة البيانات المحلية",
     "dentalNotation": "الترقيم السني",
@@ -748,6 +749,10 @@ class Ar implements En {
     // login required
     "loginRequired": "تسجيل الدخول مطلوب",
     "loginRequiredDesc": "يرجى تسجيل الدخول للمتابعة",
+    "localDatabaseFailed":
+        "تعذّر فتح قاعدة البيانات المحلية. إذا كان Apexo مفتوحاً في تبويب آخر فأغلقه، وإلا فأعد تشغيل المتصفح ثم سجّل الدخول مرة أخرى.",
+    "alreadyRunningInAnotherTab":
+        "Apexo مفتوح بالفعل في تبويب آخر. أغلقه وأعد تحميل هذه الصفحة.",
 
     // server help flyout
     "whatIsAServer": "ما هو الخادم؟",

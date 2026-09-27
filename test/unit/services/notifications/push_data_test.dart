@@ -1,4 +1,4 @@
-import 'package:apexo/services/notifications/model_push_data.dart';
+import 'package:apexo/services/notifications/push_data.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -99,97 +99,43 @@ void main() {
       expect(map['updatedFields'], ['date']);
     });
 
-    test('displayTuple returns non-empty strings', () {
-      final push = PushData(
+    test('fromChange reads the before/after values in field order', () {
+      final push = PushData.fromChange(
         store: 'appointments',
-        id: 'test',
-        readableIdentifier: 'Patient',
-        isCreation: true,
-        isUpdate: false,
-        updatedFields: [],
-        oldVals: [],
-        newVals: [],
-        targetIDs: [],
-      );
-
-      final tuple = push.displayTuple();
-
-      expect(tuple.length, 2);
-      expect(tuple[0], isNotEmpty);
-      expect(tuple[1], isNotEmpty);
-    });
-
-    test('displayTuple for update with date field', () {
-      final push = PushData(
-        store: 'appointments',
-        id: 'test',
-        readableIdentifier: 'Patient',
+        id: 'appt1',
+        readableIdentifier: 'Ada Lovelace',
         isCreation: false,
-        isUpdate: true,
-        updatedFields: ['date'],
-        oldVals: [2000],
-        newVals: [1000],
-        targetIDs: [],
+        changed: const ['date', 'isDone'],
+        before: const {'date': 200, 'isDone': false},
+        after: const {'date': 100, 'isDone': true},
+        targets: const ['account1'],
       );
 
-      final tuple = push.displayTuple();
-
-      expect(tuple.length, 2);
-      expect(tuple[1], contains('Patient'));
+      expect(push.isCreation, isFalse);
+      expect(push.isUpdate, isTrue);
+      expect(push.updatedFields, ['date', 'isDone']);
+      expect(push.oldVals, [200, false]);
+      expect(push.newVals, [100, true]);
+      expect(push.targetIDs, ['account1']);
     });
 
-    test('displayTuple for note creation', () {
-      final push = PushData(
+    test('fromChange carries no old values for a creation', () {
+      final push = PushData.fromChange(
         store: 'notes',
-        id: 'test',
-        readableIdentifier: 'Note Title',
+        id: 'note1',
+        readableIdentifier: 'Call the lab',
         isCreation: true,
-        isUpdate: false,
-        updatedFields: [],
-        oldVals: [],
-        newVals: [],
-        targetIDs: [],
+        changed: const [],
+        before: null,
+        after: const {'done': true},
+        targets: const ['account1'],
       );
 
-      final tuple = push.displayTuple();
-
-      expect(tuple.length, 2);
-      expect(tuple[1], contains('Note Title'));
-    });
-  });
-
-  group('PushInterpetation', () {
-    test('enum has expected values', () {
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.newAppointmentForYou));
-      expect(
-          PushInterpetation.values, contains(PushInterpetation.newNoteForYou));
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.newNotification));
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.appointmentIsNowDone));
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.appointmentHasBeenCancelled));
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.appointmentHasBeenAssignedToYou));
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.noteHasBeenMarkedAsDone));
-      expect(PushInterpetation.values,
-          contains(PushInterpetation.noteHasBeenMarkedAsPending));
-    });
-
-    test('enum toString returns enum name', () {
-      expect(
-        PushInterpetation.newAppointmentForYou.toString(),
-        contains('newAppointmentForYou'),
-      );
-    });
-
-    test('enum values are unique', () {
-      const values = PushInterpetation.values;
-      final names = values.map((e) => e.name).toList();
-      expect(names.length, names.toSet().length);
-      expect(names.length, 19);
+      expect(push.isCreation, isTrue);
+      expect(push.isUpdate, isFalse);
+      expect(push.updatedFields, isEmpty);
+      expect(push.oldVals, isEmpty);
+      expect(push.newVals, isEmpty);
     });
   });
 }

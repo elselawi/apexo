@@ -1,3 +1,6 @@
+import 'package:apexo/utils/hash.dart';
+import 'package:path/path.dart';
+
 bool isDcmFileName(String name) {
   final lower = name.toLowerCase();
   return lower.endsWith('.dcm') || lower.endsWith('.dicom');
@@ -23,10 +26,30 @@ String? dcmUploadIdentity(String filename) {
   return match == null ? null : 'dcm_${match.group(1)}';
 }
 
-/// Returns whether two filenames represent the same logical DICOM upload and
-/// the same original/preview physical type.
+/// Returns whether two filenames represent the same logical DICOM upload.
+///
+/// The original and its `.png` preview *are* the same logical upload: this
+/// deliberately does not distinguish them, so a re-import replaces whichever
+/// of the two names a column happens to carry (`dcmImgs` may hold either, an
+/// older app version wrote previews into it).
 bool sameDcmUploadIdentity(String a, String b) {
   final aIdentity = dcmUploadIdentity(a);
   final bIdentity = dcmUploadIdentity(b);
   return aIdentity != null && aIdentity == bIdentity;
 }
+
+/// The string an upload's stored name is hashed from: the source file's
+/// basename and its mtime.
+///
+/// **One definition**, because the uploader and the scan have to agree: the
+/// scan uses this to recognise a file the records already carry. Note what it is
+/// *not*: the file's DICOM identity. The dedup registry, keyed by SOP UID, is
+/// the precise answer to "was this imported"; this is the fallback for when
+/// that registry has no entry — a lost registry, or a fresh install pointed at
+/// a populated watch folder — and an edited mtime defeats it.
+String dcmNameHashInput(String sourcePath, DateTime mtime) =>
+    '${basename(sourcePath)}_${mtime.millisecondsSinceEpoch}';
+
+/// The stored name a source `.dcm` is uploaded under: `dcm_<hash>.dcm`.
+String dcmStoredNameFor(String sourcePath, DateTime mtime) =>
+    'dcm_${simpleHash(dcmNameHashInput(sourcePath, mtime))}.dcm';

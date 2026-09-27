@@ -79,11 +79,11 @@ class AudioRecorderButton extends StatelessWidget {
   Future<void> _openRecorder(BuildContext context) async {
     final recorder = AudioRecorder();
     final hasPermission = await recorder.hasPermission(request: true);
-    recorder.dispose();
+    unawaited(recorder.dispose());
     if (!hasPermission) return;
     if (!context.mounted) return;
 
-    showDialog(
+    unawaited(showDialog(
       context: context,
       barrierDismissible: false,
       builder: (_) => Align(
@@ -98,7 +98,7 @@ class AudioRecorderButton extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -137,7 +137,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
   @override
   void initState() {
     super.initState();
-    _startRecording();
+    unawaited(_startRecording());
   }
 
   @override
@@ -146,7 +146,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
     _ampTimer?.cancel();
     _elapsed.dispose();
     _amplitude.dispose();
-    _recorder.dispose();
+    unawaited(_recorder.dispose());
     super.dispose();
   }
 
@@ -223,7 +223,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
       _elapsed.value += const Duration(milliseconds: 100);
       if (_elapsed.value >= _maxDuration) {
         _timer?.cancel();
-        _stopAndSubmit();
+        unawaited(_stopAndSubmit());
       }
     });
   }

@@ -2,10 +2,9 @@ import 'package:flutter/services.dart' show rootBundle;
 
 /// Represents a single version entry in the changelog.
 class ChangelogVersion {
+  const ChangelogVersion({required this.version, required this.changes});
   final String version;
   final List<String> changes;
-
-  const ChangelogVersion({required this.version, required this.changes});
 }
 
 /// Parses CHANGELOG.md without a markdown parser — uses regex to extract

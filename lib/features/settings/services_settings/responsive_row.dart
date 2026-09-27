@@ -1,14 +1,13 @@
 import 'package:flutter/widgets.dart';
 
 class ResponsiveRow extends StatelessWidget {
-  final List<Widget> children;
-  final double breakpoint;
-
   const ResponsiveRow({
     super.key,
     required this.children,
     this.breakpoint = 525,
   });
+  final List<Widget> children;
+  final double breakpoint;
 
   @override
   Widget build(BuildContext context) {

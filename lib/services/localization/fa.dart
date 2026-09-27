@@ -288,6 +288,7 @@ class Fa implements En {
     "paidIn": "پرداخت به",
     "gallery": "گالری",
     "link": "لینک",
+    "couldNotOpenLink": "باز کردن پیوند ممکن نشد",
     "upload": "آپلود",
     "camera": "دوربین",
     "emptyGallery": "گالری خالی",
@@ -754,6 +755,10 @@ class Fa implements En {
     // login required
     "loginRequired": "ورود لازم است",
     "loginRequiredDesc": "لطفاً برای ادامه وارد شوید",
+    "localDatabaseFailed":
+        "پایگاه‌داده محلی باز نشد. اگر Apexo در زبانه دیگری باز است آن را ببندید؛ در غیر این صورت مرورگر را دوباره راه‌اندازی کنید و دوباره وارد شوید.",
+    "alreadyRunningInAnotherTab":
+        "Apexo از قبل در زبانه دیگری باز است. آن را ببندید و این صفحه را دوباره بارگذاری کنید.",
 
     // server help flyout
     "whatIsAServer": "سرور چیست؟",

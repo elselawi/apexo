@@ -116,7 +116,7 @@ dynamic _unflatten(Map<String, dynamic> flatMap) {
   return _convert(root);
 }
 
-void _insert(Map<String, dynamic> current, List<String> path, dynamic value) {
+void _insert(Map<String, dynamic> current, List<String> path, Object? value) {
   final key = path.first;
   if (path.length == 1) {
     current[key] = value;
@@ -132,7 +132,7 @@ void _insert(Map<String, dynamic> current, List<String> path, dynamic value) {
   }
 }
 
-dynamic _convert(dynamic node) {
+dynamic _convert(Object? node) {
   if (node is Map<String, dynamic>) {
     // Check if all keys can be parsed as integers and form a contiguous range?
     // For simplicity, if all keys are integer strings, convert to List.
@@ -142,7 +142,7 @@ dynamic _convert(dynamic node) {
       // Determine max index
       int maxIndex = -1;
       for (var k in keys) {
-        int idx = int.parse(k);
+        final int idx = int.parse(k);
         if (idx > maxIndex) maxIndex = idx;
       }
       final list = List<dynamic>.filled(maxIndex + 1, null);

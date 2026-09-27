@@ -4,9 +4,8 @@ import 'easy_image_provider.dart';
 
 /// Convenience provider for a single image
 class SingleImageProvider extends EasyImageProvider {
-  final ImageProvider imageProvider;
-
   SingleImageProvider(this.imageProvider);
+  final ImageProvider imageProvider;
 
   @override
   ImageProvider imageBuilder(BuildContext context, int index) {

@@ -5,14 +5,13 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'dart:convert';
 
 class StyledBarChart extends StatelessWidget {
-  final List<String> labels;
-  final List<double> yAxis;
-
   const StyledBarChart({
     super.key,
     required this.labels,
     required this.yAxis,
   });
+  final List<String> labels;
+  final List<double> yAxis;
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +64,11 @@ class StyledBarChart extends StatelessWidget {
 
   T getDeterministicItem<T>(List<T> items, String input) {
     // Convert the input string to a hash code
-    int hash = utf8.encode(input).fold(0, (prev, element) => prev + element);
+    final int hash =
+        utf8.encode(input).fold(0, (prev, element) => prev + element);
 
     // Use the hash code to determine the index
-    int index = hash % items.length;
+    final int index = hash % items.length;
 
     return items[index];
   }

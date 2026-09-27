@@ -2,14 +2,13 @@ import 'package:apexo/services/notifications/listeners.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class LocalNotificationsService {
+  //Factory constructor to return singleton instance
+  factory LocalNotificationsService.instance() => _instance;
   LocalNotificationsService._internal();
 
   //Singleton instance
   static final LocalNotificationsService _instance =
       LocalNotificationsService._internal();
-
-  //Factory constructor to return singleton instance
-  factory LocalNotificationsService.instance() => _instance;
 
   //Main plugin instance for handling notifications
   late FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin;
@@ -78,7 +77,8 @@ class LocalNotificationsService {
     String? payload,
   ) async {
     // Android-specific notification details
-    AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+    final AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
       _androidChannel.id,
       _androidChannel.name,
       channelDescription: _androidChannel.description,

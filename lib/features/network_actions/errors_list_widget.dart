@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
@@ -7,9 +8,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 final FlyoutController errorsFlyoutController = FlyoutController();
 
-showErrorsFlyout() async {
+Future<void> showErrorsFlyout() async {
   await flyoutFocusFix(null);
-  errorsFlyoutController.showFlyout(
+  unawaited(errorsFlyoutController.showFlyout<void>(
     barrierColor: Colors.transparent,
     barrierDismissible: true,
     dismissWithEsc: true,
@@ -121,8 +122,8 @@ showErrorsFlyout() async {
                       child: Button(
                         style: filledButtonStyle(Colors.blue),
                         onPressed: () {
-                          errorsFlyoutController.close();
-                          networkActions.performReconnect();
+                          errorsFlyoutController.close<void>();
+                          unawaited(networkActions.performReconnect());
                         },
                         child: ButtonContent(
                           WindowsIcons.repair,
@@ -135,5 +136,5 @@ showErrorsFlyout() async {
               ),
       );
     },
-  );
+  ));
 }

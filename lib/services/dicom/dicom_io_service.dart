@@ -8,6 +8,12 @@ import 'dicom_io_stub.dart' if (dart.library.io) 'dicom_io_native.dart';
 /// The [DicomFileCache] keys on `path` and checks `mtime + size`
 /// to decide whether the file can be skipped entirely on the next scan.
 class DicomFileEntry {
+  const DicomFileEntry({
+    required this.path,
+    required this.mtime,
+    required this.size,
+  });
+
   /// Absolute path to the `.dcm` file.
   final String path;
 
@@ -16,12 +22,6 @@ class DicomFileEntry {
 
   /// File size in bytes (from `File.stat().size`).
   final int size;
-
-  const DicomFileEntry({
-    required this.path,
-    required this.mtime,
-    required this.size,
-  });
 
   @override
   String toString() =>

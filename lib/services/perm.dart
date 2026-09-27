@@ -86,12 +86,31 @@ class Perm {
   /// [count] if shorter. Handles null, empty, and malformed input gracefully.
   ///
   /// Example: `"[2, 1, 0]"` → `[2, 1, 0, 0, 0, 0, 0, 0, 0]`
-  static List<int> parse(dynamic source) {
+  static List<int> parse(Object? source) {
     if (source == null) return zeroes;
     if (source is List<int>) return pad(source);
+    // An already-decoded JSON array is a `List<dynamic>`, not a `List<int>`,
+    // and used to fall through to `zeroes` — the account would silently appear
+    // to have no permissions at all. Accept any list of numbers (or numeric
+    // strings) instead, and keep `zeroes` for a value that really is garbage.
+    if (source is List) {
+      final parsed = <int>[];
+      for (final value in source) {
+        if (value is int) {
+          parsed.add(value);
+        } else if (value is num) {
+          parsed.add(value.toInt());
+        } else {
+          final asInt = int.tryParse(value?.toString() ?? '');
+          if (asInt == null) return zeroes;
+          parsed.add(asInt);
+        }
+      }
+      return pad(parsed);
+    }
     if (source is String && source.isNotEmpty) {
       try {
-        return pad(List<int>.from(jsonDecode(source)));
+        return pad(List<int>.from(jsonDecode(source) as List<dynamic>));
       } catch (_) {
         return zeroes;
       }
@@ -120,8 +139,8 @@ class Perm {
 ///
 /// Const-constructible and inlined by the Dart compiler — zero overhead.
 class PermLevel {
-  final int _value;
   const PermLevel(this._value);
+  final int _value;
 
   /// The level is exactly 0 (no access).
   bool get none => _value == 0;

@@ -34,7 +34,14 @@ class ObservableBase<S> {
 
   final StreamController<S> _controller = StreamController<S>.broadcast();
   final List<Observer<S>> observers = [];
-  Stream<S> get stream => _controller.stream;
+
+  /// The stream every listener subscribes to.
+  ///
+  /// Held rather than handed out by a getter: `StreamController.broadcast()`
+  /// returns a **new** stream object on every `.stream` access, so a getter
+  /// would make a `streams: [x.stream]` list written inside `build()` look like
+  /// it swapped its stream on every rebuild — and re-subscribe every time.
+  late final Stream<S> stream = _controller.stream;
   double _silent = 0;
 
   void notifyObservers(S event) {

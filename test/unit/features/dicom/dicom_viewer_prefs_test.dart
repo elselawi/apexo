@@ -6,12 +6,12 @@ import 'package:apexo/services/localization/en.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A minimal [LocalSettings] that lets us set [dicomViewerPrefs] directly
-/// without touching Hive. [notifyAndPersist] is recorded for assertion.
+/// A minimal [LocalSettings] that lets us set [dicomViewerPrefs] directly.
+/// [notifyAndPersist] is recorded for assertion.
 class _TestLocalSettings extends LocalSettings {
   final List<String> persistLog = [];
   @override
-  void notifyAndPersist() {
+  Future<void> notifyAndPersist() async {
     persistLog.add(dicomViewerPrefs);
   }
 }
@@ -19,8 +19,8 @@ class _TestLocalSettings extends LocalSettings {
 /// Fake [SaveRemote] that resolves a fixed URL for known (rowId, name) pairs.
 /// Used to document the fetchDcmBytes null-URL contract without real network.
 class _FakeSaveRemote {
-  final Map<String, String> urlFor;
   _FakeSaveRemote({required this.urlFor});
+  final Map<String, String> urlFor;
 
   String _key(String rowId, String name) => '$rowId/$name';
 
@@ -91,9 +91,15 @@ void main() {
     });
 
     test('rotationSteps clamped to 0–3', () {
-      expect(DicomViewerPrefs.fromJson(const {'rotationSteps': -1}).rotationSteps, 0);
-      expect(DicomViewerPrefs.fromJson(const {'rotationSteps': 5}).rotationSteps, 3);
-      expect(DicomViewerPrefs.fromJson(const {'rotationSteps': 2}).rotationSteps, 2);
+      expect(
+          DicomViewerPrefs.fromJson(const {'rotationSteps': -1}).rotationSteps,
+          0);
+      expect(
+          DicomViewerPrefs.fromJson(const {'rotationSteps': 5}).rotationSteps,
+          3);
+      expect(
+          DicomViewerPrefs.fromJson(const {'rotationSteps': 2}).rotationSteps,
+          2);
       expect(DicomViewerPrefs.fromJson(const {}).rotationSteps, 0);
     });
 
@@ -135,11 +141,11 @@ void main() {
   });
 
   group('DicomViewerPrefs — applyTo', () {
-    test('empty prefs → no-op (invert stays off, rotation stays 0)', () {
+    test('empty prefs → no-op (invert stays off, rotation stays 0)', () async {
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
       const p = DicomViewerPrefs.empty;
-      p.applyTo(controller);
+      await p.applyTo(controller);
       expect(controller.invert, isFalse);
       expect(controller.rotationSteps, 0);
     });

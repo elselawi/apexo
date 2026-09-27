@@ -3,8 +3,8 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class StyledPie extends StatefulWidget {
-  final Map<String, double> data;
   const StyledPie({required this.data, super.key});
+  final Map<String, double> data;
 
   @override
   State<StatefulWidget> createState() => _StyledPieState();
@@ -16,10 +16,12 @@ class _StyledPieState extends State<StyledPie> {
   @override
   Widget build(BuildContext context) {
     if (widget.data.isEmpty) return const Center(child: Txt('No data'));
-    if (widget.data.values.length < 2)
+    if (widget.data.values.length < 2) {
       return const Center(child: Txt('No data'));
-    if (widget.data.values.reduce((x, y) => x + y) == 0)
+    }
+    if (widget.data.values.reduce((x, y) => x + y) == 0) {
       return const Center(child: Txt('No data'));
+    }
 
     return PieChart(
       PieChartData(

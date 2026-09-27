@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/listeners.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
@@ -5,10 +6,10 @@ import 'package:apexo/utils/logger.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 
 class FirebaseMessagingService {
+  factory FirebaseMessagingService.instance() => _instance;
   FirebaseMessagingService._internal();
   static final FirebaseMessagingService _instance =
       FirebaseMessagingService._internal();
-  factory FirebaseMessagingService.instance() => _instance;
   AuthorizationStatus? authStatus = AuthorizationStatus.denied;
 
   /// Initialize Firebase Messaging and sets up all message listeners
@@ -47,9 +48,10 @@ class FirebaseMessagingService {
     );
     login.pushNotificationsToken = token ?? "";
     FirebaseMessaging.instance.onTokenRefresh.listen((newFCMToken) {
-      PushRelay.replaceToken(login.pushNotificationsToken, newFCMToken);
+      unawaited(
+          PushRelay.replaceToken(login.pushNotificationsToken, newFCMToken));
       login.pushNotificationsToken = newFCMToken;
-    }).onError((error) {
+    }).onError((Object error) {
       logger('Error refreshing FCM token: $error', StackTrace.current);
     });
   }

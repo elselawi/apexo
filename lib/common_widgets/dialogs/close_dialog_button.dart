@@ -3,11 +3,11 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class CloseButtonInDialog extends StatelessWidget {
-  final String buttonText;
   const CloseButtonInDialog({
     this.buttonText = "cancel",
     super.key,
   });
+  final String buttonText;
 
   @override
   Widget build(BuildContext context) {

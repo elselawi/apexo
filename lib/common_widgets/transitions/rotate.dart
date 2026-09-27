@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 class RotatingWrapper extends StatefulWidget {
+  const RotatingWrapper({super.key, required this.child, this.rotate = false});
   final Widget child;
   final bool rotate;
-
-  const RotatingWrapper({super.key, required this.child, this.rotate = false});
 
   @override
   RotatingWrapperState createState() => RotatingWrapperState();
 }
 
-class RotatingWrapperState extends State<RotatingWrapper> with SingleTickerProviderStateMixin {
+class RotatingWrapperState extends State<RotatingWrapper>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
 

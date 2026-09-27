@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -6,7 +7,7 @@ bool isOpen = false;
 
 VoidCallback showLoadingBlockingDialog(BuildContext context, String text) {
   isOpen = true;
-  showDialog(
+  unawaited(showDialog(
       barrierDismissible: false,
       dismissWithEsc: false,
       context: context,
@@ -20,7 +21,7 @@ VoidCallback showLoadingBlockingDialog(BuildContext context, String text) {
               children: [ProgressRing()]),
           style: dialogStyling(context, false, true),
         );
-      });
+      }));
 
   return () {
     if (context.mounted && isOpen) {

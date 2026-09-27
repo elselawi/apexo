@@ -43,6 +43,7 @@ void main() {
     unawaited(panel.result.whenComplete(() {
       done = true;
     }));
+    await pumpEventQueue();
     return done;
   }
 

@@ -33,6 +33,16 @@ $frameworkHooks = @(
     'operator', 'State', 'createState'
 )
 
+# A statement can look exactly like a declaration — `await pumpEventQueue();` is
+# `type name(` to a regex, and `pumpEventQueue` comes from `flutter_test`, so
+# nothing here declares it and the name appears once. The first word of the
+# "return type" is what gives it away.
+$statementKeywords = @(
+    'await', 'return', 'unawaited', 'yield', 'throw', 'assert', 'print',
+    'if', 'else', 'for', 'while', 'do', 'switch', 'case', 'break', 'continue',
+    'final', 'var', 'const', 'late', 'super', 'this', 'await'
+)
+
 # A declaration is a line that starts with a return type and then a name and an
 # open paren. Calls rarely look like that, and the ones that do (a named
 # constructor) have no return type, so they are not matched.
@@ -75,6 +85,8 @@ foreach ($file in $files) {
         # it, and a declaration's line never ends in a comma.
         if ($match.Groups['type'].Value -match '[=,\.\(\[\]]') { continue }
         if ($line.TrimEnd().EndsWith(',')) { continue }
+        $firstWord = ($match.Groups['type'].Value.Trim() -split '\s+')[0]
+        if ($statementKeywords -contains $firstWord) { continue }
 
         if ($counts[$name] -ne 1) { continue }
 

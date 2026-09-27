@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math';
 
-import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/duration_pill.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -14,6 +13,7 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import 'appointments_store.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calendar Timeline View (Google‑Calendar‑style time grid)
@@ -776,7 +776,7 @@ class _TimelineChipState extends State<TimelineChip> {
   }
 
   bool get isCurrentlyOpenInAPanel {
-    return routes.panels().where((p) => p.item.id == widget.item.id).isNotEmpty;
+    return PanelsManager.active().where((p) => p.itemId == widget.item.id).isNotEmpty;
   }
 
   @override
@@ -1059,9 +1059,9 @@ class _TimelineChipState extends State<TimelineChip> {
         icon: const Icon(FluentIcons.open_in_new_tab),
         onPressed: () {
           final index =
-              routes.panels().indexWhere((p) => p.item.id == widget.item.id);
+              PanelsManager.active().indexWhere((p) => p.itemId == widget.item.id);
           if (index == -1) return;
-          routes.bringPanelToFront(index);
+          PanelsManager.bringToFront(index);
         });
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/panels/panel_tab.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/app/panels/row_panel.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -41,7 +43,7 @@ import 'package:flutter/cupertino.dart';
 
 void closeAppointmentsPanels() {
   final List<String> toClose = [];
-  for (var panel in routes.panels()) {
+  for (var panel in PanelsManager.active()) {
     final identifier = panel.identifier;
     if (identifier.contains("appointments") ||
         appointments.get(identifier) != null) {
@@ -49,13 +51,13 @@ void closeAppointmentsPanels() {
     }
   }
   for (final identifier in toClose) {
-    routes.closePanel(identifier);
+    PanelsManager.close(identifier);
   }
 }
 
 final transcriptionEditCounter = ObservableState(0);
 
-void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
+void openAppointment([Appointment? appointment, int? selectedTabIndex]) async {
   closeLabworksPanels();
 
   final canViewPostOp = login.perm(Perm.postOp).exact(2) ||
@@ -70,16 +72,18 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
   }
 
   final editingCopy = Appointment.fromJson(appointment?.toJson() ?? {});
-  final panel = Panel(
+  final panel = RowPanel<Appointment>(
     singularName: "appointment",
     unicodeSymbol: "📅",
     selectedTabIndex: selectedTabIndex,
     item: editingCopy,
     store: appointments,
     icon: WindowsIcons.calendar,
-    title: appointments.get(editingCopy.id) == null
-        ? txt("addAppointment")
-        : editingCopy.title,
+    existing: appointments.get(editingCopy.id) != null,
+    // A localization key rather than a sentence: the header runs it through
+    // txt(), so it follows the language the app is in now. A stored
+    // appointment gets its own title from readTitle() instead.
+    title: "addAppointment",
     tabs: [],
   );
   final tabs = [
@@ -156,12 +160,13 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
     ),
   ];
   panel.tabs.addAll(tabs);
-  routes.openPanel(panel);
+  await panel.readTitle();
+  PanelsManager.open(panel);
 }
 
 class _AppointmentGallery extends StatefulWidget {
   const _AppointmentGallery(this.panel);
-  final Panel<Appointment> panel;
+  final RowPanel<Appointment> panel;
 
   @override
   State<_AppointmentGallery> createState() => _AppointmentGalleryState();
@@ -218,8 +223,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                   onSaveDrawing: (img, drawing) {
                     widget.panel.item.drawings[img] = drawing;
                     appointments.set(widget.panel.item);
-                    widget.panel.savedJson =
-                        jsonEncode(widget.panel.item.toJson());
+                    widget.panel.markSaved();
                   },
                   onPressDelete: (img) async {
                     widget.panel.inProgress(true);
@@ -228,8 +232,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                       widget.panel.item.imgs.remove(img);
                       widget.panel.item.drawings.remove(img);
                       appointments.set(widget.panel.item);
-                      widget.panel.savedJson =
-                          jsonEncode(widget.panel.item.toJson());
+                      widget.panel.markSaved();
                     } catch (e, s) {
                       showErrorMessage(e, "deletingPatientImageFromServer");
                       login.askForLoginAgain(e);
@@ -245,8 +248,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                           widget.panel.item.id, dcmName);
                       widget.panel.item.dcmImgs.remove(dcmName);
                       appointments.set(widget.panel.item);
-                      widget.panel.savedJson =
-                          jsonEncode(widget.panel.item.toJson());
+                      widget.panel.markSaved();
                     } catch (e, s) {
                       showErrorMessage(e, "deletingPatientImageFromServer");
                       login.askForLoginAgain(e);
@@ -263,8 +265,7 @@ class _AppointmentGalleryState extends State<_AppointmentGallery> {
                       widget.panel.item.imgs =
                           widget.panel.item.imgs.toSet().toList();
                       appointments.set(widget.panel.item);
-                      widget.panel.savedJson =
-                          jsonEncode(widget.panel.item.toJson());
+                      widget.panel.markSaved();
                       if (mounted) {
                         widget.panel.selectedTab(widget.panel.selectedTab());
                       }
@@ -375,10 +376,14 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                       ),
                       onPressed: () async {
                         final newPatientId = uuid();
-                        final newPatient = await openPatient(
+                        // The panel is seeded with the id we want, so a save
+                        // writes that id and a cancel leaves it unused — the
+                        // appointment points at it either way.
+                        final savedPatientId = await openPatient(
                             Patient.fromJson({"id": newPatientId}));
-                        routes.closePanel(newPatientId);
-                        widget.appointment.patientID = newPatient.id;
+                        PanelsManager.close(newPatientId);
+                        widget.appointment.patientID =
+                            savedPatientId ?? newPatientId;
                       })
                 else
                   FilledButton(

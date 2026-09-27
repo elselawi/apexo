@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
@@ -18,6 +17,7 @@ import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:flutter/foundation.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 
 final treatments = txOptions.where((x) => x.type != StateType.state).toList();
 
@@ -30,7 +30,7 @@ class PatientsScreen extends StatelessWidget {
         streams: [
           patients.observableMap.stream,
           appointments.observableMap.stream,
-          routes.panels.stream
+          PanelsManager.active.stream
         ],
         builder: (context, snapshot) {
           // ignore: prefer_const_constructors

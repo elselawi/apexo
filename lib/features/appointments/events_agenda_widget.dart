@@ -1,4 +1,3 @@
-import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
@@ -15,6 +14,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show TimeOfDay, showTimePicker;
 import 'package:intl/intl.dart' as intl;
 import 'appointments_store.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 
 // ─── Agenda (plain list) view ───────────────────────────────────────────
 
@@ -142,14 +142,14 @@ class AppointmentCalendarTile<Item extends Appointment>
             ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
             : null,
         leading: Row(children: [
-          routes.panels().where((p) => p.item.id == item.id).isNotEmpty
+          PanelsManager.active().where((p) => p.itemId == item.id).isNotEmpty
               ? IconButton(
                   icon: const Icon(FluentIcons.open_in_new_tab),
                   onPressed: () {
                     final index =
-                        routes.panels().indexWhere((p) => p.item.id == item.id);
+                        PanelsManager.active().indexWhere((p) => p.itemId == item.id);
                     if (index == -1) return;
-                    routes.bringPanelToFront(index);
+                    PanelsManager.bringToFront(index);
                   })
               : Transform.scale(
                   scale: 1.25,
@@ -193,8 +193,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                 IconButton(
                   onPressed: () async {
                     final index =
-                        routes.panels().indexWhere((p) => p.item.id == item.id);
-                    if (index > -1) return routes.bringPanelToFront(index);
+                        PanelsManager.active().indexWhere((p) => p.itemId == item.id);
+                    if (index > -1) return PanelsManager.bringToFront(index);
                     final TimeOfDay? res = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay(
@@ -207,7 +207,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                   },
                   icon: Row(
                     children: [
-                      routes.panels().where((p) => p.item.id == item.id).isEmpty
+                      PanelsManager.active().where((p) => p.itemId == item.id).isEmpty
                           ? const Icon(FluentIcons.clock)
                           : const Icon(FluentIcons.open_in_new_tab),
                       const SizedBox(width: 5),

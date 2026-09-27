@@ -1,23 +1,28 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/panels/panel.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
-import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
-import 'package:apexo/core/model.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/core/observable.dart';
-import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/utils/logger.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
-class PanelScreen extends StatefulWidget {
+/// The panel host: the chrome drawn around whatever [Panel] is on screen —
+/// header, tab strip, body, footer and the archive/save/close bar.
+///
+/// It reaches the panel only through [Panel] and never touches the records
+/// behind it. That is what lets one host draw a row panel, a delegated panel and
+/// a hand-written panel alike, and why this file must not learn about drafts,
+/// stores or account models.
+final class PanelScreen extends StatefulWidget {
   const PanelScreen({
     required this.panel,
     this.layoutHeight = 500,
@@ -37,59 +42,49 @@ class _PanelScreenState extends State<PanelScreen> {
   final FocusNode focusNode = FocusNode();
   final panelSwitchController = FlyoutController();
   final confirmCancelController = FlyoutController();
-  late Timer saveButtonCheckTimer;
+  Timer? saveButtonCheckTimer;
+  StreamSubscription<int>? pendingEditsSub;
   bool ctrlPressed = false;
 
   @override
   void dispose() {
-    saveButtonCheckTimer.cancel();
-    if (widget.panel.item is Appointment) {
-      widget.panel.store.observableMap
-          .unObserve(observeAppointmentForImgUpdate);
-    }
+    saveButtonCheckTimer?.cancel();
+    unawaited(pendingEditsSub?.cancel());
     focusNode.dispose();
     panelSwitchController.dispose();
     confirmCancelController.dispose();
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    isNew = widget.panel.canNotBeNew
-        ? false
-        : widget.panel.store.get(widget.panel.item.id) == null;
-    saveButtonCheckTimer =
-        Timer.periodic(const Duration(milliseconds: 750), (_) {
-      final changesDetected = widget.panel.checkUnsavedChanges?.call() ??
-          (jsonEncode(widget.panel.item.toJson()) != widget.panel.savedJson);
-      if (changesDetected && widget.panel.hasUnsavedChanges() != true) {
-        widget.panel.hasUnsavedChanges(true);
-      } else if (!changesDetected &&
-          widget.panel.hasUnsavedChanges() != false) {
-        widget.panel.hasUnsavedChanges(false);
-      }
-    });
-
-    if (widget.panel.item is Appointment) {
-      widget.panel.store.observableMap.observe(observeAppointmentForImgUpdate);
+  /// Copies the panel's verdict on [Panel.hasPendingEdits] into the observable
+  /// the bottom controls watch, so Save is enabled exactly while a save would
+  /// write something.
+  void _syncPendingEdits() {
+    final hasPendingEdits = widget.panel.hasPendingEdits;
+    if (widget.panel.hasUnsavedChanges() != hasPendingEdits) {
+      widget.panel.hasUnsavedChanges(hasPendingEdits);
     }
   }
 
-  void observeAppointmentForImgUpdate(List<DictEvent> events) {
-    // update the imgs if it has been changed on the server
-    final itemID = (widget.panel.item).id;
-    for (var event in events) {
-      if (event.id == itemID && event.type == DictEventType.modify) {
-        final appointmentInStore = appointments.get(itemID);
-        if (appointmentInStore != null &&
-            (widget.panel.item as Appointment).imgs.length !=
-                appointmentInStore.imgs.length) {
-          (widget.panel.item as Appointment).imgs = appointmentInStore.imgs;
-          widget.panel.selectedTab(widget.panel.selectedTab()); // notify
-        }
-      }
+  @override
+  void initState() {
+    super.initState();
+    isNew = widget.panel.isNew;
+    // A safety net: the opener reads the title before showing the panel, so this
+    // costs nothing there, and covers a panel added without one.
+    unawaited(widget.panel.readTitle());
+    final signal = widget.panel.pendingEditsSignal;
+    if (signal == null) {
+      // Nothing to push: the kind's answer is its caller's callback, which can
+      // only be asked, so it is sampled. Every other kind says so at once.
+      saveButtonCheckTimer = Timer.periodic(
+        const Duration(milliseconds: 750),
+        (_) => _syncPendingEdits(),
+      );
+    } else {
+      pendingEditsSub = signal.stream.listen((_) => _syncPendingEdits());
     }
+    _syncPendingEdits();
   }
 
   @override
@@ -100,7 +95,7 @@ class _PanelScreenState extends State<PanelScreen> {
       onKeyEvent: (value) {
         if (value is KeyDownEvent &&
             value.logicalKey == LogicalKeyboardKey.escape &&
-            routes.panels().isNotEmpty &&
+            PanelsManager.active().isNotEmpty &&
             widget.panel.inProgress() == false) {
           closeOrConfirmCancel();
           return;
@@ -139,7 +134,7 @@ class _PanelScreenState extends State<PanelScreen> {
             streams: [
               localSettings.stream,
               widget.panel.selectedTab.stream,
-              routes.minimizePanels.stream,
+              PanelsManager.minimize.stream,
             ],
             builder: (context, snapshot) {
               return Column(
@@ -147,7 +142,7 @@ class _PanelScreenState extends State<PanelScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildPanelHeader(),
-                  if (routes.minimizePanels() == false ||
+                  if (PanelsManager.minimize() == false ||
                       widget.layoutWidth >= 710) ...[
                     _buildTabsControllers(),
                     _buildTabBody(),
@@ -237,6 +232,7 @@ class _PanelScreenState extends State<PanelScreen> {
           stream: widget.panel.hasUnsavedChanges.stream,
           builder: (context, _) {
             return IconButton(
+              key: WK.panelClose,
               onPressed: closeOrConfirmCancel,
               style: greyButtonStyle.copyWith(
                 textStyle:
@@ -258,32 +254,26 @@ class _PanelScreenState extends State<PanelScreen> {
     return StreamBuilder<bool>(
         stream: widget.panel.hasUnsavedChanges.stream,
         builder: (context, _) {
+          final hasChanges = widget.panel.hasUnsavedChanges();
           return IconButton(
-            onPressed: () {
-              if (widget.panel.hasUnsavedChanges()) {
-                if (widget.panel.onSave != null) {
-                  widget.panel.onSave!();
-                } else {
-                  widget.panel.store.set(widget.panel.item);
-                  widget.panel.savedJson =
-                      jsonEncode(widget.panel.item.toJson());
-                  widget.panel.identifier = widget.panel.item.id;
-                  if (!widget.panel.result.isCompleted) {
-                    widget.panel.result.complete(widget.panel.item);
+            key: WK.panelSave,
+            onPressed: hasChanges
+                ? () async {
+                    try {
+                      await widget.panel.save();
+                    } catch (e, st) {
+                      logger('Saving "${widget.panel.itemId}" failed', st);
+                      showErrorMessage(e, "savingFailed");
+                    }
+                    if (!mounted) return;
+                    setState(() => isNew = false);
                   }
-                }
-                setState(() {
-                  isNew = false;
-                  widget.panel.title = null;
-                });
-              }
-            },
+                : null,
             style: greyButtonStyle.copyWith(
               textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-              backgroundColor: WidgetStatePropertyAll(
-                  widget.panel.hasUnsavedChanges()
-                      ? Colors.blue
-                      : Colors.grey.withValues(alpha: 0.25)),
+              backgroundColor: WidgetStatePropertyAll(hasChanges
+                  ? Colors.blue
+                  : Colors.grey.withValues(alpha: 0.25)),
             ),
             icon: ButtonContent(WindowsIcons.save, txt("save")),
           );
@@ -291,15 +281,13 @@ class _PanelScreenState extends State<PanelScreen> {
   }
 
   Widget _buildArchiveButton() {
-    final icon = widget.panel.item.archived == true
-        ? WindowsIcons.undo
-        : WindowsIcons.delete;
-    final action =
-        widget.panel.item.archived == true ? txt("restore") : txt("delete");
-    final color =
-        widget.panel.item.archived == true ? Colors.teal : Colors.grey;
+    final isArchived = widget.panel.isArchived;
+    final icon = isArchived ? WindowsIcons.undo : WindowsIcons.delete;
+    final action = isArchived ? txt("restore") : txt("delete");
+    final color = isArchived ? Colors.teal : Colors.grey;
     return widget.panel.archiveButtonReplacement ??
         DeleteButton(
+          key: WK.panelArchive,
           actionText: action,
           actionIcon: icon,
           restorable: true,
@@ -312,19 +300,12 @@ class _PanelScreenState extends State<PanelScreen> {
                 "${txt(widget.panel.singularName)}:",
                 style: FluentTheme.of(context).typography.bodyStrong,
               ),
-              ItemTitle(item: widget.panel.item),
+              widget.panel.buildTitle(context),
             ],
           ),
-          onConfirm: () {
-            setState(() {
-              if (widget.panel.item.archived == true) {
-                widget.panel.store.unarchive(widget.panel.item.id);
-                widget.panel.item.archived = null;
-              } else {
-                widget.panel.store.archive(widget.panel.item.id);
-                widget.panel.item.archived = true;
-              }
-            });
+          onConfirm: () async {
+            await widget.panel.setArchived(!isArchived);
+            if (mounted) setState(() {});
           },
           style: greyButtonStyle.copyWith(
             backgroundColor: WidgetStatePropertyAll(color),
@@ -389,7 +370,7 @@ class _PanelScreenState extends State<PanelScreen> {
   Widget _buildPanelHeader() {
     return GestureDetector(
       onTap: () {
-        if (routes.minimizePanels()) routes.minimizePanels(false);
+        if (PanelsManager.minimize()) PanelsManager.minimize(false);
       },
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 2.8, horizontal: 5),
@@ -405,7 +386,8 @@ class _PanelScreenState extends State<PanelScreen> {
                     _buildPanelHeaderItemName(),
                   ]),
                   Row(children: [
-                    if (routes.panels().length > 1) _buildPanelSwitcher(),
+                    if (PanelsManager.active().length > 1)
+                      _buildPanelSwitcher(),
                     // minimization is useless is prevented in big screens
                     if (widget.layoutWidth < 710) _buildPanelMinimizeButton(),
                     widget.panel.inProgress()
@@ -432,10 +414,11 @@ class _PanelScreenState extends State<PanelScreen> {
 
   IconButton _buildPanelMinimizeButton() {
     return IconButton(
-      icon: Icon(routes.minimizePanels()
+      key: WK.panelMinimize,
+      icon: Icon(PanelsManager.minimize()
           ? WindowsIcons.chevron_up
           : WindowsIcons.chevron_down),
-      onPressed: () => routes.minimizePanels(!routes.minimizePanels()),
+      onPressed: () => PanelsManager.minimize(!PanelsManager.minimize()),
     );
   }
 
@@ -448,7 +431,7 @@ class _PanelScreenState extends State<PanelScreen> {
           children: [
             const Icon(FluentIcons.reopen_pages),
             Text(
-              routes.panels().length.toString(),
+              PanelsManager.active().length.toString(),
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             )
           ],
@@ -483,25 +466,16 @@ class _PanelScreenState extends State<PanelScreen> {
   Widget _buildPanelHeaderItemName() {
     return SizedBox(
       width: 134,
-      child: ItemTitle(
-        maxWidth: 129,
-        radius: 0,
-        fontSize: 13,
-        item: widget.panel.title != null
-            ? Model.fromJson({"title": widget.panel.title})
-            : widget.panel.item,
-        predefinedColor:
-            widget.panel.item.archived == true ? Colors.grey : null,
-      ),
+      child: widget.panel.buildTitle(context),
     );
   }
 
   void closeOrConfirmCancel() async {
     if (widget.panel.hasUnsavedChanges() == false) {
-      routes.closePanel(widget.panel.item.id);
+      PanelsManager.close(widget.panel.itemId);
     } else {
       await flyoutFocusFix(context);
-      unawaited(confirmCancelController.showFlyout(builder: (context) {
+      unawaited(confirmCancelController.showFlyout<void>(builder: (context) {
         return FlyoutContent(
           constraints: const BoxConstraints(maxWidth: 350),
           child: Column(
@@ -517,7 +491,7 @@ class _PanelScreenState extends State<PanelScreen> {
                     style: filledButtonStyle(Colors.warningPrimaryColor),
                     onPressed: () {
                       Flyout.of(context).close();
-                      routes.closePanel(widget.panel.item.id);
+                      PanelsManager.close(widget.panel.itemId);
                     },
                     child: Row(
                       children: [
@@ -540,12 +514,12 @@ class _PanelScreenState extends State<PanelScreen> {
 
   void openPanelSwitch() async {
     await flyoutFocusFix(context);
-    unawaited(panelSwitchController.showFlyout(
+    unawaited(panelSwitchController.showFlyout<void>(
       barrierDismissible: widget.layoutWidth < 710,
       dismissWithEsc: true,
       dismissOnPointerMoveAway: true,
       builder: (context) => MenuFlyout(items: [
-        ...([...routes.panels()]
+        ...([...PanelsManager.active()]
               ..sort((a, b) => b.creationDate - a.creationDate))
             .map((panel) {
           return MenuFlyoutItem(
@@ -553,17 +527,16 @@ class _PanelScreenState extends State<PanelScreen> {
             leading: Icon(panel.icon),
             trailing: panel.inProgress()
                 ? const SizedBox(height: 20, width: 20, child: ProgressRing())
-                : Icon(widget.panel.canNotBeNew == false &&
-                        panel.store.get(panel.item.id) == null
-                    ? FluentIcons.add
-                    : FluentIcons.edit),
-            text: Txt(
-                "${txt(panel.singularName)}: ${panel.title ?? panel.item.title}",
+                : Icon(panel.isNew ? FluentIcons.add : FluentIcons.edit),
+            // `displayTitle` is a key while the record is new, so it is
+            // translated here like the header: a language switch relabels a
+            // panel that is already open.
+            text: Txt("${txt(panel.singularName)}: ${txt(panel.displayTitle)}",
                 style: TextStyle(
                     fontWeight:
                         panel == widget.panel ? FontWeight.w500 : null)),
-            onPressed: () =>
-                routes.bringPanelToFront(routes.panels().indexOf(panel)),
+            onPressed: () => PanelsManager.bringToFront(
+                PanelsManager.active().indexOf(panel)),
             closeAfterClick: true,
           );
         })

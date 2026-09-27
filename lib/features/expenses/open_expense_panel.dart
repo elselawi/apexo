@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/panels/delegated_panel.dart';
+import 'package:apexo/app/panels/panel_tab.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -17,33 +19,34 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 
-// NOTE: Unlike other panels (patient, appointment) which track unsaved
-// changes on a single item, this panel manages multiple orders. It uses
-// [checkUnsavedChanges] and [onSave] callbacks so the panel's footer Save
-// button saves ALL changed orders at once. New orders are persisted
-// immediately in [addOrderForSupplier] so photo uploads work right away.
-// Archive/restore is handled per-order via the more menu in [OrderRow].
-Future<Expense> openExpenses(
+// NOTE: Unlike the row panels (patient, appointment) which track unsaved
+// changes on a single item, this panel manages multiple orders. It is a
+// [DelegatedPanel]: its [checkUnsavedChanges] and [onSave] callbacks make the
+// panel's footer Save button save ALL changed orders at once. New orders are
+// persisted immediately in [addOrderForSupplier] so photo uploads work right
+// away. Archive/restore is handled per-order via the more menu in [OrderRow].
+Future<String?> openExpenses(
     List<Expense> orders, String supplierName, String? supplierId,
-    [bool? singleArchived]) {
+    [bool? singleArchived]) async {
   // Snapshot of each order's JSON at panel-open time.
   // Updated after each save so we only re-save what changed.
   final Map<String, String> savedSnapshots = {
     for (var o in orders) o.id: jsonEncode(o.toJson()),
   };
 
-  final panel = Panel<Expense>(
+  final panel = DelegatedPanel(
+    // A synthetic id: this panel aggregates a supplier's orders instead of
+    // editing one record, so there is no stored row for it to be found by.
+    itemId: supplierName,
     showTitles: true,
     showBottomControls: true,
     inherentlyScrollable: true,
     singularName: "orders",
     unicodeSymbol: "📁",
     selectedTabIndex: 0,
-    item: Expense.fromJson({"id": supplierName}),
-    store: expenses,
     icon: WindowsIcons.folder,
-    title: supplierName,
-    canNotBeNew: true,
+    // The header keeps the supplier's name.
+    recordTitle: () async => supplierName,
     archiveButtonReplacement: singleArchived == true
         ? DeleteButton(
             onConfirm: () => expenses.unarchive(orders.firstOrNull?.id ?? ""),
@@ -63,14 +66,20 @@ Future<Expense> openExpenses(
     checkUnsavedChanges: () {
       return orders.any((o) => jsonEncode(o.toJson()) != savedSnapshots[o.id]);
     },
-    onSave: () {
+    onSave: () async {
+      final saved = <String>[];
       for (var o in orders) {
         final current = jsonEncode(o.toJson());
         if (current != savedSnapshots[o.id]) {
           expenses.set(o);
           savedSnapshots[o.id] = current;
+          saved.add(o.id);
         }
       }
+      // Answering with the ids it wrote is what makes the panel's `savedId`
+      // mean something: this panel's caller holds the drafts, so it is the
+      // only one that can report them.
+      return saved;
     },
     tabs: singleArchived == true
         ? [
@@ -105,8 +114,11 @@ Future<Expense> openExpenses(
             ),
           ],
   );
-  routes.openPanel(panel);
-  return panel.result.future;
+  await panel.readTitle();
+  final shown = PanelsManager.open(panel);
+  // The panel is done when the user saves it or closes it without saving.
+  await shown.result;
+  return shown.savedId;
 }
 
 class _SupplierDetails extends StatefulWidget {

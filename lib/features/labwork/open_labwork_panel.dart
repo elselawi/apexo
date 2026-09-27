@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/panels/delegated_panel.dart';
+import 'package:apexo/app/panels/panel_tab.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
@@ -15,6 +16,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
+import 'package:apexo/app/panels/panels_manager.dart';
 
 final _isEditing = ObservableState(false);
 final _selectedPatientID = ObservableState<String>("");
@@ -25,19 +27,19 @@ String _panelIdentifier(String appointmentId) => "$appointmentId-labwork";
 
 void closeLabworksPanels() {
   final List<String> toClose = [];
-  for (var panel in routes.panels()) {
+  for (var panel in PanelsManager.active()) {
     final identifier = panel.identifier;
     if (identifier.endsWith("-labwork")) {
       toClose.add(identifier);
     }
   }
   for (final identifier in toClose) {
-    routes.closePanel(identifier);
+    PanelsManager.close(identifier);
   }
 }
 
-Future<Appointment> openLabworkPanel(
-    Appointment? initiallySelectedAppointment) {
+Future<String?> openLabworkPanel(
+    Appointment? initiallySelectedAppointment) async {
   closeLabworksPanels();
   closeAppointmentsPanels();
   _hasEdited(false);
@@ -52,21 +54,29 @@ Future<Appointment> openLabworkPanel(
     _selectedAppointmentID("");
   }
 
-  final panel = Panel<Appointment>(
+  final panel = DelegatedPanel(
+    // A synthetic id keyed on the appointment the panel starts from: this
+    // panel edits whichever appointment the user picks, so it has no single
+    // stored record behind it.
+    itemId: _panelIdentifier(initiallySelectedAppointment?.id ?? ""),
     showTitles: true,
     showBottomControls: false,
     inherentlyScrollable: false,
     singularName: "labwork",
     unicodeSymbol: "🔬",
     selectedTabIndex: 0,
-    item: Appointment.fromJson(
-        {"id": _panelIdentifier(initiallySelectedAppointment?.id ?? "")}),
-    store: appointments,
     icon: FluentIcons.manufacturing,
-    title: initiallySelectedAppointment == null
+    // The header names the appointment's patient, and falls back to the
+    // "new labwork" label when the panel opens with nothing selected.
+    newTitle: "newLabwork",
+    recordTitle: () async => initiallySelectedAppointment == null
         ? txt("newLabwork")
-        : ("${initiallySelectedAppointment.patient?.title ?? ""} ${txt("labwork")}"),
-    canNotBeNew: true,
+        : "${initiallySelectedAppointment.patient?.title ?? ""} ${txt("labwork")}",
+    // The panel owns no record and keeps no snapshot of one, and its bodies
+    // write each labwork row themselves — there is no Save button
+    // (`showBottomControls: false`), so there is nothing for it to report.
+    checkUnsavedChanges: () => false,
+    onSave: () async => <String>[],
     additionalControls: _LabeWorkPanelActions(),
     tabs: [
       PanelTab(
@@ -80,8 +90,11 @@ Future<Appointment> openLabworkPanel(
       ),
     ],
   );
-  routes.openPanel(panel);
-  return panel.result.future;
+  await panel.readTitle();
+  final shown = PanelsManager.open(panel);
+  // The panel is done when the user saves it or closes it without saving.
+  await shown.result;
+  return shown.savedId;
 }
 
 class _SingleLabworkPanelBody extends StatefulWidget {

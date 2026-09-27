@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:apexo/app/navbar_widget.dart';
-import 'package:apexo/app/panel_widget.dart';
+import 'package:apexo/app/panels/panel_screen.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
 import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart';
@@ -75,8 +76,8 @@ class ApexoApp extends StatelessWidget {
                     launch.isFirstLaunch.stream,
                     launch.open.stream,
                     routes.showBottomNav.stream,
-                    routes.panels.stream,
-                    routes.minimizePanels.stream
+                    PanelsManager.active.stream,
+                    PanelsManager.minimize.stream
                   ],
                   builder: (BuildContext context, _) {
                     bContext = context;
@@ -93,7 +94,7 @@ class ApexoApp extends StatelessWidget {
                           children: [
                             buildAppLayout(),
                             if (routes.showBottomNav() &&
-                                routes.panels().isEmpty &&
+                                PanelsManager.active().isEmpty &&
                                 launch.open() == Open.staff)
                               const BottomNavBar()
                           ],
@@ -159,16 +160,16 @@ class ApexoApp extends StatelessWidget {
       streams: [
         launch.open.stream,
         routes.currentRouteIndex.stream,
-        routes.panels.stream
+        PanelsManager.active.stream
       ],
       key: WK.builder,
       builder: (context, _) => PopScope(
         canPop: false,
         onPopInvokedWithResult: (_, __) {
           if (launch.layoutWidth < 710 &&
-              routes.panels().isNotEmpty &&
-              routes.minimizePanels() == false) {
-            routes.minimizePanels(true);
+              PanelsManager.active().isNotEmpty &&
+              PanelsManager.minimize() == false) {
+            PanelsManager.minimize(true);
             return;
           }
           routes.goBack();
@@ -176,21 +177,21 @@ class ApexoApp extends StatelessWidget {
         child: LayoutBuilder(builder: (context, constraints) {
           launch.layoutWidth = constraints.maxWidth;
           final hideSidePanel =
-              routes.panels().isEmpty || launch.open() != Open.staff;
+              PanelsManager.active().isEmpty || launch.open() != Open.staff;
           return Container(
             color: FluentTheme.of(context).menuColor,
             child: Stack(
               fit: StackFit.expand,
               children: [
                 _buildPositionedMainScreen(constraints, hideSidePanel, context),
-                if (routes.panels().isNotEmpty &&
-                    routes.minimizePanels() == false &&
+                if (PanelsManager.active().isNotEmpty &&
+                    PanelsManager.minimize() == false &&
                     constraints.maxWidth < 710)
                   ModalBarrier(
                     color: FluentTheme.of(context)
                         .menuColor
                         .withValues(alpha: 0.4),
-                    onDismiss: () => routes.minimizePanels(true),
+                    onDismiss: () => PanelsManager.minimize(true),
                   ),
                 _buildPositionedPanel(context, constraints, hideSidePanel),
               ],
@@ -301,7 +302,7 @@ class ApexoApp extends StatelessWidget {
 
   Widget _buildPositionedPanel(
       BuildContext context, BoxConstraints constraints, bool hideSidePanel) {
-    final minimized = routes.minimizePanels() && constraints.maxWidth < 710;
+    final minimized = PanelsManager.minimize() && constraints.maxWidth < 710;
     final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
     return AnimatedPositioned(
       duration: hasKeyboard ? Duration.zero : const Duration(milliseconds: 300),
@@ -336,10 +337,10 @@ class ApexoApp extends StatelessWidget {
                   );
                 },
                 child: PanelScreen(
-                  key: Key(routes.panels().last.identifier),
+                  key: Key(PanelsManager.active().last.identifier),
                   layoutHeight: constraints.maxHeight,
                   layoutWidth: constraints.maxWidth,
-                  panel: routes.panels().last,
+                  panel: PanelsManager.active().last,
                 ),
               ),
             ),

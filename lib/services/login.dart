@@ -20,6 +20,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
 
 /// Callbacks invoked during [Login.logout], before credentials are cleared.
 ///
@@ -173,7 +174,9 @@ class _LoginService extends ObservablePersistingObject {
     // opens the correct Hive box for the new server.
     deferredPush.reset();
     notifyAndPersist();
-    routes.panels([]);
+    // Settles each panel's `result`, so any opener still awaiting one is
+    // released instead of hanging on a panel that is gone.
+    PanelsManager.closeAll();
     return loginCtrl.finishedLoginProcess();
   }
 

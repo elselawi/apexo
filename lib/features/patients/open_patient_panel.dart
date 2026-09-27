@@ -1,6 +1,8 @@
 import 'dart:convert';
 
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/panels/panel_tab.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/app/panels/row_panel.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -38,18 +40,20 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 final transcriptionEditCounter = ObservableState(0);
 
-Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
+Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
-  final panel = Panel<Patient>(
+  final panel = RowPanel<Patient>(
     singularName: "patient",
     unicodeSymbol: "👤",
     selectedTabIndex: selectedTabIndex,
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,
-    title: patients.get(editingCopy.id) == null
-        ? txt("newPatient")
-        : editingCopy.title,
+    existing: patients.get(editingCopy.id) != null,
+    // A localization key rather than a sentence: the header runs it through
+    // txt(), so it follows the language the app is in now. A stored patient
+    // gets their own name from readTitle() below instead.
+    title: "newPatient",
     tabs: [
       PanelTab(
         title: txt("patientDetails"),
@@ -169,8 +173,11 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
       ),
     ],
   );
-  routes.openPanel(panel);
-  return panel.result.future;
+  await panel.readTitle();
+  final shown = PanelsManager.open(panel);
+  // The panel is done when the user saves it or closes it without saving.
+  await shown.result;
+  return shown.savedId;
 }
 
 class _PatientQrPage extends StatefulWidget {

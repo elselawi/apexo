@@ -1,5 +1,7 @@
 import 'dart:async';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/panels/panel_tab.dart';
+import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/app/panels/row_panel.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/core/model.dart';
@@ -116,16 +118,16 @@ final _accountStore = _AccountStore();
 
 final deleteConfirmFlyoutController = FlyoutController();
 
-Future<AccountModel> openAccount([AccountModel? account]) {
+Future<String?> openAccount([AccountModel? account]) async {
   final editingCopy = AccountModel.fromJson(account?.toJson() ?? {});
   final isNew = accounts.list().every((e) => e.id != editingCopy.id);
-  final panel = Panel<AccountModel>(
+  final panel = RowPanel<AccountModel>(
     archiveButtonReplacement: login.currentAccountID == editingCopy.id
         ? const SizedBox.shrink()
         : DeleteButton(
             onConfirm: () {
               _accountStore.deleteAccount(editingCopy.id);
-              routes.closePanel(editingCopy.id);
+              PanelsManager.close(editingCopy.id);
             },
             style: filledButtonStyle(Colors.grey),
             preview: Row(
@@ -146,9 +148,10 @@ Future<AccountModel> openAccount([AccountModel? account]) {
     item: editingCopy,
     store: _accountStore,
     icon: FluentIcons.people,
-    title: isNew
-        ? txt(editingCopy.isAdmin ? "newAdmin" : "newUser")
-        : editingCopy.title,
+    existing: !isNew,
+    // A localization key rather than a sentence: the header runs it through
+    // txt(), so it follows the language the app is in now.
+    title: editingCopy.isAdmin ? "newAdmin" : "newUser",
     tabs: [
       PanelTab(
         title: isNew
@@ -159,8 +162,11 @@ Future<AccountModel> openAccount([AccountModel? account]) {
       ),
     ],
   );
-  routes.openPanel(panel);
-  return panel.result.future;
+  await panel.readTitle();
+  final shown = PanelsManager.open(panel);
+  // The panel is done when the user saves it or closes it without saving.
+  await shown.result;
+  return shown.savedId;
 }
 
 class _AccountDetails extends StatefulWidget {

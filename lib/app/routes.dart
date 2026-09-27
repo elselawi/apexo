@@ -1,7 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:apexo/core/model.dart';
-import 'package:apexo/core/store.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/dicom/dicom_controller.dart';
 import 'package:apexo/features/dicom/dicom_screen.dart';
@@ -28,83 +25,6 @@ import '../core/observable.dart';
 import "../features/appointments/appointments_store.dart";
 import "../features/archive/archive_screen.dart";
 import "../features/settings/settings_stores.dart";
-
-class PanelTab {
-  PanelTab({
-    required this.title,
-    required this.icon,
-    required this.body,
-    this.footer,
-    this.onlyIfSaved = false,
-    this.padding = 10,
-  });
-  final String title;
-  final IconData icon;
-  final Widget body;
-  final double padding;
-  final bool onlyIfSaved;
-  final Widget? footer;
-}
-
-class Panel<T extends Model> {
-  Panel({
-    required this.item,
-    required this.store,
-    required this.tabs,
-    required this.icon,
-    required this.singularName,
-    required this.unicodeSymbol,
-    this.inherentlyScrollable = false,
-    this.showTitles = false,
-    this.title,
-    this.showBottomControls = true,
-    int? selectedTabIndex,
-    this.canNotBeNew = false,
-    this.additionalControls,
-    this.archiveButtonReplacement,
-    this.checkUnsavedChanges,
-    this.onSave,
-  }) {
-    identifier = store.get(item.id) == null
-        ? (canNotBeNew ? item.id : "new+${store.local?.name ?? singularName}")
-        : item.id;
-    savedJson = jsonEncode(item.toJson());
-    selectedTab(selectedTabIndex);
-  }
-  final T item;
-  final Store store;
-  final List<PanelTab> tabs;
-  final IconData icon;
-  final String singularName;
-  final String unicodeSymbol;
-  String? title;
-  final inProgress = ObservableState(false);
-  final selectedTab = ObservableState<int>(0);
-  final ObservableState<bool> hasUnsavedChanges = ObservableState(false);
-  late String savedJson;
-  late String identifier;
-  final Completer<T> result = Completer<T>();
-  final int creationDate = DateTime.now().millisecondsSinceEpoch;
-  final bool inherentlyScrollable;
-  final bool showTitles;
-  final bool showBottomControls;
-  final bool canNotBeNew;
-  final Widget? additionalControls;
-  final Widget? archiveButtonReplacement;
-
-  /// If provided, used by the periodic timer instead of comparing
-  /// [item.toJson] against [savedJson]. Useful when the panel manages
-  /// multiple items (e.g. expenses orders panel).
-  final bool Function()? checkUnsavedChanges;
-
-  /// If provided, called when the Save button is pressed instead of the
-  /// default [store.set(item)]. Useful when the panel manages multiple items.
-  final void Function()? onSave;
-
-  String get storeSingularName {
-    return store.local!.name.substring(0, store.local!.name.length - 1);
-  }
-}
 
 class Route {
   Route({
@@ -133,34 +53,13 @@ class Route {
   void Function() onSelect;
 }
 
+/// The screens reachable from the navbar, and the little state the navbar
+/// itself needs.
+///
+/// Panels are not among those screens: they float above the routes, and the
+/// stack they live on belongs to [PanelsManager] — which is why nothing here
+/// mentions them any more.
 class _Routes {
-  final ObservableState<List<Panel>> panels = ObservableState([]);
-
-  final minimizePanels = ObservableState(false);
-
-  void openPanel(Panel panel) {
-    final foundPanel = panels()
-        .indexWhere((element) => element.identifier == panel.identifier);
-    if (foundPanel > -1) {
-      panels()[foundPanel].selectedTab(panel.selectedTab());
-      bringPanelToFront(foundPanel);
-    } else {
-      panels(panels()..add(panel));
-      routes.minimizePanels(false);
-    }
-  }
-
-  void bringPanelToFront(int index) {
-    panels(panels()..add(panels().removeAt(index)));
-    routes.minimizePanels(false);
-  }
-
-  void closePanel(String targetToClose) {
-    panels(panels()
-      ..removeWhere(
-          (p) => p.item.id == targetToClose || targetToClose == p.identifier));
-  }
-
   final showBottomNav = ObservableState(false);
 
   List<Route> get allRoutes => [

@@ -776,7 +776,9 @@ class _TimelineChipState extends State<TimelineChip> {
   }
 
   bool get isCurrentlyOpenInAPanel {
-    return PanelsManager.active().where((p) => p.itemId == widget.item.id).isNotEmpty;
+    return PanelsManager.active()
+        .where((p) => p.itemId == widget.item.id)
+        .isNotEmpty;
   }
 
   @override
@@ -1058,8 +1060,8 @@ class _TimelineChipState extends State<TimelineChip> {
     return IconButton(
         icon: const Icon(FluentIcons.open_in_new_tab),
         onPressed: () {
-          final index =
-              PanelsManager.active().indexWhere((p) => p.itemId == widget.item.id);
+          final index = PanelsManager.active()
+              .indexWhere((p) => p.itemId == widget.item.id);
           if (index == -1) return;
           PanelsManager.bringToFront(index);
         });

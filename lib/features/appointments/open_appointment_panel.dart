@@ -478,7 +478,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   final MoneyEditingController paidController = MoneyEditingController();
   bool didNotEditPaidYet = true;
 
-
   void _fillControllers() {
     postOpNotesController.text = widget.appointment.postOpNotes;
     priceController.text =

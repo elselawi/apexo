@@ -250,7 +250,6 @@ class _Routes {
     allRoutes[identifiedIndex].onSelect();
   }
 
-
   void reset() {
     currentRouteIndex(0);
     history = [];

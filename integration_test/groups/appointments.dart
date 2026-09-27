@@ -387,7 +387,6 @@ void registerAppointmentsTests() {
   });
 }
 
-
 /// Gives one seeded appointment back — **server first**, or the next sync pulls
 /// it in again (`todo.md` §6.2).
 Future<void> _handBackAppointment(String id) async {

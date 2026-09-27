@@ -146,8 +146,8 @@ class AppointmentCalendarTile<Item extends Appointment>
               ? IconButton(
                   icon: const Icon(FluentIcons.open_in_new_tab),
                   onPressed: () {
-                    final index =
-                        PanelsManager.active().indexWhere((p) => p.itemId == item.id);
+                    final index = PanelsManager.active()
+                        .indexWhere((p) => p.itemId == item.id);
                     if (index == -1) return;
                     PanelsManager.bringToFront(index);
                   })
@@ -192,8 +192,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                 ),
                 IconButton(
                   onPressed: () async {
-                    final index =
-                        PanelsManager.active().indexWhere((p) => p.itemId == item.id);
+                    final index = PanelsManager.active()
+                        .indexWhere((p) => p.itemId == item.id);
                     if (index > -1) return PanelsManager.bringToFront(index);
                     final TimeOfDay? res = await showTimePicker(
                         context: context,
@@ -207,7 +207,9 @@ class AppointmentCalendarTile<Item extends Appointment>
                   },
                   icon: Row(
                     children: [
-                      PanelsManager.active().where((p) => p.itemId == item.id).isEmpty
+                      PanelsManager.active()
+                              .where((p) => p.itemId == item.id)
+                              .isEmpty
                           ? const Icon(FluentIcons.clock)
                           : const Icon(FluentIcons.open_in_new_tab),
                       const SizedBox(width: 5),

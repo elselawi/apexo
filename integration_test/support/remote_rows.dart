@@ -11,7 +11,6 @@
 // is created, patched and deleted by hand, and every assertion stays the app's.
 import 'dart:math' show min;
 
-import 'package:apexo/utils/uuid.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'credentials.dart';
 
@@ -29,9 +28,6 @@ abstract final class RemoteRows {
     _pb = client;
     return client;
   }
-
-  /// A record id the engine will accept (fifteen alphanumerics).
-  static String newId() => uuid();
 
   /// The remote row with [id], or `null` when the server does not have it.
   ///

@@ -250,12 +250,6 @@ class _Routes {
     allRoutes[identifiedIndex].onSelect();
   }
 
-  Route? getByIdentifier(String identifier) {
-    final target =
-        allRoutes.where((element) => element.identifier == identifier);
-    if (target.isEmpty) return null;
-    return target.first;
-  }
 
   void reset() {
     currentRouteIndex(0);

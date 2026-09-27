@@ -309,12 +309,6 @@ abstract class DF {
     return DateFormat('MMMM yyyy', locale.s.$code).format(date);
   }
 
-  static String jalaliDayOfWeek(DateTime date) {
-    if (isPersianCalendar) {
-      return JalaliUtils.dayOfWeekName(date.weekday);
-    }
-    return DateFormat("EE", locale.s.$code).format(date);
-  }
 
   static String jalaliDayOfWeekAbbr(DateTime date) {
     if (isPersianCalendar) {

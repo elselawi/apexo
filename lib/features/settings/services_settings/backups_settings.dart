@@ -629,37 +629,6 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     );
   }
 
-  Future<Object?> showDeleteDialog(BuildContext context, BackupFile element) {
-    return showDialog(
-        barrierDismissible: true,
-        dismissWithEsc: true,
-        context: context,
-        builder: (BuildContext context) {
-          return ContentDialog(
-            title: Txt(txt("delete")),
-            style: dialogStyling(context, true, true),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Txt("${txt("sureDeleteBackup")}: '${element.key}'?"),
-                Txt("${txt("backupDate")}: ${DF.full(element.date)}"),
-              ],
-            ),
-            actions: [
-              const CloseButtonInDialog(),
-              FilledButton(
-                style: filledButtonStyle(Colors.red),
-                child: Txt(txt("delete")),
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await backups.delete(element.key);
-                },
-              ),
-            ],
-          );
-        });
-  }
 
   Tooltip buildDownloadButton(BackupFile element, BuildContext context) {
     return Tooltip(

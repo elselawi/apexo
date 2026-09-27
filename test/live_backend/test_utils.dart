@@ -5,8 +5,6 @@ import 'package:apexo/core/save_remote.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/safe_dir.dart';
-import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -43,58 +41,10 @@ class TestUtils {
     });
   }
 
-  static Future<void> actionOnModal(
-      WidgetTester tester, String id, String action) {
-    return tester.tap(
-        find.descendant(of: find.byKey(Key(id)), matching: find.text(action)));
-  }
 
-  static Future<void> enterTime(WidgetTester tester, int hour, int minute,
-      [bool am = false]) async {
-    await tester.tap(find.byTooltip('Switch to text input mode'));
-    await tester.pumpAndSettle();
 
-    final inputs = find.byType(TextFormField);
 
-    await tester.enterText(inputs.at(0), hour.toString());
-    await tester.enterText(inputs.at(1), minute.toString());
 
-    if (am) {
-      await tester.tap(find.text('AM'));
-    } else {
-      await tester.tap(find.text('PM'));
-    }
-
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-  }
-
-  static Future<void> enterDate(
-      WidgetTester tester, int year, int month, int day) async {
-    await tester.tap(find.byTooltip('Switch to input'));
-    await tester.pumpAndSettle();
-
-    final inputs = find.byType(TextFormField);
-    await tester.enterText(inputs.at(0), "$month/$day/$year");
-    await tester.tap(find.text('OK'));
-    await tester.pumpAndSettle();
-  }
-
-  static Future<void> tapFromTagInput(WidgetTester tester, String text) async {
-    await tester.tap(find
-        .descendant(of: find.byType(Flyout), matching: find.text(text))
-        .last);
-  }
-
-  static Future<void> inputTag(WidgetTester tester, Key key, String target,
-      [String? seed]) async {
-    final asb = find.descendant(
-        of: find.byKey(key), matching: find.byType(AutoSuggestBox<String>));
-    await tester.tap(asb);
-    await tester.enterText(asb, seed ?? target);
-    await tester.pumpAndSettle();
-    await tapFromTagInput(tester, target);
-  }
 
   // Pocketbase and local hive setup
 

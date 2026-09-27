@@ -142,22 +142,5 @@ abstract final class Backend {
     }
   }
 
-  /// One collection's list rule, as the server has it — the cheapest piece of
-  /// the schema to read back and reason about (a rule change is what the
-  /// reconciliation exists to ship, and it destroys no rows).
-  static Future<String?> collectionRule(String name) async {
-    if (!_pb.authStore.isValid) {
-      await _pb.collection("_superusers").authWithPassword(pbEmail, pbPassword);
-    }
-    return (await _pb.collections.getOne(name)).listRule;
-  }
 
-  /// Sets a collection's list rule — the app's own reconciliation is what puts
-  /// the definition back (`initializePocketbase`/`reconcileSchema`).
-  static Future<void> setCollectionRule(String name, String rule) async {
-    if (!_pb.authStore.isValid) {
-      await _pb.collection("_superusers").authWithPassword(pbEmail, pbPassword);
-    }
-    await _pb.collections.update(name, body: {'listRule': rule});
-  }
 }

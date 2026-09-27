@@ -21,10 +21,10 @@ final _selectedPatientID = ObservableState<String>("");
 final _selectedAppointmentID = ObservableState<String>("");
 final _hasEdited = ObservableState(false);
 
-_panelIdentifier(String appointmentId) => "$appointmentId-labwork";
+String _panelIdentifier(String appointmentId) => "$appointmentId-labwork";
 
-closeLabworksPanels() {
-  List<String> toClose = [];
+void closeLabworksPanels() {
+  final List<String> toClose = [];
   for (var panel in routes.panels()) {
     final identifier = panel.identifier;
     if (identifier.endsWith("-labwork")) {
@@ -36,7 +36,8 @@ closeLabworksPanels() {
   }
 }
 
-openLabworkPanel(Appointment? initiallySelectedAppointment) {
+Future<Appointment> openLabworkPanel(
+    Appointment? initiallySelectedAppointment) {
   closeLabworksPanels();
   closeAppointmentsPanels();
   _hasEdited(false);
@@ -127,15 +128,15 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
 
   @override
   Widget build(BuildContext context) {
-    Patient? selectedPatient = _selectedPatientID().isEmpty
+    final Patient? selectedPatient = _selectedPatientID().isEmpty
         ? null
         : patients.get(_selectedPatientID());
 
-    Appointment? selectedAppointment = _selectedAppointmentID().isEmpty
+    final Appointment? selectedAppointment = _selectedAppointmentID().isEmpty
         ? null
         : appointments.get(_selectedAppointmentID());
 
-    bool validPatientWithAppointments = () {
+    final bool validPatientWithAppointments = () {
       if (selectedPatient == null) return false;
       if (selectedPatient.allAppointments.isEmpty) return false;
       return true;
@@ -231,9 +232,10 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
     return MStreamBuilder(
         streams: [_selectedAppointmentID.stream, _hasEdited.stream],
         builder: (context, asyncSnapshot) {
-          Appointment? selectedAppointment = _selectedAppointmentID().isEmpty
-              ? null
-              : appointments.get(_selectedAppointmentID());
+          final Appointment? selectedAppointment =
+              _selectedAppointmentID().isEmpty
+                  ? null
+                  : appointments.get(_selectedAppointmentID());
           return Row(
             spacing: 10,
             children: [
@@ -245,7 +247,8 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                     style: filledButtonStyle(Colors.errorPrimaryColor),
                     onPressed: () async {
                       await flyoutFocusFix(context);
-                      confirmDeleteFlyoutController.showFlyout(builder: (ctx) {
+                      unawaited(confirmDeleteFlyoutController.showFlyout(
+                          builder: (ctx) {
                         return ConfirmDeleteFlyout(
                           preview: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -264,7 +267,7 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                           },
                           controller: confirmDeleteFlyoutController,
                         );
-                      });
+                      }));
                     },
                     icon: ButtonContent(
                       WindowsIcons.delete,

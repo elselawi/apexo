@@ -133,7 +133,7 @@ class Appointments extends Store<Appointment> {
   }
 
   @override
-  init() {
+  void init() {
     super.init();
     onLogoutCallbacks.add(endSession);
     observableMap.observe(nullifyAppointmentsCache);

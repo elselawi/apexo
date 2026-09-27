@@ -7,7 +7,7 @@ String uuid() {
   final StringBuffer buffer = StringBuffer();
 
   for (int i = 0; i < 15; i++) {
-    int index = rand.nextInt(alphabet.length);
+    final int index = rand.nextInt(alphabet.length);
     buffer.write(alphabet[index]);
   }
 

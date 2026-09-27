@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
@@ -59,18 +60,18 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     try {
       final settings = await login.pb!.settings.getAll();
       final backups = settings['backups'] ?? {};
-      _cronController.text = backups['cron'] ?? '';
+      _cronController.text = backups['cron'] as String? ?? '';
       _maxKeepController.text = (backups['cronMaxKeep'] ?? '5').toString();
-      _autoBackupEnabled.value = (backups['cron'] ?? '').isNotEmpty;
+      _autoBackupEnabled.value = (backups['cron'] as String? ?? '').isNotEmpty;
 
       final s3 = backups['s3'] ?? {};
-      _s3Enabled.value = s3['enabled'] ?? false;
-      _endpointController.text = s3['endpoint'] ?? '';
-      _bucketController.text = s3['bucket'] ?? '';
-      _regionController.text = s3['region'] ?? '';
-      _accessKeyController.text = s3['accessKey'] ?? '';
-      _secretKeyController.text = s3['secret'] ?? '';
-      _forcePathStyle.value = s3['forcePathStyle'] ?? false;
+      _s3Enabled.value = s3['enabled'] as bool? ?? false;
+      _endpointController.text = s3['endpoint'] as String? ?? '';
+      _bucketController.text = s3['bucket'] as String? ?? '';
+      _regionController.text = s3['region'] as String? ?? '';
+      _accessKeyController.text = s3['accessKey'] as String? ?? '';
+      _secretKeyController.text = s3['secret'] as String? ?? '';
+      _forcePathStyle.value = s3['forcePathStyle'] as bool? ?? false;
     } catch (e) {
       // Controllers remain empty on error
     }
@@ -96,7 +97,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
         }
       });
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -111,11 +112,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -130,7 +131,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     }
   }
@@ -583,7 +584,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     );
   }
 
-  showRestoreDialog(BuildContext context, BackupFile element) {
+  Future<Object?> showRestoreDialog(BuildContext context, BackupFile element) {
     return showDialog(
         barrierDismissible: true,
         dismissWithEsc: true,
@@ -628,7 +629,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     );
   }
 
-  showDeleteDialog(BuildContext context, BackupFile element) {
+  Future<Object?> showDeleteDialog(BuildContext context, BackupFile element) {
     return showDialog(
         barrierDismissible: true,
         dismissWithEsc: true,
@@ -671,7 +672,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
             if (backups.downloading().containsKey(element.key)) return;
             final uri = await backups.downloadUri(element.key);
             if (context.mounted) {
-              showDownloadDialog(context, uri);
+              unawaited(showDownloadDialog(context, uri));
             }
           },
         ),
@@ -679,7 +680,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     );
   }
 
-  showDownloadDialog(BuildContext context, Uri uri) {
+  Future<Object?> showDownloadDialog(BuildContext context, Uri uri) {
     return showDialog(
         barrierDismissible: true,
         dismissWithEsc: true,

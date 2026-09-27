@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -952,17 +953,16 @@ class _PendingImportCardState extends State<_PendingImportCard> {
 }
 
 class _NamePill extends StatelessWidget {
-  final String name;
-  final Color color;
-  final IconData icon;
-  final VoidCallback? onPress;
-
   const _NamePill({
     required this.name,
     required this.color,
     required this.icon,
     this.onPress,
   });
+  final String name;
+  final Color color;
+  final IconData icon;
+  final VoidCallback? onPress;
 
   @override
   Widget build(BuildContext context) {
@@ -1050,7 +1050,7 @@ class _FileList extends StatelessWidget {
                     onPressed: () async {
                       final bytes = await DicomIO.readBytes(f.path);
                       if (bytes != null && context.mounted) {
-                        openDicomFromBytes(context, bytes);
+                        unawaited(openDicomFromBytes(context, bytes));
                       }
                     },
                     child: Row(

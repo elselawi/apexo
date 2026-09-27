@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -43,15 +44,15 @@ class _SmtpSettingsState extends State<SmtpSettings> {
       final smtp = settings['smtp'] ?? {};
       final meta = settings['meta'] ?? {};
 
-      hostController.text = smtp['host'] ?? '';
+      hostController.text = smtp['host'] as String? ?? '';
       portController.text = (smtp['port'] ?? '').toString();
-      usernameController.text = smtp['username'] ?? '';
-      passwordController.text = smtp['password'] ?? '';
-      senderNameController.text = meta['senderName'] ?? '';
-      senderEmailController.text = meta['senderAddress'] ?? '';
-      localNameController.text = smtp['localName'] ?? '';
-      tlsEnabled.value = smtp['tls'] ?? false;
-      smtpEnabled.value = smtp['enabled'] ?? false;
+      usernameController.text = smtp['username'] as String? ?? '';
+      passwordController.text = smtp['password'] as String? ?? '';
+      senderNameController.text = meta['senderName'] as String? ?? '';
+      senderEmailController.text = meta['senderAddress'] as String? ?? '';
+      localNameController.text = smtp['localName'] as String? ?? '';
+      tlsEnabled.value = smtp['tls'] as bool? ?? false;
+      smtpEnabled.value = smtp['enabled'] as bool? ?? false;
     } catch (e) {
       // Controllers remain empty on error
     }
@@ -78,7 +79,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
       });
 
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           barrierDismissible: true,
           dismissWithEsc: true,
           context: context,
@@ -93,11 +94,11 @@ class _SmtpSettingsState extends State<SmtpSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -112,7 +113,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     }
   }

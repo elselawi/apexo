@@ -62,12 +62,6 @@ Future<void> openDicomViewerPanel(
 enum _MeasureMode { none, ruler, roi }
 
 class _MeasureState {
-  final _MeasureMode mode;
-  final Offset? start;
-  final Offset? end;
-  final RoiStatistics? stats;
-  final double? rulerMm;
-
   const _MeasureState({
     this.mode = _MeasureMode.none,
     this.start,
@@ -75,6 +69,11 @@ class _MeasureState {
     this.stats,
     this.rulerMm,
   });
+  final _MeasureMode mode;
+  final Offset? start;
+  final Offset? end;
+  final RoiStatistics? stats;
+  final double? rulerMm;
 
   _MeasureState copyWith({
     _MeasureMode? mode,
@@ -99,11 +98,10 @@ class _MeasureState {
 // ─── Dialog ───────────────────────────────────────────────────────
 
 class _DicomViewerDialog extends StatefulWidget {
+  const _DicomViewerDialog({this.rowId, this.dcmName, this.bytes});
   final String? rowId;
   final String? dcmName;
   final Uint8List? bytes;
-
-  const _DicomViewerDialog({this.rowId, this.dcmName, this.bytes});
 
   @override
   State<_DicomViewerDialog> createState() => _DicomViewerDialogState();
@@ -263,7 +261,9 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
   void _onViewerPanEnd(DragEndDetails details, Size imageSize) {
     if (_measure.mode != _MeasureMode.roi ||
         _measure.start == null ||
-        _measure.end == null) return;
+        _measure.end == null) {
+      return;
+    }
     final result = _controller?.result;
     if (result == null) return;
     final s = _measure.start!;
@@ -869,12 +869,6 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
 // ─── Viewer button (dark pill overlay style) ──────────────────────
 
 class _VwBtn extends StatefulWidget {
-  final IconData icon;
-  final String? label;
-  final String tooltip;
-  final VoidCallback? onTap;
-  final bool active;
-
   const _VwBtn({
     required this.icon,
     this.label,
@@ -882,6 +876,11 @@ class _VwBtn extends StatefulWidget {
     this.onTap,
     this.active = false,
   });
+  final IconData icon;
+  final String? label;
+  final String tooltip;
+  final VoidCallback? onTap;
+  final bool active;
 
   @override
   State<_VwBtn> createState() => _VwBtnState();
@@ -939,10 +938,6 @@ class _VwBtnState extends State<_VwBtn> {
 // ─── Vertical slider ──────────────────────────────────────────────
 
 class _VerticalSlider extends StatelessWidget {
-  final String label;
-  final double value, min, max;
-  final ValueChanged<double> onChanged;
-
   const _VerticalSlider({
     required this.label,
     required this.value,
@@ -950,6 +945,9 @@ class _VerticalSlider extends StatelessWidget {
     required this.max,
     required this.onChanged,
   });
+  final String label;
+  final double value, min, max;
+  final ValueChanged<double> onChanged;
 
   @override
   Widget build(BuildContext context) {

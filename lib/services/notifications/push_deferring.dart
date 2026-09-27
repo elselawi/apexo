@@ -51,7 +51,7 @@ class _DeferredPush {
       final box = await hiveBox;
       final boxRes = box.get(key);
       if (boxRes != null) {
-        return PushData.fromJson(jsonDecode(boxRes));
+        return PushData.fromJson(jsonDecode(boxRes) as Map<String, dynamic>);
       } else {
         return null;
       }
@@ -67,7 +67,9 @@ class _DeferredPush {
       final List<String> keysToDelete = [];
       for (var encoded in box.values) {
         final decoded = jsonDecode(encoded);
-        if (decoded['store'] == store) keysToDelete.add(decoded['id']);
+        if (decoded['store'] == store) {
+          keysToDelete.add(decoded['id'] as String);
+        }
       }
       await box.deleteAll(keysToDelete);
     } catch (e, s) {

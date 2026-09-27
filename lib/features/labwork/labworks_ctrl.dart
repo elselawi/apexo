@@ -4,22 +4,21 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 
 class _LabworksController {
+  _LabworksController() {
+    appointments.observableMap.observe((_) {
+      _nullifyCaches();
+    });
+  }
   List<Appointment>? _appointmentsWithLabworksCached;
   List<Appointment>? _dueCached;
   List<Appointment>? _notDeliveredCached;
   List<Patient>? _notDeliveredPatientsCached;
 
-  _nullifyCaches() {
+  void _nullifyCaches() {
     _appointmentsWithLabworksCached = null;
     _dueCached = null;
     _notDeliveredCached = null;
     _notDeliveredPatientsCached = null;
-  }
-
-  _LabworksController() {
-    appointments.observableMap.observe((_) {
-      _nullifyCaches();
-    });
   }
 
   List<Appointment> get appointmentsWithLabworks =>

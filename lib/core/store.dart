@@ -25,13 +25,13 @@ import 'package:apexo/utils/phone_numbers_extractor.dart';
 typedef ModellingFunc<G> = G Function(Map<String, dynamic> input);
 
 class SyncResult {
+  SyncResult({this.pushed, this.pulled, this.conflicts, this.exception});
   int? pushed;
   int? pulled;
   int? conflicts;
   String? exception;
-  SyncResult({this.pushed, this.pulled, this.conflicts, this.exception});
   @override
-  toString() {
+  String toString() {
     return "pushed: $pushed, pulled: $pulled, conflicts: $conflicts, exception: $exception";
   }
 }
@@ -41,6 +41,20 @@ class SyncResult {
 /// but adds ability to persist data as well as synchronize it with a remote server
 
 class Store<G extends Model> {
+  Store({
+    required this.modeling,
+    this.isDemo,
+    this.local,
+    this.remote,
+    this.debounceMS = 100,
+    this.onSyncStart,
+    this.onSyncEnd,
+    this.manualSyncOnly,
+  }) : observableMap = ObservableDict() {
+    // loading from local
+    loaded = deleteMemoryAndLoadFromPersistence();
+  }
+
   /// Callbacks invoked when a file upload permanently fails (dead-letter).
   /// DICOM code registers here to clear the import registry so the file
   /// can be re-discovered on the next directory scan.
@@ -63,20 +77,6 @@ class Store<G extends Model> {
   bool? isDemo;
   int _persistenceSession = 0;
   final Set<Future<void>> _activePersistenceTasks = {};
-
-  Store({
-    required this.modeling,
-    this.isDemo,
-    this.local,
-    this.remote,
-    this.debounceMS = 100,
-    this.onSyncStart,
-    this.onSyncEnd,
-    this.manualSyncOnly,
-  }) : observableMap = ObservableDict() {
-    // loading from local
-    loaded = deleteMemoryAndLoadFromPersistence();
-  }
 
   @mustCallSuper
   void init() {
@@ -170,19 +170,19 @@ class Store<G extends Model> {
     onSyncStart?.call();
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
 
-    Map<String, String> toWrite = {};
-    Map<String, int> toDefer = {};
-    List<PushData> toPush = [];
+    final Map<String, String> toWrite = {};
+    final Map<String, int> toDefer = {};
+    final List<PushData> toPush = [];
 
-    List<DictEvent> changesToProcess = [...changes];
+    final List<DictEvent> changesToProcess = [...changes];
 
     for (DictEvent e in changesToProcess) {
-      G? item = observableMap.get(e.id);
+      final G? item = observableMap.get(e.id);
       if (item == null) {
         changes.remove(e);
         continue;
       }
-      String serialized = _serialize(item);
+      final String serialized = _serialize(item);
       toWrite[e.id] = serialized;
       toDefer[e.id] = lastProcessChanges;
 
@@ -220,7 +220,7 @@ class Store<G extends Model> {
       return;
     }
 
-    Map<String, int> lastDeferred = await sessionLocal.getDeferred();
+    final Map<String, int> lastDeferred = await sessionLocal.getDeferred();
     if (session != _persistenceSession) return;
     if (sessionRemote.isOnline && lastDeferred.isEmpty) {
       try {
@@ -239,7 +239,7 @@ class Store<G extends Model> {
         if (manualSyncOnly != true) {
           // this condition is especially helpful during testing
           // to have fine grained control over synchronization steps
-          synchronize();
+          unawaited(synchronize());
         }
         return;
       } catch (e, s) {
@@ -282,10 +282,10 @@ class Store<G extends Model> {
       return SyncResult(exception: "remote server is offline");
     }
     try {
-      int localVersion = await local!.getVersion();
-      int remoteVersion = await remote!.getVersion();
+      final int localVersion = await local!.getVersion();
+      final int remoteVersion = await remote!.getVersion();
 
-      Map<String, int> deferred = await local!.getDeferred();
+      final Map<String, int> deferred = await local!.getDeferred();
       int conflicts = 0;
 
       if (localVersion == remoteVersion && deferred.isEmpty) {
@@ -293,7 +293,7 @@ class Store<G extends Model> {
       }
 
       // fetch updates since our local version
-      VersionedResult remoteUpdates =
+      final VersionedResult remoteUpdates =
           await remote!.getSince(version: localVersion);
 
       if (remoteVersion == 0 &&
@@ -310,7 +310,7 @@ class Store<G extends Model> {
         }
       }
 
-      List<int> remoteLosersIndices = [];
+      final List<int> remoteLosersIndices = [];
 
       // check conflicts: last write wins
       // Collect merged results for conflicting records.  Each conflict is
@@ -323,13 +323,13 @@ class Store<G extends Model> {
       // callback cannot be async).  Collect the data needed for merging.
       final List<_ConflictInfo> conflictsFound = [];
       deferred.removeWhere((dfID, deferredTimeStamp) {
-        int remoteConflictIndex =
+        final int remoteConflictIndex =
             remoteUpdates.rows.indexWhere((r) => r.id == dfID);
         if (remoteConflictIndex == -1) {
           // no conflict
           return false;
         }
-        int remoteTimeStamp = remoteUpdates.rows[remoteConflictIndex].ts;
+        final int remoteTimeStamp = remoteUpdates.rows[remoteConflictIndex].ts;
         final bool localWins = deferredTimeStamp > remoteTimeStamp;
         conflictsFound.add(_ConflictInfo(
           dfID: dfID,
@@ -379,7 +379,7 @@ class Store<G extends Model> {
         remoteUpdates.rows.removeAt(index);
       }
 
-      Map<String, String> toLocalWrite = Map.fromEntries(
+      final Map<String, String> toLocalWrite = Map.fromEntries(
           remoteUpdates.rows.map((r) => MapEntry(r.id, r.data)));
 
       // Merge in field-level-merged conflict results (these override any
@@ -388,7 +388,7 @@ class Store<G extends Model> {
       toLocalWrite.addAll(mergedConflictsToLocal);
 
       // those will be built in the for loop below
-      Map<String, String> toRemoteWrite = {};
+      final Map<String, String> toRemoteWrite = {};
 
       final List<Future Function()> fileHandling = [];
       // Track FILE keys whose operation succeeds so we can safely clear
@@ -561,7 +561,8 @@ class Store<G extends Model> {
         // only do this if there were already docs
         for (var element in toLocalWrite.entries) {
           final id = element.key;
-          final document = modeling(jsonDecode(element.value));
+          final document =
+              modeling(jsonDecode(element.value) as Map<String, dynamic>);
           if (!document.targetsToPushTo.contains(login.currentAccountID)) {
             continue;
           }
@@ -569,7 +570,7 @@ class Store<G extends Model> {
           if (modeling({}).pushOnCreation && !docs.containsKey(id)) {
             final readableIdentifier = document.title;
 
-            List<String> displayTuple = PushData(
+            final List<String> displayTuple = PushData(
               store: remote!.storeName,
               id: id,
               readableIdentifier: readableIdentifier,
@@ -594,7 +595,7 @@ class Store<G extends Model> {
               continue;
             }
             final readableIdentifier = document.title;
-            List<String> displayTuple = PushData(
+            final List<String> displayTuple = PushData(
               store: remote!.storeName,
               id: id,
               readableIdentifier: readableIdentifier,
@@ -742,8 +743,9 @@ class Store<G extends Model> {
     if (sessionRemote != null &&
         realtimeSub == null &&
         manualSyncOnly != true) {
-      sessionRemote.pbInstance.collection(dataCollectionName).subscribe("*",
-          (msg) {
+      unawaited(sessionRemote.pbInstance
+          .collection(dataCollectionName)
+          .subscribe("*", (msg) {
         if (session == _persistenceSession &&
             msg.record?.data["store"] == sessionRemote.storeName) {
           synchronize();
@@ -754,18 +756,18 @@ class Store<G extends Model> {
         } else {
           cancellation();
         }
-      }).catchError((e, s) {
+      }).catchError((Object e, StackTrace s) {
         login.askForLoginAgain(e);
         logger("Error during realtime subscription: $e", s);
-      });
+      }));
     }
 
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
     onSyncStart?.call();
-    List<SyncResult> tries = [];
+    final List<SyncResult> tries = [];
     while (true) {
       if (session != _persistenceSession) break;
-      SyncResult result = await _syncTry();
+      final SyncResult result = await _syncTry();
       tries.add(result);
       if (result.exception != null) break;
     }
@@ -824,7 +826,7 @@ class Store<G extends Model> {
 
   /// archives a document by id (the concept of deletion is not supported here)
   void archive(String id) {
-    G? item = get(id);
+    final G? item = get(id);
     if (item == null) return;
     observableMap.set(item..archived = true);
     archived[id] = item;
@@ -832,7 +834,7 @@ class Store<G extends Model> {
 
   /// un-archives a document by id (the concept of deletion is not supported here)
   void unarchive(String id) {
-    G? item = get(id);
+    final G? item = get(id);
     if (item == null) return;
     observableMap.set(item..archived = false);
     archived.remove(id);
@@ -852,12 +854,12 @@ class Store<G extends Model> {
     if (local == null) {
       throw Exception("local persistence layer is not defined");
     }
-    Map<String, int> lastDeferred = await local!.getDeferred();
+    final Map<String, int> lastDeferred = await local!.getDeferred();
     if (remote!.isOnline && lastDeferred.isEmpty) {
       try {
         await remote!.deleteImage(rowID, name);
         onSyncEnd?.call();
-        synchronize();
+        unawaited(synchronize());
         return;
       } catch (e, s) {
         showErrorMessage(e, "deletingFile");
@@ -927,7 +929,7 @@ class Store<G extends Model> {
           file: file,
         );
         onSyncEnd?.call();
-        synchronize();
+        unawaited(synchronize());
         return pbName;
       } catch (e, s) {
         login.askForLoginAgain(e);
@@ -1286,8 +1288,8 @@ class Store<G extends Model> {
   /// pending upload ([pendingUploads]).  [isDcm] filters the server list
   /// to DICOM vs regular images.
   static List<String> _mergeImageField({
-    required dynamic localVal,
-    required dynamic remoteVal,
+    required localVal,
+    required remoteVal,
     required List<String> serverFiles,
     required Set<String> pendingUploads,
     required bool isDcm,
@@ -1326,14 +1328,14 @@ class Store<G extends Model> {
 
   static bool _isNotDcmFileStatic(String name) => !_isDcmFileStatic(name);
 
-  static Map<String, String> _toStringMap(dynamic val) {
+  static Map<String, String> _toStringMap(val) {
     if (val is Map) {
       return val.map((k, v) => MapEntry(k.toString(), v.toString()));
     }
     return {};
   }
 
-  static List<String> _toStringList(dynamic val) {
+  static List<String> _toStringList(val) {
     if (val is List) {
       return val.map((e) => e.toString()).toList();
     }
@@ -1350,16 +1352,16 @@ class Store<G extends Model> {
 /// Internal record used during conflict resolution in [_syncTry].
 /// Collects the data needed for the async field-level merge pass.
 class _ConflictInfo {
-  final String dfID;
-  final int remoteConflictIndex;
-  final bool localWins;
-  final String remoteData;
   _ConflictInfo({
     required this.dfID,
     required this.remoteConflictIndex,
     required this.localWins,
     required this.remoteData,
   });
+  final String dfID;
+  final int remoteConflictIndex;
+  final bool localWins;
+  final String remoteData;
 }
 
 Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
@@ -1369,14 +1371,14 @@ Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
 }
 
 class _ModelAllDocsParams<G extends Model> {
-  final ModellingFunc<G> modeling;
-  final Map<String, Map<String, dynamic>> decoded;
-  final String isoCC;
   _ModelAllDocsParams({
     required this.modeling,
     required this.decoded,
     required this.isoCC,
   });
+  final ModellingFunc<G> modeling;
+  final Map<String, Map<String, dynamic>> decoded;
+  final String isoCC;
 }
 
 List<Map<String, G>> _modelAllDocs<G extends Model>(

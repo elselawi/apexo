@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -12,22 +13,15 @@ import 'package:apexo/services/launch.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
-accountFromJson(Map<String, dynamic> json) {
+AccountModel accountFromJson(Map<String, dynamic> json) {
   return AccountModel.fromJson(json);
 }
 
 class AccountModel extends Model {
-  String email = "";
-  String password = "";
-  String name = "";
-  List<int> permissions = List.filled(Perm.count, 0);
-  bool operates = false;
-  bool isAdmin = false;
-
   AccountModel.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    email = json["email"] ?? email;
-    password = json["password"] ?? password;
-    name = json["name"] ?? name;
+    email = json["email"] as String? ?? email;
+    password = json["password"] as String? ?? password;
+    name = json["name"] as String? ?? name;
     permissions = Perm.parse(json["permissions"]);
     operates = json["operate"] == 1 ||
         json["operate"] == true ||
@@ -35,6 +29,12 @@ class AccountModel extends Model {
     isAdmin = json["type"] == "admin" || json["isAdmin"] == true;
     title = name.isNotEmpty ? name : email;
   }
+  String email = "";
+  String password = "";
+  String name = "";
+  List<int> permissions = List.filled(Perm.count, 0);
+  bool operates = false;
+  bool isAdmin = false;
 
   @override
   AccountModel copy(bool blank) {
@@ -164,8 +164,8 @@ Future<AccountModel> openAccount([AccountModel? account]) {
 }
 
 class _AccountDetails extends StatefulWidget {
-  final AccountModel account;
   const _AccountDetails(this.account);
+  final AccountModel account;
 
   @override
   State<_AccountDetails> createState() => _AccountDetailsState();
@@ -313,17 +313,17 @@ class _OperatesToggleState extends State<_OperatesToggle> {
 
 /// Lightweight descriptor for a single permission level option (const-safe).
 class _PermLevelDef {
+  const _PermLevelDef(this.value, this.labelKey);
   final int value;
   final String labelKey;
-  const _PermLevelDef(this.value, this.labelKey);
 }
 
 /// Lightweight descriptor for a permission slot (const-safe).
 class _PermDef {
+  const _PermDef(this.index, this.titleKey, this.levels);
   final int index;
   final String titleKey;
   final List<_PermLevelDef> levels;
-  const _PermDef(this.index, this.titleKey, this.levels);
 }
 
 const _threeLevel = [
@@ -413,7 +413,7 @@ class _PermissionSelectorState extends State<PermissionSelector> {
         child: Button(
           onPressed: () async {
             await flyoutFocusFix(context);
-            _flyoutCtrl.showFlyout(builder: (ctx) {
+            unawaited(_flyoutCtrl.showFlyout(builder: (ctx) {
               return MenuFlyout(items: [
                 MenuFlyoutItem(
                   leading: const Icon(FluentIcons.settings, size: 16),
@@ -434,7 +434,7 @@ class _PermissionSelectorState extends State<PermissionSelector> {
                       },
                     )),
               ]);
-            });
+            }));
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 6),

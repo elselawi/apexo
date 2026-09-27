@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
@@ -50,7 +51,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
       });
 
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -65,11 +66,11 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -84,7 +85,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     }
   }

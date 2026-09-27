@@ -11,13 +11,12 @@ enum WhichTests {
 }
 
 abstract class IntegrationTestBase {
+  IntegrationTestBase({required this.tester});
   String get name;
   Map<String, Future<Null> Function()> get tests;
   final WidgetTester tester;
 
-  IntegrationTestBase({required this.tester});
-
-  run([WhichTests level = WhichTests.regular]) async {
+  Future<void> run([WhichTests level = WhichTests.regular]) async {
     final modeFile = (await File("./integration_test/mode").readAsString());
     late WhichTests whichTests;
 
@@ -36,7 +35,8 @@ abstract class IntegrationTestBase {
       whichTests = WhichTests.onlyRequired;
     }
 
-    List<String> sortedTests = tests.keys.toList()..sort((a, b) => a.compareTo(b));
+    List<String> sortedTests = tests.keys.toList()
+      ..sort((a, b) => a.compareTo(b));
     if (whichTests == WhichTests.onlyRequired) {
       sortedTests = sortedTests.where((t) => t.endsWith("++")).toList();
     }

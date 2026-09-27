@@ -39,20 +39,20 @@ String dedupKey(final DicomMetadata m) => dedupKeyFromValues(
 // ── Link entry JSON model ──────────────────────────────────────────────
 
 class _LinkEntry {
-  String? patient;
-  List<String> keys;
   _LinkEntry({this.patient, List<String>? keys}) : keys = keys ?? [];
   factory _LinkEntry.fromJson(String json) {
     try {
       final map = jsonDecode(json);
       return _LinkEntry(
         patient: map['p'] as String?,
-        keys: List<String>.from(map['k'] ?? []),
+        keys: List<String>.from(map['k'] as List<dynamic>? ?? []),
       );
     } catch (_) {
       return _LinkEntry();
     }
   }
+  String? patient;
+  List<String> keys;
   String toJson() => jsonEncode({'p': patient, 'k': keys});
 }
 
@@ -67,16 +67,15 @@ class _LinkEntry {
 ///   patient (approve or manual-match).
 /// - `k` is the list of imported dedup keys for that patient.
 class DicomLinksStore {
-  final String _boxName;
-  final String? _storagePath;
-  @visibleForTesting
-  bool debugFailInitialization = false;
-
   DicomLinksStore._({
     String boxName = 'dicom_links',
     String? storagePath,
   })  : _boxName = boxName,
         _storagePath = storagePath;
+  final String _boxName;
+  final String? _storagePath;
+  @visibleForTesting
+  bool debugFailInitialization = false;
 
   static final DicomLinksStore _instance = DicomLinksStore._();
   static DicomLinksStore get instance => _instance;

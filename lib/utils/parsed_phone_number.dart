@@ -7,10 +7,6 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 /// Provides synchronous access to country code, national number, ISO code,
 /// number type, and formatted representations.
 class ParsedPhoneNumber {
-  final String rawInput;
-  late final PhoneNumber parsed;
-  late final bool _isValid;
-
   /// Parses [rawInput] using the given defaultRegion for national numbers.
   ///
   /// The input can be:
@@ -45,6 +41,9 @@ class ParsedPhoneNumber {
       throw ArgumentError('Failed to parse phone number: $e');
     }
   }
+  final String rawInput;
+  late final PhoneNumber parsed;
+  late final bool _isValid;
 
   String _normalize(String input) {
     var value = input.trim();

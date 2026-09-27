@@ -156,7 +156,7 @@ class _FakePocketBaseApi {
 
   Map<String, dynamic> _record(
     String rowID,
-    dynamic data,
+    data,
     List<String> rowFiles,
   ) {
     final record = <String, dynamic>{

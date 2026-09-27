@@ -40,7 +40,8 @@ Future<void> backgroundMsg(RemoteMessage message) async {
     return;
   }
 
-  final payload = jsonDecode(message.data["payload"]);
+  final payload =
+      jsonDecode(message.data["payload"] as String) as Map<String, dynamic>;
   final pushData = PushData.fromJson(payload);
   final tuple = pushData.displayTuple();
 
@@ -57,7 +58,8 @@ Future<void> backgroundMsg(RemoteMessage message) async {
   if (kIsWeb == false && (Platform.isAndroid || Platform.isIOS)) {
     final local = LocalNotificationsService.instance();
     await local.init();
-    await local.showNotification(tuple[0], tuple[1], message.data["payload"]);
+    await local.showNotification(
+        tuple[0], tuple[1], message.data["payload"] as String?);
   }
 }
 
@@ -67,7 +69,8 @@ abstract class PushListeners {
       return;
     }
 
-    final payload = jsonDecode(message.data["payload"]);
+    final payload =
+        jsonDecode(message.data["payload"] as String) as Map<String, dynamic>;
     final pushData = PushData.fromJson(payload);
 
     if (pushData.store == "appointments") {
@@ -83,7 +86,7 @@ abstract class PushListeners {
     await Messaging.local?.showNotification(
       tuple[0],
       tuple[1],
-      message.data["payload"],
+      message.data["payload"] as String?,
     );
   }
 
@@ -101,7 +104,7 @@ abstract class PushListeners {
     if (login.token.isEmpty && patientSide.patientID.isEmpty) {
       return;
     }
-    final payload = jsonDecode(res.payload!);
+    final payload = jsonDecode(res.payload!) as Map<String, dynamic>;
     final pushData = PushData.fromJson(payload);
     if (pushData.store == "notes") {
       routes.navigate("notes");
@@ -121,7 +124,8 @@ abstract class PushListeners {
     // it is hard to test this function
     // not worth the effort for now
 
-    final payload = jsonDecode(message.data["payload"]);
+    final payload =
+        jsonDecode(message.data["payload"] as String) as Map<String, dynamic>;
     final pushData = PushData.fromJson(payload);
     _addStaticNotification(pushData);
   }

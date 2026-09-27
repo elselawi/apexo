@@ -169,14 +169,13 @@ class _MockImporter {
 /// A test-only [DicomController] that uses a fake importer and disables
 /// the periodic timer (we test timer logic separately).
 class _TestController {
-  final _MockImporter mock = _MockImporter();
-  late final DicomController ctrl;
-
   _TestController() {
     ctrl = DicomController(importer: mock.build());
     // Do NOT start the periodic timer — unit tests drive scans manually.
     ctrl.stopPeriodicScan();
   }
+  final _MockImporter mock = _MockImporter();
+  late final DicomController ctrl;
 }
 
 class _HealingApi {

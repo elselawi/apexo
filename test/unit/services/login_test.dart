@@ -6,6 +6,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pocketbase/pocketbase.dart';
 
 void main() {
   late List<int> originalPerms;
@@ -15,7 +16,7 @@ void main() {
   late String originalToken;
   late String originalPushToken;
   late bool originalDidAskForLoginAgain;
-  late dynamic originalPocketBase;
+  late PocketBase? originalPocketBase;
   late Open originalOpen;
   late bool originalOnline;
   late Map<String, Future<Future<void> Function()> Function()>

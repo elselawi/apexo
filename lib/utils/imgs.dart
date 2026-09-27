@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/core/store.dart';
@@ -203,13 +204,13 @@ Future<String> handleNewDcm({
   }
 
   // Queue PNG preview generation in the background.
-  _dcmPngQue.add(() => _generateDcmPreview(
+  unawaited(_dcmPngQue.add(() => _generateDcmPreview(
         rowID: rowID,
         dcmName: finalDcmName,
         bytes: bytes,
         sourcePath: sourcePath,
         store: store,
-      ));
+      )));
 
   return finalDcmName;
 }

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:apexo/core/observable.dart';
@@ -26,14 +26,6 @@ String _shortName(String path) => path.split(RegExp(r'[/\\]')).last;
 // --------------- Data classes ------------------
 
 class DicomParsedFile {
-  final String path;
-  final DateTime mtime;
-  final int size;
-  final String dedupKey;
-  final String patientName;
-  final String patientId;
-  final DateTime? dcmDate;
-
   const DicomParsedFile({
     required this.path,
     required this.mtime,
@@ -43,6 +35,13 @@ class DicomParsedFile {
     required this.patientId,
     required this.dcmDate,
   });
+  final String path;
+  final DateTime mtime;
+  final int size;
+  final String dedupKey;
+  final String patientName;
+  final String patientId;
+  final DateTime? dcmDate;
 
   @override
   String toString() =>
@@ -51,15 +50,6 @@ class DicomParsedFile {
 }
 
 class DicomParsedMeta {
-  final String sopInstanceUid;
-  final String studyInstanceUid;
-  final String seriesInstanceUid;
-  final String instanceNumber;
-  final String patientName;
-  final String patientId;
-  final DateTime? dcmDate;
-  final bool isVolumetric;
-
   const DicomParsedMeta({
     required this.sopInstanceUid,
     required this.studyInstanceUid,
@@ -81,6 +71,14 @@ class DicomParsedMeta {
         dcmDate: m.bestDate,
         isVolumetric: m.isVolumetric,
       );
+  final String sopInstanceUid;
+  final String studyInstanceUid;
+  final String seriesInstanceUid;
+  final String instanceNumber;
+  final String patientName;
+  final String patientId;
+  final DateTime? dcmDate;
+  final bool isVolumetric;
 
   String get dedupKey => dedupKeyFromValues(
         sopInstanceUid: sopInstanceUid,
@@ -91,18 +89,6 @@ class DicomParsedMeta {
 }
 
 class DicomPendingImport {
-  final String dicomPatientId;
-  final String dicomPatientName;
-  final Set<String> dicomPatientNames;
-  final List<DateTime> dates;
-  final List<DicomParsedFile> files;
-  Patient? matchedPatient;
-  String? matchedPatientId;
-  String? matchedPatientName;
-  double confidence;
-  bool isConfirmed;
-  final bool autoLinked;
-
   DicomPendingImport({
     required this.dicomPatientId,
     required this.dicomPatientName,
@@ -116,6 +102,17 @@ class DicomPendingImport {
     this.isConfirmed = false,
     this.autoLinked = false,
   });
+  final String dicomPatientId;
+  final String dicomPatientName;
+  final Set<String> dicomPatientNames;
+  final List<DateTime> dates;
+  final List<DicomParsedFile> files;
+  Patient? matchedPatient;
+  String? matchedPatientId;
+  String? matchedPatientName;
+  double confidence;
+  bool isConfirmed;
+  final bool autoLinked;
 
   int get fileCount => files.length;
 
@@ -152,27 +149,25 @@ class DicomPendingImport {
 /// is empty; already-imported files therefore produce a successful,
 /// idempotent result with no failed files.
 class DicomApprovalResult {
-  final int successfulFiles;
-  final List<DicomParsedFile> failedFiles;
-  final List<Object> rollbackFailures;
-
   const DicomApprovalResult({
     required this.successfulFiles,
     required this.failedFiles,
     this.rollbackFailures = const [],
   });
+  final int successfulFiles;
+  final List<DicomParsedFile> failedFiles;
+  final List<Object> rollbackFailures;
 
   bool get complete => failedFiles.isEmpty && rollbackFailures.isEmpty;
 }
 
 class DicomApprovalRollbackException implements Exception {
-  final Object cause;
-  final List<Object> rollbackFailures;
-
   const DicomApprovalRollbackException({
     required this.cause,
     required this.rollbackFailures,
   });
+  final Object cause;
+  final List<Object> rollbackFailures;
 
   @override
   String toString() =>
@@ -183,16 +178,6 @@ class DicomApprovalRollbackException implements Exception {
 // --------------- Isolate message types ----------------------
 
 class _ScanMessage {
-  final String watchDir;
-  final Set<String> importedKeys;
-  final Map<String, DicomCachedMeta> cacheSnapshot;
-  final List<_PatientSnapshot> patientSnapshots;
-  final Map<String, String> links;
-  final Map<String, String> pendingMatches;
-  final Set<String> unmatchedIds;
-  final Map<String, Set<DateTime>> appointmentDayMap;
-  final SendPort resultPort;
-  final SendPort? cancelSignalPort;
   const _ScanMessage(
     this.watchDir,
     this.importedKeys,
@@ -205,32 +190,31 @@ class _ScanMessage {
     this.resultPort,
     this.cancelSignalPort,
   );
+  final String watchDir;
+  final Set<String> importedKeys;
+  final Map<String, DicomCachedMeta> cacheSnapshot;
+  final List<_PatientSnapshot> patientSnapshots;
+  final Map<String, String> links;
+  final Map<String, String> pendingMatches;
+  final Set<String> unmatchedIds;
+  final Map<String, Set<DateTime>> appointmentDayMap;
+  final SendPort resultPort;
+  final SendPort? cancelSignalPort;
 }
 
 class _PatientSnapshot {
+  const _PatientSnapshot(this.id, this.title);
   final String id;
   final String title;
-  const _PatientSnapshot(this.id, this.title);
 }
 
 class DicomSkippedRecord {
+  const DicomSkippedRecord(this.path, this.reason);
   final String path;
   final String reason;
-  const DicomSkippedRecord(this.path, this.reason);
 }
 
 class _ScanResult {
-  final List<DicomParsedFile> parsed;
-  final Map<String, DicomCachedMeta> newCacheEntries;
-  final Set<String> allScannedPaths;
-  final List<DicomSkippedRecord> skipped;
-  final int scanDirMs;
-  final int parseLoopMs;
-  final int cacheHits;
-  final int cacheMisses;
-  final Map<String, int> perFileMs;
-  final List<DicomPendingImport> pending;
-
   const _ScanResult({
     required this.parsed,
     required this.newCacheEntries,
@@ -243,6 +227,16 @@ class _ScanResult {
     this.perFileMs = const {},
     this.pending = const [],
   });
+  final List<DicomParsedFile> parsed;
+  final Map<String, DicomCachedMeta> newCacheEntries;
+  final Set<String> allScannedPaths;
+  final List<DicomSkippedRecord> skipped;
+  final int scanDirMs;
+  final int parseLoopMs;
+  final int cacheHits;
+  final int cacheMisses;
+  final Map<String, int> perFileMs;
+  final List<DicomPendingImport> pending;
 }
 
 /// Minimum confidence to surface a fuzzy suggestion.
@@ -631,11 +625,11 @@ List<DicomPendingImport> _buildPending(
 // --------------- Isolate entry point -------------------------
 
 class _IsolateProgress {
+  const _IsolateProgress(this.current, this.total, this.path, this.cacheHit);
   final int current;
   final int total;
   final String path;
   final bool cacheHit;
-  const _IsolateProgress(this.current, this.total, this.path, this.cacheHit);
 }
 
 class _IsolateCancelSignal {
@@ -691,69 +685,6 @@ void _isolateScan(_ScanMessage msg) async {
 // --------------- DicomImporter ----------------------------------
 
 class DicomImporter {
-  final Future<Set<String>> Function() _allImportedKeys;
-  final Future<bool> Function(String) _isImported;
-  final Future<void> Function(String dicomPatientId, String apexoPatientId)
-      _setPatient;
-  final Map<String, String> Function() _linkedPatients;
-  final Future<Map<String, String>> Function() _pendingMatches;
-  final Future<Set<String>> Function() _unmatchedIds;
-  final Map<String, Set<DateTime>> Function() _appointmentDayMap;
-  final Future<bool> Function(String dicomPatientId, String key) _linkFile;
-  final Future<List<DicomFileEntry>> Function(String) _scanDirectory;
-  final Future<Uint8List?> Function(String) _readBytes;
-  final Future<DicomParsedMeta?> Function(Uint8List) _parseMetadata;
-  final Future<Map<String, DicomCachedMeta>> Function() _cacheSnapshot;
-  final Future<void> Function(String, DicomCachedMeta) _cachePut;
-  final Future<void> Function(Set<String>) _cachePrune;
-  final Future<void> Function({required String path, required String reason})
-      _logSkipped;
-  final Future<void> Function(String) _clearSkipped;
-  final List<Patient> Function() _allPatients;
-  final List<String> Function() _getWatchDirs;
-  final Future<String> Function(
-      {required String rowID, required String sourcePath}) _handleNewDcm;
-  final void Function(Appointment) _setAppointment;
-  final List<Appointment> Function(String apexoPatientId)
-      _appointmentsForPatient;
-  final Future<void> Function() _ensureAppointmentPersisted;
-  final Future<bool> Function(String dedupKey)? _removeKey;
-  final bool _useIsolate;
-  @visibleForTesting
-  final Future<DicomApprovalResult> Function(
-          DicomPendingImport pending, String? apexoPatientId)?
-      approvalOverrideForTesting;
-  @visibleForTesting
-  final Future<bool> Function(String filename)? unregisterOverrideForTesting;
-  @visibleForTesting
-  final Future<bool> Function(String filename)? fileExistsOverrideForTesting;
-  @visibleForTesting
-  final Future<List<DicomPendingImport>> Function()? scanOverrideForTesting;
-  final Future<void> Function(String patientId) _clearPendingMatch;
-  final Future<void> Function(String patientId) _clearUnmatched;
-
-  final ObservableState<({int current, int total})> importProgress =
-      ObservableState<({int current, int total})>((current: 0, total: 0));
-  final ObservableState<ScanPhase> scanPhase =
-      ObservableState<ScanPhase>(ScanPhase.idle);
-  final ObservableState<({int current, int total, String path, bool cacheHit})>
-      scanFileProgress =
-      ObservableState<({int current, int total, String path, bool cacheHit})>(
-          (current: 0, total: 0, path: '', cacheHit: false));
-
-  int _cancelToken = 0;
-  Isolate? _runningIsolate;
-  SendPort? _isolateCancelSendPort;
-
-  void cancelScan() {
-    _cancelToken++;
-    log.info(
-        'DicomImporter.cancelScan: cancel requested (token=$_cancelToken)');
-    try {
-      _isolateCancelSendPort?.send(const _IsolateCancelSignal());
-    } catch (_) {}
-  }
-
   DicomImporter({
     bool useIsolate = !kIsWeb,
     Future<Set<String>> Function()? allImportedKeys,
@@ -853,6 +784,68 @@ class DicomImporter {
             ((patientId) => dicomPendingMatches.remove(patientId)),
         _clearUnmatched =
             clearUnmatched ?? ((patientId) => dicomUnmatched.remove(patientId));
+  final Future<Set<String>> Function() _allImportedKeys;
+  final Future<bool> Function(String) _isImported;
+  final Future<void> Function(String dicomPatientId, String apexoPatientId)
+      _setPatient;
+  final Map<String, String> Function() _linkedPatients;
+  final Future<Map<String, String>> Function() _pendingMatches;
+  final Future<Set<String>> Function() _unmatchedIds;
+  final Map<String, Set<DateTime>> Function() _appointmentDayMap;
+  final Future<bool> Function(String dicomPatientId, String key) _linkFile;
+  final Future<List<DicomFileEntry>> Function(String) _scanDirectory;
+  final Future<Uint8List?> Function(String) _readBytes;
+  final Future<DicomParsedMeta?> Function(Uint8List) _parseMetadata;
+  final Future<Map<String, DicomCachedMeta>> Function() _cacheSnapshot;
+  final Future<void> Function(String, DicomCachedMeta) _cachePut;
+  final Future<void> Function(Set<String>) _cachePrune;
+  final Future<void> Function({required String path, required String reason})
+      _logSkipped;
+  final Future<void> Function(String) _clearSkipped;
+  final List<Patient> Function() _allPatients;
+  final List<String> Function() _getWatchDirs;
+  final Future<String> Function(
+      {required String rowID, required String sourcePath}) _handleNewDcm;
+  final void Function(Appointment) _setAppointment;
+  final List<Appointment> Function(String apexoPatientId)
+      _appointmentsForPatient;
+  final Future<void> Function() _ensureAppointmentPersisted;
+  final Future<bool> Function(String dedupKey)? _removeKey;
+  final bool _useIsolate;
+  @visibleForTesting
+  final Future<DicomApprovalResult> Function(
+          DicomPendingImport pending, String? apexoPatientId)?
+      approvalOverrideForTesting;
+  @visibleForTesting
+  final Future<bool> Function(String filename)? unregisterOverrideForTesting;
+  @visibleForTesting
+  final Future<bool> Function(String filename)? fileExistsOverrideForTesting;
+  @visibleForTesting
+  final Future<List<DicomPendingImport>> Function()? scanOverrideForTesting;
+  final Future<void> Function(String patientId) _clearPendingMatch;
+  final Future<void> Function(String patientId) _clearUnmatched;
+
+  final ObservableState<({int current, int total})> importProgress =
+      ObservableState<({int current, int total})>((current: 0, total: 0));
+  final ObservableState<ScanPhase> scanPhase =
+      ObservableState<ScanPhase>(ScanPhase.idle);
+  final ObservableState<({int current, int total, String path, bool cacheHit})>
+      scanFileProgress =
+      ObservableState<({int current, int total, String path, bool cacheHit})>(
+          (current: 0, total: 0, path: '', cacheHit: false));
+
+  int _cancelToken = 0;
+  Isolate? _runningIsolate;
+  SendPort? _isolateCancelSendPort;
+
+  void cancelScan() {
+    _cancelToken++;
+    log.info(
+        'DicomImporter.cancelScan: cancel requested (token=$_cancelToken)');
+    try {
+      _isolateCancelSendPort?.send(const _IsolateCancelSignal());
+    } catch (_) {}
+  }
 
   // --------------- Scan ---------------------
 
@@ -1358,7 +1351,7 @@ class DicomImporter {
         failedFiles: List.unmodifiable(failedFiles),
         rollbackFailures: List.unmodifiable(rollbackFailures),
       );
-    } catch (e, _) {
+    } catch (e) {
       // Unexpected error reset progress so isImporting doesn't stay stuck.
       importProgress((current: 0, total: 0));
       for (final f in claimedFiles) {

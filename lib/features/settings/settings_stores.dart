@@ -24,6 +24,17 @@ const _storeNameGlobal = "settings_global";
 const _storeNameLocal = "settings_local";
 
 class GlobalSettings extends Store<Setting> {
+  GlobalSettings()
+      : super(
+          modeling: Setting.fromJson,
+          isDemo: launch.isDemo,
+          onSyncStart: () {
+            networkActions.isSyncing(networkActions.isSyncing() + 1);
+          },
+          onSyncEnd: () {
+            networkActions.isSyncing(networkActions.isSyncing() - 1);
+          },
+        );
   String get currency => get("currency_______").value;
   String get phone => get("phone__________").value;
   String get prescriptionFooter => get("prescriptionFot").value;
@@ -80,20 +91,8 @@ class GlobalSettings extends Store<Setting> {
     return super.get(id) ?? Setting.fromJson({"id": id, "value": defaults[id]});
   }
 
-  GlobalSettings()
-      : super(
-          modeling: Setting.fromJson,
-          isDemo: launch.isDemo,
-          onSyncStart: () {
-            networkActions.isSyncing(networkActions.isSyncing() + 1);
-          },
-          onSyncEnd: () {
-            networkActions.isSyncing(networkActions.isSyncing() - 1);
-          },
-        );
-
   @override
-  init() {
+  void init() {
     super.init();
     onLogoutCallbacks.add(endSession);
     login.activators[_storeNameGlobal] = () async {
@@ -211,7 +210,7 @@ class LocalSettings extends ObservablePersistingObject {
       DateTime.now().isBefore(aiTokenExpiry!.subtract(_aiTokenSafetyMargin));
 
   @override
-  fromJson(Map<String, dynamic> json) {
+  void fromJson(Map<String, dynamic> json) {
     selectedLocale = json["selectedLocale"] as int? ?? selectedLocale;
     dateFormat = json["dateFormat"] as String? ?? dateFormat;
     calendarSystem = json["calendarSystem"] as String? ?? calendarSystem;

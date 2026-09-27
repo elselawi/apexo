@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -132,7 +133,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
   final bool canEdit = login.perm(Perm.expenses).exact(2);
   String? justCreatedId;
 
-  addOrderForSupplier(String supplierId) async {
+  Future<void> addOrderForSupplier(String supplierId) async {
     final expense = Expense.fromJson({
       "supplierId": supplierId,
       "processed": widget.processed,
@@ -210,8 +211,8 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                               onPressed: () async {
                                 if (widget.supplierId == null) {
                                   await flyoutFocusFix(context);
-                                  pickSupplierForAdditionFlyout.showFlyout(
-                                      builder: (ctx) {
+                                  unawaited(pickSupplierForAdditionFlyout
+                                      .showFlyout(builder: (ctx) {
                                     return MenuFlyout(
                                       items: expenses.suppliers
                                           .map((e) => MenuFlyoutItem(
@@ -226,7 +227,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                                               ))
                                           .toList(),
                                     );
-                                  });
+                                  }));
                                 } else {
                                   setState(() {
                                     addOrderForSupplier(widget.supplierId!);

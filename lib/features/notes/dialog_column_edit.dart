@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
@@ -19,10 +20,10 @@ void showColumnEditDialog(BuildContext context, {Note? column}) {
 }
 
 class _ColumnEditingWidget extends StatefulWidget {
-  final Note? column;
   const _ColumnEditingWidget({
     required this.column,
   });
+  final Note? column;
 
   @override
   State<_ColumnEditingWidget> createState() => _ColumnEditingWidgetState();
@@ -134,8 +135,8 @@ class _ColumnEditingWidgetState extends State<_ColumnEditingWidget> {
 }
 
 class _ArchiveColumnButton extends StatefulWidget {
-  final Note column;
   const _ArchiveColumnButton({required this.column});
+  final Note column;
 
   @override
   State<_ArchiveColumnButton> createState() => _ArchiveColumnButtonState();
@@ -168,7 +169,7 @@ class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
           ),
           onPressed: () async {
             await flyoutFocusFix(context);
-            _deleteFlyoutCtrl.showFlyout(builder: (ctx) {
+            unawaited(_deleteFlyoutCtrl.showFlyout(builder: (ctx) {
               return ConfirmDeleteFlyout(
                 restorable: true,
                 controller: _deleteFlyoutCtrl,
@@ -196,7 +197,7 @@ class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
                     ? WindowsIcons.undo
                     : WindowsIcons.delete,
               );
-            });
+            }));
           }),
     );
   }

@@ -9,28 +9,20 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../core/model.dart';
 
 class TreatmentLabel {
-  Color color;
-  String string;
-  IconData icon;
-  String? iso;
-  String? extraNote;
   TreatmentLabel(
       {required this.string,
       required this.color,
       required this.icon,
       this.iso,
       this.extraNote});
+  Color color;
+  String string;
+  IconData icon;
+  String? iso;
+  String? extraNote;
 }
 
 class ItemTitle extends StatefulWidget {
-  final Model item;
-  final double radius;
-  final double maxWidth;
-  final IconData? icon;
-  final bool archivedStyling;
-  final Color? predefinedColor;
-  final double? fontSize;
-  final List<TreatmentLabel> labels;
   const ItemTitle({
     super.key,
     required this.item,
@@ -42,6 +34,14 @@ class ItemTitle extends StatefulWidget {
     this.predefinedColor,
     this.fontSize,
   });
+  final Model item;
+  final double radius;
+  final double maxWidth;
+  final IconData? icon;
+  final bool archivedStyling;
+  final Color? predefinedColor;
+  final double? fontSize;
+  final List<TreatmentLabel> labels;
 
   @override
   State<ItemTitle> createState() => _ItemTitleState();

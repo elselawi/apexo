@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -38,13 +39,13 @@ class _S3SettingsState extends State<S3Settings> {
       final settings = await login.pb!.settings.getAll();
       final s3 = settings['s3'] ?? {};
 
-      endpointController.text = s3['endpoint'] ?? '';
-      bucketController.text = s3['bucket'] ?? '';
-      regionController.text = s3['region'] ?? '';
-      accessKeyController.text = s3['accessKey'] ?? '';
-      secretKeyController.text = s3['secret'] ?? '';
-      s3Enabled.value = s3['enabled'] ?? false;
-      forcePathStyle.value = s3['forcePathStyle'] ?? false;
+      endpointController.text = s3['endpoint'] as String? ?? '';
+      bucketController.text = s3['bucket'] as String? ?? '';
+      regionController.text = s3['region'] as String? ?? '';
+      accessKeyController.text = s3['accessKey'] as String? ?? '';
+      secretKeyController.text = s3['secret'] as String? ?? '';
+      s3Enabled.value = s3['enabled'] as bool? ?? false;
+      forcePathStyle.value = s3['forcePathStyle'] as bool? ?? false;
     } catch (e) {
       // Controllers remain empty on error
     }
@@ -67,7 +68,7 @@ class _S3SettingsState extends State<S3Settings> {
       });
 
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -82,11 +83,11 @@ class _S3SettingsState extends State<S3Settings> {
               )
             ],
           ),
-        );
+        ));
       }
     } catch (e) {
       if (mounted) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -101,7 +102,7 @@ class _S3SettingsState extends State<S3Settings> {
               )
             ],
           ),
-        );
+        ));
       }
     }
   }
@@ -270,6 +271,7 @@ class _S3SettingsState extends State<S3Settings> {
                     Row(
                       children: [
                         FilledButton(
+                          onPressed: _saveS3Settings,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -278,7 +280,6 @@ class _S3SettingsState extends State<S3Settings> {
                               Txt(txt("save")),
                             ],
                           ),
-                          onPressed: _saveS3Settings,
                         ),
                         const SizedBox(width: 10),
                         FilledButton(

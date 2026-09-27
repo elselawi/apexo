@@ -14,13 +14,12 @@ import 'package:pocketbase/pocketbase.dart';
 import '../test_utils.dart';
 
 class Person extends Model {
+  Person.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
+    name = json["name"] as String? ?? name;
+    age = json["age"] as int? ?? age;
+  }
   String name = 'alex';
   int age = 100;
-
-  Person.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    name = json["name"] ?? name;
-    age = json["age"] ?? age;
-  }
 
   @override
   Map<String, dynamic> toJson() {
@@ -31,17 +30,16 @@ class Person extends Model {
     return json;
   }
 
-  get ageInDays => age * 365;
+  int get ageInDays => age * 365;
 }
 
 class FilePerson extends Model {
+  FilePerson.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
+    imgs = List<String>.from(json['imgs'] as List<dynamic>? ?? imgs);
+    dcmImgs = List<String>.from(json['dcmImgs'] as List<dynamic>? ?? dcmImgs);
+  }
   List<String> imgs = [];
   List<String> dcmImgs = [];
-
-  FilePerson.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    imgs = List<String>.from(json['imgs'] ?? imgs);
-    dcmImgs = List<String>.from(json['dcmImgs'] ?? dcmImgs);
-  }
 
   @override
   Map<String, dynamic> toJson() {
@@ -1337,8 +1335,8 @@ void main() {
 
   group('Store synchronization tests', () {
     late Store<Person> store;
-    late SaveLocal local = TestUtils.local;
-    late SaveRemote remote = TestUtils.remote;
+    late final SaveLocal local = TestUtils.local;
+    late final SaveRemote remote = TestUtils.remote;
     final PocketBase pb = TestUtils.pb;
 
     setUpAll(() async {
@@ -1391,7 +1389,7 @@ void main() {
       // synchronization check
       // version is only updated through synchronization
       expect(await store.local!.getVersion(), equals(0));
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(2));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 0);
@@ -1405,14 +1403,14 @@ void main() {
       expect((await remote.getSince(version: 0)).rows.length, equals(1));
       store.delete(store.docs.values.first.id);
       await store.waitUntilChangesAreProcessed();
-      var remoteRows = await remote.getSince(version: 0);
+      final remoteRows = await remote.getSince(version: 0);
       expect(remoteRows.rows.length, equals(1));
       expect(remoteRows.rows[0].id, equals(store.docs.values.first.id));
       expect(remoteRows.rows[0].data, contains('"archived":true'));
       // synchronization check
       // version is only updated through synchronization
       expect(await local.getVersion(), equals(0));
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(2));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 0);
@@ -1426,7 +1424,7 @@ void main() {
       expect((await remote.getSince(version: 0)).rows.length, equals(1));
       store.set(store.docs.values.first..age = 18);
       await store.waitUntilChangesAreProcessed();
-      var remoteRows = await remote.getSince(version: 0);
+      final remoteRows = await remote.getSince(version: 0);
       expect(remoteRows.rows.length, equals(1));
       expect(remoteRows.rows[0].id, equals(store.docs.values.first.id));
       expect(remoteRows.rows[0].data, contains('"age":18'));
@@ -1434,7 +1432,7 @@ void main() {
       // synchronization check
       // version is only updated through synchronization
       expect(await local.getVersion(), equals(0));
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(2));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 0);
@@ -1453,7 +1451,7 @@ void main() {
 
       // synchronization check
       expect(await local.getVersion(), equals(0));
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(3));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 1);
@@ -1468,8 +1466,8 @@ void main() {
       store.set(Person.fromJson({}));
       await store.waitUntilChangesAreProcessed();
       await store.synchronize();
-      var remoteVersion = await remote.getVersion();
-      var localVersion = await local.getVersion();
+      final remoteVersion = await remote.getVersion();
+      final localVersion = await local.getVersion();
 
       remote.isOnline = false;
       store.delete(store.docs.values.first.id);
@@ -1483,7 +1481,7 @@ void main() {
 
       // synchronization check
       expect(await local.getVersion(), equals(localVersion));
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(3));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 1);
@@ -1499,8 +1497,8 @@ void main() {
       store.set(Person.fromJson({}));
       await store.waitUntilChangesAreProcessed();
       await store.synchronize();
-      var remoteVersion = await remote.getVersion();
-      var localVersion = await local.getVersion();
+      final remoteVersion = await remote.getVersion();
+      final localVersion = await local.getVersion();
 
       remote.isOnline = false;
       store.set(store.docs.values.first..age = 11);
@@ -1514,7 +1512,7 @@ void main() {
 
       // synchronization check
       expect(await local.getVersion(), equals(localVersion));
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(3));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 1);
@@ -1531,8 +1529,8 @@ void main() {
       store.set(Person.fromJson({}));
       await store.waitUntilChangesAreProcessed();
       await store.synchronize();
-      var remoteVersion = await remote.getVersion();
-      var localVersion = await local.getVersion();
+      final remoteVersion = await remote.getVersion();
+      final localVersion = await local.getVersion();
 
       remote.isOnline = false;
       store.set(store.docs.values.first..age = 11);
@@ -1555,8 +1553,8 @@ void main() {
       store.set(Person.fromJson({}));
       await store.waitUntilChangesAreProcessed();
       await store.synchronize();
-      var remoteVersion = await remote.getVersion();
-      var localVersion = await local.getVersion();
+      final remoteVersion = await remote.getVersion();
+      final localVersion = await local.getVersion();
 
       remote.isOnline = false;
       store.set(store.docs.values.first..age = 11);
@@ -1592,7 +1590,7 @@ void main() {
             id: id3, data: '{"id": "$id3", "name": "name3", "age": 13}'),
       ]);
 
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(2));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 0);
@@ -1642,7 +1640,7 @@ void main() {
                 '{"id": "$id2", "name": "name2", "age": 12, "archived": false}'),
       ]);
 
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(2));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 0);
@@ -1679,7 +1677,7 @@ void main() {
             id: id2, data: '{"id": "$id2", "name": "name2", "age": 112}'),
       ]);
 
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(2));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 0);
@@ -1714,7 +1712,7 @@ void main() {
       remote.isOnline = true;
       await store.waitUntilChangesAreProcessed();
 
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
       expect(sync.length, equals(3));
       expect(sync[0].exception, equals(null));
       expect(sync[0].pushed, 1);
@@ -1748,7 +1746,7 @@ void main() {
           .set(Person.fromJson({"id": id2, "name": "modified-name", "age": 0}));
       await store.waitUntilChangesAreProcessed();
       remote.isOnline = true;
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
 
       // --- Deterministic invariants (do not depend on which side wins) ---
       expect(sync, isNotEmpty);
@@ -1805,7 +1803,7 @@ void main() {
       remote.isOnline = true;
       await store.waitUntilChangesAreProcessed();
 
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
 
       // --- Deterministic invariants (do not depend on which side wins) ---
       //
@@ -1863,7 +1861,7 @@ void main() {
 
       await store.waitUntilChangesAreProcessed();
 
-      var sync = await store.synchronize();
+      final sync = await store.synchronize();
 
       // --- Deterministic invariants (do not depend on which side wins) ---
       //

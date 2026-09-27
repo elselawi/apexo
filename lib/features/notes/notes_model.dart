@@ -11,6 +11,7 @@ import 'package:apexo/utils/hash.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class Note extends Model {
+  Note.fromJson(super.json) : super.fromJson();
   @override
   bool get locked => (login.perm(Perm.notes).none &&
       isColumn == false &&
@@ -99,8 +100,6 @@ class Note extends Model {
   /* 15 */ int? recurringInterval;
   /* 16 */ String? parentID;
 
-  Note.fromJson(super.json) : super.fromJson();
-
   @override
   Note copy(bool blank) {
     return Note.fromJson(blank ? {} : toJson());
@@ -109,34 +108,37 @@ class Note extends Model {
   @override
   void fromJson(Map<String, dynamic> json) {
     super.fromJson(json);
-    /* 1 */ isColumn = json['isColumn'] ?? isColumn;
-    /* 2 */ columnName = json['columnName'] ?? columnName;
-    /* 3 */ tint = json['tint'] != null ? Color(json['tint']) : tint;
+    /* 1 */ isColumn = json['isColumn'] as bool? ?? isColumn;
+    /* 2 */ columnName = json['columnName'] as String? ?? columnName;
+    /* 3 */ tint = json['tint'] != null ? Color(json['tint'] as int) : tint;
     /* 4 */ order = double.parse((json['order'] ?? order).toString());
 
-    /* 5 */ columnID = json['columnID'] ?? columnID;
+    /* 5 */ columnID = json['columnID'] as String? ?? columnID;
     /* 6 */ date = json["date"] != null
-        ? DateTime.fromMillisecondsSinceEpoch(json["date"] * 60 * 60 * 1000)
+        ? DateTime.fromMillisecondsSinceEpoch(
+            (json["date"] as int) * 60 * 60 * 1000)
         : date;
-    /* 7 */ note = json['note'] ?? note;
+    /* 7 */ note = json['note'] as String? ?? note;
     /* 8 */
     if (json["comments"] != null) {
       comments = [];
-      for (var comment in json["comments"]) {
-        comments.add([comment[0], comment[1]]);
+      for (var comment in json["comments"] as List<dynamic>) {
+        comments.add([comment[0] as String, comment[1] as String]);
       }
     }
-    /* 9 */ done = json['done'] ?? done;
+    /* 9 */ done = json['done'] as bool? ?? done;
     /* 10 */ attachments =
-        List<String>.from(json["attachments"] ?? attachments);
-    /* 11 */ createdBy = json['createdBy'] ?? createdBy;
-    /* 12 */ assignedTo = json['assignedTo'] ?? assignedTo;
+        List<String>.from(json["attachments"] as List<dynamic>? ?? attachments);
+    /* 11 */ createdBy = json['createdBy'] as String? ?? createdBy;
+    /* 12 */ assignedTo = json['assignedTo'] as String? ?? assignedTo;
     /* 13 */ dueDate = json["dueDate"] != null
-        ? DateTime.fromMillisecondsSinceEpoch(json["dueDate"] * 60 * 60 * 1000)
+        ? DateTime.fromMillisecondsSinceEpoch(
+            (json["dueDate"] as int) * 60 * 60 * 1000)
         : dueDate;
-    /* 14 */ forPatient = json['forPatient'] ?? forPatient;
-    /* 15 */ recurringInterval = json['recurringInterval'] ?? recurringInterval;
-    /* 16 */ parentID = json['parentID'] ?? parentID;
+    /* 14 */ forPatient = json['forPatient'] as String? ?? forPatient;
+    /* 15 */ recurringInterval =
+        json['recurringInterval'] as int? ?? recurringInterval;
+    /* 16 */ parentID = json['parentID'] as String? ?? parentID;
   }
 
   @override

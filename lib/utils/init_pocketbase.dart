@@ -6,7 +6,7 @@ import 'package:hive_flutter/adapters.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 /// This would initialize the server creating required collections, rules, and settings
-initializePocketbase(PocketBase pb) async {
+Future<void> initializePocketbase(PocketBase pb) async {
   await pb.collections.import([dataCollectionImport, publicCollectionImport]);
   await pb.collections.update("users",
       body: {"createRule": '@request.auth.collectionName = "_superusers"'});
@@ -20,7 +20,7 @@ initializePocketbase(PocketBase pb) async {
   });
 }
 
-initializeProfiles(PocketBase pb) async {
+Future<void> initializeProfiles(PocketBase pb) async {
   await pb.collections
       .import([profilesCollectionImport, profilesViewCollectionImport]);
 }

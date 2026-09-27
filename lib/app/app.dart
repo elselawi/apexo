@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:apexo/app/navbar_widget.dart';
@@ -119,7 +120,7 @@ class ApexoApp extends StatelessWidget {
       localSettings.notifyAndPersist();
 
       if (entry != null && entry.changes.isNotEmpty && bContext.mounted) {
-        showChangelogDialog(bContext, entry: entry);
+        unawaited(showChangelogDialog(bContext, entry: entry));
       }
     }
 
@@ -131,25 +132,25 @@ class ApexoApp extends StatelessWidget {
         bContext.mounted) {
       launch.dialogShown(true);
 
-      showDialog(
+      unawaited(showDialog(
         barrierDismissible: true,
         dismissWithEsc: true,
         context: bContext,
         builder: (context) => NewVersionDialog(
           downloadLink: version.downloadLink,
         ),
-      );
+      ));
     }
 
     // Show first launch dialog if this is the first time the app is launched
     if (launch.isFirstLaunch() && bContext.mounted && !launch.dialogShown()) {
       launch.dialogShown(true);
-      showDialog(
+      unawaited(showDialog(
         barrierDismissible: true,
         dismissWithEsc: true,
         context: bContext,
         builder: (BuildContext context) => const FirstLaunchDialog(),
-      );
+      ));
     }
   }
 
@@ -364,7 +365,7 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
         onTap: () async {
           if (launch.open() != Open.staff) return;
           await flyoutFocusFix(context);
-          controller.showFlyout(builder: (ctx) {
+          unawaited(controller.showFlyout(builder: (ctx) {
             return MenuFlyout(
               items: routes.allRoutes
                   .where((p) => p.onFooter != true)
@@ -380,7 +381,7 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
                 );
               }).toList(),
             );
-          });
+          }));
         },
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),

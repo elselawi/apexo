@@ -10,9 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// touching PocketBase or Hive — lets us verify [Store.deleteDcmImg]
 /// calls deleteImg exactly twice (`.dcm` + `.png`).
 class _RecordingStore extends Store<Appointment> {
-  final List<(String, String)> deletedCalls = [];
-
   _RecordingStore() : super(modeling: Appointment.fromJson);
+  final List<(String, String)> deletedCalls = [];
 
   @override
   Future<void> deleteImg(String rowID, String name) async {

@@ -1,4 +1,4 @@
-﻿@Tags(['serial'])
+@Tags(['serial'])
 library;
 
 import 'dart:typed_data';
@@ -62,14 +62,13 @@ class _FakeLinksStore {
 /// A mutable bag of DICOM metadata keyed by file path. Lets tests describe a
 /// fake watch directory as data, then build the matching fakes from it.
 class _FakeFile {
+  _FakeFile(this.path, this.meta, {int? size, DateTime? mtime})
+      : size = size ?? 1024,
+        mtime = mtime ?? DateTime(2025, 1, 1);
   final String path;
   final DicomParsedMeta meta;
   final int size;
   final DateTime mtime;
-
-  _FakeFile(this.path, this.meta, {int? size, DateTime? mtime})
-      : size = size ?? 1024,
-        mtime = mtime ?? DateTime(2025, 1, 1);
 }
 
 /// Builds a [DicomParsedMeta] with the fields the importer consumes.
@@ -105,6 +104,10 @@ DicomParsedMeta _meta({
 /// [DicomImporter] wired to them. Tests call [rebuild] after mutating the
 /// fake filesystem / registry to refresh the importer's view.
 class _Harness {
+  _Harness() {
+    importer = rebuild();
+  }
+
   /// The fake watch directory contents (path file).
   final Map<String, _FakeFile> fs = {};
 
@@ -175,10 +178,6 @@ class _Harness {
   /// The current importer. Reassign via [rebuild] after mutating the fake
   /// filesystem / registry to refresh the closures' captured state.
   late DicomImporter importer;
-
-  _Harness() {
-    importer = rebuild();
-  }
 
   DicomImporter rebuild() {
     return DicomImporter(

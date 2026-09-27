@@ -27,7 +27,7 @@ class Patients extends Store<Patient> {
         );
 
   @override
-  init() {
+  void init() {
     super.init();
     onLogoutCallbacks.add(endSession);
     login.activators[_storeName] = () async {

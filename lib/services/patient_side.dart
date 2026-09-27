@@ -15,6 +15,20 @@ import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
 class PatientAppointment {
+  PatientAppointment.fromJson(Map<String, dynamic> json) {
+    id = json["id"] as String? ?? "";
+    price = double.parse((json["price"] ?? price).toString());
+    paid = double.parse((json["paid"] ?? paid).toString());
+    date = (json["date"] != null
+        ? DateTime.fromMillisecondsSinceEpoch(
+            ((json["date"] as num) * 60000).toInt())
+        : date);
+    prescriptions =
+        List<String>.from(json["prescriptions"] as List<dynamic>? ?? []);
+    imgs = List<String>.from(json["imgs"] as List<dynamic>? ?? []);
+    archived = json["archived"] == 1 || json["archived"] == true;
+    isDone = json["isDone"] == 1 || json["isDone"] == true;
+  }
   String id = "";
   double price = 0;
   double paid = 0;
@@ -23,22 +37,20 @@ class PatientAppointment {
   List<String> imgs = [];
   bool archived = false;
   bool isDone = false;
-
-  PatientAppointment.fromJson(Map<String, dynamic> json) {
-    id = json["id"] ?? "";
-    price = double.parse((json["price"] ?? price).toString());
-    paid = double.parse((json["paid"] ?? paid).toString());
-    date = (json["date"] != null
-        ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt())
-        : date);
-    prescriptions = List<String>.from(json["prescriptions"] ?? []);
-    imgs = List<String>.from(json["imgs"] ?? []);
-    archived = json["archived"] == 1 || json["archived"] == true;
-    isDone = json["isDone"] == 1 || json["isDone"] == true;
-  }
 }
 
 class PatientSide extends ObservablePersistingObject {
+  PatientSide({
+    required this.server,
+    required this.name,
+    required this.patientID,
+    required this.relayKey,
+    Future<http.Response> Function(Uri)? httpGet,
+    Future<void> Function()? identifyDevice,
+  })  : _httpGet = httpGet ?? http.get,
+        _identifyDevice =
+            identifyDevice ?? (() => Messaging.identifyDevice(isPatient: true)),
+        super("patient-side");
   final Future<http.Response> Function(Uri) _httpGet;
   final Future<void> Function() _identifyDevice;
   bool initialized = false;
@@ -58,19 +70,7 @@ class PatientSide extends ObservablePersistingObject {
   List<PatientAppointment> appointments = [];
   List<String> imgLinks = [];
 
-  PatientSide({
-    required this.server,
-    required this.name,
-    required this.patientID,
-    required this.relayKey,
-    Future<http.Response> Function(Uri)? httpGet,
-    Future<void> Function()? identifyDevice,
-  })  : _httpGet = httpGet ?? http.get,
-        _identifyDevice =
-            identifyDevice ?? (() => Messaging.identifyDevice(isPatient: true)),
-        super("patient-side");
-
-  static fromHref() async {
+  static Future<void> fromHref() async {
     await patientSide.ready;
     final url = getUrl();
     try {
@@ -96,12 +96,15 @@ class PatientSide extends ObservablePersistingObject {
     }
   }
 
-  static fromQR(Future<XFile?> file) async {
-    XFile? res = await file;
+  static Future<void> fromQR(Future<XFile?> file) async {
+    final XFile? res = await file;
 
     loginCtrl.loadingPatientSide(true);
 
-    if (res == null) return loginCtrl.loadingPatientSide(false);
+    if (res == null) {
+      loginCtrl.loadingPatientSide(false);
+      return;
+    }
 
     try {
       final result = await compute(_scanQRAPI, res);
@@ -128,7 +131,7 @@ class PatientSide extends ObservablePersistingObject {
     }
   }
 
-  logoutPatientSide() {
+  void logoutPatientSide() {
     _activationGeneration++;
     launch.open(Open.login);
     server = "";
@@ -179,23 +182,23 @@ class PatientSide extends ObservablePersistingObject {
       final settingsJson = jsonDecode(settingsRes.body);
       currency = (settingsJson["items"] as List<dynamic>)
               .where((item) => (item["id"] as String).startsWith("currency"))
-              .firstOrNull?["data"]?["value"] ??
+              .firstOrNull?["data"]?["value"] as String? ??
           "";
 
       phone = (settingsJson["items"] as List<dynamic>)
               .where((item) => (item["id"] as String).startsWith("phone"))
-              .firstOrNull?["data"]?["value"] ??
+              .firstOrNull?["data"]?["value"] as String? ??
           "";
 
       countryCode = (settingsJson["items"] as List<dynamic>)
               .where((item) => (item["id"] as String).startsWith("country"))
-              .firstOrNull?["data"]?["value"] ??
+              .firstOrNull?["data"]?["value"] as String? ??
           "";
 
       clinicNameAndAddress = (settingsJson["items"] as List<dynamic>)
               .where((item) =>
                   (item["id"] as String).startsWith("prescription_header"))
-              .firstOrNull?["data"]?["value"] ??
+              .firstOrNull?["data"]?["value"] as String? ??
           "";
 
       // getting appointments
@@ -208,13 +211,14 @@ class PatientSide extends ObservablePersistingObject {
       final items = appointmentsJson["items"] as List<dynamic>;
 
       if (items.firstOrNull != null) {
-        collectionId = items.first["collectionId"] ?? "";
+        collectionId = items.first["collectionId"] as String? ?? "";
       }
 
       appointments.clear();
       imgLinks.clear();
       for (final item in items) {
-        appointments.add(PatientAppointment.fromJson(item));
+        appointments
+            .add(PatientAppointment.fromJson(item as Map<String, dynamic>));
       }
 
       for (final appointment in appointments) {
@@ -262,11 +266,11 @@ class PatientSide extends ObservablePersistingObject {
   }
 
   @override
-  fromJson(Map<String, dynamic> json) {
-    server = json["server"] ?? "";
-    name = json["name"] ?? "";
-    patientID = json["patientID"] ?? "";
-    relayKey = json["relayKey"] ?? "";
+  void fromJson(Map<String, dynamic> json) {
+    server = json["server"] as String? ?? "";
+    name = json["name"] as String? ?? "";
+    patientID = json["patientID"] as String? ?? "";
+    relayKey = json["relayKey"] as String? ?? "";
 
     if (server.isNotEmpty &&
         name.isNotEmpty &&
@@ -292,13 +296,13 @@ final PatientSide patientSide =
 
 Future<dynamic> _scanQRAPI(XFile xFile) async {
   final Uint8List b = await xFile.readAsBytes();
-  img.Image? originalImage = img.decodeImage(b);
+  final img.Image? originalImage = img.decodeImage(b);
 
   if (originalImage == null) throw Exception("Could not decode image");
-  img.Image resizedImage = img.copyResize(originalImage, width: 600);
+  final img.Image resizedImage = img.copyResize(originalImage, width: 600);
 
   final resized = Uint8List.fromList(img.encodeJpg(resizedImage, quality: 70));
-  var request = http.MultipartRequest(
+  final request = http.MultipartRequest(
       'POST', Uri.parse('https://qrread.alisaleem.workers.dev/'));
 
   request.files.add(
@@ -310,11 +314,11 @@ Future<dynamic> _scanQRAPI(XFile xFile) async {
     ),
   );
 
-  var streamedResponse = await request.send();
-  var response = await http.Response.fromStream(streamedResponse);
+  final streamedResponse = await request.send();
+  final response = await http.Response.fromStream(streamedResponse);
   try {
     final json = jsonDecode(response.body);
-    String shortLink = json[0]['symbol'][0]['data'] as String;
+    final String shortLink = json[0]['symbol'][0]['data'] as String;
     final longLink = (await http.post(Uri.parse(shortLink))).body;
     return decode(longLink.replaceAll("https://web.apexo.app/", "")).split("|");
   } catch (e) {

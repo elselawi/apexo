@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/features/notes/dialog_column_edit.dart';
 import 'package:apexo/features/notes/dialog_note_edit.dart';
@@ -11,13 +12,13 @@ import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class KanbanColumn extends StatefulWidget {
-  final Note? column;
-  final List<Note> columnNotes;
   const KanbanColumn({
     super.key,
     required this.column,
     required this.columnNotes,
   });
+  final Note? column;
+  final List<Note> columnNotes;
 
   @override
   State<KanbanColumn> createState() => _KanbanColumnState();
@@ -211,7 +212,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
                       icon: const Icon(WindowsIcons.more),
                       onPressed: () async {
                         await flyoutFocusFix(context);
-                        moreMenuFlyout.showFlyout(builder: (context) {
+                        unawaited(moreMenuFlyout.showFlyout(builder: (context) {
                           return MenuFlyout(
                             items: [
                               MenuFlyoutItem(
@@ -269,7 +270,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
                                 )
                             ],
                           );
-                        });
+                        }));
                       }),
                 ),
             ],

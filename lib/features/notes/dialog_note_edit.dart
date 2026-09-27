@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
@@ -28,10 +29,9 @@ void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
 }
 
 class NoteEditDialog extends StatefulWidget {
+  const NoteEditDialog({super.key, this.note, this.columnID});
   final Note? note;
   final String? columnID;
-
-  const NoteEditDialog({super.key, this.note, this.columnID});
 
   @override
   State<NoteEditDialog> createState() => _NoteEditDialogState();
@@ -289,7 +289,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                   ),
                   onPressed: () async {
                     await flyoutFocusFix(context);
-                    _deleteFlyoutCtrl.showFlyout(builder: (ctx) {
+                    unawaited(_deleteFlyoutCtrl.showFlyout(builder: (ctx) {
                       return ConfirmDeleteFlyout(
                         restorable: true,
                         controller: _deleteFlyoutCtrl,
@@ -309,7 +309,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                             ? WindowsIcons.undo
                             : WindowsIcons.delete,
                       );
-                    });
+                    }));
                   }),
             ),
           FilledButton(

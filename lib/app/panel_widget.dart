@@ -18,15 +18,15 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
 class PanelScreen extends StatefulWidget {
-  final double layoutHeight;
-  final double layoutWidth;
-  final Panel panel;
   const PanelScreen({
     required this.panel,
     this.layoutHeight = 500,
     this.layoutWidth = 500,
     super.key,
   });
+  final double layoutHeight;
+  final double layoutWidth;
+  final Panel panel;
 
   @override
   State<PanelScreen> createState() => _PanelScreenState();
@@ -76,7 +76,7 @@ class _PanelScreenState extends State<PanelScreen> {
     }
   }
 
-  observeAppointmentForImgUpdate(List<DictEvent> events) {
+  void observeAppointmentForImgUpdate(List<DictEvent> events) {
     // update the imgs if it has been changed on the server
     final itemID = (widget.panel.item).id;
     for (var event in events) {
@@ -501,7 +501,7 @@ class _PanelScreenState extends State<PanelScreen> {
       routes.closePanel(widget.panel.item.id);
     } else {
       await flyoutFocusFix(context);
-      confirmCancelController.showFlyout(builder: (context) {
+      unawaited(confirmCancelController.showFlyout(builder: (context) {
         return FlyoutContent(
           constraints: const BoxConstraints(maxWidth: 350),
           child: Column(
@@ -534,13 +534,13 @@ class _PanelScreenState extends State<PanelScreen> {
             ],
           ),
         );
-      });
+      }));
     }
   }
 
   void openPanelSwitch() async {
     await flyoutFocusFix(context);
-    panelSwitchController.showFlyout(
+    unawaited(panelSwitchController.showFlyout(
       barrierDismissible: widget.layoutWidth < 710,
       dismissWithEsc: true,
       dismissOnPointerMoveAway: true,
@@ -568,6 +568,6 @@ class _PanelScreenState extends State<PanelScreen> {
           );
         })
       ]),
-    );
+    ));
   }
 }

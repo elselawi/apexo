@@ -360,16 +360,18 @@ class _LoginService extends ObservablePersistingObject {
   Map<String, Future<Future<void> Function()> Function()> activators = {};
 
   @override
-  fromJson(Map<String, dynamic> json) async {
-    url = json["url"] ?? url;
-    email = json["email"] ?? email;
-    token = json["token"] ?? token;
+  Future<void> fromJson(Map<String, dynamic> json) async {
+    url = json["url"] as String? ?? url;
+    email = json["email"] as String? ?? email;
+    token = json["token"] as String? ?? token;
     savedPermissions = json["savedPermission"] != null
-        ? List<int>.from(jsonDecode(json["savedPermission"]))
+        ? List<int>.from(
+            jsonDecode(json["savedPermission"] as String) as List<dynamic>)
         : savedPermissions;
-    adminCollectionId = json["adminCollectionId"] ?? adminCollectionId;
+    adminCollectionId =
+        json["adminCollectionId"] as String? ?? adminCollectionId;
     pushNotificationsToken =
-        json["pushNotificationsToken"] ?? pushNotificationsToken;
+        json["pushNotificationsToken"] as String? ?? pushNotificationsToken;
     if (token.isNotEmpty) {
       await activate(url, [token], true);
     } else {

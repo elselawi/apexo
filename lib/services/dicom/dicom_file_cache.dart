@@ -13,6 +13,30 @@ import 'package:hive_flutter/adapters.dart';
 /// metadata + the file's `mtime + size` so unchanged files can be skipped
 /// entirely (no file open, no parse) on subsequent scans.
 class DicomCachedMeta {
+  const DicomCachedMeta({
+    required this.mtime,
+    required this.size,
+    required this.dedupKey,
+    required this.patientName,
+    required this.patientId,
+    required this.dcmDate,
+    this.isVolumetric = false,
+  });
+
+  factory DicomCachedMeta.fromJson(Map<String, dynamic> json) =>
+      DicomCachedMeta(
+        mtime: DateTime.parse(json['mtime'] as String),
+        size: json['size'] as int,
+        dedupKey: json['dedupKey'] as String,
+        patientName: json['patientName'] as String? ?? '',
+        patientId: json['patientId'] as String? ?? '',
+        dcmDate: (json['dcmDate'] as int) == 0
+            ? null
+            : DateTime.fromMillisecondsSinceEpoch(json['dcmDate'] as int,
+                isUtc: true),
+        isVolumetric: json['isVolumetric'] == true,
+      );
+
   /// File's last-modified timestamp at the time of parsing.
   final DateTime mtime;
 
@@ -36,16 +60,6 @@ class DicomCachedMeta {
   /// re-parsing metadata.
   final bool isVolumetric;
 
-  const DicomCachedMeta({
-    required this.mtime,
-    required this.size,
-    required this.dedupKey,
-    required this.patientName,
-    required this.patientId,
-    required this.dcmDate,
-    this.isVolumetric = false,
-  });
-
   Map<String, dynamic> toJson() => {
         'mtime': mtime.toIso8601String(),
         'size': size,
@@ -55,20 +69,6 @@ class DicomCachedMeta {
         'dcmDate': dcmDate?.millisecondsSinceEpoch ?? 0,
         'isVolumetric': isVolumetric,
       };
-
-  factory DicomCachedMeta.fromJson(Map<String, dynamic> json) =>
-      DicomCachedMeta(
-        mtime: DateTime.parse(json['mtime'] as String),
-        size: json['size'] as int,
-        dedupKey: json['dedupKey'] as String,
-        patientName: json['patientName'] as String? ?? '',
-        patientId: json['patientId'] as String? ?? '',
-        dcmDate: (json['dcmDate'] as int) == 0
-            ? null
-            : DateTime.fromMillisecondsSinceEpoch(json['dcmDate'] as int,
-                isUtc: true),
-        isVolumetric: json['isVolumetric'] == true,
-      );
 }
 
 /// Hive-backed cache of parsed DICOM metadata, keyed by absolute file path.
@@ -110,7 +110,8 @@ class DicomFileCache {
       final box = await _openBox;
       final raw = box.get(path);
       if (raw == null) return false;
-      final cached = DicomCachedMeta.fromJson(jsonDecode(raw));
+      final cached =
+          DicomCachedMeta.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       return cached.size == size && cached.mtime.toUtc() == mtime.toUtc();
     } catch (e, s) {
       logger('DicomFileCache.isUnchanged error: $e', s, 2);
@@ -124,7 +125,7 @@ class DicomFileCache {
       final box = await _openBox;
       final raw = box.get(path);
       if (raw == null) return null;
-      return DicomCachedMeta.fromJson(jsonDecode(raw));
+      return DicomCachedMeta.fromJson(jsonDecode(raw) as Map<String, dynamic>);
     } catch (e, s) {
       logger('DicomFileCache.get error: $e', s, 2);
       return null;
@@ -171,7 +172,8 @@ class DicomFileCache {
         final raw = box.get(key);
         if (raw == null) continue;
         try {
-          out[key] = DicomCachedMeta.fromJson(jsonDecode(raw));
+          out[key] =
+              DicomCachedMeta.fromJson(jsonDecode(raw) as Map<String, dynamic>);
         } catch (_) {
           // skip malformed entries
         }

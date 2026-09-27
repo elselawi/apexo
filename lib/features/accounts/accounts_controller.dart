@@ -141,7 +141,7 @@ class _Accounts extends ObservablePersistingObject {
     }
     loaded(true);
     loading(false);
-    await notifyAndPersist();
+    notifyAndPersist();
   }
 
   String name(RecordModel account) {

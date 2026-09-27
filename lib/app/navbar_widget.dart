@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
@@ -44,7 +45,8 @@ class BottomNavBar extends StatelessWidget {
 
                 // Make it more compact to fit slightly more items
                 const double minItemWidth = 52.0;
-                int maxVisibleItems = (availableWidth / minItemWidth).floor();
+                final int maxVisibleItems =
+                    (availableWidth / minItemWidth).floor();
 
                 var visibleRoutes = allRoutes;
                 var overflowRoutes = [];
@@ -103,10 +105,6 @@ class BottomNavBar extends StatelessWidget {
 }
 
 class BottomNavBarButton extends StatelessWidget {
-  final String title;
-  final IconData icon;
-  final String identifier;
-  final bool active;
   const BottomNavBarButton({
     super.key,
     required this.title,
@@ -114,6 +112,10 @@ class BottomNavBarButton extends StatelessWidget {
     required this.identifier,
     this.active = false,
   });
+  final String title;
+  final IconData icon;
+  final String identifier;
+  final bool active;
 
   @override
   Widget build(BuildContext context) {
@@ -180,8 +182,8 @@ class BottomNavBarButton extends StatelessWidget {
 }
 
 class BottomNavBarMoreButton extends StatefulWidget {
-  final List overflowRoutes;
   const BottomNavBarMoreButton({super.key, required this.overflowRoutes});
+  final List overflowRoutes;
 
   @override
   State<BottomNavBarMoreButton> createState() => _BottomNavBarMoreButtonState();
@@ -212,7 +214,7 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
       child: HoverButton(
         onPressed: () async {
           await flyoutFocusFix(null);
-          bottomNavFlyoutController.showFlyout(
+          unawaited(bottomNavFlyoutController.showFlyout(
             autoModeConfiguration: FlyoutAutoConfiguration(
               preferredMode: FlyoutPlacementMode.topCenter,
             ),
@@ -224,7 +226,7 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
                       r.identifier == routes.currentRoute.identifier;
                   return MenuFlyoutItem(
                     text: Text(
-                      r.navbarTitle,
+                      r.navbarTitle as String,
                       style: TextStyle(
                         fontWeight:
                             isItemActive ? FontWeight.bold : FontWeight.normal,
@@ -232,18 +234,18 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
                       ),
                     ),
                     leading: Icon(
-                      r.icon,
+                      r.icon as IconData?,
                       color: isItemActive ? Colors.blue : null,
                     ),
                     onPressed: () {
-                      routes.navigate(r.identifier);
+                      routes.navigate(r.identifier as String);
                       Flyout.of(context).close();
                     },
                   );
                 }).toList(),
               );
             },
-          );
+          ));
         },
         builder: (context, states) {
           final isHovered = states.isHovered;

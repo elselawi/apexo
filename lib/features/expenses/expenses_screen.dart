@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
@@ -167,7 +168,7 @@ class _SuppliersListState extends State<SuppliersList> {
                 }
 
                 await flyoutFocusFix(context);
-                _scanFlyout.showFlyout(
+                unawaited(_scanFlyout.showFlyout(
                     builder: (ctx) => MenuFlyout(
                           items: [
                             if (suppGallery)
@@ -185,7 +186,7 @@ class _SuppliersListState extends State<SuppliersList> {
                                     _scanReceipt(context, ImageSource.camera),
                               ),
                           ],
-                        ));
+                        )));
               },
       ),
     );
@@ -322,14 +323,14 @@ class _SupplierListTileState extends State<SupplierListTile> {
     ]);
   }
 
-  FlyoutTarget _buildContextMenuButton(context) {
+  FlyoutTarget _buildContextMenuButton(BuildContext context) {
     return FlyoutTarget(
       controller: menuController,
       child: IconButton(
           icon: const Icon(WindowsIcons.more),
           onPressed: () async {
             await flyoutFocusFix(context);
-            menuController.showFlyout(builder: (context) {
+            unawaited(menuController.showFlyout(builder: (context) {
               return MenuFlyout(
                 items: [
                   MenuFlyoutItem(
@@ -356,7 +357,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
                         menuController.close();
                         WidgetsBinding.instance.addPostFrameCallback((_) async {
                           await flyoutFocusFix(context);
-                          archiveConfirmationController.showFlyout(
+                          unawaited(archiveConfirmationController.showFlyout(
                               builder: (ctx) => ConfirmDeleteFlyout(
                                   restorable: true,
                                   controller: archiveConfirmationController,
@@ -372,13 +373,13 @@ class _SupplierListTileState extends State<SupplierListTile> {
                                   ),
                                   onConfirm: () {
                                     expenses.archive(widget.supplier.id);
-                                  }));
+                                  })));
                         });
                       },
                     ),
                 ],
               );
-            });
+            }));
           }),
     );
   }

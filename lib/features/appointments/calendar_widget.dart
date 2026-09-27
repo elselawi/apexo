@@ -31,14 +31,6 @@ enum EventsViewMode {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
-  final List<Item> items;
-  final List<Widget>? actions;
-  final StartingDayOfWeek startDay;
-  final int initiallySelectedDay;
-  final void Function(DateTime date) onAddNew;
-  final void Function(Item item) onSetTime;
-  final void Function(Item item) onSelect;
-
   const WeekAgendaCalendar({
     super.key,
     required this.items,
@@ -49,6 +41,13 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
     required this.onSelect,
     this.actions,
   });
+  final List<Item> items;
+  final List<Widget>? actions;
+  final StartingDayOfWeek startDay;
+  final int initiallySelectedDay;
+  final void Function(DateTime date) onAddNew;
+  final void Function(Item item) onSetTime;
+  final void Function(Item item) onSelect;
 
   @override
   WeekAgendaCalendarState<Item> createState() =>
@@ -329,13 +328,13 @@ class WeekAgendaCalendarState<Item extends Appointment>
 // ─────────────────────────────────────────────────────────────────────────────
 
 class AppointmentsNumberIndicator extends StatelessWidget {
-  final List<Object?> events;
-  final DateTime day;
   const AppointmentsNumberIndicator({
     super.key,
     required this.events,
     required this.day,
   });
+  final List<Object?> events;
+  final DateTime day;
 
   @override
   Widget build(BuildContext context) {
@@ -376,13 +375,13 @@ enum DayCellType {
 }
 
 class DayCell extends StatelessWidget {
-  final DateTime day;
-  final DayCellType type;
   const DayCell({
     super.key,
     required this.day,
     required this.type,
   });
+  final DateTime day;
+  final DayCellType type;
 
   @override
   Widget build(BuildContext context) {

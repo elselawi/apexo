@@ -5,12 +5,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// A pill-shaped widget that displays an appointment's duration and allows
 /// cycling through preset durations via a flyout menu.
 class DurationPill extends StatefulWidget {
-  final Appointment item;
-  final Color color;
-  final void Function(int duration) onSet;
-  final bool isCompact;
-  final bool disabled;
-
   const DurationPill({
     super.key,
     required this.item,
@@ -19,6 +13,11 @@ class DurationPill extends StatefulWidget {
     this.color = Colors.grey,
     this.disabled = false,
   });
+  final Appointment item;
+  final Color color;
+  final void Function(int duration) onSet;
+  final bool isCompact;
+  final bool disabled;
 
   @override
   State<DurationPill> createState() => _DurationPillState();

@@ -18,11 +18,14 @@ pluginManagement {
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "com.android.application" version "8.9.1" apply false
+    id "com.android.application" version "9.1.0" apply false
     // START: FlutterFire Configuration
-    id "com.google.gms.google-services" version "4.3.15" apply false
+    id "com.google.gms.google-services" version "4.5.0" apply false
     // END: FlutterFire Configuration
-    id "org.jetbrains.kotlin.android" version "2.1.0" apply false
+    // Declared (not applied) so AGP's built-in Kotlin uses KGP 2.4.0: AGP 9.1
+    // bundles KGP 2.2.10, which is below Flutter 3.47's required 2.2.20.
+    // Applying it would clash with built-in Kotlin (`android.builtInKotlin=true`).
+    id "org.jetbrains.kotlin.android" version "2.4.0" apply false
 }
 
 include ":app"

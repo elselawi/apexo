@@ -26,44 +26,6 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 /// call on other platforms (they no-op / return early when the watch dir is
 /// empty), but the UI never reaches them off-Windows.
 class DicomController {
-  static DicomController? _registeredController;
-
-  /// Pending imports surfaced by the last scan. Empty until [refresh] runs.
-  final ObservableState<List<DicomPendingImport>> pending =
-      ObservableState<List<DicomPendingImport>>(const <DicomPendingImport>[]);
-
-  /// `true` while a scan is in flight. Drives the "Scan now" button spinner
-  /// and disables it.
-  final ObservableState<bool> scanning = ObservableState<bool>(false);
-
-  /// Re-export of the importer's progress observable so the screen can
-  /// render a per-file progress bar during [approve]. `(0, 0)` = idle.
-  ObservableState<({int current, int total})> get importProgress =>
-      _importer.importProgress;
-
-  /// Re-export of the importer's scan phase — drives the progress overlay.
-  ObservableState<ScanPhase> get scanPhase => _importer.scanPhase;
-
-  /// Re-export of per-file scan progress (inline path).
-  ObservableState<({int current, int total, String path, bool cacheHit})>
-      get scanFileProgress => _importer.scanFileProgress;
-
-  /// `true` while a scan is in flight (any phase except idle).
-  bool get isScanning => _importer.scanPhase() != ScanPhase.idle;
-
-  /// `true` while an import is in flight (`importProgress.total > 0`).
-  bool get isImporting {
-    final p = importProgress();
-    return p.total > 0;
-  }
-
-  final DicomImporter _importer;
-  final Future<List<SyncResult>> Function() _synchronizeAppointments;
-  final Future<bool> Function() _appointmentsInSync;
-  late final Future<Future<void> Function()> Function() _dicomActivator;
-  late final void Function() _logoutCallback;
-  late final void Function(String filename) _deadLetterCallback;
-
   /// Creates a controller backed by [importer] (defaults to the global
   /// [dicomImporter] singleton). The optional parameter exists so tests can
   /// inject a mock importer without touching the real stores.
@@ -112,6 +74,43 @@ class DicomController {
     };
     Store.onFileDeadLettered.add(_deadLetterCallback);
   }
+  static DicomController? _registeredController;
+
+  /// Pending imports surfaced by the last scan. Empty until [refresh] runs.
+  final ObservableState<List<DicomPendingImport>> pending =
+      ObservableState<List<DicomPendingImport>>(const <DicomPendingImport>[]);
+
+  /// `true` while a scan is in flight. Drives the "Scan now" button spinner
+  /// and disables it.
+  final ObservableState<bool> scanning = ObservableState<bool>(false);
+
+  /// Re-export of the importer's progress observable so the screen can
+  /// render a per-file progress bar during [approve]. `(0, 0)` = idle.
+  ObservableState<({int current, int total})> get importProgress =>
+      _importer.importProgress;
+
+  /// Re-export of the importer's scan phase — drives the progress overlay.
+  ObservableState<ScanPhase> get scanPhase => _importer.scanPhase;
+
+  /// Re-export of per-file scan progress (inline path).
+  ObservableState<({int current, int total, String path, bool cacheHit})>
+      get scanFileProgress => _importer.scanFileProgress;
+
+  /// `true` while a scan is in flight (any phase except idle).
+  bool get isScanning => _importer.scanPhase() != ScanPhase.idle;
+
+  /// `true` while an import is in flight (`importProgress.total > 0`).
+  bool get isImporting {
+    final p = importProgress();
+    return p.total > 0;
+  }
+
+  final DicomImporter _importer;
+  final Future<List<SyncResult>> Function() _synchronizeAppointments;
+  final Future<bool> Function() _appointmentsInSync;
+  late final Future<Future<void> Function()> Function() _dicomActivator;
+  late final void Function() _logoutCallback;
+  late final void Function(String filename) _deadLetterCallback;
 
   /// Releases global lifecycle callbacks owned by this controller.
   ///

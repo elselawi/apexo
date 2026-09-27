@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
@@ -27,8 +28,8 @@ class _MetaSettingsState extends State<MetaSettings> {
     try {
       final settings = await login.pb!.settings.getAll();
       final meta = settings['meta'] ?? {};
-      _appNameController.text = meta['appName'] ?? '';
-      _appUrlController.text = meta['appURL'] ?? '';
+      _appNameController.text = meta['appName'] as String? ?? '';
+      _appUrlController.text = meta['appURL'] as String? ?? '';
     } catch (e) {
       // Controllers remain empty on error
     }
@@ -55,7 +56,7 @@ class _MetaSettingsState extends State<MetaSettings> {
         }
       });
       if (mounted && dialog) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -70,11 +71,11 @@ class _MetaSettingsState extends State<MetaSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     } catch (e) {
       if (mounted && dialog) {
-        showDialog(
+        unawaited(showDialog(
           context: context,
           barrierDismissible: true,
           dismissWithEsc: true,
@@ -89,7 +90,7 @@ class _MetaSettingsState extends State<MetaSettings> {
               )
             ],
           ),
-        );
+        ));
       }
     }
   }

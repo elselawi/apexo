@@ -8,11 +8,6 @@ import 'package:image_picker/image_picker.dart';
 // ============================================================================
 
 class ReceiptItem {
-  final String name;
-  final int quantity;
-  final double unitPrice;
-  final double totalPrice;
-
   ReceiptItem({
     required this.name,
     required this.quantity,
@@ -26,6 +21,10 @@ class ReceiptItem {
         unitPrice: (json['unitPrice'] as num?)?.toDouble() ?? 0.0,
         totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
       );
+  final String name;
+  final int quantity;
+  final double unitPrice;
+  final double totalPrice;
 
   Map<String, dynamic> toJson() => {
         'name': name,
@@ -36,11 +35,6 @@ class ReceiptItem {
 }
 
 class ReceiptData {
-  final String supplierName;
-  final String orderDate;
-  final List<ReceiptItem> orderItems;
-  final double totalPrice;
-
   ReceiptData({
     required this.supplierName,
     required this.orderDate,
@@ -57,6 +51,10 @@ class ReceiptData {
             [],
         totalPrice: (json['totalPrice'] as num?)?.toDouble() ?? 0.0,
       );
+  final String supplierName;
+  final String orderDate;
+  final List<ReceiptItem> orderItems;
+  final double totalPrice;
 
   Map<String, dynamic> toJson() => {
         'supplierName': supplierName,

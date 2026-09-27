@@ -50,7 +50,7 @@ class ObservableBase<S> {
   }
 
   int observe(Observer<S> callback) {
-    int existing = observers.indexWhere((o) => o == callback);
+    final int existing = observers.indexWhere((o) => o == callback);
     if (existing > -1) {
       return existing;
     }
@@ -86,9 +86,8 @@ class ObservableBase<S> {
 /// this can be accessed by calling it "()"
 /// and can be set by passing a value when calling it "(value)"
 class ObservableState<T> extends ObservableBase<T> {
-  T _value;
-
   ObservableState(this._value);
+  T _value;
 
   T call([T? newValue]) {
     if (newValue != null) {
@@ -120,11 +119,11 @@ abstract class ObservablePersistingObject
   late final Future<void> ready;
 
   Future<void> _initialLoad() async {
-    var value = (await box).get(identifier);
+    final value = (await box).get(identifier);
     if (value == null) {
       return;
     }
-    fromJson(jsonDecode(value));
+    fromJson(jsonDecode(value) as Map<String, dynamic>);
     super.notifyObservers(
         this); // calling it from super so we don't have to reload from box,
     // yet we're notifying the view
@@ -139,7 +138,7 @@ abstract class ObservablePersistingObject
   }
 
   // a short hand for calling notifyObservers
-  notifyAndPersist() => notifyObservers(this);
+  void notifyAndPersist() => notifyObservers(this);
 
   fromJson(Map<String, dynamic> json);
   Map<String, dynamic> toJson();
@@ -157,7 +156,7 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   }
 
   void set(G item) {
-    bool isNew = !_dictionary.containsKey(item.id);
+    final bool isNew = !_dictionary.containsKey(item.id);
     _dictionary[item.id] = item;
 
     if (item.targetsToPushTo.isNotEmpty) {
@@ -279,13 +278,6 @@ enum DictEventType {
 }
 
 class DictEvent {
-  final DictEventType type;
-  final String id;
-  final List<String> modifiedKeys;
-  final Model? document;
-  final List<dynamic> newVals;
-  final List<dynamic> oldVals;
-
   DictEvent.add(this.id, {required this.document})
       : type = DictEventType.add,
         modifiedKeys = const [],
@@ -304,11 +296,17 @@ class DictEvent {
         document = null,
         newVals = const [],
         oldVals = const [];
+  final DictEventType type;
+  final String id;
+  final List<String> modifiedKeys;
+  final Model? document;
+  final List<dynamic> newVals;
+  final List<dynamic> oldVals;
 }
 
 /// Checks if two objects (including Lists and Maps) are deeply equal.
 /// Required because Dart's `==` on Collections only checks reference.
-bool _areEqual(dynamic a, dynamic b) {
+bool _areEqual(a, b) {
   if (identical(a, b)) return true;
   if (a is List && b is List) {
     if (a.length != b.length) return false;

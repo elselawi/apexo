@@ -52,7 +52,7 @@ class AIService {
       localSettings.aiToken = token;
       localSettings.aiTokenExpiry =
           DateTime.now().add(const Duration(hours: 24));
-      await localSettings.notifyAndPersist();
+      localSettings.notifyAndPersist();
       return token;
     } finally {
       if (_authFuture == future) {

@@ -49,14 +49,6 @@ class _ArchivedPage extends StatefulWidget {
 }
 
 class _ArchivedRow {
-  final Model item;
-  final String storeLabel;
-  final Color storeColor;
-  final IconData storeIcon;
-  final String subtitle;
-  final VoidCallback onRestore;
-  final VoidCallback? onOpen;
-
   const _ArchivedRow({
     required this.item,
     required this.storeLabel,
@@ -66,6 +58,13 @@ class _ArchivedRow {
     required this.onRestore,
     required this.onOpen,
   });
+  final Model item;
+  final String storeLabel;
+  final Color storeColor;
+  final IconData storeIcon;
+  final String subtitle;
+  final VoidCallback onRestore;
+  final VoidCallback? onOpen;
 }
 
 class _ArchivedPageState extends State<_ArchivedPage> {

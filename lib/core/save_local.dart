@@ -14,6 +14,14 @@ typedef ClearingFunction = Future<void> Function();
 
 // SaveLocal class for managing local storage operations
 class SaveLocal {
+  SaveLocal({required this.name, required this.uniqueId, this.storagePath}) {
+    mainHiveBox = initialize("$name-main");
+    metaHiveBox = initialize("$name-meta");
+    _clearCallback = () async {
+      await clear();
+    };
+    removeAllLocalData.add(_clearCallback);
+  }
   final String name;
   final String uniqueId;
 
@@ -24,15 +32,6 @@ class SaveLocal {
   late final Future<Box<String>> mainHiveBox;
   late final Future<Box<String>> metaHiveBox;
   late final ClearingFunction _clearCallback;
-
-  SaveLocal({required this.name, required this.uniqueId, this.storagePath}) {
-    mainHiveBox = initialize("$name-main");
-    metaHiveBox = initialize("$name-meta");
-    _clearCallback = () async {
-      await clear();
-    };
-    removeAllLocalData.add(_clearCallback);
-  }
 
   Future<Box<String>> initialize(String name) async {
     await safeHiveInit();
@@ -76,7 +75,7 @@ class SaveLocal {
   Future<int> getVersion() async {
     try {
       final Box box = await metaHiveBox;
-      return int.parse(box.get(_versionKey) ?? "0");
+      return int.parse(box.get(_versionKey) as String? ?? "0");
     } catch (e, s) {
       throw StorageException('Failed to get version: $e', s);
     }
@@ -96,8 +95,9 @@ class SaveLocal {
   Future<Map<String, int>> getDeferred() async {
     try {
       final Box box = await metaHiveBox;
-      final jsonString = box.get(_deferredKey) ?? "{}";
-      return Map<String, int>.from(jsonDecode(jsonString));
+      final jsonString = box.get(_deferredKey) as String? ?? "{}";
+      return Map<String, int>.from(
+          jsonDecode(jsonString) as Map<dynamic, dynamic>);
     } catch (e, s) {
       throw StorageException('Failed to get deferred data: $e', s);
     }
@@ -144,9 +144,9 @@ class SaveLocal {
 
 // Custom exception for storage operations
 class StorageException implements Exception {
+  StorageException(this.message, this.stackTrace);
   final String message;
   final StackTrace stackTrace;
-  StorageException(this.message, this.stackTrace);
   @override
   String toString() => 'StorageException: $message';
 }

@@ -12,22 +12,13 @@ import '../../services/login.dart';
 import '../../core/observable.dart';
 
 class ErrorItem {
+  ErrorItem({required this.message, required this.when, this.count = 1});
   final String message;
   final String when;
   int count;
-  ErrorItem({required this.message, required this.when, this.count = 1});
 }
 
 class NetworkAction {
-  String tooltip;
-  Widget icon;
-  void Function()? onPressed;
-  Color activeColor;
-  bool? hidden;
-  bool? disabled;
-  bool? processing;
-  bool? animate;
-  String? badge;
   NetworkAction({
     required this.tooltip,
     required this.icon,
@@ -39,6 +30,15 @@ class NetworkAction {
     this.animate,
     this.badge,
   });
+  String tooltip;
+  Widget icon;
+  void Function()? onPressed;
+  Color activeColor;
+  bool? hidden;
+  bool? disabled;
+  bool? processing;
+  bool? animate;
+  String? badge;
 }
 
 class _NetworkActions {

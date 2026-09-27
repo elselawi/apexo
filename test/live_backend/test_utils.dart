@@ -80,7 +80,7 @@ class TestUtils {
     await tester.pumpAndSettle();
   }
 
-  static tapFromTagInput(WidgetTester tester, String text) async {
+  static Future<void> tapFromTagInput(WidgetTester tester, String text) async {
     await tester.tap(find
         .descendant(of: find.byType(Flyout), matching: find.text(text))
         .last);

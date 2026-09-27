@@ -7,14 +7,14 @@ import 'package:http/http.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 class BackupFile {
-  late String key;
-  late int size;
-  late DateTime date;
   BackupFile(BackupFileInfo info) {
     key = info.key;
     size = info.size;
     date = DateTime.parse(info.modified);
   }
+  late String key;
+  late int size;
+  late DateTime date;
 }
 
 class _Backups {

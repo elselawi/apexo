@@ -14,13 +14,25 @@ import 'package:table_calendar/table_calendar.dart';
 enum StatsInterval { days, weeks, months, quarters, years }
 
 class Period {
+  Period(this.start, this.end, this.label);
   DateTime start;
   DateTime end;
   String label;
-  Period(this.start, this.end, this.label);
 }
 
 class _ChartsController {
+  _ChartsController() {
+    final filters = List<ObservableState<DateTime>>.from([start, end]);
+    for (final ObservableState<DateTime> filter in filters) {
+      filter.observe(_nullifyCache);
+    }
+    filterByOperatorID.observe(_nullifyCache);
+    // Derived chart data depends on both source stores as well as filters.
+    // Without these observers, a chart accessed before a store mutation
+    // stays stale until the user changes a date/operator filter.
+    appointments.observableMap.observe(_nullifyCache);
+    expenses.observableMap.observe(_nullifyCache);
+  }
   final filterByOperatorID = ObservableState("");
   final start =
       ObservableState(DateTime(DateTime.now().year, DateTime.now().month, 1));
@@ -32,7 +44,7 @@ class _ChartsController {
     return chartsCtrl.interval().name;
   }
 
-  _nullifyCache(_) {
+  void _nullifyCache(_) {
     _filteredAppointments = null;
     _filteredReceipts = null;
   }
@@ -40,12 +52,14 @@ class _ChartsController {
   List<Appointment>? _filteredAppointments;
   List<Appointment> get filteredAppointments {
     if (_filteredAppointments != null) return _filteredAppointments!;
-    List<Appointment> res = [];
+    final List<Appointment> res = [];
     for (var appointment in appointments.present.values) {
       if (appointment.date.isAfter(end())) continue;
       if (appointment.date.isBefore(start())) continue;
       if (filterByOperatorID().isNotEmpty &&
-          !appointment.operatorsIDs.contains(filterByOperatorID())) continue;
+          !appointment.operatorsIDs.contains(filterByOperatorID())) {
+        continue;
+      }
       res.add(appointment);
     }
     _filteredAppointments = res..sort((a, b) => a.date.compareTo(b.date));
@@ -55,7 +69,7 @@ class _ChartsController {
   List<Expense>? _filteredReceipts;
   List<Expense> get filteredReceipts {
     if (_filteredReceipts != null) return _filteredReceipts!;
-    List<Expense> res = [];
+    final List<Expense> res = [];
     for (var receipt in expenses.present.values) {
       if (receipt.date.isAfter(end())) continue;
       if (receipt.date.isBefore(start())) continue;
@@ -66,9 +80,9 @@ class _ChartsController {
   }
 
   List<List<Appointment>> get groupedAppointments {
-    List<List<Appointment>> res = [];
+    final List<List<Appointment>> res = [];
     for (var period in periods) {
-      List<Appointment> appointments = [];
+      final List<Appointment> appointments = [];
       for (var appointment in filteredAppointments) {
         if (appointment.date.isAfter(period.end)) break;
         if (appointment.date.isBefore(period.start)) continue;
@@ -80,7 +94,7 @@ class _ChartsController {
   }
 
   List<double> get groupedPayments {
-    List<double> res = [];
+    final List<double> res = [];
     for (var period in periods) {
       double payment = 0;
       for (var appointment in filteredAppointments) {
@@ -94,7 +108,7 @@ class _ChartsController {
   }
 
   List<double> get groupedExpenses {
-    List<double> res = [];
+    final List<double> res = [];
     for (var period in periods) {
       double expense = 0;
       for (var receipt in filteredReceipts) {
@@ -108,9 +122,9 @@ class _ChartsController {
   }
 
   List<List<double>> get doneAndMissedAppointments {
-    List<List<double>> res = [];
+    final List<List<double>> res = [];
     for (var period in periods) {
-      List<double> c = [0, 0];
+      final List<double> c = [0, 0];
       for (var appointment in filteredAppointments) {
         if (appointment.date.isAfter(period.end)) break;
         if (appointment.date.isBefore(period.start)) continue;
@@ -123,15 +137,16 @@ class _ChartsController {
   }
 
   List<double> get newPatients {
-    List<double> res = [];
+    final List<double> res = [];
     for (var period in periods) {
       double n = 0;
       for (var appointment in filteredAppointments) {
         if (appointment.date.isAfter(period.end)) continue;
         if (appointment.date.isBefore(period.start)) continue;
         if (appointment.patient == null) continue;
-        if (appointment.patient!.allAppointments.firstOrNull == appointment)
+        if (appointment.patient!.allAppointments.firstOrNull == appointment) {
           n++;
+        }
       }
       res.add(n);
     }
@@ -139,7 +154,7 @@ class _ChartsController {
   }
 
   List<double> get timeOfDayDistribution {
-    List<double> res = List.generate(24, (index) => 0.0);
+    final List<double> res = List.generate(24, (index) => 0.0);
     for (var appointment in filteredAppointments) {
       final int hour = appointment.date.hour;
       res[hour]++;
@@ -148,7 +163,7 @@ class _ChartsController {
   }
 
   List<double> get dayOfMonthDistribution {
-    List<double> res = List.generate(31, (index) => 0.0);
+    final List<double> res = List.generate(31, (index) => 0.0);
     for (var appointment in filteredAppointments) {
       final int day = appointment.date.day;
       res[day - 1]++;
@@ -157,7 +172,7 @@ class _ChartsController {
   }
 
   List<double> get dayOfWeekDistribution {
-    List<double> res = List.generate(7, (index) => 0.0);
+    final List<double> res = List.generate(7, (index) => 0.0);
     for (var appointment in filteredAppointments) {
       final int day = appointment.date.weekday;
       res[day - 1]++;
@@ -166,7 +181,7 @@ class _ChartsController {
   }
 
   List<double> get monthOfYearDistribution {
-    List<double> res = List.generate(12, (index) => 0.0);
+    final List<double> res = List.generate(12, (index) => 0.0);
     for (var appointment in filteredAppointments) {
       final int month = appointment.date.month;
       res[month - 1]++;
@@ -175,7 +190,7 @@ class _ChartsController {
   }
 
   List<int> get femaleMale {
-    List<int> res = [0, 0];
+    final List<int> res = [0, 0];
     for (var appointment in filteredAppointments) {
       if (appointment.patient == null) continue;
       if (appointment.patient!.gender == 0) res[0]++;
@@ -185,7 +200,7 @@ class _ChartsController {
   }
 
   List<Period> get periods {
-    List<Period> periods = [];
+    final List<Period> periods = [];
 
     DateTime currentStart =
         _normalizeStart(DateTime(start().year, start().month, start().day));
@@ -207,7 +222,7 @@ class _ChartsController {
     return periods;
   }
 
-  resetSelected() {
+  void resetSelected() {
     final now = DateTime.now();
     start(DateTime(now.year, now.month, 1));
     end(DateTime(now.year, now.month, 1).add(const Duration(days: 31)));
@@ -215,7 +230,7 @@ class _ChartsController {
   }
 
   int _daysSinceWeekStart(DateTime date) {
-    int adjustedWeekday = (date.weekday -
+    final int adjustedWeekday = (date.weekday -
             StartingDayOfWeek.values
                 .indexWhere((e) => e.name == globalSettings.startDayOfWeek) -
             1) %
@@ -240,16 +255,16 @@ class _ChartsController {
     } else {
       quarterStartMonth = 10;
     }
-    DateTime quarterStartDate = DateTime(date.year, quarterStartMonth, 1);
-    int daysSinceStart = date.difference(quarterStartDate).inDays;
+    final DateTime quarterStartDate = DateTime(date.year, quarterStartMonth, 1);
+    final int daysSinceStart = date.difference(quarterStartDate).inDays;
     return daysSinceStart;
   }
 
   int _daysSinceYearStart(DateTime date) {
-    DateTime yearStartDate = DateTime(date.year, 1, 1);
+    final DateTime yearStartDate = DateTime(date.year, 1, 1);
 
     // Calculate the difference in days
-    int daysSinceStart = date.difference(yearStartDate).inDays;
+    final int daysSinceStart = date.difference(yearStartDate).inDays;
 
     return daysSinceStart;
   }
@@ -288,7 +303,7 @@ class _ChartsController {
       case StatsInterval.quarters:
         if (DF.isPersianCalendar) {
           final j = JalaliUtils.fromGregorian(start);
-          int q = ((j.month - 1) ~/ 3) + 1;
+          final int q = ((j.month - 1) ~/ 3) + 1;
           return "Q$q ${j.year}";
         }
         return "Q${DateFormat("Q yyyy", locale.s.$code).format(start)}";
@@ -302,9 +317,9 @@ class _ChartsController {
   }
 
   int _weekOfMonth(DateTime date) {
-    DateTime firstDayOfMonth = DateTime(date.year, date.month, 1);
-    int firstWeekDay = (firstDayOfMonth.weekday % 7) + 1;
-    int dayOfMonth = date.day;
+    final DateTime firstDayOfMonth = DateTime(date.year, date.month, 1);
+    final int firstWeekDay = (firstDayOfMonth.weekday % 7) + 1;
+    final int dayOfMonth = date.day;
     return ((dayOfMonth + firstWeekDay - 2) / 7).ceil();
   }
 
@@ -326,15 +341,16 @@ class _ChartsController {
   DateTime _addMonths(DateTime input, int monthsToAdd) {
     // Calculate the target month and year
     int targetMonth = input.month + monthsToAdd;
-    int targetYear = input.year + (targetMonth - 1) ~/ 12;
+    final int targetYear = input.year + (targetMonth - 1) ~/ 12;
     targetMonth = (targetMonth - 1) % 12 + 1;
 
     // Get the last day of the target month
-    int lastDayOfTargetMonth = DateTime(targetYear, targetMonth + 1, 0).day;
+    final int lastDayOfTargetMonth =
+        DateTime(targetYear, targetMonth + 1, 0).day;
 
     // If the input day is greater than the last day of the target month,
     // or if it's the last day of the input month, use the last day of the target month
-    int targetDay = (input.day > lastDayOfTargetMonth ||
+    final int targetDay = (input.day > lastDayOfTargetMonth ||
             input.day == _daysInMonth(input.year, input.month))
         ? lastDayOfTargetMonth
         : input.day;
@@ -352,9 +368,10 @@ class _ChartsController {
   }
 
   DateTime _addYears(DateTime input, int yearsToAdd) {
-    int newYear = input.year + yearsToAdd;
-    int maxDayInNewMonth = _daysInMonth(newYear, input.month);
-    int newDay = input.day > maxDayInNewMonth ? maxDayInNewMonth : input.day;
+    final int newYear = input.year + yearsToAdd;
+    final int maxDayInNewMonth = _daysInMonth(newYear, input.month);
+    final int newDay =
+        input.day > maxDayInNewMonth ? maxDayInNewMonth : input.day;
 
     return DateTime(newYear, input.month, newDay, input.hour, input.minute,
         input.second, input.millisecond, input.microsecond);
@@ -411,7 +428,7 @@ class _ChartsController {
   }
 
   void toggleInterval() {
-    int currentIndex = StatsInterval.values.indexOf(interval());
+    final int currentIndex = StatsInterval.values.indexOf(interval());
     if (currentIndex == StatsInterval.values.length - 1) {
       interval(StatsInterval.values[0]);
     } else {
@@ -424,7 +441,7 @@ class _ChartsController {
     filterByOperatorID(value ?? "");
   }
 
-  rangePicker(BuildContext context) async {
+  Future<void> rangePicker(BuildContext context) async {
     final selectedRange = await showDateRangePicker(
       currentDate: DateTime.now(),
       initialDateRange: DateTimeRange(start: start(), end: end()),
@@ -439,19 +456,6 @@ class _ChartsController {
       end(selectedRange.end);
       normalizeSelectedRange(false);
     }
-  }
-
-  _ChartsController() {
-    final filters = List<ObservableState<DateTime>>.from([start, end]);
-    for (final ObservableState<DateTime> filter in filters) {
-      filter.observe(_nullifyCache);
-    }
-    filterByOperatorID.observe(_nullifyCache);
-    // Derived chart data depends on both source stores as well as filters.
-    // Without these observers, a chart accessed before a store mutation
-    // stays stale until the user changes a date/operator filter.
-    appointments.observableMap.observe(_nullifyCache);
-    expenses.observableMap.observe(_nullifyCache);
   }
 }
 

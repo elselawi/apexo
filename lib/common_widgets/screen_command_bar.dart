@@ -77,13 +77,13 @@ Border listDividerBorder(BuildContext context) {
 }
 
 class TopSearch extends StatelessWidget {
-  final TextEditingController controller;
-  final void Function(void Function()) setState;
   const TopSearch({
     super.key,
     required this.controller,
     required this.setState,
   });
+  final TextEditingController controller;
+  final void Function(void Function()) setState;
 
   @override
   Widget build(BuildContext context) {

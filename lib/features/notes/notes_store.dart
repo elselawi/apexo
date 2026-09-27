@@ -15,10 +15,6 @@ import '../../core/store.dart';
 const _storeName = "notes";
 
 class Notes extends Store<Note> {
-  // Parent-to-children index for faster childInstances lookup
-  final Map<String, List<String>> _parentToChildren = {};
-  bool _indexBuilt = false;
-
   Notes()
       : super(
           modeling: Note.fromJson,
@@ -30,9 +26,12 @@ class Notes extends Store<Note> {
             networkActions.isSyncing(networkActions.isSyncing() - 1);
           },
         );
+  // Parent-to-children index for faster childInstances lookup
+  final Map<String, List<String>> _parentToChildren = {};
+  bool _indexBuilt = false;
 
   @override
-  init() {
+  void init() {
     super.init();
     onLogoutCallbacks.add(endSession);
 

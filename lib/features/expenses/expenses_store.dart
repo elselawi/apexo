@@ -26,7 +26,7 @@ class Expenses extends Store<Expense> {
         );
 
   @override
-  init() {
+  void init() {
     super.init();
     onLogoutCallbacks.add(endSession);
     observableMap.observe((_) => nullifyExpensesCache());
@@ -99,7 +99,7 @@ class Expenses extends Store<Expense> {
 
   List<String> get allItems {
     if (_cachedAllItems != null) return _cachedAllItems!;
-    Set<String> items = {};
+    final Set<String> items = {};
     for (var doc in docs.values) {
       for (var item in doc.items) {
         items.add(item);

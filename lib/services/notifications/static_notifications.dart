@@ -16,30 +16,29 @@ import 'package:flutter/foundation.dart';
 import 'package:toastification/toastification.dart';
 
 class NotificationAction {
-  final Color color;
-  final String label;
-  final VoidCallback action;
-  final String hideOnRoute;
   NotificationAction({
     required this.color,
     required this.label,
     required this.action,
     required this.hideOnRoute,
   });
+  final Color color;
+  final String label;
+  final VoidCallback action;
+  final String hideOnRoute;
 }
 
 class StaticNotification {
-  final IconData icon;
-  final String title;
-  final String body;
-  final List<NotificationAction> actions;
-
   StaticNotification({
     required this.icon,
     required this.title,
     required this.body,
     required this.actions,
   });
+  final IconData icon;
+  final String title;
+  final String body;
+  final List<NotificationAction> actions;
 }
 
 class _NotificationsService {

@@ -39,15 +39,14 @@ ButtonStyle get _deleteButtonStyle => const ButtonStyle(
 // ─── Gallery delete button ───────────────────────────────────────────────
 
 class _GalleryDeleteButton extends StatelessWidget {
-  final VoidCallback onConfirm;
-  final String rowId;
-  final String name;
-
   const _GalleryDeleteButton({
     required this.onConfirm,
     required this.rowId,
     required this.name,
   });
+  final VoidCallback onConfirm;
+  final String rowId;
+  final String name;
 
   @override
   Widget build(BuildContext context) {
@@ -70,16 +69,15 @@ class _GalleryDeleteButton extends StatelessWidget {
 }
 
 class GalleryDownloadButton extends StatefulWidget {
-  final String? rowId;
-  final String name;
-  final String? buttonLabel;
-
   const GalleryDownloadButton({
     super.key,
     this.rowId,
     this.buttonLabel,
     required this.name,
   });
+  final String? rowId;
+  final String name;
+  final String? buttonLabel;
 
   @override
   State<GalleryDownloadButton> createState() => GalleryDownloadButtonState();
@@ -125,11 +123,6 @@ class GalleryDownloadButtonState extends State<GalleryDownloadButton> {
 /// When [imageProvider] is supplied (e.g. from an already-open viewer), it is
 /// used directly. Otherwise [rowId] + [name] are used to load a thumbnail.
 class FileDeletePreview extends StatelessWidget {
-  final String? rowId;
-  final String name;
-  final double size;
-  final ImageProvider? imageProvider;
-
   const FileDeletePreview({
     super.key,
     this.rowId,
@@ -137,6 +130,10 @@ class FileDeletePreview extends StatelessWidget {
     this.size = 80,
     this.imageProvider,
   });
+  final String? rowId;
+  final String name;
+  final double size;
+  final ImageProvider? imageProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -183,11 +180,6 @@ class FileDeletePreview extends StatelessWidget {
 // ─── Upload configuration ────────────────────────────────────────────────
 
 class GalleryUploadConfig {
-  final Store? store;
-  final Future<void> Function(List<String> newNames) modelPersistence;
-  final bool canUpload;
-  final Set<UploadSource> acceptedSources;
-
   const GalleryUploadConfig({
     this.store,
     required this.modelPersistence,
@@ -199,11 +191,35 @@ class GalleryUploadConfig {
       UploadSource.files
     },
   });
+  final Store? store;
+  final Future<void> Function(List<String> newNames) modelPersistence;
+  final bool canUpload;
+  final Set<UploadSource> acceptedSources;
 }
 
 // ─── GridGallery widget ───────────────────────────────────────────────────
 
 class GridGallery extends StatefulWidget {
+  const GridGallery({
+    super.key,
+    required this.rowId,
+    required this.imgs,
+    this.dcmImgs = const [],
+    required this.onPressDelete,
+    this.onPressDeleteDcm,
+    this.onTapDcm,
+    required this.canDelete,
+    this.countPerLine = 3,
+    this.rowWidth = 350,
+    this.size,
+    this.clipCount = 0,
+    this.slideshowEnabled = false,
+    this.drawings,
+    this.onSaveDrawing,
+    this.onTapClip,
+    this.onProgress,
+    this.uploadConfig,
+  });
   final String rowId;
   final List<String> imgs;
 
@@ -234,27 +250,6 @@ class GridGallery extends StatefulWidget {
   final VoidCallback? onTapClip;
   final void Function(bool)? onProgress;
   final GalleryUploadConfig? uploadConfig;
-
-  const GridGallery({
-    super.key,
-    required this.rowId,
-    required this.imgs,
-    this.dcmImgs = const [],
-    required this.onPressDelete,
-    this.onPressDeleteDcm,
-    this.onTapDcm,
-    required this.canDelete,
-    this.countPerLine = 3,
-    this.rowWidth = 350,
-    this.size,
-    this.clipCount = 0,
-    this.slideshowEnabled = false,
-    this.drawings,
-    this.onSaveDrawing,
-    this.onTapClip,
-    this.onProgress,
-    this.uploadConfig,
-  });
 
   @override
   State<GridGallery> createState() => _GridGalleryState();
@@ -352,7 +347,7 @@ class _GridGalleryState extends State<GridGallery>
     if (cfg == null || !cfg.canUpload) return;
     final src = cfg.acceptedSources;
     await flyoutFocusFix(context);
-    _uploadFlyoutCtrl.showFlyout(
+    unawaited(_uploadFlyoutCtrl.showFlyout(
       builder: (ctx) => MenuFlyout(
         items: [
           if (src.contains(UploadSource.camera) &&
@@ -383,7 +378,7 @@ class _GridGalleryState extends State<GridGallery>
             ),
         ],
       ),
-    );
+    ));
   }
 
   Future<void> _doDelete(String img) async {
@@ -578,7 +573,7 @@ class _GridGalleryState extends State<GridGallery>
     final providers = await _loadImages(viewableImgs);
     if (providers == null || !context.mounted) return;
     final multi = MultiImageProvider(providers, initialIndex: initialIndex);
-    showImageViewerPager(
+    unawaited(showImageViewerPager(
       context,
       multi,
       backgroundColor: Colors.black.withValues(alpha: 0.9),
@@ -591,7 +586,7 @@ class _GridGalleryState extends State<GridGallery>
       imageIds: viewableImgs,
       onSaveDrawing: widget.onSaveDrawing,
       onPressDelete: (int index) => _doDelete(viewableImgs[index]),
-    );
+    ));
   }
 
   /// Loads [imgs] with a blocking dialog, caches providers, and returns them.
@@ -759,10 +754,9 @@ class _GridGalleryState extends State<GridGallery>
 // ─── Entrance animation wrapper ───────────────────────────────────────────
 
 class _EntranceWrapper extends StatelessWidget {
+  const _EntranceWrapper({required this.child, this.animation});
   final Widget child;
   final Animation<double>? animation;
-
-  const _EntranceWrapper({required this.child, this.animation});
 
   @override
   Widget build(BuildContext context) {
@@ -784,6 +778,21 @@ class _EntranceWrapper extends StatelessWidget {
 // ─── Individual image tile ────────────────────────────────────────────────
 
 class _ImageTile extends StatefulWidget {
+  const _ImageTile({
+    required this.img,
+    required this.rowId,
+    this.isDcm = false,
+    required this.canDelete,
+    required this.showClipOverlay,
+    required this.remainingCount,
+    required this.onTap,
+    required this.onDelete,
+    required this.imageProviders,
+    required this.downloadingFiles,
+    required this.tileSize,
+    this.useOriginal = false,
+    this.onTapClip,
+  });
   final String img;
   final String rowId;
 
@@ -802,22 +811,6 @@ class _ImageTile extends StatefulWidget {
   final double tileSize;
   final bool useOriginal;
   final VoidCallback? onTapClip;
-
-  const _ImageTile({
-    required this.img,
-    required this.rowId,
-    this.isDcm = false,
-    required this.canDelete,
-    required this.showClipOverlay,
-    required this.remainingCount,
-    required this.onTap,
-    required this.onDelete,
-    required this.imageProviders,
-    required this.downloadingFiles,
-    required this.tileSize,
-    this.useOriginal = false,
-    this.onTapClip,
-  });
 
   @override
   State<_ImageTile> createState() => _ImageTileState();
@@ -1088,17 +1081,16 @@ class _DcmBadge extends StatelessWidget {
 // ─── File thumbnail ───────────────────────────────────────────────────────
 
 class _FileThumbnail extends StatelessWidget {
-  final String name;
-  final double iconSize;
-  final bool showLabel;
-  final double? labelWidth;
-
   const _FileThumbnail({
     required this.name,
     required this.iconSize,
     this.showLabel = true,
     this.labelWidth,
   });
+  final String name;
+  final double iconSize;
+  final bool showLabel;
+  final double? labelWidth;
 
   String get _ext => name.contains('.') ? name.split('.').last : '';
   String get _baseName => displayNameForFile(name).replaceAll('.$_ext', '');
@@ -1214,10 +1206,9 @@ class _ShimmerPlaceholderState extends State<_ShimmerPlaceholder>
 }
 
 class _ShimmerPainter extends CustomPainter {
+  _ShimmerPainter({required this.progress, required this.isDark});
   final double progress;
   final bool isDark;
-
-  _ShimmerPainter({required this.progress, required this.isDark});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1260,9 +1251,8 @@ class _ShimmerPainter extends CustomPainter {
 // ─── "+N" frosted overlay ─────────────────────────────────────────────────
 
 class _ClipCountOverlay extends StatelessWidget {
-  final int count;
-
   const _ClipCountOverlay({required this.count});
+  final int count;
 
   @override
   Widget build(BuildContext context) {
@@ -1312,6 +1302,19 @@ class _ClipCountOverlay extends StatelessWidget {
 // ─── Featured masonry ─────────────────────────────────────────────────────
 
 class _FeaturedMasonry extends StatefulWidget {
+  const _FeaturedMasonry({
+    required this.rowId,
+    required this.imgs,
+    required this.width,
+    required this.canDelete,
+    required this.clipCount,
+    required this.imageProviders,
+    required this.downloadingFiles,
+    required this.onTapImage,
+    required this.onDeleteImage,
+    required this.dcmNames,
+    this.onTapClip,
+  });
   final String rowId;
   final List<String> imgs;
   final double width;
@@ -1326,20 +1329,6 @@ class _FeaturedMasonry extends StatefulWidget {
   /// Names in [imgs] that are DCM X-rays (sourced from `GridGallery.dcmImgs`).
   /// Only these get the DCM badge / spinner placeholder / viewer routing.
   final Set<String> dcmNames;
-
-  const _FeaturedMasonry({
-    required this.rowId,
-    required this.imgs,
-    required this.width,
-    required this.canDelete,
-    required this.clipCount,
-    required this.imageProviders,
-    required this.downloadingFiles,
-    required this.onTapImage,
-    required this.onDeleteImage,
-    required this.dcmNames,
-    this.onTapClip,
-  });
 
   @override
   State<_FeaturedMasonry> createState() => _FeaturedMasonryState();

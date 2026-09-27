@@ -10,6 +10,19 @@ import 'package:hive_flutter/adapters.dart';
 /// as an expandable "Skipped files" section so the dentist can see why a
 /// file wasn't imported.
 class DicomSkippedEntry {
+  const DicomSkippedEntry({
+    required this.path,
+    required this.reason,
+    required this.timestamp,
+  });
+
+  factory DicomSkippedEntry.fromJson(Map<String, dynamic> json) =>
+      DicomSkippedEntry(
+        path: json['path'] as String? ?? '',
+        reason: json['reason'] as String? ?? '',
+        timestamp: json['timestamp'] as String? ?? '',
+      );
+
   /// Absolute path to the `.dcm` file.
   final String path;
 
@@ -19,24 +32,11 @@ class DicomSkippedEntry {
   /// When the skip was logged (ISO 8601).
   final String timestamp;
 
-  const DicomSkippedEntry({
-    required this.path,
-    required this.reason,
-    required this.timestamp,
-  });
-
   Map<String, dynamic> toJson() => {
         'path': path,
         'reason': reason,
         'timestamp': timestamp,
       };
-
-  factory DicomSkippedEntry.fromJson(Map<String, dynamic> json) =>
-      DicomSkippedEntry(
-        path: json['path'] as String? ?? '',
-        reason: json['reason'] as String? ?? '',
-        timestamp: json['timestamp'] as String? ?? '',
-      );
 }
 
 /// Hive-backed log of DICOM files that were skipped during a scan.
@@ -94,7 +94,8 @@ class DicomSkippedLog {
       return box.values
           .map((raw) {
             try {
-              return DicomSkippedEntry.fromJson(jsonDecode(raw));
+              return DicomSkippedEntry.fromJson(
+                  jsonDecode(raw) as Map<String, dynamic>);
             } catch (_) {
               return null;
             }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -689,7 +690,7 @@ class OrderRowState extends State<OrderRow>
           onPressed: () async {
             if (inProgress) return;
             await flyoutFocusFix(context);
-            moreOptionsCtrl.showFlyout(builder: (context) {
+            unawaited(moreOptionsCtrl.showFlyout(builder: (context) {
               return MenuFlyout(
                 items: [
                   MenuFlyoutItem(
@@ -720,7 +721,7 @@ class OrderRowState extends State<OrderRow>
                                 orElse: () => Expense.fromJson(
                                     {"supplierName": "Unknown"}))
                             .supplierName;
-                        deleteConfirmCtrl.showFlyout(
+                        unawaited(deleteConfirmCtrl.showFlyout(
                             builder: (ctx) => ConfirmDeleteFlyout(
                                 restorable: true,
                                 controller: deleteConfirmCtrl,
@@ -745,13 +746,13 @@ class OrderRowState extends State<OrderRow>
                                           ? null
                                           : true;
                                   expenses.set(widget.order);
-                                }));
+                                })));
                       });
                     },
                   ),
                 ],
               );
-            });
+            }));
           },
         ),
       ),
@@ -760,11 +761,6 @@ class OrderRowState extends State<OrderRow>
 }
 
 class DashedLine extends StatelessWidget {
-  final double thickness;
-  final double dashWidth;
-  final double dashGap;
-  final Color? color;
-
   const DashedLine({
     super.key,
     this.thickness = 1,
@@ -772,6 +768,10 @@ class DashedLine extends StatelessWidget {
     this.dashGap = 3,
     this.color,
   });
+  final double thickness;
+  final double dashWidth;
+  final double dashGap;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -789,17 +789,16 @@ class DashedLine extends StatelessWidget {
 }
 
 class _DashedLinePainter extends CustomPainter {
-  final Color color;
-  final double thickness;
-  final double dashWidth;
-  final double dashGap;
-
   _DashedLinePainter({
     required this.color,
     required this.thickness,
     required this.dashWidth,
     required this.dashGap,
   });
+  final Color color;
+  final double thickness;
+  final double dashWidth;
+  final double dashGap;
 
   @override
   void paint(Canvas canvas, Size size) {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/language_picker.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -246,12 +247,14 @@ class _LoginScreenState extends State<LoginScreen> {
     // if it supports only one methood
     // there's no need to show a menu
     if (suppCamera && !suppGallery) {
-      PatientSide.fromQR(ImagePicker().pickImage(source: ImageSource.camera));
+      unawaited(PatientSide.fromQR(
+          ImagePicker().pickImage(source: ImageSource.camera)));
     } else if (suppGallery && !suppCamera) {
-      PatientSide.fromQR(ImagePicker().pickImage(source: ImageSource.gallery));
+      unawaited(PatientSide.fromQR(
+          ImagePicker().pickImage(source: ImageSource.gallery)));
     } else {
       await flyoutFocusFix(context);
-      _qrFlyoutController.showFlyout(builder: (ctx) {
+      unawaited(_qrFlyoutController.showFlyout(builder: (ctx) {
         return MenuFlyout(
           items: [
             if (suppGallery)
@@ -270,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
           ],
         );
-      });
+      }));
     }
   }
 

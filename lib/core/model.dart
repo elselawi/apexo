@@ -5,6 +5,11 @@ import 'package:fluent_ui/fluent_ui.dart';
 import '../utils/uuid.dart';
 
 class Model {
+  Model.fromJson(Map<String, dynamic> json)
+      : id = uuid(),
+        title = "" {
+    fromJson(json);
+  }
   String id;
   bool? archived;
   bool get locked => false;
@@ -22,12 +27,6 @@ class Model {
     return _color ??= getDeterministicItem<Color>(colorsWithoutYellow, id);
   }
 
-  Model.fromJson(Map<String, dynamic> json)
-      : id = uuid(),
-        title = "" {
-    fromJson(json);
-  }
-
   Map<String, String> get labels {
     return {};
   }
@@ -37,9 +36,9 @@ class Model {
   }
 
   void fromJson(Map<String, dynamic> json) {
-    if (json["id"] != null) id = json["id"];
-    if (json["archived"] != null) archived = json["archived"];
-    if (json["title"] != null) title = json["title"];
+    if (json["id"] != null) id = json["id"] as String;
+    if (json["archived"] != null) archived = json["archived"] as bool?;
+    if (json["title"] != null) title = json["title"] as String;
   }
 
   Map<String, dynamic> toJson() {
@@ -66,7 +65,6 @@ class Model {
     return false;
   }
 }
-
 
 /**
  ********* Example usage

@@ -31,11 +31,11 @@ void main() {
     print('${_red}No locale files found.$_reset');
     exit(1);
   }
-  print('${_bold}📁 Found ${localeFiles.length} locale files:$_reset');
+  print('$_bold📁 Found ${localeFiles.length} locale files:$_reset');
   for (final f in localeFiles) {
     final marker =
-        _basename(f.path) == 'en.dart' ? ' ${_green}(reference)$_reset' : '';
-    print('   ${_dim}${_basename(f.path)}$_reset$marker');
+        _basename(f.path) == 'en.dart' ? ' $_green(reference)$_reset' : '';
+    print('   $_dim${_basename(f.path)}$_reset$marker');
   }
 
   // Use en.dart as the canonical reference
@@ -51,8 +51,8 @@ void main() {
   }
 
   // ── 3. Cross-reference keys across ALL files ──
-  print('\n${_bold}🔍 CROSS-REFERENCING KEYS ACROSS ALL LOCALES$_reset');
-  print('${_dim}${'─' * 60}$_reset');
+  print('\n$_bold🔍 CROSS-REFERENCING KEYS ACROSS ALL LOCALES$_reset');
+  print('$_dim${'─' * 60}$_reset');
 
   final allKeySets = <String, Set<String>>{};
   for (final e in locales.entries) {
@@ -71,31 +71,31 @@ void main() {
     if (missing.isNotEmpty) {
       allMatch = false;
       print(
-          '${_red}  ✗ $refName → ${entry.key}: MISSING ${missing.length} key(s)$_reset');
+          '$_red  ✗ $refName → ${entry.key}: MISSING ${missing.length} key(s)$_reset');
       for (final k in missing) {
         print(
-            '     ${_red}- "$k"$_reset  ${_dim}($refName = "${locales[refName]![k]}")$_reset');
+            '     $_red- "$k"$_reset  $_dim($refName = "${locales[refName]![k]}")$_reset');
       }
     }
     if (extra.isNotEmpty) {
       allMatch = false;
       print(
-          '${_yellow}  ⚠ ${entry.key}: ${extra.length} extra key(s) not in $refName$_reset');
+          '$_yellow  ⚠ ${entry.key}: ${extra.length} extra key(s) not in $refName$_reset');
       for (final k in extra) {
         print(
-            '     ${_yellow}+ "$k"$_reset  ${_dim}= "${locales[entry.key]![k]}"$_reset');
+            '     $_yellow+ "$k"$_reset  $_dim= "${locales[entry.key]![k]}"$_reset');
       }
     }
   }
 
   if (allMatch) {
     print(
-        '${_green}  ✓ All ${localeFiles.length} files have identical keys (${refKeys.length} keys)$_reset');
+        '$_green  ✓ All ${localeFiles.length} files have identical keys (${refKeys.length} keys)$_reset');
   }
 
   // ── 4. Scan codebase for txt("...") calls ──
-  print('\n${_bold}🔎 SCANNING CODEBASE FOR UNLOCALIZED STRINGS$_reset');
-  print('${_dim}${'─' * 60}$_reset');
+  print('\n$_bold🔎 SCANNING CODEBASE FOR UNLOCALIZED STRINGS$_reset');
+  print('$_dim${'─' * 60}$_reset');
 
   final workspaceRoot = _findWorkspaceRoot(localizationDir);
   final txtCalls = _scanCodebaseForTxtCalls(workspaceRoot);
@@ -113,28 +113,27 @@ void main() {
   final unlocalized = usedKeys.difference(refKeys);
   if (unlocalized.isNotEmpty) {
     print(
-        '${_yellow}  ⚠ ${unlocalized.length} string(s) used via txt() but NOT localized:$_reset');
+        '$_yellow  ⚠ ${unlocalized.length} string(s) used via txt() but NOT localized:$_reset');
     for (final s in unlocalized) {
       final locations = txtCalls
           .where((c) => c.key == s)
           .map((c) => '${_relativePath(c.file, workspaceRoot)}:${c.line}')
           .toSet()
           .take(3);
-      print(
-          '  ${_yellow}  "$s"$_reset  ${_dim}→ ${locations.join(', ')}$_reset');
+      print('  $_yellow  "$s"$_reset  $_dim→ ${locations.join(', ')}$_reset');
     }
   } else {
     print(
-        '${_green}  ✓ All txt() calls reference existing dictionary keys$_reset');
+        '$_green  ✓ All txt() calls reference existing dictionary keys$_reset');
   }
 
   // ── 5. Unused localization strings: blind search for definitively unused ──
-  print('\n${_bold}🧹 UNUSED LOCALIZATION STRINGS$_reset');
-  print('${_dim}${'─' * 60}$_reset');
+  print('\n$_bold🧹 UNUSED LOCALIZATION STRINGS$_reset');
+  print('$_dim${'─' * 60}$_reset');
 
   final initiallyUnused = refKeys.difference(usedKeys);
-  var definitelyUnused = <String>[];
-  var maybeDynamic = <String>[];
+  final definitelyUnused = <String>[];
+  final maybeDynamic = <String>[];
 
   if (initiallyUnused.isNotEmpty) {
     // Blind search: for each key not seen as txt("..."), check if the raw
@@ -151,50 +150,49 @@ void main() {
 
     if (definitelyUnused.isNotEmpty) {
       print(
-          '${_red}  ✗ ${definitelyUnused.length} key(s) DEFINITIVELY UNUSED (string not found anywhere in code):$_reset');
+          '$_red  ✗ ${definitelyUnused.length} key(s) DEFINITIVELY UNUSED (string not found anywhere in code):$_reset');
       for (final k in definitelyUnused) {
-        print(
-            '  ${_red}  "$k"$_reset  ${_dim}= "${locales[refName]![k]}"$_reset');
+        print('  $_red  "$k"$_reset  $_dim= "${locales[refName]![k]}"$_reset');
       }
     }
 
     if (maybeDynamic.isNotEmpty) {
       print(
-          '${_yellow}  ⚠ ${maybeDynamic.length} key(s) may be used dynamically (string found in code, but not as txt("...")):$_reset');
+          '$_yellow  ⚠ ${maybeDynamic.length} key(s) may be used dynamically (string found in code, but not as txt("...")):$_reset');
       for (final k in maybeDynamic) {
         print(
-            '  ${_yellow}  "$k"$_reset  ${_dim}= "${locales[refName]![k]}"$_reset');
+            '  $_yellow  "$k"$_reset  $_dim= "${locales[refName]![k]}"$_reset');
       }
     }
 
     if (definitelyUnused.isEmpty && maybeDynamic.isEmpty) {
       print(
-          '${_green}  ✓ All ${refKeys.length} keys are referenced in code$_reset');
+          '$_green  ✓ All ${refKeys.length} keys are referenced in code$_reset');
     }
   } else {
     print(
-        '${_green}  ✓ All ${refKeys.length} keys are referenced in code$_reset');
+        '$_green  ✓ All ${refKeys.length} keys are referenced in code$_reset');
   }
 
   // ── 6. Dynamic txt() calls (variable / interpolation) ──
-  print('\n${_bold}🔄 DYNAMIC txt() CALLS (cannot statically verify)$_reset');
-  print('${_dim}${'─' * 60}$_reset');
+  print('\n$_bold🔄 DYNAMIC txt() CALLS (cannot statically verify)$_reset');
+  print('$_dim${'─' * 60}$_reset');
   if (dynamicUsages.isNotEmpty) {
     final seen = <String>{};
     for (final call in dynamicUsages) {
       final loc =
-          '${_relativePath(call.file, workspaceRoot)}:${call.line}  ${_dim}→ ${call.excerpt}$_reset';
+          '${_relativePath(call.file, workspaceRoot)}:${call.line}  $_dim→ ${call.excerpt}$_reset';
       if (seen.add(loc)) {
-        print('  ${_cyan}  $loc$_reset');
+        print('  $_cyan  $loc$_reset');
       }
     }
   } else {
-    print('${_green}  ✓ None$_reset');
+    print('$_green  ✓ None$_reset');
   }
 
   // ── 7. Summary ──
-  print('\n${_bold}📊 SUMMARY$_reset');
-  print('${_dim}${'─' * 60}$_reset');
+  print('\n$_bold📊 SUMMARY$_reset');
+  print('$_dim${'─' * 60}$_reset');
   print('  Locale files          : ${localeFiles.length}');
   print('  Reference keys        : ${refKeys.length}');
   print('  Keys used in code     : ${usedKeys.length}');
@@ -205,8 +203,8 @@ void main() {
   print('  Possibly dynamic      : ${maybeDynamic.length}');
 
   // ── 8. Per-file coverage ──
-  print('\n${_bold}📋 PER-FILE COVERAGE$_reset');
-  print('${_dim}${'─' * 60}$_reset');
+  print('\n$_bold📋 PER-FILE COVERAGE$_reset');
+  print('$_dim${'─' * 60}$_reset');
   for (final entry in locales.entries) {
     final coverage = refKeys.isEmpty
         ? 100.0
@@ -215,7 +213,7 @@ void main() {
             100);
     final c = coverage == 100.0 ? _green : _yellow;
     print(
-        '  ${entry.key.padRight(30)} ${entry.value.length.toString().padLeft(4)} entries   coverage: ${c}${coverage.toStringAsFixed(1)}%$_reset');
+        '  ${entry.key.padRight(30)} ${entry.value.length.toString().padLeft(4)} entries   coverage: $c${coverage.toStringAsFixed(1)}%$_reset');
   }
 
   print('');
@@ -254,11 +252,12 @@ Map<String, String> _extractDictionary(File file) {
 }
 
 class _TxtCall {
+  // the matched txt(...) call snippet
+  _TxtCall(this.file, this.line, this.key, this.excerpt);
   final String file;
   final int line;
   final String? key; // null if argument is not a plain string literal
-  final String excerpt; // the matched txt(...) call snippet
-  _TxtCall(this.file, this.line, this.key, this.excerpt);
+  final String excerpt;
 }
 
 /// Scan all .dart files under [root] for txt(...) calls.

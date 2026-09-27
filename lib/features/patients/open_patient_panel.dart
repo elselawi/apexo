@@ -224,8 +224,8 @@ class _PatientQrPageState extends State<_PatientQrPage> {
 }
 
 class _PrintQRButton extends StatelessWidget {
-  final Patient patient;
   const _PrintQRButton(this.patient);
+  final Patient patient;
 
   @override
   Widget build(BuildContext context) {
@@ -257,8 +257,8 @@ class _PrintQRButton extends StatelessWidget {
 }
 
 class _PatientWebPage extends StatelessWidget {
-  final Patient patient;
   const _PatientWebPage(this.patient);
+  final Patient patient;
 
   @override
   Widget build(BuildContext context) {
@@ -281,15 +281,15 @@ class _PatientWebPage extends StatelessWidget {
 }
 
 class PatientAppointments extends StatelessWidget {
-  final Patient patient;
-  final List<AppointmentSections> hide;
-  final Appointment? excludedAppointment;
-  final bool readOnly;
   const PatientAppointments(this.patient,
       {super.key,
       this.readOnly = false,
       this.excludedAppointment,
       this.hide = const [AppointmentSections.patient]});
+  final Patient patient;
+  final List<AppointmentSections> hide;
+  final Appointment? excludedAppointment;
+  final bool readOnly;
   @override
   Widget build(BuildContext context) {
     return MStreamBuilder(
@@ -407,8 +407,8 @@ class PatientAppointments extends StatelessWidget {
 }
 
 class _PatientDetails extends StatefulWidget {
-  final Patient patient;
   const _PatientDetails(this.patient);
+  final Patient patient;
 
   @override
   State<_PatientDetails> createState() => _PatientDetailsState();

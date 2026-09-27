@@ -1,9 +1,8 @@
 import 'package:apexo/core/model.dart';
 
 class Setting extends Model {
-  String value = "";
-
   Setting.fromJson(super.json) : super.fromJson();
+  String value = "";
 
   @override
   Setting copy(bool blank) {
@@ -13,7 +12,7 @@ class Setting extends Model {
   @override
   void fromJson(Map<String, dynamic> json) {
     super.fromJson(json);
-    value = json["value"] ?? value;
+    value = json["value"] as String? ?? value;
   }
 
   @override

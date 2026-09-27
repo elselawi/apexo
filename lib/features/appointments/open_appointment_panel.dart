@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
@@ -39,7 +40,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
 void closeAppointmentsPanels() {
-  List<String> toClose = [];
+  final List<String> toClose = [];
   for (var panel in routes.panels()) {
     final identifier = panel.identifier;
     if (identifier.contains("appointments") ||
@@ -159,8 +160,8 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) {
 }
 
 class _AppointmentGallery extends StatefulWidget {
-  final Panel<Appointment> panel;
   const _AppointmentGallery(this.panel);
+  final Panel<Appointment> panel;
 
   @override
   State<_AppointmentGallery> createState() => _AppointmentGalleryState();
@@ -320,8 +321,8 @@ class _OtherAppointmentsPhotos extends StatelessWidget {
 }
 
 class _AppointmentDetails extends StatefulWidget {
-  final Appointment appointment;
   const _AppointmentDetails(this.appointment);
+  final Appointment appointment;
 
   @override
   State<_AppointmentDetails> createState() => _AppointmentDetailsState();
@@ -459,8 +460,8 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
 }
 
 class _OperativeDetails extends StatefulWidget {
-  final Appointment appointment;
   const _OperativeDetails(this.appointment);
+  final Appointment appointment;
 
   @override
   State<_OperativeDetails> createState() => _OperativeDetailsState();
@@ -512,7 +513,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
   @override
   Widget build(BuildContext context) {
     double paymentDifference = 0;
-    Patient? patient = widget.appointment.patient;
+    final Patient? patient = widget.appointment.patient;
     if (patient != null) {
       final paymentsMade = patient.doneAppointments
           .where((a) => a.id != widget.appointment.id)
@@ -825,7 +826,7 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
           ),
           onPressed: () async {
             await flyoutFocusFix(context);
-            otherAppointmentsFlyout.showFlyout(
+            unawaited(otherAppointmentsFlyout.showFlyout(
               barrierDismissible: true,
               dismissWithEsc: true,
               builder: (context) {
@@ -921,7 +922,7 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
                       ],
                     ));
               },
-            );
+            ));
           },
         ),
       ),
@@ -930,9 +931,9 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
 }
 
 class LabWorkEditor extends StatefulWidget {
+  const LabWorkEditor({super.key, required this.appointment, this.onDelete});
   final Appointment appointment;
   final VoidCallback? onDelete;
-  const LabWorkEditor({super.key, required this.appointment, this.onDelete});
   @override
   State<LabWorkEditor> createState() => _LabWorkEditorState();
 }

@@ -10,6 +10,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:intl/intl.dart' as intl;
+import 'package:pocketbase/pocketbase.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import 'appointments_store.dart';
@@ -20,13 +21,6 @@ import 'appointments_store.dart';
 
 /// Self-contained time-grid view that positions appointments by duration.
 class CalendarTimelineView extends StatefulWidget {
-  final List<Appointment> items;
-  final bool showPayments;
-  final DateTime selectedDate;
-  final void Function(Appointment item) onSelect;
-  final void Function(Appointment item) onSetTime;
-  final void Function(DateTime date) onAddNew;
-
   const CalendarTimelineView({
     super.key,
     required this.items,
@@ -36,6 +30,12 @@ class CalendarTimelineView extends StatefulWidget {
     required this.onSetTime,
     required this.onAddNew,
   });
+  final List<Appointment> items;
+  final bool showPayments;
+  final DateTime selectedDate;
+  final void Function(Appointment item) onSelect;
+  final void Function(Appointment item) onSetTime;
+  final void Function(DateTime date) onAddNew;
 
   @override
   State<CalendarTimelineView> createState() => _CalendarTimelineViewState();
@@ -744,14 +744,6 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class TimelineChip extends StatefulWidget {
-  final Appointment item;
-  final Color color;
-  final bool showPayments;
-  final VoidCallback onTap;
-  final void Function(LongPressStartDetails) onLongPressStart;
-  final void Function(LongPressMoveUpdateDetails) onLongPressMove;
-  final VoidCallback onLongPressEnd;
-
   const TimelineChip({
     super.key,
     required this.item,
@@ -762,6 +754,13 @@ class TimelineChip extends StatefulWidget {
     required this.onLongPressMove,
     required this.onLongPressEnd,
   });
+  final Appointment item;
+  final Color color;
+  final bool showPayments;
+  final VoidCallback onTap;
+  final void Function(LongPressStartDetails) onLongPressStart;
+  final void Function(LongPressMoveUpdateDetails) onLongPressMove;
+  final VoidCallback onLongPressEnd;
 
   @override
   State<TimelineChip> createState() => _TimelineChipState();
@@ -1018,7 +1017,7 @@ class _TimelineChipState extends State<TimelineChip> {
                       if (checked) {
                         widget.item.operatorsIDs.remove(op.id);
                       } else {
-                        widget.item.operatorsIDs.add(op.id);
+                        widget.item.operatorsIDs.add(op.id as String);
                       }
                       appointments.set(widget.item);
                       flyoutSetState(() {});
@@ -1036,7 +1035,7 @@ class _TimelineChipState extends State<TimelineChip> {
                             onChanged: (_) => toggle(),
                           ),
                           const SizedBox(width: 8),
-                          Text(accounts.name(op),
+                          Text(accounts.name(op as RecordModel),
                               style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: checked
@@ -1072,15 +1071,15 @@ class _TimelineChipState extends State<TimelineChip> {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class ChairInfo {
+  const ChairInfo({required this.id, required this.name, required this.color});
   final String id;
   final String name;
   final Color color;
-  const ChairInfo({required this.id, required this.name, required this.color});
 }
 
 class _DashedLinePainter extends CustomPainter {
-  final Color color;
   _DashedLinePainter({required this.color});
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {

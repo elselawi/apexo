@@ -6,11 +6,11 @@ import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class AppointmentsListFooter extends StatelessWidget {
-  final String? forPatientID;
   const AppointmentsListFooter({
     super.key,
     this.forPatientID,
   });
+  final String? forPatientID;
 
   @override
   Widget build(BuildContext context) {

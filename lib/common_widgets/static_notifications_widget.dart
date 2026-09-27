@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
@@ -22,9 +23,9 @@ class StaticNotificationsIcon extends StatelessWidget {
   }
 }
 
-showStaticNotifications() async {
+Future<void> showStaticNotifications() async {
   await flyoutFocusFix(null);
-  _notificationsFlyoutController.showFlyout(
+  unawaited(_notificationsFlyoutController.showFlyout(
     barrierColor: Colors.transparent,
     barrierDismissible: true,
     dismissWithEsc: true,
@@ -136,5 +137,5 @@ showStaticNotifications() async {
               ),
       );
     },
-  );
+  ));
 }

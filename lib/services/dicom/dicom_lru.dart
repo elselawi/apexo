@@ -15,6 +15,22 @@ import 'package:path/path.dart' as p;
 /// in `filesDir()`. The [lastAccess] timestamp drives LRU eviction when
 /// the total DCM cache exceeds [DicomLruCache.evictionThresholdBytes].
 class DicomLruEntry {
+  const DicomLruEntry({
+    required this.name,
+    required this.lastAccess,
+    required this.size,
+    this.evicted = false,
+  });
+
+  factory DicomLruEntry.fromJson(Map<String, dynamic> json) => DicomLruEntry(
+        name: json['name'] as String? ?? '',
+        lastAccess: json['lastAccess'] != null
+            ? DateTime.parse(json['lastAccess'] as String)
+            : DateTime.fromMillisecondsSinceEpoch(0),
+        size: json['size'] as int? ?? 0,
+        evicted: json['evicted'] as bool? ?? false,
+      );
+
   /// Local filename (relative to `filesDir()`).
   final String name;
 
@@ -28,13 +44,6 @@ class DicomLruEntry {
   /// The Hive entry is kept so we know the file was once cached; the next
   /// viewer open re-downloads it transparently and clears this flag.
   final bool evicted;
-
-  const DicomLruEntry({
-    required this.name,
-    required this.lastAccess,
-    required this.size,
-    this.evicted = false,
-  });
 
   DicomLruEntry copyWith({
     DateTime? lastAccess,
@@ -54,15 +63,6 @@ class DicomLruEntry {
         'size': size,
         'evicted': evicted,
       };
-
-  factory DicomLruEntry.fromJson(Map<String, dynamic> json) => DicomLruEntry(
-        name: json['name'] as String? ?? '',
-        lastAccess: json['lastAccess'] != null
-            ? DateTime.parse(json['lastAccess'] as String)
-            : DateTime.fromMillisecondsSinceEpoch(0),
-        size: json['size'] as int? ?? 0,
-        evicted: json['evicted'] as bool? ?? false,
-      );
 }
 
 /// Hive-backed LRU cache of downloaded `.dcm` originals on native platforms.
@@ -77,20 +77,6 @@ class DicomLruEntry {
 /// On web there is no filesystem, so this cache is never used (the viewer
 /// fetches the `.dcm` fresh per session into memory only).
 class DicomLruCache {
-  DicomLruCache._({
-    this.evictionThresholdBytes = _defaultThreshold,
-    this.storagePath,
-    this.boxName = _defaultBoxName,
-    DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
-
-  static const int _defaultThreshold = 500 * 1024 * 1024; // 500 MB
-  static const String _defaultBoxName = 'dicom_lru';
-  static int _testBoxSequence = 0;
-
-  static final DicomLruCache _instance = DicomLruCache._();
-  static DicomLruCache get instance => _instance;
-
   /// Creates an instance with a custom eviction threshold. For testing only —
   /// the singleton uses the default 500 MB threshold.
   @visibleForTesting
@@ -101,6 +87,19 @@ class DicomLruCache {
     DateTime Function()? clock,
   })  : boxName = boxName ?? 'dicom_lru_test_${++_testBoxSequence}',
         _clock = clock ?? DateTime.now;
+  DicomLruCache._({
+    DateTime Function()? clock,
+  })  : storagePath = null,
+        evictionThresholdBytes = _defaultThreshold,
+        boxName = _defaultBoxName,
+        _clock = clock ?? DateTime.now;
+
+  static const int _defaultThreshold = 500 * 1024 * 1024; // 500 MB
+  static const String _defaultBoxName = 'dicom_lru';
+  static int _testBoxSequence = 0;
+
+  static final DicomLruCache _instance = DicomLruCache._();
+  static DicomLruCache get instance => _instance;
 
   /// When the total size of non-evicted entries exceeds this, the LRU
   /// entries are evicted (local files deleted) until usage drops below it.

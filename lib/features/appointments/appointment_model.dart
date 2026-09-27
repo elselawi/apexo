@@ -9,6 +9,9 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/imgs.dart';
 
 class Appointment extends Model {
+  // DICOM X-ray filenames
+
+  Appointment.fromJson(super.json) : super.fromJson();
   @override
   String? get avatar {
     if (launch.isDemo) return "https://person.alisaleem.workers.dev/";
@@ -140,9 +143,7 @@ class Appointment extends Model {
   /* 15 */ bool labworkReceived = false;
   /* 16 */ Map<String, String> drawings = {};
   /* 17 */ int duration = 15; // in minutes, default 15
-  /* 18 */ List<String> dcmImgs = []; // DICOM X-ray filenames
-
-  Appointment.fromJson(super.json) : super.fromJson();
+  /* 18 */ List<String> dcmImgs = [];
 
   @override
   Appointment copy(bool blank) {
@@ -152,30 +153,35 @@ class Appointment extends Model {
   @override
   void fromJson(Map<String, dynamic> json) {
     super.fromJson(json);
-    /* 1 */ operatorsIDs =
-        List<String>.from(json["operatorsIDs"] ?? operatorsIDs);
-    /* 2 */ prescriptions =
-        List<String>.from(json["prescriptions"] ?? prescriptions);
-    /* 3 */ patientID = json["patientID"] ?? patientID;
-    /* 4 */ preOpNotes = json["preOpNotes"] ?? preOpNotes;
-    /* 5 */ postOpNotes = json["postOpNotes"] ?? postOpNotes;
+    /* 1 */ operatorsIDs = List<String>.from(
+        json["operatorsIDs"] as List<dynamic>? ?? operatorsIDs);
+    /* 2 */ prescriptions = List<String>.from(
+        json["prescriptions"] as List<dynamic>? ?? prescriptions);
+    /* 3 */ patientID = json["patientID"] as String? ?? patientID;
+    /* 4 */ preOpNotes = json["preOpNotes"] as String? ?? preOpNotes;
+    /* 5 */ postOpNotes = json["postOpNotes"] as String? ?? postOpNotes;
     /* 6 */ price = double.parse((json["price"] ?? price).toString());
     /* 7 */ paid = double.parse((json["paid"] ?? paid).toString());
-    /* 8 */ imgs = List<String>.from(json["imgs"] ?? imgs);
+    /* 8 */ imgs = List<String>.from(json["imgs"] as List<dynamic>? ?? imgs);
     /* 9 */ date = (json["date"] != null
-        ? DateTime.fromMillisecondsSinceEpoch((json["date"] * 60000).toInt())
+        ? DateTime.fromMillisecondsSinceEpoch(
+            ((json["date"] as num) * 60000).toInt())
         : date);
-    /* 10 */ isDone = (json["isDone"] ?? isDone);
-    /* 11 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
-    /* 11b */ teethExtraNotes =
-        Map<String, String>.from(json['teethExtraNotes'] ?? teethExtraNotes);
-    /* 12 */ hasLabwork = json["hasLabwork"] ?? hasLabwork;
-    /* 13 */ labName = json["labName"] ?? labName;
-    /* 14 */ labworkNotes = json["labworkNotes"] ?? labworkNotes;
-    /* 15 */ labworkReceived = json["labworkReceived"] ?? labworkReceived;
-    /* 16 */ drawings = Map<String, String>.from(json['drawings'] ?? drawings);
+    /* 10 */ isDone = (json["isDone"] as bool? ?? isDone);
+    /* 11 */ teeth = Map<String, String>.from(
+        json['teeth'] as Map<dynamic, dynamic>? ?? teeth);
+    /* 11b */ teethExtraNotes = Map<String, String>.from(
+        json['teethExtraNotes'] as Map<dynamic, dynamic>? ?? teethExtraNotes);
+    /* 12 */ hasLabwork = json["hasLabwork"] as bool? ?? hasLabwork;
+    /* 13 */ labName = json["labName"] as String? ?? labName;
+    /* 14 */ labworkNotes = json["labworkNotes"] as String? ?? labworkNotes;
+    /* 15 */ labworkReceived =
+        json["labworkReceived"] as bool? ?? labworkReceived;
+    /* 16 */ drawings = Map<String, String>.from(
+        json['drawings'] as Map<dynamic, dynamic>? ?? drawings);
     /* 17 */ duration = (json["duration"] as int?) ?? duration;
-    /* 18 */ dcmImgs = List<String>.from(json["dcmImgs"] ?? dcmImgs);
+    /* 18 */ dcmImgs =
+        List<String>.from(json["dcmImgs"] as List<dynamic>? ?? dcmImgs);
   }
 
   @override
@@ -193,8 +199,9 @@ class Appointment extends Model {
     /* 9 */ if (isDone != d.isDone) json['isDone'] = isDone;
     /* 10 */ json['date'] = (date.millisecondsSinceEpoch / 60000).round();
     /* 11 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
-    /* 11b */ if (teethExtraNotes.isNotEmpty)
+    /* 11b */ if (teethExtraNotes.isNotEmpty) {
       json['teethExtraNotes'] = teethExtraNotes;
+    }
     /* 12 */ if (hasLabwork != d.hasLabwork) json['hasLabwork'] = hasLabwork;
     /* 13 */ if (labName != d.labName) json['labName'] = labName;
     /* 14 */ if (labworkNotes != d.labworkNotes) {

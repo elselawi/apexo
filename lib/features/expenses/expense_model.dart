@@ -6,6 +6,7 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/imgs.dart';
 
 class Expense extends Model {
+  Expense.fromJson(super.json) : super.fromJson();
   @override
   bool get locked {
     return login.perm(Perm.expenses).none;
@@ -56,8 +57,6 @@ class Expense extends Model {
   /* 9 */ List<String> photos = [];
   /* 10 */ String notes = "";
 
-  Expense.fromJson(super.json) : super.fromJson();
-
   @override
   Expense copy(bool blank) {
     return Expense.fromJson(blank ? {} : toJson());
@@ -66,22 +65,23 @@ class Expense extends Model {
   @override
   void fromJson(Map<String, dynamic> json) {
     super.fromJson(json);
-    /* 1 */ isSupplier = json['isSupplier'] ?? isSupplier;
-    /* 2 */ supplierName = json['supplierName'] ?? supplierName;
+    /* 1 */ isSupplier = json['isSupplier'] as bool? ?? isSupplier;
+    /* 2 */ supplierName = json['supplierName'] as String? ?? supplierName;
 
-    /* 3 */ supplierId = json['supplierId'] ?? supplierId;
+    /* 3 */ supplierId = json['supplierId'] as String? ?? supplierId;
     /* 4 */ date = json["date"] != null
-        ? DateTime.fromMillisecondsSinceEpoch(json["date"] > 99999999
-            ? json["date"]
-            : json["date"] * 60 * 60 * 1000)
+        ? DateTime.fromMillisecondsSinceEpoch((json["date"] as num) > 99999999
+            ? (json["date"] as num).toInt()
+            : ((json["date"] as num) * 60 * 60 * 1000).toInt())
         : date;
-    /* 5 */ items = List<String>.from(json["items"] ?? items);
+    /* 5 */ items = List<String>.from(json["items"] as List<dynamic>? ?? items);
     /* 6 */ cost = double.parse((json["cost"] ?? cost).toString());
     /* 7 */ paidAmount =
         double.parse((json["paidAmount"] ?? paidAmount).toString());
-    /* 8 */ processed = json['processed'] ?? processed;
-    /* 9 */ photos = List<String>.from(json["photos"] ?? photos);
-    /* 10 */ notes = json["notes"] ?? notes;
+    /* 8 */ processed = json['processed'] as bool? ?? processed;
+    /* 9 */ photos =
+        List<String>.from(json["photos"] as List<dynamic>? ?? photos);
+    /* 10 */ notes = json["notes"] as String? ?? notes;
   }
 
   @override

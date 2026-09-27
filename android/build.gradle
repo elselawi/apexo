@@ -5,14 +5,42 @@ allprojects {
     }
 }
 
-rootProject.buildDir = "../build"
+// Gradle 9 removed `Project.buildDir`; use the buildDirectory layout property
+// (same shape as Flutter 3.47's Android template).
+def newBuildDir = rootProject.file("../build")
+rootProject.layout.buildDirectory.set(newBuildDir)
 subprojects {
-    project.buildDir = "${rootProject.buildDir}/${project.name}"
+    project.layout.buildDirectory.set(new File(newBuildDir, project.name))
 }
+
+// NOTE: the `minimumPluginCompileSdk` workaround that used to live here has been
+// removed. dicom_toolkit 0.2.10 compiles against SDK 36 itself, so no plugin
+// module needs to be lifted, and AGP 9 requires consumers to compile at or above
+// a library's compileSdk anyway.
+
 subprojects {
     project.evaluationDependsOn(":app")
 }
 
+// file_picker 11.x skips applying the Kotlin Gradle plugin whenever it detects
+// AGP >= 9, assuming AGP's built-in Kotlin is active. This app runs with
+// `android.builtInKotlin=false` (Flutter's default), so that module's Kotlin
+// would never be compiled and the app would fail to link FilePickerPlugin
+// (`cannot find symbol: class FilePickerPlugin`). Apply KGP to that module only,
+// and pin jvmTarget to match its Java 17 compileOptions.
+// Remove this once file_picker keys off the `android.builtInKotlin` property
+// instead of the AGP version alone.
+subprojects { subproject ->
+    if (subproject.name == "file_picker") {
+        subproject.plugins.withId("com.android.library") {
+            subproject.pluginManager.apply("org.jetbrains.kotlin.android")
+        }
+        subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { task ->
+            task.compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
+    }
+}
+
 tasks.register("clean", Delete) {
-    delete rootProject.buildDir
+    delete newBuildDir
 }

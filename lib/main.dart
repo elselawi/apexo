@@ -49,7 +49,7 @@ void main() async {
       (options) {
         options.dsn = sentryDSN;
       },
-      appRunner: () => runApp(ApexoApp()),
+      appRunner: () => runApp(const ApexoApp()),
     );
   }
 }

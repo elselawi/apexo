@@ -37,16 +37,6 @@ enum AppointmentSections {
 }
 
 class AppointmentCard extends StatelessWidget {
-  final Appointment appointment;
-  final List<AppointmentSections> hide;
-  final String? difference;
-  final int number;
-  final int photosClipCount;
-  final bool readOnly;
-  final bool showLeftBorder;
-  final bool showSectionTitle;
-  final Color openButtonColor;
-  final int openOnTab;
   const AppointmentCard({
     super.key,
     required this.appointment,
@@ -60,6 +50,16 @@ class AppointmentCard extends StatelessWidget {
     this.openButtonColor = const Color(0xFF0078D4),
     this.openOnTab = 0,
   });
+  final Appointment appointment;
+  final List<AppointmentSections> hide;
+  final String? difference;
+  final int number;
+  final int photosClipCount;
+  final bool readOnly;
+  final bool showLeftBorder;
+  final bool showSectionTitle;
+  final Color openButtonColor;
+  final int openOnTab;
 
   @override
   Widget build(BuildContext context) {

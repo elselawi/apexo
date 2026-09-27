@@ -30,12 +30,6 @@ import "../features/archive/archive_screen.dart";
 import "../features/settings/settings_stores.dart";
 
 class PanelTab {
-  final String title;
-  final IconData icon;
-  final Widget body;
-  final double padding;
-  final bool onlyIfSaved;
-  final Widget? footer;
   PanelTab({
     required this.title,
     required this.icon,
@@ -44,9 +38,39 @@ class PanelTab {
     this.onlyIfSaved = false,
     this.padding = 10,
   });
+  final String title;
+  final IconData icon;
+  final Widget body;
+  final double padding;
+  final bool onlyIfSaved;
+  final Widget? footer;
 }
 
 class Panel<T extends Model> {
+  Panel({
+    required this.item,
+    required this.store,
+    required this.tabs,
+    required this.icon,
+    required this.singularName,
+    required this.unicodeSymbol,
+    this.inherentlyScrollable = false,
+    this.showTitles = false,
+    this.title,
+    this.showBottomControls = true,
+    int? selectedTabIndex,
+    this.canNotBeNew = false,
+    this.additionalControls,
+    this.archiveButtonReplacement,
+    this.checkUnsavedChanges,
+    this.onSave,
+  }) {
+    identifier = store.get(item.id) == null
+        ? (canNotBeNew ? item.id : "new+${store.local?.name ?? singularName}")
+        : item.id;
+    savedJson = jsonEncode(item.toJson());
+    selectedTab(selectedTabIndex);
+  }
   final T item;
   final Store store;
   final List<PanelTab> tabs;
@@ -77,37 +101,22 @@ class Panel<T extends Model> {
   /// default [store.set(item)]. Useful when the panel manages multiple items.
   final void Function()? onSave;
 
-  Panel({
-    required this.item,
-    required this.store,
-    required this.tabs,
-    required this.icon,
-    required this.singularName,
-    required this.unicodeSymbol,
-    this.inherentlyScrollable = false,
-    this.showTitles = false,
-    this.title,
-    this.showBottomControls = true,
-    int? selectedTabIndex,
-    this.canNotBeNew = false,
-    this.additionalControls,
-    this.archiveButtonReplacement,
-    this.checkUnsavedChanges,
-    this.onSave,
-  }) {
-    identifier = store.get(item.id) == null
-        ? (canNotBeNew ? item.id : "new+${store.local?.name ?? singularName}")
-        : item.id;
-    savedJson = jsonEncode(item.toJson());
-    selectedTab(selectedTabIndex);
-  }
-
   String get storeSingularName {
     return store.local!.name.substring(0, store.local!.name.length - 1);
   }
 }
 
 class Route {
+  Route({
+    required this.title,
+    required this.identifier,
+    required this.icon,
+    required this.screen,
+    required this.onSelect,
+    this.navbarTitle = "",
+    this.accessible = true,
+    this.onFooter = false,
+  });
   IconData icon;
   String title;
   String identifier;
@@ -122,17 +131,6 @@ class Route {
 
   /// callback to be called when the route is selected
   void Function() onSelect;
-
-  Route({
-    required this.title,
-    required this.identifier,
-    required this.icon,
-    required this.screen,
-    required this.onSelect,
-    this.navbarTitle = "",
-    this.accessible = true,
-    this.onFooter = false,
-  });
 }
 
 class _Routes {
@@ -190,7 +188,7 @@ class _Routes {
             onSelect: () async {
               await accounts.reloadFromRemote();
               await patients.synchronize();
-              appointments.synchronize();
+              unawaited(appointments.synchronize());
             },
           ),
         if (login.perm(Perm.appointments).some || login.isAdmin)
@@ -207,7 +205,7 @@ class _Routes {
               }
               await accounts.reloadFromRemote();
               await patients.synchronize();
-              appointments.synchronize();
+              unawaited(appointments.synchronize());
             },
           ),
         if (login.perm(Perm.appointments).some || login.isAdmin)
@@ -248,7 +246,7 @@ class _Routes {
             onSelect: () async {
               await accounts.reloadFromRemote();
               await patients.synchronize();
-              expenses.synchronize();
+              unawaited(expenses.synchronize());
             },
           ),
         if (login.perm(Perm.stats).some || login.isAdmin)
@@ -267,7 +265,7 @@ class _Routes {
               }
               await accounts.reloadFromRemote();
               await patients.synchronize();
-              appointments.synchronize();
+              unawaited(appointments.synchronize());
             },
           ),
         if (login.isAdmin)
@@ -354,7 +352,8 @@ class _Routes {
   }
 
   Route? getByIdentifier(String identifier) {
-    var target = allRoutes.where((element) => element.identifier == identifier);
+    final target =
+        allRoutes.where((element) => element.identifier == identifier);
     if (target.isEmpty) return null;
     return target.first;
   }

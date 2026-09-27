@@ -626,10 +626,9 @@ void main() {
 }
 
 class _PersistingTestObj extends ObservablePersistingObject {
-  String value = '';
-
   _PersistingTestObj(super.id, String storagePath)
       : super(storagePath: storagePath);
+  String value = '';
 
   @override
   void fromJson(Map<String, dynamic> json) {
@@ -641,13 +640,12 @@ class _PersistingTestObj extends ObservablePersistingObject {
 }
 
 class MyClass extends Model {
-  String name = '';
-  int age = 0;
-
   MyClass.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
     name = json['name'] as String? ?? name;
     age = json['age'] as int? ?? age;
   }
+  String name = '';
+  int age = 0;
 
   @override
   Map<String, dynamic> toJson() {

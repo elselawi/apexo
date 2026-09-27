@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
@@ -28,7 +29,7 @@ Future<Expense?> showScanReceiptDialog(
     receipt = await ReceiptScanner.readReceiptFromXFile(photo);
   } catch (e) {
     if (context.mounted) {
-      showDialog(
+      unawaited(showDialog(
         context: context,
         builder: (ctx) => ContentDialog(
           style: dialogStyling(context, true, true),
@@ -41,7 +42,7 @@ Future<Expense?> showScanReceiptDialog(
             ),
           ],
         ),
-      );
+      ));
     }
     return null;
   }
@@ -60,13 +61,12 @@ Future<Expense?> showScanReceiptDialog(
 }
 
 class _ScanReceiptDialogContent extends StatefulWidget {
-  final ReceiptData receipt;
-  final XFile photo;
-
   const _ScanReceiptDialogContent({
     required this.receipt,
     required this.photo,
   });
+  final ReceiptData receipt;
+  final XFile photo;
 
   @override
   State<_ScanReceiptDialogContent> createState() =>

@@ -149,7 +149,7 @@ void main() {
       final record = await pb.collection("data").getOne(savedId);
       // making sure the image is there
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           1);
@@ -190,13 +190,13 @@ void main() {
       final record = await pb.collection("data").getOne(savedId);
       // making sure the image is there
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       // as well as the old one
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           1);
@@ -219,13 +219,13 @@ void main() {
       final record = await pb.collection("data").getOne(savedId);
       // making sure the image is there
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           1);
       // as well as the other one
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
@@ -256,24 +256,25 @@ void main() {
           predefinedMultipart: MultipartFile.fromString("imgs+", "content",
               filename: "x_file4.txt"));
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(4));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(4));
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file3"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file4"))
               .length,
           1);
@@ -301,24 +302,25 @@ void main() {
           predefinedMultipart: MultipartFile.fromString("imgs+", "content",
               filename: "x_file4.txt"));
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(4));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(4));
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file3"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file4"))
               .length,
           1);
@@ -346,44 +348,45 @@ void main() {
           predefinedMultipart: MultipartFile.fromString("imgs+", "content",
               filename: "x_file8.txt"));
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(8));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(8));
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file3"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file4"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file5"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file6"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file7"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file8"))
               .length,
           1);
@@ -391,44 +394,45 @@ void main() {
     test("removing one image", () async {
       await saveRemote.deleteImage(savedId, "file1.txt");
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(7));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(7));
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           0);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file3"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file4"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file5"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file6"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file7"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file8"))
               .length,
           1);
@@ -436,44 +440,45 @@ void main() {
     test("removing one image, but it doesn't exist", () async {
       await saveRemote.deleteImage(savedId, "file1.txt");
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(7));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(7));
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           0);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file3"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file4"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file5"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file6"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file7"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file8"))
               .length,
           1);
@@ -483,44 +488,45 @@ void main() {
       await saveRemote.deleteImage(savedId, "file7.txt");
       await saveRemote.deleteImage(savedId, "file8.txt");
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(5));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(5));
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file1"))
               .length,
           0);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file2"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file3"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file4"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file5"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file6"))
               .length,
           1);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file7"))
               .length,
           0);
       expect(
-          List<String>.from(record.data["imgs"])
+          List<String>.from(record.data["imgs"] as List<dynamic>)
               .where((item) => item.contains("file8"))
               .length,
           0);
@@ -532,23 +538,24 @@ void main() {
       await saveRemote.deleteImage(savedId, "file5.txt");
       await saveRemote.deleteImage(savedId, "file6.txt");
       final record = await pb.collection("data").getOne(savedId);
-      expect(List<String>.from(record.data["imgs"]).length, equals(0));
+      expect(List<String>.from(record.data["imgs"] as List<dynamic>).length,
+          equals(0));
     });
 
     // Bulk upsert test (implemented)
     test("upload/get large data", () async {
-      int initialVersion = await saveRemote.getVersion();
-      List<RowToWriteRemotely> largeData = [];
+      final int initialVersion = await saveRemote.getVersion();
+      final List<RowToWriteRemotely> largeData = [];
       for (int i = 0; i < 3500; i++) {
         largeData
             .add(RowToWriteRemotely(id: uuid(), data: '{"key": "value$i"}'));
       }
       await saveRemote.put(largeData);
 
-      int laterVersion = await saveRemote.getVersion();
+      final int laterVersion = await saveRemote.getVersion();
       expect(laterVersion, greaterThan(initialVersion));
 
-      var res = await saveRemote.getSince(version: initialVersion);
+      final res = await saveRemote.getSince(version: initialVersion);
       expect(res.version, greaterThan(initialVersion));
       expect(res.rows.length, equals(largeData.length));
     }, timeout: const Timeout(Duration(minutes: 2)));

@@ -1,4 +1,4 @@
-﻿import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
@@ -21,11 +21,6 @@ import 'appointments_store.dart';
 /// Simple list view of appointments, shown when [CalendarViewMode.agenda]
 /// is selected.
 class AgendaListView<Item extends Appointment> extends StatelessWidget {
-  final List<Item> items;
-  final bool showPayments;
-  final void Function(Item item) onSelect;
-  final void Function(Item item) onSetTime;
-
   const AgendaListView({
     super.key,
     required this.items,
@@ -33,6 +28,10 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
     required this.onSelect,
     required this.onSetTime,
   });
+  final List<Item> items;
+  final bool showPayments;
+  final void Function(Item item) onSelect;
+  final void Function(Item item) onSetTime;
 
   @override
   Widget build(BuildContext context) {
@@ -76,10 +75,6 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
 
 class AppointmentCalendarTile<Item extends Appointment>
     extends StatelessWidget {
-  final Item item;
-  final void Function(Item item) onSetTime;
-  final void Function(Item item) onSelect;
-  final bool showPayments;
   const AppointmentCalendarTile({
     super.key,
     required this.context,
@@ -88,6 +83,10 @@ class AppointmentCalendarTile<Item extends Appointment>
     required this.onSelect,
     required this.showPayments,
   });
+  final Item item;
+  final void Function(Item item) onSetTime;
+  final void Function(Item item) onSelect;
+  final bool showPayments;
 
   final BuildContext context;
 
@@ -196,7 +195,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                     final index =
                         routes.panels().indexWhere((p) => p.item.id == item.id);
                     if (index > -1) return routes.bringPanelToFront(index);
-                    TimeOfDay? res = await showTimePicker(
+                    final TimeOfDay? res = await showTimePicker(
                         context: context,
                         initialTime: TimeOfDay(
                             hour: item.date.hour, minute: item.date.minute));

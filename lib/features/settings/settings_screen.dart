@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -265,7 +266,7 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                   onPressed: () async {
-                    showDialog(
+                    unawaited(showDialog(
                         context: context,
                         barrierDismissible: false,
                         dismissWithEsc: false,
@@ -297,7 +298,7 @@ class SettingsScreen extends StatelessWidget {
                                 }),
                             style: dialogStyling(context, false, true),
                           );
-                        });
+                        }));
 
                     try {
                       cacheResetState(txt("initialSynchronization"));
@@ -332,17 +333,6 @@ class SettingsScreen extends StatelessWidget {
 }
 
 class SettingsItem extends StatefulWidget {
-  final String title;
-  final String description;
-  final IconData icon;
-  final InputType inputType;
-  final String identifier;
-  final Scope scope;
-  final List<ComboBoxItem<String>> options;
-  final Widget? footer;
-  final String initValue;
-  final Function(String newVal) apply;
-
   const SettingsItem({
     super.key,
     required this.identifier,
@@ -356,6 +346,16 @@ class SettingsItem extends StatefulWidget {
     this.options = const [],
     this.footer,
   });
+  final String title;
+  final String description;
+  final IconData icon;
+  final InputType inputType;
+  final String identifier;
+  final Scope scope;
+  final List<ComboBoxItem<String>> options;
+  final Widget? footer;
+  final String initValue;
+  final Function(String newVal) apply;
 
   @override
   State<StatefulWidget> createState() => SettingsItemState();

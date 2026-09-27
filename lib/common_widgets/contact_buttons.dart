@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
@@ -115,9 +116,9 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
     );
   }
 
-  showMenu() async {
+  Future<void> showMenu() async {
     await flyoutFocusFix(context);
-    flyoutCtrl.showFlyout(
+    unawaited(flyoutCtrl.showFlyout(
         barrierDismissible: true,
         dismissOnPointerMoveAway: false,
         dismissWithEsc: true,
@@ -144,7 +145,7 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
                           items: (ctx) =>
                               communicationActions(singleNumber.e164)))
                       .toList());
-        });
+        }));
   }
 
   List<MenuFlyoutItem> communicationActions(String num) {

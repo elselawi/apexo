@@ -88,7 +88,8 @@ Future<List<RemoteDcmFileRow>> getDcmFileRows() async {
       result.add(RemoteDcmFileRow(
         id: item.id,
         data: _asJsonMap(item.data['data']),
-        files: List<String>.from(item.data['imgs'] ?? const <String>[]),
+        files: List<String>.from(
+            item.data['imgs'] as List<dynamic>? ?? const <String>[]),
       ));
     }
     if (page >= pageResult.totalPages) break;
@@ -100,7 +101,7 @@ Future<List<RemoteDcmFileRow>> getDcmFileRows() async {
   return result;
 }
 
-Map<String, dynamic> _asJsonMap(dynamic value) {
+Map<String, dynamic> _asJsonMap(value) {
   if (value is Map) {
     return value.map((key, item) => MapEntry(key.toString(), item));
   }
@@ -127,7 +128,8 @@ Future<RemoteDcmFileRow> _getDcmFileRow(String rowID) async {
   final row = RemoteDcmFileRow(
     id: record.id,
     data: _asJsonMap(record.data['data']),
-    files: List<String>.from(record.data['imgs'] ?? const <String>[]),
+    files: List<String>.from(
+        record.data['imgs'] as List<dynamic>? ?? const <String>[]),
   );
   appointments.remote!.fullNamesCache[row.id] = List<String>.from(row.files);
   return row;
@@ -135,15 +137,14 @@ Future<RemoteDcmFileRow> _getDcmFileRow(String rowID) async {
 
 /// Server snapshot of one data row and its PocketBase file field.
 class RemoteDcmFileRow {
-  final String id;
-  final Map<String, dynamic> data;
-  final List<String> files;
-
   RemoteDcmFileRow({
     required this.id,
     required this.data,
     required this.files,
   });
+  final String id;
+  final Map<String, dynamic> data;
+  final List<String> files;
 
   /// DICOM originals referenced by the row's `dcmImgs` JSON field.
   List<String> get referencedDcmFiles {
@@ -155,17 +156,16 @@ class RemoteDcmFileRow {
 
 /// Result of an explicit DICOM orphan-file cleanup.
 class DcmOrphanCleanupResult {
-  final int rowsScanned;
-  final Map<String, List<String>> orphanFilesByRow;
-  final Map<String, List<String>> deletedFilesByRow;
-  final Map<String, Object> failuresByRow;
-
   const DcmOrphanCleanupResult({
     required this.rowsScanned,
     required this.orphanFilesByRow,
     required this.deletedFilesByRow,
     required this.failuresByRow,
   });
+  final int rowsScanned;
+  final Map<String, List<String>> orphanFilesByRow;
+  final Map<String, List<String>> deletedFilesByRow;
+  final Map<String, Object> failuresByRow;
 
   List<String> get orphanFiles =>
       orphanFilesByRow.values.expand((files) => files).toList();

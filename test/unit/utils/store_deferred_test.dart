@@ -12,10 +12,9 @@ import '../../helpers/hive_setup.dart';
 
 /// Minimal model for testing Store's deferred helpers.
 class _TestModel extends Model {
+  _TestModel.fromJson(super.json) : super.fromJson();
   List<String> imgs = [];
   List<String> dcmImgs = [];
-
-  _TestModel.fromJson(super.json) : super.fromJson();
 
   @override
   _TestModel copy(bool blank) => _TestModel.fromJson(blank ? {} : toJson());
@@ -23,8 +22,8 @@ class _TestModel extends Model {
   @override
   void fromJson(Map<String, dynamic> json) {
     super.fromJson(json);
-    imgs = List<String>.from(json['imgs'] ?? imgs);
-    dcmImgs = List<String>.from(json['dcmImgs'] ?? dcmImgs);
+    imgs = List<String>.from(json['imgs'] as List<dynamic>? ?? imgs);
+    dcmImgs = List<String>.from(json['dcmImgs'] as List<dynamic>? ?? dcmImgs);
   }
 
   @override
@@ -52,15 +51,14 @@ class _SyncTestStore extends Store<_TestModel> {
 }
 
 class _SyncTestRemote extends SaveRemote {
-  final int version;
-  final VersionedResult updates;
-  bool failUpload = false;
-
   _SyncTestRemote({required this.version, required this.updates})
       : super(
           storeName: 'test',
           pbInstance: PocketBase('http://fake-pocketbase'),
         );
+  final int version;
+  final VersionedResult updates;
+  bool failUpload = false;
 
   @override
   Future<int> getVersion() async => version;

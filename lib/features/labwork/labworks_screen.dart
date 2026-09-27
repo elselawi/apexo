@@ -300,14 +300,14 @@ class _LabworksTableState extends State<LabworksTable> {
 
   Widget _buildCommandBar() {
     return ScreenCommandBar(
-      mainButton: (login.perm(Perm.postOp).none ||
-              login.perm(Perm.appointments).none)
-          ? const SizedBox.shrink()
-          : IconButton(
-              icon: ButtonContent(WindowsIcons.add, txt("newLabwork")),
-              onPressed: () {
-                openLabworkPanel(null);
-              }),
+      mainButton:
+          (login.perm(Perm.postOp).none || login.perm(Perm.appointments).none)
+              ? const SizedBox.shrink()
+              : IconButton(
+                  icon: ButtonContent(WindowsIcons.add, txt("newLabwork")),
+                  onPressed: () {
+                    openLabworkPanel(null);
+                  }),
     );
   }
 

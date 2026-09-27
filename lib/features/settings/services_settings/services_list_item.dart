@@ -3,10 +3,6 @@ import 'package:apexo/common_widgets/item_title.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class ServicesListItem extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final List<Widget> actions;
-  final Widget trailingText;
   const ServicesListItem({
     super.key,
     required this.title,
@@ -14,6 +10,10 @@ class ServicesListItem extends StatelessWidget {
     required this.actions,
     required this.trailingText,
   });
+  final String title;
+  final String subtitle;
+  final List<Widget> actions;
+  final Widget trailingText;
 
   @override
   Widget build(BuildContext context) {

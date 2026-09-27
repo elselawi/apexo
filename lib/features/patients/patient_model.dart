@@ -18,16 +18,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:http/http.dart' as http;
 
 class PatientTableLabel {
-  final IconData icon;
-  final Color? color;
-  final String title;
-  final String content;
-  final double value;
-  final String searchableString;
-  final bool sortable;
-  final int tab;
-  final bool view;
-
   PatientTableLabel({
     this.icon = FluentIcons.document,
     this.color,
@@ -39,9 +29,20 @@ class PatientTableLabel {
     required this.sortable,
     required this.tab,
   });
+  final IconData icon;
+  final Color? color;
+  final String title;
+  final String content;
+  final double value;
+  final String searchableString;
+  final bool sortable;
+  final int tab;
+  final bool view;
 }
 
 class Patient extends Model {
+  @override
+  Patient.fromJson(super.json) : super.fromJson();
   List<String> get allPredefinedTreatments {
     final List<String> list = List.from(teeth.values);
     list.addAll((appointments.byPatient[id]?["all"] ?? []).fold<Set<String>>(
@@ -383,7 +384,7 @@ class Patient extends Model {
     return shortLink.body;
   }
 
-  get shortLink {
+  String get shortLink {
     if (link == null) return "";
     return "$shorteningServer/$link";
   }
@@ -404,9 +405,6 @@ class Patient extends Model {
   String get phonesString => phone.map((p) => p.e164).join(" ");
 
   @override
-  Patient.fromJson(super.json) : super.fromJson();
-
-  @override
   Patient copy(bool blank) {
     return Patient.fromJson(blank ? {} : toJson());
   }
@@ -416,21 +414,22 @@ class Patient extends Model {
     nullifyLabels();
     super.fromJson(json);
 
-    /* 1 */ birth = json['birth'] ?? birth;
-    /* 2 */ gender = json['gender'] ?? gender;
+    /* 1 */ birth = json['birth'] as int? ?? birth;
+    /* 2 */ gender = json['gender'] as int? ?? gender;
     /* 3 */ phone = json['phone'] == null
         ? []
-        : PhoneNumberExtractor.extract(json['phone'])
+        : PhoneNumberExtractor.extract(json['phone'] as String)
             .map((s) => ParsedPhoneNumber(s))
             .toList();
-    /* 4 */ email = json['email'] ?? email;
-    /* 5 */ address = json['address'] ?? address;
-    /* 6 */ tags = List<String>.from(json['tags'] ?? tags);
-    /* 7 */ notes = json['notes'] ?? notes;
-    /* 8 */ teeth = Map<String, String>.from(json['teeth'] ?? teeth);
-    /* 8b */ teethExtraNotes =
-        Map<String, String>.from(json['teethExtraNotes'] ?? teethExtraNotes);
-    /* 9 */ link = json["link"] ?? link;
+    /* 4 */ email = json['email'] as String? ?? email;
+    /* 5 */ address = json['address'] as String? ?? address;
+    /* 6 */ tags = List<String>.from(json['tags'] as List<dynamic>? ?? tags);
+    /* 7 */ notes = json['notes'] as String? ?? notes;
+    /* 8 */ teeth = Map<String, String>.from(
+        json['teeth'] as Map<dynamic, dynamic>? ?? teeth);
+    /* 8b */ teethExtraNotes = Map<String, String>.from(
+        json['teethExtraNotes'] as Map<dynamic, dynamic>? ?? teethExtraNotes);
+    /* 9 */ link = json["link"] as String? ?? link;
   }
 
   @override
@@ -446,8 +445,9 @@ class Patient extends Model {
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (notes != d.notes) json['notes'] = notes;
     /* 8 */ if (teeth.isNotEmpty) json['teeth'] = teeth;
-    /* 8b */ if (teethExtraNotes.isNotEmpty)
+    /* 8b */ if (teethExtraNotes.isNotEmpty) {
       json['teethExtraNotes'] = teethExtraNotes;
+    }
     /* 9 */ if (link != d.link) json['link'] = link;
     return json;
   }

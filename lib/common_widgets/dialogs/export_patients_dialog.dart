@@ -47,12 +47,16 @@ class _ImportPatientsDialogState extends State<ImportPatientsDialog> {
     });
   }
 
-  import() {
+  void import() {
     final patientsJson = csvToJsonList(patientsController.text);
     final aptsJson = csvToJsonList(aptsController.text);
 
-    patients.setAll(patientsJson.map((p) => Patient.fromJson(p)).toList());
-    appointments.setAll(aptsJson.map((p) => Appointment.fromJson(p)).toList());
+    patients.setAll(patientsJson
+        .map((p) => Patient.fromJson(p as Map<String, dynamic>))
+        .toList());
+    appointments.setAll(aptsJson
+        .map((p) => Appointment.fromJson(p as Map<String, dynamic>))
+        .toList());
 
     Navigator.pop(context);
   }
@@ -128,11 +132,11 @@ class _ImportPatientsDialogState extends State<ImportPatientsDialog> {
 }
 
 class ExportPatientsDialog extends StatefulWidget {
-  final Set<String> ids;
   const ExportPatientsDialog({
     super.key,
     required this.ids,
   });
+  final Set<String> ids;
 
   @override
   State<ExportPatientsDialog> createState() => _ExportPatientsDialogState();
@@ -216,7 +220,7 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
   }
 }
 
-showHowTo(FlyoutController controller) {
+void showHowTo(FlyoutController controller) {
   controller.showFlyout(
     builder: (ctx) {
       return SizedBox(
@@ -260,12 +264,12 @@ Tab _createExporterTab(
 }
 
 class _Exporter extends StatefulWidget {
-  final List<Map<String, dynamic>> data;
-  final Store store;
   const _Exporter({
     required this.data,
     required this.store,
   });
+  final List<Map<String, dynamic>> data;
+  final Store store;
 
   @override
   State<_Exporter> createState() => _ExporterState();
@@ -357,10 +361,6 @@ class _ExporterState extends State<_Exporter> {
 }
 
 class StyledSelectableText extends StatefulWidget {
-  final String text;
-  final double height;
-  final double width;
-  final String? storeName;
   const StyledSelectableText({
     super.key,
     required this.text,
@@ -368,6 +368,10 @@ class StyledSelectableText extends StatefulWidget {
     this.width = double.infinity,
     this.storeName,
   });
+  final String text;
+  final double height;
+  final double width;
+  final String? storeName;
 
   @override
   State<StyledSelectableText> createState() => _StyledSelectableTextState();

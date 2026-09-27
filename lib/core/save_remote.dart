@@ -11,11 +11,11 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:pocketbase/pocketbase.dart';
 
 class RowToWriteRemotely {
+  RowToWriteRemotely({required this.id, required this.data});
   String id;
   String data;
   String store = "";
-  RowToWriteRemotely({required this.id, required this.data});
-  toJson() {
+  Map<String, String> toJson() {
     return {
       "id": id,
       "data": data,
@@ -25,17 +25,24 @@ class RowToWriteRemotely {
 }
 
 class Row extends RowToWriteRemotely {
-  int ts;
   Row({required super.id, required super.data, required this.ts});
+  int ts;
 }
 
 class VersionedResult {
+  VersionedResult(this.version, this.rows);
   int version;
   List<Row> rows;
-  VersionedResult(this.version, this.rows);
 }
 
 class SaveRemote {
+  SaveRemote({
+    required this.storeName,
+    required this.pbInstance,
+    this.onOnlineStatusChange,
+  }) {
+    checkOnline();
+  }
   final String storeName;
   final PocketBase pbInstance;
 
@@ -48,13 +55,6 @@ class SaveRemote {
   bool isOnline = true;
   // Scope the in-flight guard to both row and filename. A hash-only key can
   final Map<String, Future<String>> _uploadsInFlight = {};
-  SaveRemote({
-    required this.storeName,
-    required this.pbInstance,
-    this.onOnlineStatusChange,
-  }) {
-    checkOnline();
-  }
 
   RecordService get remoteRows {
     return pbInstance.collection(dataCollectionName);
@@ -100,7 +100,7 @@ class SaveRemote {
   }
 
   Future<VersionedResult> getSince({int version = 0}) async {
-    List<Row> result = [];
+    final List<Row> result = [];
 
     final date = formatForPocketBase(version);
     bool nextPageExists = true;
@@ -122,7 +122,8 @@ class SaveRemote {
           result.add(
               Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts));
           fullNamesCache.addAll({
-            item.id: List<String>.from(item.data["imgs"] ?? const <String>[]),
+            item.id: List<String>.from(
+                item.data["imgs"] as List<dynamic>? ?? const <String>[]),
           });
         }
 
@@ -166,7 +167,7 @@ class SaveRemote {
     }
 
     // split data into chunks of 100
-    List<List<RowToWriteRemotely>> chunks = [];
+    final List<List<RowToWriteRemotely>> chunks = [];
     for (var i = 0; i < data.length; i += 100) {
       chunks.add(data.sublist(i, min(i + 100, data.length)));
     }
@@ -268,7 +269,8 @@ class SaveRemote {
       return List<String>.from(fullNamesCache[rowID]!);
     }
     final record = await remoteRows.getOne(rowID, fields: "imgs");
-    final names = List<String>.from(record.data["imgs"] ?? const <String>[]);
+    final names = List<String>.from(
+        record.data["imgs"] as List<dynamic>? ?? const <String>[]);
     fullNamesCache[rowID] = names;
     return List<String>.from(names);
   }
@@ -298,7 +300,7 @@ class SaveRemote {
     try {
       return await future;
     } finally {
-      _uploadsInFlight.remove(uploadKey);
+      unawaited(_uploadsInFlight.remove(uploadKey));
     }
   }
 
@@ -413,7 +415,7 @@ class SaveRemote {
             files: [multipart],
             fields: "imgs",
           ))
-              .data["imgs"] ??
+              .data["imgs"] as List<dynamic>? ??
           const <String>[]);
       if (newListOfImages.isEmpty) {
         throw StateError('PocketBase upload returned no file names');
@@ -476,7 +478,8 @@ class SaveRemote {
         usedCache = true;
       } else {
         final record = await remoteRows.getOne(rowID, fields: "imgs");
-        fullNames = List<String>.from(record.data["imgs"] ?? const <String>[]);
+        fullNames = List<String>.from(
+            record.data["imgs"] as List<dynamic>? ?? const <String>[]);
       }
       fullNamesCache[rowID] = fullNames;
 

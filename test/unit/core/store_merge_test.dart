@@ -11,15 +11,14 @@ import 'package:pocketbase/pocketbase.dart';
 import '../../helpers/hive_setup.dart';
 
 class _MergeSyncRemote extends SaveRemote {
-  final VersionedResult remoteUpdates;
-  final int remoteVersion;
-  final pushed = <RowToWriteRemotely>[];
-
   _MergeSyncRemote({required this.remoteUpdates, required this.remoteVersion})
       : super(
           storeName: 'merge-test',
           pbInstance: PocketBase('http://fake-pocketbase'),
         );
+  final VersionedResult remoteUpdates;
+  final int remoteVersion;
+  final pushed = <RowToWriteRemotely>[];
 
   @override
   Future<void> checkOnline() async {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -19,9 +20,8 @@ import 'package:flutter/material.dart' show showDatePicker;
 import 'package:flutter/services.dart';
 
 class NoteCard extends StatefulWidget {
-  final Note note;
-
   const NoteCard({super.key, required this.note});
+  final Note note;
 
   @override
   State<NoteCard> createState() => _NoteCardState();
@@ -622,7 +622,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         icon: Icon(isDeleted ? WindowsIcons.undo : WindowsIcons.delete),
         onPressed: () async {
           await flyoutFocusFix(context);
-          _confirmDeleteFlyoutCtrl.showFlyout(builder: (ctx) {
+          unawaited(_confirmDeleteFlyoutCtrl.showFlyout(builder: (ctx) {
             return ConfirmDeleteFlyout(
               restorable: true,
               actionText: isDeleted ? txt("restore") : txt("delete"),
@@ -644,7 +644,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
               ),
               controller: _confirmDeleteFlyoutCtrl,
             );
-          });
+          }));
         },
       ),
     );
@@ -959,7 +959,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         icon: const Icon(FluentIcons.edit_contact),
         onPressed: () async {
           await flyoutFocusFix(context);
-          _assigningFlyoutCtrl.showFlyout(builder: (context) {
+          unawaited(_assigningFlyoutCtrl.showFlyout(builder: (context) {
             return MenuFlyout(
                 items: List.generate(accounts.list().length, (i) {
               final item = accounts.list()[i];
@@ -980,7 +980,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
                       notes.set(widget.note..assignedTo = "");
                     },
                   )));
-          });
+          }));
         },
       ),
     );

@@ -100,7 +100,10 @@ final class RowPanel<T extends Model> extends Panel {
     } else {
       store.set(item);
     }
-    _existing = true;
+    // The record is stored now, so it is clean and it exists: without this the
+    // panel would keep saying "Cancel" over work it has just saved, and the
+    // next close would ask about changes that are already in the store.
+    markSaved();
     recordSaved(item.id);
   }
 

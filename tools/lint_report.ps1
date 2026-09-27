@@ -4,7 +4,10 @@ param(
     [string]$Path = "analyze.txt"
 )
 
-$pattern = '^\s*(?<sev>error|warning|info)\s+-\s+(?<msg>.*?)\s+-\s+(?<loc>.+?):(?<line>\d+):(?<col>\d+)\s+-\s+(?<rule>\S+)\s*$'
+# The analyzer writes `severity - file:line:col - message - rule`, so the
+# location comes second and the message third. (The pattern used to expect them
+# the other way round, which parsed every line as nothing at all.)
+$pattern = '^\s*(?<sev>error|warning|info)\s+-\s+(?<loc>.+?):(?<line>\d+):(?<col>\d+)\s+-\s+(?<msg>.*?)\s+-\s+(?<rule>\S+)\s*$'
 
 $rows = [System.Collections.Generic.List[object]]::new()
 foreach ($line in (Get-Content -LiteralPath $Path)) {

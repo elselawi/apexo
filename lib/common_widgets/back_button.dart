@@ -1,4 +1,4 @@
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';

@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:apexo/app/app_route.dart';
+import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/app/panels/panel_screen.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
 import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';

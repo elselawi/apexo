@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:apexo/app/app_route.dart';
+import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';

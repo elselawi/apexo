@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:apexo/app/app_route.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/app_route.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/notes/notes_store.dart';

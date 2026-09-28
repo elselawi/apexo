@@ -110,7 +110,8 @@ void registerDicomTests() {
 
       // …and the screen shows it: the card is keyed by the record key the
       // pending import carries.
-      await E2E.waitFor(tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
+      await E2E.waitFor(
+          tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
           description: 'the pending import card');
       expect(find.textContaining('${import.fileCount}'), findsWidgets,
           reason: 'the card does not say how many files it holds');
@@ -173,7 +174,8 @@ void registerDicomTests() {
           reason: 'the study date does not line up with the patient\'s visit');
 
       // The card shows both sides of the match, which is what the dentist reads.
-      await E2E.waitFor(tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
+      await E2E.waitFor(
+          tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
           description: 'the matched pending card');
       expect(find.text(identity.patientName), findsWidgets,
           reason: 'the card does not name the file\'s patient');
@@ -201,7 +203,8 @@ void registerDicomTests() {
               'although no patient has that name (confidence '
               '${import.confidence})');
 
-      await E2E.waitFor(tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
+      await E2E.waitFor(
+          tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
           description: 'the unmatched pending card');
       expect(find.text(txt('dicomNoMatch')), findsWidgets,
           reason: 'the card does not say the match has to be picked by hand');
@@ -226,7 +229,8 @@ void registerDicomTests() {
       final pending = await _scan(tester, dir);
       expect(pending.length, 1, reason: await _skippedSummary());
       final import = pending.first;
-      await E2E.waitFor(tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
+      await E2E.waitFor(
+          tester, find.byKey(WK.dicomPendingCard(import.dicomPatientId)),
           description: 'the pending card');
 
       await E2E.tap(tester, find.byKey(WK.dicomChangeMatch),
@@ -274,7 +278,7 @@ void registerDicomTests() {
     testWidgets('05: a .dcm can be uploaded on web', (tester) async {
       // Not a test problem: **the web import path does not exist.**
       // `handleNewDcm` returns `''` on web (`lib/utils/imgs.dart:193`), the DICOM
-      // route is Windows-gated (`routes.dart`), and the gallery's file picker
+      // route is Windows-gated (`lib/app/routing/routes.dart`), and the gallery's file picker
       // sends every picked file through `handleNewImage` — so a `.dcm` picked on
       // web lands as an ordinary attachment, never as an X-ray. Recorded in
       // `todo.md` §6.2 as a missing feature rather than a bug.

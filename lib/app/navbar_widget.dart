@@ -1,6 +1,6 @@
 import 'dart:async';
-import 'package:apexo/app/app_route.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/app_route.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';

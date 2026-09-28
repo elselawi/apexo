@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'package:apexo/app/app.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';

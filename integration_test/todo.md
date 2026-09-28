@@ -311,7 +311,7 @@ reaches here, and neither disturbs what the user is doing. "Elsewhere" is a seco
 PocketBase (`integration_test/support/remote_rows.dart` — the `data` collection the engine reads,
 written by hand rather than by a second engine, which would only test the engine against itself), and
 the syncs are the app's own: the shell's sync action, the reconnect, and the navigation sync
-(`routes.dart` calls `synchronize()` on route changes, which is how a fresh login pulls the clinic).
+(`lib/app/routing/routes.dart` calls `synchronize()` on route changes, which is how a fresh login pulls the clinic).
 
 - [x] `01: the login pulls the rows another device already wrote` — the row is written after the
       run's first boot (which resets the server) and before the login; the login lands on the
@@ -1656,7 +1656,7 @@ Each new group is one file under `integration_test/groups/` plus **one line in
 - **`find.text(x)` matches the search box once `x` is in it.** "The search found the record" has to
   be asserted as a **row** (`find.ancestor(of: find.text(x), matching: find.byType(ListTile))`); two
   tests passed on nothing because of this, one of them for months (§6.1).
-- **The login does not sync by itself.** `routes.dart` calls `AppDatabase.synchronize()` on *route
+- **The login does not sync by itself.** `lib/app/routing/routes.dart` calls `AppDatabase.synchronize()` on *route
   changes*, and that is what pulls a clinic after a fresh login (the dashboard is a route change); the
   shell's sync action and the reconnect are the other two entry points. A test that wants a pull logs
   in (and lands somewhere) or presses the sync action.

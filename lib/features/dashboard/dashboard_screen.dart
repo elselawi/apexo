@@ -1,5 +1,5 @@
-import 'package:apexo/app/app_route.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/app_route.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/current_account.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';

@@ -180,7 +180,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
 4. Register the store in `lib/utils/init_stores.dart` (call `.init()`)
 5. Create `<name>_screen.dart` — the list/datatable view
 6. Create `open_<name>_panel.dart` — the detail/edit panel builder
-7. Add an `AppRoute` value in `lib/app/app_route.dart` (and its screen in
+7. Add an `AppRoute` value in `lib/app/routing/app_route.dart` (and its screen in
    `buildScreen`)
 8. Add a "New X" button that calls the panel function
 9. Add localization keys for all user-facing strings

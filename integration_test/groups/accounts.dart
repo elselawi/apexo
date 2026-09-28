@@ -4,8 +4,8 @@
 // account, so the honest test signs out and back in as the account under test
 // (`Fixtures.loginAs`). That is also what unblocks the notes/permission test
 // that has been skipped since the notes group was written.
-import 'package:apexo/app/app_route.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/app_route.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';

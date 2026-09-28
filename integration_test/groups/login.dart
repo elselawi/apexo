@@ -1,5 +1,5 @@
-import 'package:apexo/app/app_route.dart' show AppRoute;
-import 'package:apexo/app/routes.dart' show routes;
+import 'package:apexo/app/routing/app_route.dart' show AppRoute;
+import 'package:apexo/app/routing/routes.dart' show routes;
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart'

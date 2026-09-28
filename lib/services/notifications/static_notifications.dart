@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:apexo/app/app.dart';
-import 'package:apexo/app/app_route.dart';
-import 'package:apexo/app/routes.dart';
+import 'package:apexo/app/routing/app_route.dart';
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';

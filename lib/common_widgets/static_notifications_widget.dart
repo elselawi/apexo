@@ -99,8 +99,7 @@ Future<void> showStaticNotifications() async {
                             ),
                             ...notification.actions
                                 .where((a) =>
-                                    a.hideOnRoute !=
-                                    routes.currentRoute.identifier)
+                                    a.hideOnRoute != routes.currentRoute())
                                 .map((action) {
                               return HyperlinkButton(
                                 onPressed: () {

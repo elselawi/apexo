@@ -4,6 +4,7 @@
 // account, so the honest test signs out and back in as the account under test
 // (`Fixtures.loginAs`). That is also what unblocks the notes/permission test
 // that has been skipped since the notes group was written.
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/services/login.dart';
@@ -110,7 +111,7 @@ void registerAccountsTests() {
 
       // The admin's own session has the gated routes, so the assertion below is
       // about the permission and not about an empty registry.
-      expect(routes.allRoutes.map((r) => r.identifier),
+      expect(routes.visibleRoutes.map((r) => r.id),
           containsAll(<String>['dashboard', 'patients', 'calendar']),
           reason: 'the admin session is missing routes');
 
@@ -126,9 +127,9 @@ void registerAccountsTests() {
       await Fixtures.loginAs(tester, email: email, password: 'e2e-Passw0rd');
 
       // A user with no permissions at all is not shown those screens at all
-      // (`routes.allRoutes` omits them — the app filters the list rather than
-      // drawing a locked item), so what is asserted is the absence.
-      final offered = routes.allRoutes.map((r) => r.identifier).toSet();
+      // (`routes.visibleRoutes` omits them — the app filters the list rather
+      // than drawing a locked item), so what is asserted is the absence.
+      final offered = routes.visibleRoutes.map((r) => r.id).toSet();
       expect(offered, contains('dashboard'),
           reason: 'the permission-less account cannot reach anything at all');
       expect(offered, isNot(contains('patients')),
@@ -173,17 +174,20 @@ void registerAccountsTests() {
       await Fixtures.signInAsAdmin(tester);
     });
 
-    testWidgets('07: an admin has no locked route', (tester) async {
+    testWidgets('07: an admin is offered every route', (tester) async {
       await E2E.signIn(tester);
 
-      // `Route.accessible` is the app's own "this account may open it" flag, and
-      // the admin sets it everywhere.
-      final locked = routes.allRoutes
-          .where((route) => !route.accessible)
-          .map((route) => route.identifier)
+      // `visibleRoutes` is the catalog filtered by what this session may open,
+      // and the admin may open all of it — so the only route that can be
+      // missing is the Windows-only DICOM one, which this machine may not
+      // support.
+      final missing = AppRoute.values
+          .where((route) => !routes.visibleRoutes.contains(route))
+          .where((route) => !route.windowsOnly)
+          .map((route) => route.id)
           .toList();
-      expect(locked, isEmpty,
-          reason: 'the admin session has locked routes: $locked');
+      expect(missing, isEmpty,
+          reason: 'the admin session is missing routes: $missing');
     });
 
     testWidgets('08: a granted permission unlocks its screen', (tester) async {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -107,9 +108,9 @@ abstract class PushListeners {
     final payload = jsonDecode(res.payload!) as Map<String, dynamic>;
     final pushData = PushData.fromJson(payload);
     if (pushData.store == "notes") {
-      routes.navigate("notes");
+      routes.navigate(AppRoute.notes);
     } else if (pushData.store == "appointments") {
-      routes.navigate("calendar");
+      routes.navigate(AppRoute.calendar);
       _openAppointmentIfExist(pushData.id);
     }
   }
@@ -143,13 +144,14 @@ abstract class PushListeners {
             label: 'View',
             action: () {
               if (pushData.store == "notes") {
-                routes.navigate("notes");
+                routes.navigate(AppRoute.notes);
               } else if (pushData.store == "appointments") {
-                routes.navigate("calendar");
+                routes.navigate(AppRoute.calendar);
                 _openAppointmentIfExist(pushData.id);
               }
             },
-            hideOnRoute: pushData.store == "notes" ? "notes" : "calendar",
+            hideOnRoute:
+                pushData.store == "notes" ? AppRoute.notes : AppRoute.calendar,
           ),
         ],
       ),

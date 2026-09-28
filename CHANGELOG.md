@@ -1,3 +1,12 @@
+### ____0.15.1____
+
+- Bug Fixes
+    - **The appointment reminder's View button now opens the calendar.** The in-app notice for today's appointments carried `"appointments"` as both its navigation target and its "hide me here" route, but the calendar screen's route id is `calendar` — so pressing **View** did nothing at all, and the button stayed on screen while the user was already looking at the calendar.
+
+- Testing & Developer Experience
+    - Navigation is typed now: a route is an `AppRoute` value (one catalog in `lib/app/app_route.dart`), not an id string, so that mistake is a compile error instead of a silent no-op. The router stores the current route rather than an index into a permission-filtered list — nothing can drift when permissions change — and the eleven per-route `onSelect` callbacks became one `_syncStores` switch. Removed the always-true `accessible` flag, the unused `onFooter`/`footerItems` pane list, and the unreachable lock branch in the navigation pane.
+    - The phone layout's bottom navigation bar now carries the widget keys its tests look up (`WK.bottomNav`, `WK.bottomNavButton(id)`, `WK.bottomNavMore`): they were declared but never attached, and the overflow list is typed instead of `dynamic`.
+
 ### ____0.15.0____
 
 - New Features & Enhancements

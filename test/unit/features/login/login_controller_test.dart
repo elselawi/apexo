@@ -1,6 +1,7 @@
 @Tags(['serial'])
 library;
 
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
@@ -294,14 +295,18 @@ void main() {
     });
 
     test('loginButton resets the route history synchronously', () {
-      // Navigate somewhere first.
-      final previousIndex = routes.currentRouteIndex();
+      // Put the shell somewhere first. `navigateWithoutSync` is the seam: the
+      // real `navigate` also fires that route's store sync, which this test has
+      // no server for.
+      routes.navigateWithoutSync(AppRoute.patients);
+      expect(routes.canGoBack, isTrue, reason: 'the seed did not take');
+
       loginCtrl.loginButton('https://server/', 'a@b.co', 'pw');
-      // reset() is called synchronously inside loginButton, so history is
-      // cleared and the current route index is back to 0.
-      expect(routes.history, isEmpty);
-      // Restore routes state.
-      routes.currentRouteIndex(previousIndex);
+
+      // reset() is called synchronously inside loginButton, so the history is
+      // cleared and the shell is back on the dashboard.
+      expect(routes.canGoBack, isFalse);
+      expect(routes.currentRoute(), AppRoute.dashboard);
     });
 
     test('loginButton accepts an explicit online=false flag', () {
@@ -321,13 +326,13 @@ void main() {
     });
 
     test('loginButton always resets routes after starting activation', () {
-      routes.history.add(4);
-      routes.currentRouteIndex(4);
+      routes.navigateWithoutSync(AppRoute.calendar);
+      expect(routes.canGoBack, isTrue, reason: 'the seed did not take');
 
       loginCtrl.loginButton('https://server///', '  USER@Example.COM  ', 'pw');
 
-      expect(routes.history, isEmpty);
-      expect(routes.currentRouteIndex(), 0);
+      expect(routes.canGoBack, isFalse);
+      expect(routes.currentRoute(), AppRoute.dashboard);
     });
   });
 
@@ -415,19 +420,22 @@ void main() {
       expect(() => routes.reset(), returnsNormally);
     });
 
-    test('routes.reset clears navigation history and resets route index', () {
-      final initialIndex = routes.currentRouteIndex();
+    test('routes.reset clears navigation history and returns to the dashboard',
+        () {
+      routes.navigateWithoutSync(AppRoute.calendar);
+      expect(routes.canGoBack, isTrue, reason: 'the seed did not take');
+
       routes.reset();
-      expect(routes.currentRouteIndex(), 0);
-      expect(routes.history, isEmpty);
-      routes.currentRouteIndex(initialIndex);
+
+      expect(routes.currentRoute(), AppRoute.dashboard);
+      expect(routes.canGoBack, isFalse);
     });
 
     test('routes.reset is idempotent', () {
       routes.reset();
       routes.reset();
-      expect(routes.currentRouteIndex(), 0);
-      expect(routes.history, isEmpty);
+      expect(routes.currentRoute(), AppRoute.dashboard);
+      expect(routes.canGoBack, isFalse);
     });
   });
 }

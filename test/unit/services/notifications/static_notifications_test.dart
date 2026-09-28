@@ -1,6 +1,7 @@
 @Tags(['serial'])
 library;
 
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,11 +14,11 @@ void main() {
         color: const Color(0xFF0000FF),
         label: 'View',
         action: () => tapped = true,
-        hideOnRoute: 'appointments',
+        hideOnRoute: AppRoute.calendar,
       );
 
       expect(action.label, 'View');
-      expect(action.hideOnRoute, 'appointments');
+      expect(action.hideOnRoute, AppRoute.calendar);
       expect(tapped, isFalse);
       action.action();
       expect(tapped, isTrue);
@@ -35,7 +36,7 @@ void main() {
             color: const Color(0xFF00FF00),
             label: 'OK',
             action: () {},
-            hideOnRoute: '',
+            hideOnRoute: null,
           ),
         ],
       );
@@ -66,19 +67,19 @@ void main() {
             color: const Color(0xFFFF0000),
             label: 'A',
             action: () {},
-            hideOnRoute: '',
+            hideOnRoute: null,
           ),
           NotificationAction(
             color: const Color(0xFF00FF00),
             label: 'B',
             action: () {},
-            hideOnRoute: '',
+            hideOnRoute: null,
           ),
           NotificationAction(
             color: const Color(0xFF0000FF),
             label: 'C',
             action: () {},
-            hideOnRoute: '',
+            hideOnRoute: null,
           ),
         ],
       );

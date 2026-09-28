@@ -1,3 +1,4 @@
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/common_widgets/current_account.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -82,7 +83,7 @@ class DashboardScreen extends StatelessWidget {
                       _buildDashboardList(
                         context: context,
                         icon: WindowsIcons.contact,
-                        onPressed: () => routes.navigate("calendar"),
+                        onPressed: () => routes.navigate(AppRoute.calendar),
                         height: height,
                         title: txt("patientsToday"),
                         items: dashboardCtrl.todayAppointments
@@ -102,7 +103,7 @@ class DashboardScreen extends StatelessWidget {
                         context: context,
                         height: height,
                         icon: WindowsIcons.calendar,
-                        onPressed: () => routes.navigate("calendar"),
+                        onPressed: () => routes.navigate(AppRoute.calendar),
                         title: txt("newPatientsToday"),
                         items: dashboardCtrl.newPatientsToday.map((e) {
                           final a = e.allAppointments.first;
@@ -120,7 +121,7 @@ class DashboardScreen extends StatelessWidget {
                         context: context,
                         height: height,
                         icon: FluentIcons.manufacturing,
-                        onPressed: () => routes.navigate("labworks"),
+                        onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("due")})",
                         items: labworks.due
                             .map((e) => ListTile(
@@ -137,7 +138,7 @@ class DashboardScreen extends StatelessWidget {
                         context: context,
                         height: height,
                         icon: FluentIcons.manufacturing,
-                        onPressed: () => routes.navigate("labworks"),
+                        onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("undelivered")})",
                         items: labworks.notDeliveredPatients
                             .map((e) => ListTile(
@@ -153,7 +154,7 @@ class DashboardScreen extends StatelessWidget {
                         context: context,
                         height: height,
                         icon: WindowsIcons.payment_card,
-                        onPressed: () => routes.navigate("expenses"),
+                        onPressed: () => routes.navigate(AppRoute.expenses),
                         title: "${txt("expenses")} (${txt("due")})",
                         items: expenses.suppliers
                             .where((x) => x.duePayments > 0)

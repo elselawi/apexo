@@ -2074,8 +2074,8 @@ abstract final class Fixtures {
 
   /// Presses the app bar's back arrow.
   ///
-  /// It only exists while `routes.history` is not empty — that is the app's own
-  /// "there is somewhere to go back to".
+  /// It only exists while `routes.canGoBack` — that is the app's own "there is
+  /// somewhere to go back to".
   static Future<void> back(WidgetTester tester) async {
     await E2E.tap(tester, find.byKey(WK.backButton),
         description: 'the back button');

@@ -1,259 +1,170 @@
 import 'dart:async';
+
+import 'package:apexo/app/app_route.dart';
+import 'package:apexo/core/observable.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/dicom/dicom_controller.dart';
-import 'package:apexo/features/dicom/dicom_screen.dart';
-import 'package:apexo/features/dashboard/dashboard_screen.dart';
-import 'package:apexo/features/expenses/expenses_screen.dart';
-import 'package:apexo/features/labwork/labworks_screen.dart';
-import 'package:apexo/features/notes/notes_screen.dart';
-import 'package:apexo/features/notes/notes_store.dart';
-import 'package:apexo/features/patients/patients_screen.dart';
-import 'package:apexo/features/stats/screen_stats.dart';
-import 'package:apexo/features/accounts/accounts_screen.dart';
-import 'package:apexo/services/backups.dart';
-import 'package:apexo/features/stats/charts_controller.dart';
-import 'package:apexo/services/login.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/features/stats/charts_controller.dart';
+import 'package:apexo/services/backups.dart';
+import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
-import 'package:apexo/utils/constants.dart';
-import 'package:fluent_ui/fluent_ui.dart';
-import '../services/localization/locale.dart';
-import 'package:apexo/features/appointments/calendar_screen.dart';
-import 'package:apexo/features/settings/settings_screen.dart';
-import '../core/observable.dart';
-import "../features/appointments/appointments_store.dart";
-import "../features/archive/archive_screen.dart";
-import "../features/settings/settings_stores.dart";
+import 'package:flutter/foundation.dart' show visibleForTesting;
 
-class Route {
-  Route({
-    required this.title,
-    required this.identifier,
-    required this.icon,
-    required this.screen,
-    required this.onSelect,
-    this.navbarTitle = "",
-    this.accessible = true,
-    this.onFooter = false,
-  });
-  IconData icon;
-  String title;
-  String identifier;
-  Widget Function() screen;
-  String navbarTitle;
-
-  /// show in the navigation pane and thus being activated
-  bool accessible;
-
-  /// show in the footer of the navigation pane
-  bool onFooter;
-
-  /// callback to be called when the route is selected
-  void Function() onSelect;
+/// Whether [route] may be opened in this session.
+///
+/// The one place the catalog's requirements are checked against the session:
+/// [AppRoute] declares them, this decides them.
+bool _accessible(AppRoute route) {
+  if (route.windowsOnly && !DicomController.isSupported) return false;
+  if (route.adminOnly) return login.isAdmin;
+  final int? requiredPerm = route.perm;
+  if (requiredPerm != null) {
+    return login.perm(requiredPerm).some || login.isAdmin;
+  }
+  return true;
 }
 
-/// The screens reachable from the navbar, and the little state the navbar
-/// itself needs.
+/// The screens the shell can show, and the little state the navbar itself
+/// needs.
 ///
 /// Panels are not among those screens: they float above the routes, and the
 /// stack they live on belongs to [PanelsManager] — which is why nothing here
-/// mentions them any more.
-class _Routes {
+/// mentions them.
+class AppRouter {
+  /// The route on screen.
+  ///
+  /// The route itself is stored, not an index into a permission-filtered list,
+  /// so nothing can drift when the session's permissions change.
+  final currentRoute = ObservableState<AppRoute>(AppRoute.dashboard);
+
   final showBottomNav = ObservableState(false);
 
-  List<Route> get allRoutes => [
-        Route(
-          title: txt("dashboard"),
-          identifier: "dashboard",
-          icon: FluentIcons.home,
-          screen: DashboardScreen.new,
-          accessible: true,
-          navbarTitle: txt("home"),
-          onSelect: () {
-            chartsCtrl.resetSelected();
-            patients.synchronize();
-            appointments.synchronize();
-          },
-        ),
-        if (login.perm(Perm.patients).some || login.isAdmin)
-          Route(
-            title: txt("patients"),
-            identifier: "patients",
-            navbarTitle: txt("patients"),
-            icon: FluentIcons.medication_admin,
-            screen: PatientsScreen.new,
-            accessible: login.perm(Perm.patients).some || login.isAdmin,
-            onSelect: () async {
-              await accounts.reloadFromRemote();
-              await patients.synchronize();
-              unawaited(appointments.synchronize());
-            },
-          ),
-        if (login.perm(Perm.appointments).some || login.isAdmin)
-          Route(
-            title: txt("appointments"),
-            identifier: "calendar",
-            navbarTitle: txt("calendar"),
-            icon: WindowsIcons.calendar,
-            screen: CalendarScreen.new,
-            accessible: login.perm(Perm.appointments).some || login.isAdmin,
-            onSelect: () async {
-              if (login.perm(Perm.appointments).not(2)) {
-                appointments.filterByOperatorID(login.currentAccountID);
-              }
-              await accounts.reloadFromRemote();
-              await patients.synchronize();
-              unawaited(appointments.synchronize());
-            },
-          ),
-        if (login.perm(Perm.appointments).some || login.isAdmin)
-          Route(
-            title: txt("labworks"),
-            identifier: "labworks",
-            navbarTitle: txt("labworks"),
-            icon: FluentIcons.manufacturing,
-            screen: LabworksScreen.new,
-            accessible: login.perm(Perm.appointments).some || login.isAdmin,
-            onSelect: () async {
-              await accounts.reloadFromRemote();
-              await patients.synchronize();
-              await appointments.synchronize();
-            },
-          ),
-        Route(
-          title: txt("notes"),
-          identifier: "notes",
-          navbarTitle: txt("notes"),
-          icon: WindowsIcons.quick_note,
-          screen: NotesScreen.new,
-          onSelect: () async {
-            await accounts.reloadFromRemote();
-            await patients.synchronize();
-            await appointments.synchronize();
-            await notes.synchronize();
-          },
-        ),
-        if (login.perm(Perm.expenses).some || login.isAdmin)
-          Route(
-            title: txt("expenses"),
-            identifier: "expenses",
-            navbarTitle: txt("expenses"),
-            icon: FluentIcons.receipt_processing,
-            screen: ExpensesScreen.new,
-            accessible: login.perm(Perm.expenses).some || login.isAdmin,
-            onSelect: () async {
-              await accounts.reloadFromRemote();
-              await patients.synchronize();
-              unawaited(expenses.synchronize());
-            },
-          ),
-        if (login.perm(Perm.stats).some || login.isAdmin)
-          Route(
-            title: txt("insights"),
-            identifier: "insights",
-            navbarTitle: txt("insights"),
-            icon: FluentIcons.chart,
-            screen: StatsScreen.new,
-            accessible: login.perm(Perm.stats).some || login.isAdmin,
-            onSelect: () async {
-              chartsCtrl.resetSelected();
-              if (login.perm(Perm.appointments).not(2) ||
-                  login.perm(Perm.stats).not(2)) {
-                chartsCtrl.filterByOperatorID(login.currentAccountID);
-              }
-              await accounts.reloadFromRemote();
-              await patients.synchronize();
-              unawaited(appointments.synchronize());
-            },
-          ),
-        if (login.isAdmin)
-          Route(
-            title: txt("accounts"),
-            identifier: "accounts",
-            navbarTitle: txt("accounts"),
-            icon: FluentIcons.people,
-            screen: AccountsScreen.new,
-            accessible: login.isAdmin,
-            onSelect: () {},
-          ),
-        Route(
-          title: txt("deletedItems"),
-          identifier: "deletedItems",
-          navbarTitle: txt("deletedItems"),
-          icon: WindowsIcons.delete,
-          screen: ArchivedScreen.new,
-          accessible: true,
-          onSelect: () {
-            patients.synchronize();
-            appointments.synchronize();
-            expenses.synchronize();
-            notes.synchronize();
-          },
-        ),
-        // Windows-only DICOM import route. Gated on the current
-        // platform + photos permission (or admin). onSelect triggers a scan
-        // so the pending list is fresh when the dentist opens the screen.
-        if (DicomController.isSupported &&
-            (login.perm(Perm.photos).some || login.isAdmin))
-          Route(
-            title: txt("xrayLink"),
-            identifier: "dicom",
-            navbarTitle: txt("xrayLink"),
-            icon: FluentIcons.generic_scan,
-            screen: DicomScreen.new,
-            accessible: true,
-            onSelect: () {
-              dicomCtrl.refresh();
-            },
-          ),
-        Route(
-          title: txt("settings"),
-          identifier: "settings",
-          navbarTitle: txt("settings"),
-          icon: FluentIcons.settings,
-          screen: SettingsScreen.new,
-          accessible: true,
-          onFooter: false,
-          onSelect: () {
-            globalSettings.synchronize();
-            backups.reloadFromRemote();
-            accounts.reloadFromRemote();
-          },
-        ),
+  final List<AppRoute> _history = [];
+
+  /// The routes this session may open, in catalog order.
+  List<AppRoute> get visibleRoutes => [
+        for (final route in AppRoute.values)
+          if (_accessible(route)) route
       ];
 
-  final currentRouteIndex = ObservableState(0);
-  List<int> history = [];
+  /// Where [currentRoute] sits in [visibleRoutes] — the navigation pane's
+  /// selection.
+  ///
+  /// Falls back to the first route when the current one is no longer offered
+  /// (a permission change while it is open), which is the screen the shell drew
+  /// for that state before.
+  int get currentIndex {
+    final int index = visibleRoutes.indexOf(currentRoute());
+    return index == -1 ? 0 : index;
+  }
 
-  Route get currentRoute {
-    if (currentRouteIndex() < 0 || currentRouteIndex() >= allRoutes.length) {
-      return allRoutes.first;
-    }
-    return allRoutes[currentRouteIndex()];
+  bool get canGoBack => _history.isNotEmpty;
+
+  void navigate(AppRoute target) {
+    if (target == currentRoute() || !_accessible(target)) return;
+    _history.add(currentRoute());
+    currentRoute(target);
+    unawaited(_syncStores(target));
   }
 
   void goBack() {
-    if (history.isNotEmpty) {
-      currentRouteIndex(history.removeLast());
-      currentRoute.onSelect();
-    }
-  }
-
-  void navigate(String identifier) {
-    if (currentRoute.identifier == identifier) return;
-    final identifiedIndex =
-        allRoutes.indexWhere((x) => x.identifier == identifier);
-    if (identifiedIndex == -1) return;
-    history.add(currentRouteIndex());
-    currentRouteIndex(identifiedIndex);
-    allRoutes[identifiedIndex].onSelect();
+    if (_history.isEmpty) return;
+    final AppRoute target = _history.removeLast();
+    currentRoute(target);
+    unawaited(_syncStores(target));
   }
 
   void reset() {
-    currentRouteIndex(0);
-    history = [];
+    currentRoute(AppRoute.dashboard);
+    _history.clear();
+  }
+
+  /// Puts [target] on screen with somewhere to go back to, **without** running
+  /// [_syncStores].
+  ///
+  /// [navigate] deliberately refreshes the stores on the way, which a unit test
+  /// neither wants nor can wait for — this is the seam that lets one observe
+  /// [reset] clearing real state. Production always goes through [navigate].
+  @visibleForTesting
+  void navigateWithoutSync(AppRoute target) {
+    _history.add(currentRoute());
+    currentRoute(target);
   }
 }
 
-final routes = _Routes();
+final routes = AppRouter();
+
+/// What a route change refreshes.
+///
+/// One switch beside the router, rather than a closure buried in each route's
+/// own data. It mirrors the old `onSelect` closures exactly — `await` where they
+/// awaited, `unawaited(...)` where they fired and forgot.
+Future<void> _syncStores(AppRoute route) async {
+  switch (route) {
+    case AppRoute.dashboard:
+      chartsCtrl.resetSelected();
+      unawaited(patients.synchronize());
+      unawaited(appointments.synchronize());
+
+    case AppRoute.patients:
+      await accounts.reloadFromRemote();
+      await patients.synchronize();
+      unawaited(appointments.synchronize());
+
+    case AppRoute.calendar:
+      if (login.perm(Perm.appointments).not(2)) {
+        appointments.filterByOperatorID(login.currentAccountID);
+      }
+      await accounts.reloadFromRemote();
+      await patients.synchronize();
+      unawaited(appointments.synchronize());
+
+    case AppRoute.labworks:
+      await accounts.reloadFromRemote();
+      await patients.synchronize();
+      await appointments.synchronize();
+
+    case AppRoute.notes:
+      await accounts.reloadFromRemote();
+      await patients.synchronize();
+      await appointments.synchronize();
+      await notes.synchronize();
+
+    case AppRoute.expenses:
+      await accounts.reloadFromRemote();
+      await patients.synchronize();
+      unawaited(expenses.synchronize());
+
+    case AppRoute.insights:
+      chartsCtrl.resetSelected();
+      if (login.perm(Perm.appointments).not(2) ||
+          login.perm(Perm.stats).not(2)) {
+        chartsCtrl.filterByOperatorID(login.currentAccountID);
+      }
+      await accounts.reloadFromRemote();
+      await patients.synchronize();
+      unawaited(appointments.synchronize());
+
+    case AppRoute.deletedItems:
+      unawaited(patients.synchronize());
+      unawaited(appointments.synchronize());
+      unawaited(expenses.synchronize());
+      unawaited(notes.synchronize());
+
+    case AppRoute.dicom:
+      unawaited(dicomCtrl.refresh());
+
+    case AppRoute.settings:
+      unawaited(globalSettings.synchronize());
+      unawaited(backups.reloadFromRemote());
+      unawaited(accounts.reloadFromRemote());
+
+    case AppRoute.accounts:
+      break;
+  }
+}

@@ -11,7 +11,7 @@ class BackButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(5),
       child: Visibility(
-        visible: routes.history.isNotEmpty,
+        visible: routes.canGoBack,
         child: Tooltip(
           message: txt("back"),
           child: IconButton(

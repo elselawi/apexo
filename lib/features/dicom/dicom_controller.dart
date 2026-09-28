@@ -20,8 +20,9 @@ import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 /// scanning, and progress observables the screen renders from, and exposes
 /// the user actions (refresh / approve / unmatch / manualMatch / unlink).
 ///
-/// **Windows-only feature**: the route is gated on
-/// `Platform.isWindows && !kIsWeb` in `lib/app/routes.dart`, so this
+/// **Windows-only feature**: `AppRoute.dicom` is declared `windowsOnly` in
+/// `lib/app/app_route.dart`, and `lib/app/routes.dart` gates it on
+/// `DicomController.isSupported` (`!kIsWeb && Platform.isWindows`), so this
 /// controller is only constructed there. The methods below are still safe to
 /// call on other platforms (they no-op / return early when the watch dir is
 /// empty), but the UI never reaches them off-Windows.

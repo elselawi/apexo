@@ -1,3 +1,4 @@
+import 'package:apexo/app/app_route.dart' show AppRoute;
 import 'package:apexo/app/routes.dart' show routes;
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -324,8 +325,7 @@ void registerLoginTests() {
       // ignore: avoid_print
       print('ℹ️ offline session: isAdmin=${login.isAdmin}, '
           'accessible routes='
-          '${routes.allRoutes.where((r) => r.accessible).length}/'
-          '${routes.allRoutes.length}, '
+          '${routes.visibleRoutes.length}/${AppRoute.values.length}, '
           'local patients=${await patients.total()}');
 
       addTearDown(() async {

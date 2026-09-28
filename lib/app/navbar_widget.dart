@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class BottomNavBar extends StatelessWidget {
@@ -12,6 +14,7 @@ class BottomNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned(
+      key: WK.bottomNav,
       bottom: 0,
       height: 66,
       width: MediaQuery.of(context).size.width,
@@ -35,21 +38,21 @@ class BottomNavBar extends StatelessWidget {
           ),
         ),
         child: StreamBuilder(
-          stream: routes.currentRouteIndex.stream,
+          stream: routes.currentRoute.stream,
           builder: (context, snapshot) {
             return LayoutBuilder(
               builder: (context, constraints) {
                 final availableWidth = constraints.maxWidth;
-                final allRoutes = routes.allRoutes;
-                final int totalRoutes = allRoutes.length;
+                final offered = routes.visibleRoutes;
+                final int totalRoutes = offered.length;
 
                 // Make it more compact to fit slightly more items
                 const double minItemWidth = 52.0;
                 final int maxVisibleItems =
                     (availableWidth / minItemWidth).floor();
 
-                var visibleRoutes = allRoutes;
-                var overflowRoutes = [];
+                var visibleRoutes = offered;
+                var overflowRoutes = <AppRoute>[];
                 bool showMore = false;
 
                 if (maxVisibleItems < totalRoutes) {
@@ -58,8 +61,8 @@ class BottomNavBar extends StatelessWidget {
                       maxVisibleItems - 1; // Leave space for 'More'
                   if (visibleCount < 1) visibleCount = 1; // Sanity check
 
-                  visibleRoutes = allRoutes.sublist(0, visibleCount);
-                  overflowRoutes = allRoutes.sublist(visibleCount);
+                  visibleRoutes = offered.sublist(0, visibleCount);
+                  overflowRoutes = offered.sublist(visibleCount);
                 }
 
                 return Row(
@@ -68,11 +71,9 @@ class BottomNavBar extends StatelessWidget {
                   children: [
                     ...visibleRoutes.map((r) => Expanded(
                           child: BottomNavBarButton(
-                            icon: r.icon,
-                            identifier: r.identifier,
-                            title: r.navbarTitle,
-                            active:
-                                r.identifier == routes.currentRoute.identifier,
+                            key: WK.bottomNavButton(r.id),
+                            route: r,
+                            active: r == routes.currentRoute(),
                           ),
                         )),
                     if (showMore)
@@ -107,14 +108,10 @@ class BottomNavBar extends StatelessWidget {
 class BottomNavBarButton extends StatelessWidget {
   const BottomNavBarButton({
     super.key,
-    required this.title,
-    required this.icon,
-    required this.identifier,
+    required this.route,
     this.active = false,
   });
-  final String title;
-  final IconData icon;
-  final String identifier;
+  final AppRoute route;
   final bool active;
 
   @override
@@ -125,7 +122,7 @@ class BottomNavBarButton extends StatelessWidget {
         : (theme.typography.body?.color?.withOpacity(0.6) ?? Colors.grey);
 
     return HoverButton(
-      onPressed: () => routes.navigate(identifier),
+      onPressed: () => routes.navigate(route),
       builder: (context, states) {
         final isHovered = states.isHovered;
 
@@ -151,7 +148,7 @@ class BottomNavBarButton extends StatelessWidget {
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeOutBack,
                 child: Icon(
-                  icon,
+                  route.icon,
                   color: color,
                   size: 20,
                 ),
@@ -169,7 +166,7 @@ class BottomNavBarButton extends StatelessWidget {
                       color: color,
                       fontFamily: theme.typography.body?.fontFamily,
                     ),
-                    child: Text(title),
+                    child: Text(route.navbarTitle),
                   ),
                 ),
               ),
@@ -183,7 +180,7 @@ class BottomNavBarButton extends StatelessWidget {
 
 class BottomNavBarMoreButton extends StatefulWidget {
   const BottomNavBarMoreButton({super.key, required this.overflowRoutes});
-  final List overflowRoutes;
+  final List<AppRoute> overflowRoutes;
 
   @override
   State<BottomNavBarMoreButton> createState() => _BottomNavBarMoreButtonState();
@@ -203,8 +200,8 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
     final theme = FluentTheme.of(context);
 
     // Highlight the "More" button if the currently active route is inside it
-    final isActive = widget.overflowRoutes
-        .any((r) => r.identifier == routes.currentRoute.identifier);
+    final isActive =
+        widget.overflowRoutes.any((r) => r == routes.currentRoute());
     final color = isActive
         ? Colors.blue
         : (theme.typography.body?.color?.withValues(alpha: .6) ?? Colors.grey);
@@ -212,6 +209,7 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
     return FlyoutTarget(
       controller: bottomNavFlyoutController,
       child: HoverButton(
+        key: WK.bottomNavMore,
         onPressed: () async {
           await flyoutFocusFix(null);
           unawaited(bottomNavFlyoutController.showFlyout(
@@ -222,11 +220,10 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
             builder: (context) {
               return MenuFlyout(
                 items: widget.overflowRoutes.map((r) {
-                  final isItemActive =
-                      r.identifier == routes.currentRoute.identifier;
+                  final isItemActive = r == routes.currentRoute();
                   return MenuFlyoutItem(
                     text: Text(
-                      r.navbarTitle as String,
+                      r.navbarTitle,
                       style: TextStyle(
                         fontWeight:
                             isItemActive ? FontWeight.bold : FontWeight.normal,
@@ -234,11 +231,11 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
                       ),
                     ),
                     leading: Icon(
-                      r.icon as IconData?,
+                      r.icon,
                       color: isItemActive ? Colors.blue : null,
                     ),
                     onPressed: () {
-                      routes.navigate(r.identifier as String);
+                      routes.navigate(r);
                       Flyout.of(context).close();
                     },
                   );

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:apexo/app/app.dart';
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/routes.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
@@ -25,7 +26,10 @@ class NotificationAction {
   final Color color;
   final String label;
   final VoidCallback action;
-  final String hideOnRoute;
+
+  /// The route this action is pointless on — the notice hides its button
+  /// there. `null` means it never hides.
+  final AppRoute? hideOnRoute;
 }
 
 class StaticNotification {
@@ -131,8 +135,8 @@ class _NotificationsService {
             NotificationAction(
               color: Colors.blue,
               label: txt("view"),
-              action: () => routes.navigate("appointments"),
-              hideOnRoute: "appointments",
+              action: () => routes.navigate(AppRoute.calendar),
+              hideOnRoute: AppRoute.calendar,
             )
           ],
         ),
@@ -145,8 +149,8 @@ class _NotificationsService {
             NotificationAction(
                 color: Colors.blue,
                 label: txt("view"),
-                action: () => routes.navigate("labworks"),
-                hideOnRoute: "labworks")
+                action: () => routes.navigate(AppRoute.labworks),
+                hideOnRoute: AppRoute.labworks)
           ],
         ),
       if (notDeliveredLabworks.isNotEmpty)
@@ -159,8 +163,8 @@ class _NotificationsService {
             NotificationAction(
                 color: Colors.blue,
                 label: txt("view"),
-                action: () => routes.navigate("labworks"),
-                hideOnRoute: "labworks")
+                action: () => routes.navigate(AppRoute.labworks),
+                hideOnRoute: AppRoute.labworks)
           ],
         ),
       if (incomingPendingNotes.isNotEmpty)
@@ -173,8 +177,8 @@ class _NotificationsService {
             NotificationAction(
                 color: Colors.blue,
                 label: txt("view"),
-                action: () => routes.navigate("notes"),
-                hideOnRoute: "notes")
+                action: () => routes.navigate(AppRoute.notes),
+                hideOnRoute: AppRoute.notes)
           ],
         ),
       if (outgoingPendingNotes.isNotEmpty)
@@ -187,8 +191,8 @@ class _NotificationsService {
             NotificationAction(
                 color: Colors.blue,
                 label: txt("view"),
-                action: () => routes.navigate("notes"),
-                hideOnRoute: "notes")
+                action: () => routes.navigate(AppRoute.notes),
+                hideOnRoute: AppRoute.notes)
           ],
         ),
       ..._notifications,

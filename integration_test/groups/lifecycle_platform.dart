@@ -101,7 +101,7 @@ void registerLifecyclePlatformTests() {
       await E2E.tap(tester, find.byKey(WK.bottomNavButton('patients')),
           description: 'the patients tab');
       await E2E.settle(tester, frames: 20);
-      expect(routes.currentRoute.identifier, 'patients',
+      expect(routes.currentRoute().id, 'patients',
           reason: 'the bottom bar did not navigate');
 
       await Fixtures.fullSize(tester);
@@ -196,10 +196,10 @@ void registerLifecyclePlatformTests() {
           reason: 'the app bar has no back arrow after two navigations');
 
       await Fixtures.back(tester);
-      expect(routes.currentRoute.identifier, 'patients',
+      expect(routes.currentRoute().id, 'patients',
           reason: 'back did not return to the previous screen');
       await Fixtures.back(tester);
-      expect(routes.currentRoute.identifier, 'dashboard',
+      expect(routes.currentRoute().id, 'dashboard',
           reason: 'back did not return to the dashboard');
 
       expect(find.byKey(WK.backButton), findsNothing,

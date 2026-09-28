@@ -16,7 +16,7 @@ Every feature in `lib/features/<name>/` follows a consistent pattern. The presen
 | `<name>_model.dart` | ✅ | Extends `Model` — defines fields, serialization, computed properties |
 | `<name>_store.dart` | ✅ | Extends `Store<Model>` — singleton, data management, sync, cached queries |
 | `<name>_screen.dart` | ✅ | Full-screen list/datatable view of all items |
-| `open_<name>_panel.dart` | ✅ | Detail/edit panel builder — returns `Future<Model>` via `routes.openPanel()` |
+| `open_<name>_panel.dart` | ✅ | Detail/edit panel builder — returns `Future<Model>` via `PanelsManager.open()` |
 
 ### Features WITHOUT persistent data (no Store)
 
@@ -141,7 +141,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
       // ... more tabs ...
     ],
   );
-  routes.openPanel(panel);
+  PanelsManager.open(panel);
   return panel.result.future;
 }
 ```
@@ -166,7 +166,7 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
 
 ### Panel Lifecycle
 
-1. **Open**: `routes.openPanel(panel)` — adds to the panel stack
+1. **Open**: `PanelsManager.open(panel)` — adds to the panel stack
 2. **Edit**: User modifies the editable copy in the tab bodies
 3. **Save**: Panel compares `jsonEncode(item.toJson())` vs `savedJson` every 750ms; Save button calls `store.set(item)`
 4. **Close**: If unsaved changes, shows confirm dialog; otherwise removes from stack
@@ -180,7 +180,8 @@ Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
 4. Register the store in `lib/utils/init_stores.dart` (call `.init()`)
 5. Create `<name>_screen.dart` — the list/datatable view
 6. Create `open_<name>_panel.dart` — the detail/edit panel builder
-7. Add a `Route` in `lib/app/routes.dart`
+7. Add an `AppRoute` value in `lib/app/app_route.dart` (and its screen in
+   `buildScreen`)
 8. Add a "New X" button that calls the panel function
 9. Add localization keys for all user-facing strings
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:apexo/app/app_route.dart';
 import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/app/panels/panel_screen.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
@@ -30,12 +31,14 @@ import 'package:flutter/foundation.dart';
 
 late BuildContext bContext;
 
-/// Cached [GlobalObjectKey]s for route screen bodies so [identical] comparison
-/// succeeds across rebuilds. Without caching, string interpolation creates a
-/// new String each build, breaking [GlobalObjectKey]'s identity-based equality.
-final _bodyKeys = <String, GlobalKey>{};
-GlobalKey _bodyKeyFor(String routeId) =>
-    _bodyKeys.putIfAbsent(routeId, () => GlobalObjectKey(routeId));
+/// One cached [GlobalObjectKey] per route, so a screen keeps its element and
+/// state (scroll offset, text controllers) when the shell rebuilds.
+///
+/// The key is the [AppRoute] itself — a `const` enum value, so [identical]
+/// holds across rebuilds.
+final _bodyKeys = <AppRoute, GlobalKey>{};
+GlobalKey _bodyKeyFor(AppRoute route) =>
+    _bodyKeys.putIfAbsent(route, () => GlobalObjectKey(route));
 
 class ApexoApp extends StatelessWidget {
   const ApexoApp({super.key});
@@ -159,7 +162,7 @@ class ApexoApp extends StatelessWidget {
     return MStreamBuilder(
       streams: [
         launch.open.stream,
-        routes.currentRouteIndex.stream,
+        routes.currentRoute.stream,
         PanelsManager.active.stream
       ],
       key: WK.builder,
@@ -218,7 +221,7 @@ class ApexoApp extends StatelessWidget {
         decoration: BoxDecoration(boxShadow: kElevationToShadow[6]),
         child: NavigationView(
           appBar: NavigationAppBar(
-            leading: (routes.history.isNotEmpty && launch.open() == Open.staff)
+            leading: (routes.canGoBack && launch.open() == Open.staff)
                 ? const BackButton()
                 : null,
             automaticallyImplyLeading: false,
@@ -248,51 +251,31 @@ class ApexoApp extends StatelessWidget {
                       CurrentAccount(),
                     ],
                   ),
-                  selected: routes.currentRouteIndex(),
+                  selected: routes.currentIndex,
                   displayMode: PaneDisplayMode.auto,
                   toggleable: false,
-                  items: List<NavigationPaneItem>.from(
-                      routes.allRoutes.where((p) => p.onFooter != true).map(
-                            (route) => PaneItem(
-                              key: Key("${route.identifier}_screen_button"),
-                              icon: route.accessible
-                                  ? Icon(route.icon)
-                                  : const Icon(WindowsIcons.lock),
-                              body: route.accessible
-                                  ? KeyedSubtree(
-                                      key: _bodyKeyFor(route.identifier),
-                                      child: Padding(
-                                        padding: EdgeInsets.only(
-                                            bottom: (routes.showBottomNav() &&
-                                                    constraints.maxWidth < 710)
-                                                ? 66
-                                                : 0),
-                                        child: (route.screen)(),
-                                      ),
-                                    )
-                                  : const SizedBox(),
-                              title: Txt(route.title),
-                              onTap: () => route.accessible
-                                  ? routes.navigate(route.identifier)
-                                  : null,
-                              enabled: route.accessible,
-                            ),
-                          )),
-                  footerItems: [
-                    ...routes.allRoutes.where((p) => p.onFooter == true).map(
-                          (route) => PaneItem(
-                            icon: Icon(route.icon),
-                            body: KeyedSubtree(
-                              key: _bodyKeyFor(route.identifier),
-                              child: (route.screen)(),
-                            ),
-                            title: Txt(route.title),
-                            onTap: () => route.accessible
-                                ? routes.navigate(route.identifier)
-                                : null,
-                          ),
+                  // Every offered route's body is handed over up front (the pane
+                  // swaps between them by index), and each is keyed so its
+                  // element and state survive that swap.
+                  items: List<NavigationPaneItem>.from(routes.visibleRoutes.map(
+                    (route) => PaneItem(
+                      key: Key("${route.id}_screen_button"),
+                      icon: Icon(route.icon),
+                      body: KeyedSubtree(
+                        key: _bodyKeyFor(route),
+                        child: Padding(
+                          padding: EdgeInsets.only(
+                              bottom: (routes.showBottomNav() &&
+                                      constraints.maxWidth < 710)
+                                  ? 66
+                                  : 0),
+                          child: route.buildScreen(),
                         ),
-                  ],
+                      ),
+                      title: Txt(route.title),
+                      onTap: () => routes.navigate(route),
+                    ),
+                  )),
                 )
               : null,
         ),
@@ -368,16 +351,14 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
           await flyoutFocusFix(context);
           unawaited(controller.showFlyout(builder: (ctx) {
             return MenuFlyout(
-              items: routes.allRoutes
-                  .where((p) => p.onFooter != true)
-                  .map((route) {
+              items: routes.visibleRoutes.map((route) {
                 return MenuFlyoutItem(
                   leading: Icon(route.icon),
-                  selected: route.identifier == routes.currentRoute.identifier,
+                  selected: route == routes.currentRoute(),
                   text: Text(route.title),
                   onPressed: () {
                     controller.close();
-                    routes.navigate(route.identifier);
+                    routes.navigate(route);
                   },
                 );
               }).toList(),
@@ -400,13 +381,13 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
             children: [
               Icon(
                 launch.open() == Open.staff
-                    ? routes.currentRoute.icon
+                    ? routes.currentRoute().icon
                     : WindowsIcons.lock,
                 color: Colors.grey,
               ),
               launch.open() == Open.staff
                   ? Txt(
-                      routes.currentRoute.title,
+                      routes.currentRoute().title,
                       style: const TextStyle(color: Colors.grey),
                     )
                   : launch.open() == Open.patient

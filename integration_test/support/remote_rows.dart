@@ -84,6 +84,15 @@ abstract final class RemoteRows {
   ///
   /// The id comes back from the server rather than being forced through the
   /// body, so the row is created exactly the way PocketBase creates one.
+  ///
+  /// The value is then completed with that id, because that is what the app's
+  /// own writes look like: `Model.toJson` always sets `'id'`, and a store keys
+  /// its map by the *document's* id while building each model from the value.
+  /// A value with no `id` therefore gets one invented by `Model.fromJson` — one
+  /// row, two ids — and `Fixtures.patientIdOf(name)`, which reads the model's
+  /// id, answers with the invented one. That is `sync_offline 01`/`03`:
+  /// *"the pulled row is not readable by name"*, with the store already holding
+  /// the row under the server's id (`_waitForLocalRow` waits for exactly that).
   static Future<String> insert({
     required String store,
     required Map<String, dynamic> data,
@@ -92,6 +101,12 @@ abstract final class RemoteRows {
       body: {
         'store': store,
         'data': data,
+      },
+    );
+    await (await client()).collection('data').update(
+      created.id,
+      body: {
+        'data': {...data, 'id': created.id},
       },
     );
     return created.id;

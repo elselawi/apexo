@@ -73,6 +73,13 @@ abstract final class Fixtures {
     try {
       await E2E.waitFor(tester, ready,
           description: where, timeout: const Duration(seconds: 20));
+      // The ready key appearing is not the same as the pane having *finished*
+      // swapping screens: fluent wraps the body in an `AnimatedSwitcher`, so the
+      // screen being left is still mounted for its 250ms transition — and two
+      // screens mounted at once means two `WK.listSearch` boxes, which throws
+      // `Bad state: Too many elements` in the next helper that types into one.
+      // Settle past the transition before handing the caller a settled screen.
+      await E2E.settle(tester, frames: 5);
       return;
     } catch (_) {
       // Fall through to one retry: a real failure still fails, with the same
@@ -395,8 +402,23 @@ abstract final class Fixtures {
   static Future<void> selectDay(WidgetTester tester, DateTime day) async {
     await E2E.settle(tester, frames: 5);
     if (selectedDay(tester) == _dateKey(day)) return;
-    await E2E.tap(tester, find.byKey(WK.calendarDay(day)),
-        description: 'the day cell');
+    try {
+      await E2E.tap(tester, find.byKey(WK.calendarDay(day)),
+          description: 'the day cell', timeout: const Duration(seconds: 20));
+    } catch (_) {
+      // A day that is not on the current page looks exactly like a missing key.
+      // Say which days are on screen, so the next occurrence explains itself: the
+      // calendar shows one week from the start of the week containing today
+      // (`CalendarFormat.week`), so **yesterday is often not there** — which is
+      // how `calendar 03` spent 80s on a day the page never held.
+      final visible = tester
+          .widgetList<DayCell>(find.byType(DayCell))
+          .map((cell) => _dateKey(cell.day))
+          .toList();
+      fail(
+          'The day cell for ${_dateKey(day)} is not on screen. The page shows: '
+          '${visible.join(', ')}');
+    }
     await E2E.waitFor(tester, find.byKey(WK.calendarSelected),
         description: 'the selected day cell');
     expect(selectedDay(tester), _dateKey(day),

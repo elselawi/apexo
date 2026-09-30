@@ -56,10 +56,15 @@ void registerCalendarTests() {
       await Fixtures.createAppointment(tester, patientName: patient, day: day);
 
       // The date dialog opens on the appointment's own month, so the new day has
-      // to be in it — the first of a month moves forward instead of back.
-      final moved = day.day == 1
-          ? day.add(const Duration(days: 1))
-          : day.subtract(const Duration(days: 1));
+      // to be in it — and the calendar shows **one week from the start of the
+      // week containing today** (`CalendarFormat.week`, and the clinic's week
+      // starts on Monday), so a day after today is always on screen while
+      // yesterday often is not. Move forward when the month allows, and back only
+      // from the last day of a month.
+      final lastDayOfMonth = DateTime(day.year, day.month + 1, 0).day;
+      final moved = day.day == lastDayOfMonth
+          ? day.subtract(const Duration(days: 1))
+          : day.add(const Duration(days: 1));
 
       await Fixtures.openAppointmentTile(tester, patient: patient);
       await Fixtures.changeAppointmentDate(tester, moved);

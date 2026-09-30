@@ -3,9 +3,117 @@
 Every test we still owe this app, as a checklist. Written 2026-09-21, updated for the
 standard test shape.
 
-Status today: three groups are written and green on native — `login` (4 tests),
-`patients` (8 tests, 2 skipped), `calendar` (2 tests): 14 passing, 2 skipped, ~1m30 for the
-run. Everything below is what is *not* covered yet.
+> ## ⚠️ Read this first: the suite is older than the tree (2026-09-28)
+>
+> Most of the "**Verified green**" lines below were measured against the
+> **localpocket-migration branch**, not against this tree. Commit `af8e771`
+> (2026-09-27) rolled that migration back and its message lists what it did *not*
+> keep — `lib/core/db/**`, the per-feature `store/**`, `lib/app/panels/**` **and the
+> integration_test suite** ("both written against the new panel UI"). `ef3a3fd`
+> brought the suite back "minus the parts that test the migration itself" and said
+> so itself: *"its finders were written against widgets the migration re-keyed in
+> places … this is a restoration of the code, not a claim that every group passes."*
+>
+> So the tick marks and pass counts below describe a shape of the app that is not in
+> this working tree. Read them as "this test exists and was green somewhere", never
+> as "this test passes here". Measured 2026-09-28: **52 widget keys the suite waits
+> for were declared in `lib/widget_keys.dart` and attached to nothing in `lib/`**,
+> which is what made `Fixtures.openRoute` time out after a nav tap that had landed
+> (it was never the routing refactor, and never fluent — see §6.1). **All 52 are
+> attached now**: `pwsh -File tools/key_audit.ps1` reports zero keys the suite waits
+> for that the app does not attach (28 handles remain declared and unused, §0.2) —
+> and the rollback had also dropped the migration branch's *bug fixes*, so the
+> restored suite keeps re-finding bugs §6.1 says were fixed: re-applied and
+> re-measured below.
+>
+> What is true *here*, measured 2026-09-28 unless the row says otherwise (the 2026-09-30 re-measures
+> are the rows whose result line ends in `All tests passed!` or that say "re-measured"):
+>
+> | Group | Command (all `pwsh -File tools/run_e2e.ps1 -Group <name>`) | Result |
+> | --- | --- | --- |
+> | `login` | `-Group login` | **`+12 ~3: All tests passed!`** (2026-09-28) — **RED on 2026-09-30 on
+>   this tree: `+8 ~3` and the run ended abnormally, with `09` (`proceeding offline reaches the
+>   shell`), `10` (`the password reset email is sent`), `12` (`the first-launch dialog is shown on
+>   an empty server`), `13` (`the changelog dialog is shown on a fresh install`) all reported as
+>   *did not complete* plus `(tearDownAll) - did not complete`.** The four unaffected tests are
+>   `01`–`08`, so the run died at `09` and never reached `10`/`12`/`13`; `- did not complete` means
+>   the test never reported, usually because the app or the test process died under it. It also
+>   left its children holding `build/` (see the readme's four load-failure signatures).
+>   Being re-measured after the build was repaired; the row below is updated from the log of that
+>   run, not from this one.
+> | `lifecycle_platform` | | **`+8 ~1`** |
+> | `accounts` | | **`+8 ~2`** |
+> | `patients` | | **`+13 ~2`** (measured 2026-09-28, before the §6.1 fixes) |
+> | `dashboard` | | **`+5 ~2`** (measured 2026-09-28, before the §6.1 fixes) |
+> | `calendar` | | **`+7 ~1`** (measured 2026-09-28, before the §6.1 fixes) |
+> | `appointments` | | **`+14 ~1: All tests passed!`** — was `+11 ~1 -3`; §6.1's archive-panel,
+>   flyout-header and multiline-tag-field fixes are what `11`, `12` and `14` were |
+> | `patient_panel` | | **`+7 ~2`** (re-measured with the §6.1 fixes; was `+6 ~2 -1`) |
+> | `notes` | | **`+7 ~1`** |
+> | `expenses` | | **`+7 ~1`** |
+> | `insights` | | **`+3 ~2`** |
+> | `deleted_items` | | **`+2`** |
+> | `accessibility` | | **`+4`** |
+> | `upgrade` | | **`+4`** (re-measured) |
+> | `tooth_chart` | | **`+3 ~2`** (re-measured; was `+1 ~2 -2`) |
+> | `settings_general` | | **`+4 ~4: All tests passed!`** (was `+0 ~4 -4`) |
+> | `sync_offline` | | **`+6 ~1: All tests passed!`** (was `+4 ~1 -2`: both failures were the
+>   harness's — §1.6 and §6.3) |
+> | `localization_rtl` | | **`+5 ~1: All tests passed!`** (first measurement on this tree) |
+> | `settings_services` | | **`+5 ~1: All tests passed!`** (first measurement on this tree — it
+>   was key-blocked until §0.2 was finished) |
+> | `backups` | | **`+3 ~4: All tests passed!`** (first measurement here; `04` needed the cron
+>   key moved onto the preset `ComboBox` — §2.11) |
+> | `labworks` | | `~8` (every test skipped by design, §2.2) |
+> | `errors_and_recovery` | | **`+1 ~3: All tests passed!`** (re-measured; `02` is the real test) |
+> | `patient_portal` | | **`+6 ~1: All tests passed!`** (re-measured) |
+>
+> Two traps when reading rows in this file. **A stale log**: `pwsh -File tools/run_e2e.ps1 -Group x`
+> and `pwsh -File tools/run_e2e_groups.ps1 -Groups x` both write `tmp/run_x.log`, so a log that
+> looks like a fresh result can be days old — check `LastWriteTime` before believing a number (a
+> stale `run_patients.log` reading `+13 ~2: All tests passed!` is what produced the bad
+> "re-measured 2026-09-30" marks below, now corrected). **A batch**: once a stray process has
+> broken the build, *every* group in the batch reports `+0 -1: Some tests failed`, which is one
+> infrastructure problem, not twenty-five broken groups.
+>
+> **Why twelve groups are still unmeasured (2026-09-30).** Not the tests: the Windows build.
+> `login 09` left a `cmake` holding `build/`, every later group failed to build, `flutter clean` was
+> run, and the rebuild then had to re-fetch the Firebase C++ SDK — **957,230,645 bytes**, which this
+> connection cannot hold: it truncated at 423,796,736 bytes (44%) the first time and, on retry, reset
+> mid-transfer (`curl: (56) Recv failure: Connection was reset`, then `Could not resolve host:
+> dl.google.com`), at throughput between 19 and 600 kB/s. **No e2e group can run until that archive
+> is complete**, because `firebase_core`'s CMake needs it for every Windows build of this app, and no
+> copy of it — complete archive or extracted SDK — exists anywhere on this machine (searched).
+> Ten parallel range requests *made it worse*: each connection reset makes `curl --retry` restart its
+> part from zero, so four hours of trying left ten 0-byte parts and nothing else, while a single
+> resumable connection (`curl -C -`) can only ever move forward. That is what is running now.
+> **If you are reading this with a working connection, the unblock is one command:** fetch
+> `https://dl.google.com/firebase/sdk/cpp/firebase_cpp_sdk_windows_13.5.0.zip` (957,230,645 bytes)
+> to `build/windows/x64/firebase_cpp_sdk_windows_13.5.0.zip`, delete
+> `build/windows/x64/extracted` if it exists, and run the groups. Nothing about the twelve rows above
+> is a claim that those groups fail — they are simply not measured on this tree since the §6.1
+> fixes, and must not be read as green either.
+>
+> Everything else is **unmeasured** on this tree as of 2026-09-30 (`perf_budgets`, `dicom` —
+> the DICOM group needs a clean process table, see the readme's "All of them"). The groups that were red when this part of the
+> work started (`lifecycle_platform` `+3 ~1 -5`, `login` `+8 ~3 -4`, `accounts` `+2 ~2 -6`,
+> and the ones blocked by the unattached keys of §0.2) got there for one of two reasons: a
+> widget key the rollback left attached to nothing, or a real app bug (§6.1) — **including
+> the migration branch's own fixes, which the rollback dropped with the UI**. Two minutes
+> with `pwsh -File tools/key_audit.ps1` tells the difference: it now reports **zero** keys
+> the suite waits for that the app does not attach (28 declared-and-unused handles remain,
+> listed in §0.2), so a timeout from here on is about the screen, not about a handle.
+>
+> The rows above are *individual* runs, and this suite is order-dependent by design (a
+> group's tests are written to run in registration order after the ones before them). A
+> green single group is "this group passes alone on this tree", never "the whole suite is
+> green" — only `pwsh -File tools/run_e2e.ps1` with no `-Group` says that. The rows measured on
+> 2026-09-30 (`appointments`, `patient_panel`, `upgrade`, `tooth_chart`, `settings_general`,
+> `sync_offline`, `localization_rtl`, `settings_services`, `backups`, `labworks`,
+> `errors_and_recovery`, `patient_portal`) are current; the rest (`lifecycle_platform`, `accounts`,
+> `patients`, `dashboard`, `calendar`, `notes`, `expenses`, `insights`, `deleted_items`,
+> `accessibility`) were measured on 2026-09-28, **before** the §6.1 fixes landed, so read them as a
+> floor — a fix can only turn a failure into a pass, and none of them has been re-run since.
 
 Run them with `pwsh -File tools/run_e2e.ps1`, one group at a time with
 `-Group patients`, or one test with `-Group "04:"`.
@@ -49,17 +157,40 @@ Not tests — the things the tests need. Each one is a prerequisite for a whole 
 Many screens have no keys at all, so their tests would be written against text or types
 and would break on every copy change. Needed before the matching group:
 
+**Audited 2026-09-28** (`pwsh -File tools/key_audit.ps1`, 127 keys declared): **52 keys the
+suite waits for were declared in `lib/widget_keys.dart` and attached to nothing in
+`lib/`** — the rollback note at the top of this file is why. **All 52 are attached again**
+(measured the same day: the audit reports **0** keys the suite waits for and the app does
+not attach; 28 handles remain declared and unused, which are dead weight, not blockers).
+
 - [x] Shared panel chrome: `WK.panelSave`, `WK.panelClose`, `WK.panelArchive`.
-- [x] Lists: `WK.listSearch`, `WK.showMore`; patients: `WK.btnNewPatient`.
-- [x] Calendar: `WK.btnNewAppointment`, `WK.calendarDay(date)`, `WK.calendarSelected`,
-      `WK.calendarToday`.
+- [x] Lists: `WK.listSearch` (`TopSearch`'s `CupertinoTextField`), `WK.showMore`
+      (`ShowMoreBar`'s button); patients: `WK.btnNewPatient`.
+- [x] The `open*` helpers' ready-finders, which gate whole groups:
+      `WK.btnNewPatient`, `WK.btnNewAppointment`, `WK.btnNewAccount` / `WK.btnNewAdmin`,
+      `WK.btnNewSupplier`, `WK.btnNewLabwork`, `WK.btnNewNote` (these six screens' command
+      bars), and the shell's `WK.globalAction(id)` (`NetworkAction.identifier`:
+      `notifications` / `theme` / `sync` / `errors`).
+- [x] The account panel's own handles: `WK.fieldAccountName`, `WK.fieldAccountEmail`,
+      `WK.fieldAccountPassword`, `WK.accountOperates` (the `Checkbox`, not a switch in this
+      tree) and `WK.permissionSelector(titleKey)` per permission row.
+- [x] The settings screen: `WK.settingsList` (its `ListView`), `WK.settingsItem(identifier)`
+      (the card's `Expander` — the box whose *height* says whether the card is open, which
+      is how `revealSettingsCard` decides), and the six services sections with their fields
+      (`WK.serviceSection(id)`, `WK.serviceField(id)`, `WK.backupRow(key)`).
+- [x] The calendar's day cells (`WK.calendarDay`, `WK.calendarSelected`, `WK.calendarToday`,
+      `WK.calendarDayCount`), the dashboard's squares and counts, the notes board
+      (`WK.notesBoard`, `WK.columnRoot`, `WK.columnHeader`, its add buttons and the card's
+      inline saves), the expenses order row, the DICOM screen's six handles, and the labwork
+      editor's three fields.
 - [ ] A row key per record for the lists that lack one — appointments, labworks, expenses,
       notes, accounts, archived (patients uses `ValueKey(patient.id)` already).
 - [ ] Toasts/InfoBars the tests wait for (success *and* failure variants).
-- [ ] Settings: one key per card and per service section (`services_settings/*`).
-- [ ] Teeth chart: one key per tooth (the semantics offset bug below needs this anyway).
-- [ ] Dashboard squares and command-bar buttons.
-- [ ] Kanban column and note card.
+- [ ] Teeth chart: one key per tooth (the semantics offset bug below needs this anyway) —
+      `WK.tooth` is attached; the *other* half, a key per condition, is not.
+- [ ] The 28 declared-but-unused handles (`acDate`, `calendarDayButton`, `loginScreen`,
+      `settingsScreen`, …): either attach them where a test will want them, or delete them —
+      a declared key that nothing draws is how this whole section started.
 
 ### 0.3 Helpers still missing in `support/e2e.dart`
 
@@ -112,7 +243,16 @@ the login screen reported `localDatabaseFailed`.
 
 ## §1. P0 — the money paths
 
-### 1.1 `login` — **done** (`groups/login.dart`, 10 pass / 3 skip)
+### 1.1 `login` — **done** (`groups/login.dart`, 12 pass / 3 skip)
+
+**Verified green: `+12 ~3: All tests passed!`** — re-measured 2026-09-28 on this tree, in 1m48s
+(`pwsh -File tools/run_e2e.ps1 -Group login`). It read `+8 ~3 -4` here before that date
+(`08`, `09`, `12`, `13` red), and each of the four was a real app bug the rollback restored —
+the clear button not emptying the form (`08`), an offline login never setting
+`proceededOffline` (`09`), the first-launch dialog being unreachable because nothing
+re-checked `isFirstLaunch` after the login that sets it (`12`, a 180s wait), and `13` as a
+consequence of `12`'s leaked dialog. All three fixes are in §6.1. The header here used to
+say "10 pass / 3 skip", which was the count before `05`–`13` were written.
 
 - [x] `01: the login screen is shown`
 - [x] `02: a server that is not there is reported`
@@ -132,7 +272,7 @@ the login screen reported `localDatabaseFailed`.
 - [x] `10: the password reset email is sent` — `WK.btnResetPassword` → `WK.msgSentReset`, against an
       address with no account: PocketBase answers `204` either way (measured), so nothing is mailed and
       the app's success path is what runs.
-- [ ] `11: the session survives a restart++` — **skipped**: a restart is a new process, and re-pumping
+- [ ] `11: the session survives a restart` — **skipped**: a restart is a new process, and re-pumping
       the tree keeps every singleton (including `login`) in memory, so it would prove nothing. The
       restore is exercised by every boot (`E2E.boot` waits on `login.ready`).
 - [x] `12: the first-launch dialog is shown on an empty server` — the collections are dropped
@@ -187,10 +327,10 @@ Result: **`patients` = 13 pass / 2 skip.**
 
 ### 1.3 `patient_panel`
 
-- [x] `01: every tab renders++` — patientDetails, dentalNotes, appointments, patientPage:
+- [x] `01: every tab renders` — patientDetails, dentalNotes, appointments, patientPage:
       each tab is opened by its icon (`Fixtures.tabIcons` now covers the patient panel) and
       asserted by something only that tab has.
-- [x] `02: the appointments tab lists that patient's appointments only++` — one card per
+- [x] `02: the appointments tab lists that patient's appointments only` — one card per
       visit (`WK.acSideIcons`), and the other patient's name is nowhere inside the panel
       (scoped to `PanelScreen`).
 - [x] `03: the cost and paid totals match the appointments` — and the rule behind them:
@@ -198,19 +338,21 @@ Result: **`patients` = 13 pass / 2 skip.**
       future), so a visit booked for tomorrow is priced but not counted, while today's
       (drawn at 00:00) is. Asserted through the summary's own pills, because every card in
       the history shows the same figures.
-- [x] `04: dental notes save and reload++` — the patient's notes field round-trips.
+- [x] `04: dental notes save and reload` — the patient's notes field round-trips.
 - [x] `05: extra notes from appointments are shown read-only` — a treatment recorded on the
       appointment's own chart comes back on the patient's chart as *history* (the tooth
       keeps `not-selected`, and `extraNotesFromAppointments` appears).
-- [x] `06: the teeth chart stores a condition per tooth++` — set, save, reopen, still there.
+- [x] `06: the teeth chart stores a condition per tooth` — set, save, reopen, still there.
       `WK.tooth(iso, selected:)` is the key the chart draws each tooth with; `Fixtures
       .setToothCondition` taps the tooth and the condition in the state wheel.
-- [x] `07: the patient page link is generated and can be copied++` — the generate button
+- [x] `07: the patient page link is generated and can be copied` — the generate button
       reaches the server, and the print/QR block only appears once the patient has a link.
-- [ ] `08: revoking patient-page access takes the link down--`
-- [ ] `09: voice autofill fills the dental notes--` — skipped by default (AI, see §3.1).
-- [ ] `10: the panel can be minimised and restored--` — the button only exists below a 710px
-      layout width, where the pane header overflows (§6.2), so this test needs that fix first.
+- [ ] `08: revoking patient-page access takes the link down`
+- [ ] `09: voice autofill fills the dental notes` — skipped by default (AI, see §3.1).
+- [ ] `10: the panel can be minimised and restored` — the minimise button only exists below a
+      710px layout width. The pane header used to overflow there and red the test before it
+      could assert anything; that is fixed (§6.1, 2026-09-28), so what is left is the button
+      itself, which is not written yet.
 
 ### 1.4 `appointments_crud` (calendar)
 
@@ -259,19 +401,26 @@ Result: **`calendar` = 8 pass / 2 skip.**
 **The panel's tests live in `groups/appointments.dart`** (they were never split into a group of
 their own), together with the booking flow: 15 written, of which the ones below are the panel's.
 
-- [x] `01: all three tabs render++` — asserted as `appointments 06` ("the panel shows the
+**Measured on this tree: `+14 ~1: All tests passed!`** (2026-09-28) — 14 pass, 1 skip (`13`), which
+is the whole group. Three of them were red on this tree and are the §6.1 re-applications:
+`11` (archiving from an edited panel left it asking to save), `12` (the history flyout's header
+overflowed by 18px) and `14` (a multiline tag field was 4px short of its own contents). `11` is
+also the one that cost the most: `Fixtures.closePanel(allowPrompt: false)` waits out its full 60s
+when the app asks a question the test has said must not be asked.
+
+- [x] `01: all three tabs render` — asserted as `appointments 06` ("the panel shows the
       appointment on its tabs"): panel tabs draw **icons only** (`showTitles` is off), so
       `Fixtures.openPanelTab` taps the tab's icon inside the `TabView`.
-- [x] `02: operative details save++` / `05: post-operative notes save++` — asserted as
+- [x] `02: operative details save` / `05: post-operative notes save` — asserted as
       `appointments 08`.
-- [x] `03: prescriptions can be added and removed++` — asserted as `appointments 14`. The
+- [x] `03: prescriptions can be added and removed` — asserted as `appointments 14`. The
       prescriptions field offers the clinic's **existing** prescriptions as suggestions and a
       value that does not exist yet has nothing to click (§6.2), so the test seeds one on a
       patient of its own first, picks it, saves, reopens (the chip is read back out of the
       store) and removes it through the chip's own `Key('<label>_clear')` button.
-- [x] `04: price and paid update the patient's totals++` — asserted as `appointments 07`. The
+- [x] `04: price and paid update the patient's totals` — asserted as `appointments 07`. The
       price lives on the **operative-details** tab, not on the tab the panel opens on.
-- [x] `06: the other-appointments list shows this patient's history, read-only++` — asserted as
+- [x] `06: the other-appointments list shows this patient's history, read-only` — asserted as
       `appointments 12` (the flyout titles itself with the number of *other* visits).
 - [ ] `07: previous notes can be copied into this appointment` — **cannot be written**: the panel
       *shows* the earlier dental notes (`AppointmentExtraNotes`, read-only) but has no action that
@@ -289,7 +438,7 @@ their own), together with the booking flow: 15 written, of which the ones below 
       `implementation_imports` ignore in the suite + `plugin_platform_interface` as a dev
       dependency). The whole path really runs — the clinic's footer/phone settings, the QR code,
       the PDF, the call — and the test asserts a PDF reached the platform.
-- [x] `12: archiving the appointment hides it from the calendar++` — asserted as `appointments 10`.
+- [x] `12: archiving the appointment hides it from the calendar` — asserted as `appointments 10`.
 - [x] `13: a panel that persisted work itself does not claim unsaved changes` — asserted as
       `appointments 16` for the **upload** half: `uploadAppointmentFile` is the call the picker
       path ends up making, and the panel must not turn that into a pending edit. The gallery's
@@ -306,6 +455,41 @@ their own), together with the booking flow: 15 written, of which the ones below 
 
 **Verified green: `+6 ~1: All tests passed!`** (2026-09-25).
 
+**Measured on this tree: `+4 ~1 -2`** (2026-09-28) — then **`+6 ~1: All tests passed!`** after
+the two harness fixes below. `01` and `03` — the two "a row written elsewhere arrives here"
+tests — both failed at the same assertion to begin with:
+
+```
+Expected: 't9957897h08y3ij'
+  Actual: 'r5c4lpbul0y24bk'
+the pulled row is not readable by name
+```
+
+That is `sync_offline.dart:130` (and `:213`), `expect(await Fixtures.patientIdOf(name), id)`,
+*after* `_waitForLocalRow` has already found the row in the store **by the server's id** — so
+the store has the row, and then `patients.docs.values` answers the name with a *different*
+id. Read (not guessed) and fixed on the **harness** side — see §6.3 "a store row can have two
+ids": `RemoteRows.insert` wrote a row whose value carried no `id`, which is a shape the app's
+own writes never produce, and `Fixtures.patientIdOf` reads the model's id. **`01` passes with
+that fix** (`+1` in the re-run) — and with it out of the way, `03` showed a second, unrelated
+failure of its own, five seconds in:
+
+```
+Expected: false
+  Actual: <true>
+the shell would not let this test sync
+```
+
+`sync_offline.dart:207` asserts the shell's sync action is **not disabled** the moment the test
+wants to press it. That assertion used to be vacuous: the app bar ignored
+`NetworkAction.disabled` and always passed `onPressed` through, so the reading was `false` no
+matter what (§6.1 — and honouring it is a fix of ours). A sync *is* running at that point — the
+login's and the navigation sync that opening the patients list fires — so the action is
+honestly disabled for a moment, and `Fixtures.tapGlobalAction` (which waits for it to become
+pressable and says so when it never does) is the assertion that belongs here. **`01` and `03`
+both pass with these two harness fixes** — the group is **`+6 ~1: All tests passed!`**, which
+is the number it claims above. (Nothing here was an app bug: the fixture wrote a row shape the
+app never produces, and the test read a flag the app bar had been ignoring.)
 Two directions, one app: a row written **here** reaches the server, a row written **elsewhere**
 reaches here, and neither disturbs what the user is doing. "Elsewhere" is a second writer on the same
 PocketBase (`integration_test/support/remote_rows.dart` — the `data` collection the engine reads,
@@ -316,7 +500,8 @@ the syncs are the app's own: the shell's sync action, the reconnect, and the nav
 - [x] `01: the login pulls the rows another device already wrote` — the row is written after the
       run's first boot (which resets the server) and before the login; the login lands on the
       dashboard, whose navigation syncs, and the row arrives — readable by name, found by the list,
-      and openable as a patient.
+      and openable as a patient. **Passes again** with the §6.3 fixture fix (the row's value has to
+      carry its id).
 - [ ] `02: a change made offline lands on the server after a reconnect` — **skipped, kept as the
       regression**: the harness cannot put this app genuinely offline. A clinic's local database is
       keyed by its URL (`AppDatabase.pathFor`), so a login to an unreachable server is a *different
@@ -328,7 +513,8 @@ the syncs are the app's own: the shell's sync action, the reconnect, and the nav
       PocketBase).
 - [x] `03: a change made on another device arrives on the app's next sync` — written after the
       login, asserted absent locally, then the shell's sync action brings it in **and the list shows
-      it without a reload** (that screen was already open).
+      it without a reload** (that screen was already open). **Red on this tree** at the same
+      assertion as `01`, for the same fixture reason.
 - [x] `04: a remote update does not take an open draft with it` — the user is midway through a rename
       when another device renames the same patient: the panel stays open and the draft is still in
       the field.
@@ -397,6 +583,21 @@ any more — not in the schema and not in any widget (five `WK.fieldLabwork*` ke
 were left behind by the legacy panel and were deleted) — so the old `04: marking
 it paid updates the totals` cannot be written; the state machine replaced it.
 
+**On this tree (2026-09-28) the group has been run**: `~8: All tests skipped` — which is what
+it is designed to report (the docstring below says why each one is skipped, and the runner's
+`All tests passed!` line is replaced by `All tests skipped.` when nothing ran). Before the key
+work, `WK.fieldLabworkAppointment`, `WK.fieldLabworkOrderNotes` and `WK.fieldLabworkReceived`
+were declared and attached to nothing (attached now, §0.2), and `WK.fieldLabworkLabName` was
+attached to **two** widgets at once — so the fixtures' waits could not have resolved.
+
+**The skips still stand, and lifting them is not a matter of the key work.** Three of them are
+fluent's own `AutoSuggestBox` posting a post-frame `setState` from its text listener after the
+panel is disposed — the app cannot reach that call; §6.1's fix guarded the *app's* callback in
+`TagInputWidget` (`if (!mounted || !context.mounted) return;`), which is a different path. The
+rest need the lab-name suggestion overlay to stop swallowing the panel's Save tap
+(`Fixtures.attachLabwork` types into it and `Fixtures.save` then waits out "the panel never
+settled to nothing to save"). Each of the eight carries its own reason in the file.
+
 `groups/labworks.dart` holds all eight tests, and each asserts a real behaviour —
 but **every one of them is skipped**, because each ends by closing a panel built
 from fluent's `AutoSuggestBox` (the patient picker, the lab-name field) and that
@@ -457,7 +658,7 @@ dialog's `WK.fieldNoteTitle` / `WK.fieldNoteText` / `WK.fieldColumnTitle`.
       `web_open_test.dart` pattern), and the recurring-note instance logic
       (`ghostInstancesInColumn`, `nextExpectedDate`), which is unit-testable (§4).
 
-### 2.4 `attachments` — **done** (`groups/attachments.dart`, 5 pass / 7 skip)
+### 2.4 `attachments` — **the group file does not exist** (`groups/attachments.dart`)
 
 The group attaches to a **note** — the one attachment owner a test can create and
 look up through the UI without a second store — and drives the same call the
@@ -525,15 +726,16 @@ key set was dead — so those items were replaced by what the screens do.
 - [ ] Not covered: the totals row (`Total: <due>`), the receipt-photo lane and
       the AI receipt scan (`scanReceiptDialog`, an external service).
 
-### 2.6 `insights`
-
-- [ ] `01: the charts render for the seeded data++`
-- [ ] `02: totals match the seeded patients/appointments/payments++`
-- [ ] `03: the date range changes the numbers`
-- [ ] `04: switching the calendar system changes the axis labels--`
-- [ ] `05: an empty clinic renders empty charts, not an error`
-
 ### 2.7 `accounts` + `permissions` — **done** (`groups/accounts.dart`, 8 pass / 2 skip)
+
+**Verified green: `+8 ~2: All tests passed!`** — re-measured 2026-09-28 on this tree, in 3m36s
+(`pwsh -File tools/run_e2e.ps1 -Group accounts`). It read `+2 ~2 -6` here before that date,
+for two reasons that were both real: `Fixtures.createAccount` / `setAccountEnabled` /
+`grantPermission` wait on keys the rollback left attached to nothing
+(`WK.fieldAccountName` / `fieldAccountEmail` / `fieldAccountPassword` /
+`WK.accountOperates` / `WK.permissionSelector(id)` — §0.2 / §6.1), and `08` (the group's
+only test that signs in **twice**) tripped a `LateInitializationError` in the deferred-push
+queue that aborted `Messaging.identifyDevice` on every login after the first (§6.1).
 
 Accounts are handled by `accounts_controller.dart` (a `profiles` view over PocketBase's
 `users`/`_superusers`); permissions are nine rows (`Perm`) with two or three levels each.
@@ -604,6 +806,12 @@ would mean parsing a localized sentence to get at a count.
 
 ### 2.9 `settings_general` — **done** (`groups/settings_general.dart`, 4 pass / 4 skip)
 
+**Measured on this tree: `+4 ~4: All tests passed!`** (2026-09-28, 56s) — the 4 pass / 4 skip
+below, restored. It was `+0 ~4 -4` before the `ItemTitle` fix in §6.1: all four reds were the
+same `string is not well-formed UTF-16` burst, thrown on the screen the app lands on after
+login (before the settings screen is even opened), which is also why it looked like a
+`WK.settingsItem`-placement problem and was not one.
+
 The cards are collapsed `Expander`s in a lazy `ListView`; each has a stable identifier
 (`WK.settingsItem(id)`), a `Key('<id>_text_field')` / `Key('<id>_combo')` inside it, the scope
 indicator (`AppliesToIndicator`) on the **collapsed header** and any `footer` inside the
@@ -630,7 +838,13 @@ them. **This group is what found the UTF-16 crash in §6.1** — every test used
 
 ### 2.10 `settings_services` — **done** (`groups/settings_services.dart`, 5 pass / 1 skip, verified)
 
-**Verified green: `+5 ~1: All tests passed!`** (2026-09-25), after a run of `+1 -5`. Three things
+**Verified green: `+5 ~1: All tests passed!`** (2026-09-25), after a run of `+1 -5`.
+**Measured on this tree: `+5 ~1: All tests passed!`** (2026-09-28) — its first run here, and it
+only became *runnable* when the section and field keys went on (`WK.serviceSection`,
+`WK.serviceField`, §0.2): before that, `openServiceSection` waited for a key nothing drew. The
+bullets below are the migration branch's lessons; the outcome is not.
+
+Three things
 made the difference, and each was a harness lesson rather than a product change: a shut fluent
 `Expander` keeps its content laid out, so "is the section open?" has to be judged by its **height**
 (§6.3); the sections' list cannot be scrolled by drag or `ensureVisible`, so its `ScrollPosition` is
@@ -678,6 +892,24 @@ tested without one.
 **Verified green: `+3 ~4: All tests passed!`** (2026-09-25). `01`, `02` and `04` pass; `03` and `05`
 are skipped with their evidence in the body, and `06`/`07` for the reasons below.
 
+**On this tree (2026-09-28) it had not been run at all**: `WK.serviceSection('backups')`,
+`WK.serviceField('backups_cron' | 'backups_maxKeep' | 'backups_s3_endpoint')` and
+`WK.backupRow(key)` were all declared and attached to nothing, so nothing here could be
+opened or seen. They are attached now (§0.2) — **measured: `+3 ~4: All tests passed!`**,
+which is the 3 pass / 4 skip this group always claimed. Two things were worth writing down on
+the way:
+
+- `02: creating a backup adds a row` waits for the new row **by its own key**
+  (`WK.backupRow(element.key)`, on the row's `ServicesListItem`) ✓.
+- `04: a cron preset and the keep limit reach the server` failed first, and the log named the
+  reason: it taps `WK.serviceField('backups_cron')` expecting a **preset dropdown** to open,
+  but the key was on the *disabled* box that merely shows the cron expression while the real
+  picker is the `ComboBox<String>` beside it. A tap on a disabled field only *warns*
+  (`warnIfMissed`), so the test then spent its 60s wait on a preset list that can never open.
+  `Fixtures.serviceFieldText` already says a `serviceField` may sit on "a `CupertinoTextField`
+  **or a `ComboBox`**" — the key is on the combo now, and `04` passes.
+
+
 Backups are the server's (`login.pb!.backups`): the app lists them, creates one, and deletes or
 restores one per row. Every assertion here has a server side and a UI side, and anything the
 group changes (the cron schedule, the S3 fields, a backup it makes) is put back or removed.
@@ -702,17 +934,13 @@ the first-test-of-a-run nav-tap signature, which `Fixtures.openRoute` now retrie
 - [ ] `07: a backup carries attachments` — **skipped**: a local backup holds the data file, and
       restoring one is destructive to the clinic this suite shares.
 
-### 2.11 `backups`
-- [ ] `01: the backups list renders++`
-- [ ] `02: creating a backup adds a row++`
-- [ ] `03: restoring a backup brings the data back++` — change a record, restore, gone.
-- [ ] `04: auto backups can be enabled with a cron preset++`
-- [ ] `05: the max-keep limit prunes older backups`
-- [ ] `06: the S3 toggle and its fields save and reload++`
-- [ ] `07: a failed backup says so` — `backups_save_fail` path.
-- [ ] `08: the backup carries attachments, not just rows--`
-
 ### 2.12 `dicom` — **done** (`groups/dicom.dart`)
+
+**On this tree (2026-09-28) it had not been run at all**: all six handles it waits for
+(`WK.dicomScreen`, `WK.dicomScanButton`, `WK.dicomAutoImportToggle`, `WK.dicomPendingCard(key)`,
+`WK.dicomApprove`, `WK.dicomChangeMatch`) were declared and attached to nothing, so not one of
+these tests could get past its first wait. They are attached now (§0.2) — see §2.10's note for
+what that does and does not claim.
 
 The X-ray link is a **Windows-only feature by construction**: `DicomController.isSupported` is
 `!kIsWeb && Platform.isWindows` and the route is gated on it, so on any other platform there is
@@ -817,6 +1045,14 @@ fails inside `signIn` because there is no login form on screen.
 
 **Verified green: `+5 ~1: All tests passed!`** (2026-09-25).
 
+**Measured on this tree: `+5 ~1: All tests passed!`** (2026-09-28, first measurement here) — the
+group was in the "never run" list because it had not been measured since the rollback, and
+`01: every locale renders the staff shell` passes here *without* the §6.1 dashboard-title fix
+that the migration branch needed: the list-square title row in this tree's
+`dashboard_screen.dart` is still `Row(mainAxisAlignment: spaceBetween, children: [Txt(title),
+IconButton])` with no `Flexible`, and no locale overflows it at 1600px with these labels. Worth
+an eye if those titles grow or the squares narrow (see §6.3).
+
 `03`, `04` and `06` were written after the first run showed `01` and `03` failing on real findings
 (the dashboard overflows §6.1 and English-only keys), and all three then failed for reasons of their
 own — two of them the *test's* fault, one a helper's (see the bullets). A run in between hit the
@@ -854,7 +1090,7 @@ is invisible from the outside; the group's job is to make it visible.
 - [ ] Not covered: dates/numbers per locale (§2.9 `04` covers the calendar system), and the
       patient-side screen's own language picker (that is §2.13).
 
-### 2.15 `multi_clinic` — **done** (`groups/multi_clinic.dart`)
+### 2.15 `multi_clinic` — **the group file does not exist** (`groups/multi_clinic.dart`)
 
 **A clinic *is* a server URL** in this app: no clinic list, no switcher, no per-clinic settings.
 What makes two clinics two is `AppDatabase.pathFor(url)` — one local database per URL — and
@@ -895,11 +1131,15 @@ The marker itself lives in the **device** database (`schema_versions`, one row p
 
 ### 2.16 `lifecycle_platform` — **done** (`groups/lifecycle_platform.dart`, 8 pass / 1 skip)
 
-**Verified green: `+8 ~1: All tests passed!`** (2026-09-25). The last thing in the way was `05`, which
-narrows the window to 300px on purpose: at that width the app is in its **minimal** pane, and the
-pane header overflowed by 214px there (then 61px, once the name could shrink and only the logout
-button was left). Both overflows are fixed — §6.1 — and `06` is skipped for the phone-layout
-clipping that the video work recorded.
+**Verified green: `+8 ~1: All tests passed!`** — re-measured 2026-09-28 on this tree, in 1m37s
+(`pwsh -File tools/run_e2e.ps1 -Group lifecycle_platform`). It was **red here** between
+2026-09-27 and that date (`+3 ~1 -5`, then `+6 ~1 -2`), for two reasons that are neither
+fluent's nor the 2026-09-28 routing refactor's: the group's nav taps were waiting on
+`WK.btnNewPatient` / `WK.btnNewAccount` / `WK.globalAction(…)`, which the rollback left
+**attached to nothing** (see §0.2 and §6.1), and `05` narrowed the window to 300px where the
+pane header overflowed by 214px. Both are fixed — §6.1 — and `06` is skipped for the
+phone-layout clipping that the video work recorded. `08` also needed the test itself fixed:
+it walks a history, and it was inheriting the router state test `05` leaves behind (§6.3).
 
 This group drives window **sizes**: `Fixtures.sizeTo` sets the test view, and the app reads its
 width from a `LayoutBuilder` (`launch.layoutWidth`), which is what moves it between display
@@ -932,15 +1172,25 @@ header shrinks instead of overflowing.
 
 ### 3.1 `ai_services` (every test here uses `skip:` — they call the `dataextraction` Worker)
 
-- [ ] `01: audio transcription fills the dental notes--`
-- [ ] `02: a receipt photo fills the expense fields--`
-- [ ] `03: post-op notes are generated from the appointment--`
-- [ ] `04: a Worker failure is reported and the draft is not lost--`
-- [ ] `05: a very long recording is rejected with a reason--`
-- [ ] `06: the transcription locale setting is respected--`
-- [ ] `07: cache reset clears the stored extraction state--`
+- [ ] `01: audio transcription fills the dental notes`
+- [ ] `02: a receipt photo fills the expense fields`
+- [ ] `03: post-op notes are generated from the appointment`
+- [ ] `04: a Worker failure is reported and the draft is not lost`
+- [ ] `05: a very long recording is rejected with a reason`
+- [ ] `06: the transcription locale setting is respected`
+- [ ] `07: cache reset clears the stored extraction state`
 
-### 3.2 `notifications` — **done** (`groups/notifications.dart`, 7 pass / 4 skip, verified)
+**Not written as of 2026-09-28.** There is no `groups/ai_services.dart` in the tree at all,
+so this is a block of tests to author, not a group to re-enable.
+
+### 3.2 `notifications` — **the group file does not exist** (`groups/notifications.dart`)
+
+The heading here used to say "**done** (`groups/notifications.dart`, 7 pass / 4 skip,
+verified)". The file is not in the tree: `ef3a3fd` ("Bring back the e2e suite, minus the
+parts that test the migration itself") removed it deliberately, because the bell's second
+producer was the localpocket change feed (`StoreChangeNotifications`), which the
+Hive-restored `lib/` does not have. The entry list below is kept as what the group would
+have to cover again; nothing here has been run on this tree.
 
 **Verified green: `+7 ~4: All tests passed!`** (2026-09-25). `04` was the last one out — the
 appointment notice's action navigated to `"appointments"`, which is not a route at all (its
@@ -1238,6 +1488,152 @@ Each new group is one file under `integration_test/groups/` plus **one line in
 
 ### 6.1 Fixed
 
+#### 2026-09-28 — the migration branch's fixes are *not* in this tree either
+
+Everything below with a "found by" line was found and fixed against the **localpocket
+migration branch**, which `af8e771` rolled back — so the code went with it and the restored
+suite walks into the same bugs again. Re-applied here, in the order they were re-found:
+
+- **`ItemTitle`'s avatar initial cut an emoji in half.** `settings_general` was `+0 ~4 -4`:
+  every test in it died on `Invalid argument(s): string is not well-formed UTF-16` (see the
+  §6.2 entry below for what that looks like), thrown while building a `TextSpan` from the
+  screen's landing state — no app frame in the stack, and the same burst in all four tests.
+  Found by printing the offending data from a temporary unpaired-surrogate check in
+  `Txt.build` (`"\ud83d"`, one code unit) and then the titles from a check inside a
+  replacement helper: **appointment titles are built from `DF`'s formats, which start with
+  `📅`** (`settings_stores.dart`), so every screen listing appointments was one frame away
+  from it. `initialOf(Model)` returns `String.fromCharCode(title.runes.first)` now.
+  **`settings_general` `+4 ~4: All tests passed!`** — which is also what its documented
+  "4 pass / 4 skip" always said.
+- **The appointment history flyout's header overflowed by 18px** (§2.4 entry below has the
+  detail): `appointments 12`'s `Row` in `open_appointment_panel.dart`, both halves
+  `Flexible` + ellipsis now.
+- **`WK.fieldLabworkLabName` was attached to two widgets** — the lab-name box *and* the
+  order-notes box beside it, so the key matched twice and `WK.fieldLabworkOrderNotes` (which
+  the suite waits for) was attached to nothing. The notes box carries its own key now, and
+  `WK.fieldLabworkReceived` / `WK.fieldLabworkAppointment` are attached.
+- **The three clipping bugs are back** and are fixed through one helper this time:
+  `lib/utils/clip.dart` (`clipCodePoints` clips by code point; `fitsInCodePoints` is the
+  "does it need clipping at all" half). `isoCC()`'s `substring(0, 2)` (a pasted flag emoji is
+  four code units), the 14-character name cuts in the calendar, notes and insights screens,
+  and the patient label's 10-character cut all go through it.
+  `test/unit/utils/clip_test.dart` pins the property rather than the arithmetic: every
+  prefix length of an emoji-bearing label must be *well-formed UTF-16*.
+- **A multiline tag field was 4px short of its own contents** (`appointments 14`: *"prescriptions
+  can be added and removed"*). `TagInputWidget` forced `height: visibleTags.length * 40 + 40` on
+  the box in **both** modes, and the box then hands its child `height − 8` — a 1px border *and*
+  3px padding on each side, where the formula only budgeted its own 6px of padding. With one
+  chip the field's column had 32px for 36px of content. On top of that, `AnimatedSize` keeps
+  the chip block at its **old** height for the 250ms it animates down, and the multiline chips
+  are a `Column(spacing: 3)`, which the formula does not know about either. So removing the
+  prescription the test had just added reported
+  `A RenderFlex overflowed by 4.0 pixels on the bottom` — with a *defunct* render object, which
+  is why the message points at no widget ("creator: … (DEFUNCT)", and no
+  "error-causing widget" line). The identity was recoverable from the dumped creator chain
+  (`… ← StatefulElement ← _LayoutBuilderElement ← StatefulElement ← ParentDataElement<FlexParentData> ← Flex`)
+  plus the numbers: a tight 32px child box with a 4px offset is a 40px container with the
+  borders and padding the formula forgot. A **multiline** field sizes itself now
+  (`height: null`) and its input box is not an `Expanded` (a flex child of an unbounded
+  `Column` is a layout error); the row case keeps its one-line height. **Measured after the fix:
+  `appointments 14` passes** (the group is `+14 ~1` with it).
+- **Archiving from an edited panel left it dirty** (`appointments 11`: *"deleting from the
+  panel and closing does not warn"*). `RowPanel.setArchived` archived the record without
+  re-baselining the panel's snapshot (`markSaved()`), so `hasPendingEdits` still compared the
+  draft against what the panel looked like when it opened: the header kept saying **Cancel**
+  over work that was already stored, and `closePanel` met the "close anyway?" flyout —
+  `Fixtures.closePanel(allowPrompt: false)` is the test's whole point, so it waited out its
+  60s: `Timed out after 60s waiting for the panel to disappear`
+  (`fixtures.dart:177` ← `appointments.dart:238`). `persist()` had always re-baselined
+  (`markSaved()`); the archive path is a store write of its own and has to do the same.
+  **Measured after the fix: `appointments 11` passes** (the group is `+14 ~1` with it).
+
+#### 2026-09-28 — on this tree (Hive data layer, after the migration rollback)
+
+Measured before/after with `pwsh -File tools/run_e2e.ps1 -Group lifecycle_platform`
+(`+3 ~1 -5` → `+6 ~1 -2` → **`+8 ~1: All tests passed!`**, 1m37s).
+
+- **The "route-open failure" is a missing key, not a routing bug.** `Fixtures.openRoute`
+  waits for the target screen's key after the nav tap; the tap lands (measured with a
+  throwaway diagnostic test: after tapping the patients item, `pane.selected = 1`,
+  `items = 11`, `routes.currentIndex = 1`, `routes.currentRoute().id = 'patients'` — fluent
+  *did* jump the body), and then the wait times out because **the key it waits for is
+  attached to nothing**. **52 of the keys the suite waits for were declared in
+  `lib/widget_keys.dart` and attached to no widget in `lib/`** (audit: `tools/key_audit.ps1`).
+  That is what made whole groups red, what kept tripping `settings_services 01` and
+  `backups 01` "in a fresh process", and what the harness had grown a retry workaround
+  around. It is **not** a regression from the 2026-09-28 routing refactor, and not a fluent
+  bug: a bare `NavigationView` + `NavigationPane(selected: …)` follows its selection
+  correctly (`test/widget/app/navigation_body_test.dart`).
+- **Fifteen of them are re-attached**: `WK.btnNewPatient`,
+  `WK.btnNewAppointment`, `WK.btnNewAccount` / `WK.btnNewAdmin`, `WK.btnNewSupplier`,
+  `WK.btnNewLabwork`, `WK.btnNewNote` (the six screens' command bars — they are what
+  `Fixtures.openPatients` / `openCalendar` / `openAccounts` / `openExpenses` / `openNotes` /
+  `openLabworks` wait for), the account panel's `WK.fieldAccountName` /
+  `WK.fieldAccountEmail` / `WK.fieldAccountPassword` / `WK.accountOperates` /
+  `WK.permissionSelector(id)` (`Fixtures.createAccount` and `Fixtures.setAccountEnabled`
+  wait for those), `WK.listSearch` (`TopSearch`'s `CupertinoTextField`), `WK.showMore`
+  (`ShowMoreBar`'s button), and `WK.globalAction(id)` — which needed a stable id on the
+  shell's actions (`NetworkAction.identifier`: `notifications`, `theme`, `sync`, `errors`).
+  37 remain; §0.2 lists them.
+- **`NetworkAction.disabled` was dead code again.** The flag is set in four places
+  (sync/errors while a sync runs, while the session works offline, while there is nothing to
+  reconnect) and `_buildActionIcon` passed `onPressed` straight through, so a disabled action
+  was still pressable and a tap on it did nothing instead of failing loudly.
+  `Fixtures.globalActionDisabled` (and the sync tests that rely on it) need the widget to
+  honour the flag: it now passes `null` when `disabled == true`.
+- **The pane header overflowed by 214px in a minimal pane** (`CurrentAccount`,
+  `lib/common_widgets/current_account.dart`) — found by `lifecycle_platform 05`, which
+  narrows the window to 300px on purpose and died on
+  `A RenderFlex overflowed by 214 pixels on the right` before it could assert anything. It was
+  a fixed 130px name box beside the logout button in the ~26px strip a minimal pane gives the
+  header. Now a `LayoutBuilder`: below 150px the header draws nothing at all (a minimal pane
+  lays it out in the hamburger's strip, where neither a name nor a logout label fits; the
+  logout is also on the dashboard's command bar), above it the name is `Flexible` + ellipsis
+  inside an `Expanded`. This is the §6.2 bullet that used to say "still overflows" — it is
+  fixed again, and the note is gone from there.
+- **The accounts screen's counts strip overflowed** — `5.3px` at a 1280px window, and its
+  refresh button's inner `Row` (default `mainAxisSize.max`, inside a `Row` that hands a
+  non-flex child *unbounded* width) claimed whatever the bar had and reported `16px`. It is a
+  `Wrap` now and the button's row is `mainAxisSize: MainAxisSize.min`. Pinned by
+  `test/widget/features/accounts_counts_row_test.dart`, which reproduces both in under a
+  second at 1280/1264/710/300px instead of costing a 30s e2e run per attempt.
+- **The deferred-push queue could only be initialized once, per process.** `_DeferredPush.hiveBox`
+  (`lib/services/notifications/push_deferring.dart`) was `late final`, but `reset()` exists so
+  that the *next* login re-runs `init()` for its own clinic server — and assigning a `late final`
+  twice throws `LateInitializationError`. The throw landed inside `Messaging.identifyDevice`,
+  which `login.activate` awaits, so on **every login after the first one in a process** the
+  clinic's relay key was never ensured and no device was registered. Found by `accounts 08` —
+  the group's only test that signs in twice — which failed with
+  `#1 _DeferredPush.hiveBox= … #2 _DeferredPush.init … #3 _LoginService.activate` until
+  `late final` became `late`. `accounts` is `+8 ~2` with it.
+- **`Fixtures.openRoute` now settles past the pane's transition.** The ready key appearing is
+  not the same as the pane having *finished* swapping screens: fluent wraps the body in an
+  `AnimatedSwitcher`, so the screen being left stays mounted for its 250ms transition — and
+  two screens mounted at once means two `WK.listSearch` boxes, which throws
+  `Bad state: Too many elements` in whichever helper types into one next.
+- **The login screen's "clear" button did not clear the form** (`lib/features/login/login_screen.dart`).
+  It ran `login.logout(true)`, which empties the *stored* url and email — but the three fields
+  hold their own `TextEditingController`s, and the screen's observer (`fillFromPersistence`)
+  only ever writes a **non-empty** value back, so the address and the email stayed on screen:
+  a form that looks signed in with nothing behind it. `login 08` pinned it
+  (`Expected: empty / Actual: 'https://pb.apexo.app' — the server url stayed in the field`);
+  the button empties its own fields now, and `login` is `+12 ~3`.
+- **An offline login never said it was offline** (`lib/services/login.dart`).
+  `proceededOffline` means "this session is the offline one" — the shell's sync action disables
+  itself on it and the errors action becomes a reconnect — but `activate(online: false)` never
+  set it: it only defaulted to `true` on a cold start, so the login that *proceeded offline*
+  left it at whatever the last online login made it (`false`), and the shell still offered a
+  sync. `login 09` (`Expected: true / Actual: false — the app does not know the session is
+  offline`) fails without it; the `else if (!online)` branch sets it now.
+- **The first-launch dialog was unreachable** (`lib/app/app.dart`, `lib/services/login.dart`).
+  `showDialogsIfNeeded` ran once, from a one-second timer in `ApexoApp.createElement` —
+  *before* the login that creates a clinic can set `launch.isFirstLaunch` — and nothing
+  re-checked the flag, so the welcome dialog needed a startup where a clinic appeared within a
+  second. It is idempotent, so `login.activate` calls it now (as
+  `ApexoApp.showDialogsIfNeeded()`, static because it reads only globals); `login 12` waited
+  180s for a dialog that could never come, and `login 13` then found `12`'s leaked dialog on
+  screen. Both pass.
+
 - **The patient seeders wrote a field that does not exist.** `Fixtures.seedPatientsBulk` and
   `seedPatients` wrote `'name'`, but a patient's name is **`title`** on the wire
   (`Patients.title = schema.text('title')`): a thousand seeded patients had no name at all, and §1.6's
@@ -1478,6 +1874,16 @@ Each new group is one file under `integration_test/groups/` plus **one line in
 
 ### 6.2 Open — each one blocks a group
 
+> **Read with the note at the top of this file in mind.** Five entries below are about
+> **localpocket**, which this tree does not have (`af8e771` rolled it back): *A local purge of
+> a synced row does not stick*, *`network.isOnline` never goes false for a paused engine*
+> (the `network.onOffline['localpocket']` half), *A server-side delete is invisible*
+> (`MissingRemotePolicy.recreate`, `lib/core/db/conflict_policy.dart`), the *46-minute first
+> attachment*, and the parts of the settings/portal entries that quote
+> `/api/settings` snapshots through a localpocket `Store`. They are kept because they are
+> what the migration-era runs found, not because they are actionable here. Everything else
+> is about code this tree does have.
+
 - **A local purge of a synced row does not stick, and the reason is in the engine.** `patients.purge(id)`
   removes the row in the local database, but the row is still on the server and the next pull brings it
   back: `perf_budgets 06` purged a thousand seeded patients and found **24** of them in the store
@@ -1536,12 +1942,9 @@ Each new group is one file under `integration_test/groups/` plus **one line in
   the second edit silently not saved — and the clinic's mail host is now left as an `e2e-…` marker
   (`pb.apexo.app` is the test server). The test asserts the first write (its actual subject) and only
   *warns* about the restore.
-- **The pane header still overflows when compact.** `CurrentAccount`
-  (`lib/common_widgets/current_account.dart:18`) is a Row of a fixed 130px name box plus the
-  logout button, and it overflows by 214px in a compact pane. The tests drive a 1600x1000
-  window to avoid it (`E2E.boot`), but a 1280px window with a panel open is a real user
-  layout and is broken. Needs a decision on how the compact header should look (probably:
-  drop the name, keep the icon and the logout button) — not a test-only fix.
+- **The pane header overflowed when compact — fixed 2026-09-28.** Kept here as the
+  resolution of the contradiction between §2.16 and §6.1: `CurrentAccount` is a
+  `LayoutBuilder` now (draws nothing below 150px, shrinks its name above it). See §6.1.
 - **A *new* tag cannot be driven from the harness.** The non-strict box mirrors only the
   clinic's existing tags into its suggestions (`_updateSuggestions` +
   `_filteredSuggestions` dropping empty labels), so a new tag has nothing to click and Enter
@@ -1648,6 +2051,16 @@ Each new group is one file under `integration_test/groups/` plus **one line in
 
 ### 6.3 Worth knowing before writing more
 
+- **A store row can have two ids, and the blob's is the one a `Model` reports.** The store's map is
+  keyed by the **document** id (the PocketBase `data` row), while each `Model` takes its `id` from
+  the **value** (`record.data['data']`): `Model.fromJson` reads `json['id']` and invents a random one
+  when it is absent, and `Model.toJson` always writes it. Every row the app writes therefore has the
+  same id twice; a row written by *hand* with a value that has no `id` gets the same row under two
+  ids — look it up by key and you find it, ask `docs.values` for it and you get a model whose `id`
+  is invented. `Fixtures.patientIdOf` reads the model's id, which is how `sync_offline 01`/`03` failed
+  (`the pulled row is not readable by name`) while `_waitForLocalRow` — a key lookup — passed:
+  `RemoteRows.insert` was writing the unrealistic shape. Anything that hand-writes a row (a fixture,
+  a second device) must put the id **in the value** as well, which `RemoteRows.insert` now does.
 - **Wire values are the schema's, and the wrong field name is silent.** A patient's name is
   **`title`** (`Patients.title = schema.text('title')`); `name` is not a field, so a row written with
   it is created, synced and rendered with *no name* — see §6.1. The same applies to a hand-written
@@ -1656,10 +2069,14 @@ Each new group is one file under `integration_test/groups/` plus **one line in
 - **`find.text(x)` matches the search box once `x` is in it.** "The search found the record" has to
   be asserted as a **row** (`find.ancestor(of: find.text(x), matching: find.byType(ListTile))`); two
   tests passed on nothing because of this, one of them for months (§6.1).
-- **The login does not sync by itself.** `lib/app/routing/routes.dart` calls `AppDatabase.synchronize()` on *route
-  changes*, and that is what pulls a clinic after a fresh login (the dashboard is a route change); the
-  shell's sync action and the reconnect are the other two entry points. A test that wants a pull logs
-  in (and lands somewhere) or presses the sync action.
+- **The login does not sync by itself.** `lib/app/routing/routes.dart` refreshes the stores on a
+  *route change*: `AppRouter.navigate` / `goBack` fire `_syncStores(route)`, the one switch beside
+  the router that replaced the old per-route `onSelect` closures (it awaits where they awaited and
+  `unawaited(...)`s where they fired and forgot). That is what pulls a clinic after a fresh login —
+  the dashboard is a route change; the shell's sync action and the reconnect are the other two
+  entry points. A test that wants a pull logs in (and lands somewhere) or presses the sync action.
+  A unit test that only wants the router state can use `navigateWithoutSync` (it is
+  `@visibleForTesting` precisely because `navigate` fires those store syncs).
 - **The run's first boot resets the server** (`E2E.resetState`), so anything a test needs the server
   to hold *before* its login has to be written after that boot — the first version of §1.6 `01` wrote
   its row before it, and the reset deleted the row it was about.
@@ -1856,11 +2273,14 @@ Each new group is one file under `integration_test/groups/` plus **one line in
   window — and `getRect` on that control happily returns the y. Symptom to recognise:
   "could not scroll to a control; the list is at N of N" for a control whose rect is *below*
   the list's own content extent; the cure is to open the section first.
-- **The nav pane draws every route, including the ones an account cannot open.** An
-  inaccessible item is built with `Icon(WindowsIcons.lock)` and `onTap: null`
-  (`lib/app/app.dart`), so a non-admin is not *missing* the settings item — it is locked, and
-  `Fixtures.openRoute` on it taps a dead item and spends its whole 60s wait. A permission test
-  asserts the lock (and that the screen was never built), not the item's absence.
+- **The nav pane no longer draws a route an account cannot open.** The 2026-09-28 routing
+  refactor deleted that branch: `NavigationPane.items` is built from
+  `routes.visibleRoutes` (the catalog filtered through `_accessible`), so a gated route is
+  **omitted**, and `accounts 05` is right about it. The old text here — an inaccessible item
+  built with `Icon(WindowsIcons.lock)` and `onTap: null`, which `Fixtures.openRoute` would
+  tap to death — describes the pre-refactor shell and is kept only as the history of why
+  `openRoute` verifies that it arrived. A permission test asserts the **absence** of the
+  item (and that the screen was never built), not a lock.
 - **Never clear stray processes while a suite is running.** Killing `apexo.exe` /
   `flutter_tester` before starting the next group murdered the group still running: its
   remaining tests and `tearDownAll` all reported `- did not complete`, which reads like a
@@ -1868,3 +2288,17 @@ Each new group is one file under `integration_test/groups/` plus **one line in
   Related: a run piped through `Select-String … | Select-Object -Last N` prints **nothing**
   until the pipe ends (`Select-Object -Last` buffers) — `Tee-Object -FilePath tmp/<name>.log`
   first and `Get-Content … -Tail 8` to watch it live.
+- **A test that walks the router's history inherits the tests above it.** `routes` is
+  app-global and every test in a group shares it: `lifecycle_platform 05` finishes on the
+  accounts screen, so `08`'s `patients → calendar → back → back` landed on `accounts` where it
+  expected `dashboard` (`Expected: 'dashboard' / Actual: 'accounts'`, twice). It calls
+  `routes.reset()` first now — the app's own "dashboard, nothing behind it" state — rather
+  than assuming nobody left a trail. The app was right both times; the test was the thing
+  with the unstated precondition.
+- **A `Timed out after 60s waiting for the X screen` after a nav tap is a missing key, not a
+  broken route.** `Fixtures.openRoute` verifies it *arrived* before it retries, and the retry
+  exists because a tap can genuinely miss — but if the key in the second `waitFor` is attached
+  to nothing, the retry can only fail the same way. Diagnose it with the diagnostic test in
+  `lifecycle_platform`'s history (values that settle it: `view.pane?.selected`,
+  `routes.currentIndex`, `routes.currentRoute().id`, and `find.byKey(target)`), or with
+  `tools/key_audit.ps1`, before touching `Fixtures`, the router, or `lib/app/app.dart`.

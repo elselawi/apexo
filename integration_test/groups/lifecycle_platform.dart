@@ -189,6 +189,12 @@ void registerLifecyclePlatformTests() {
     testWidgets('08: the back arrow goes back one screen at a time',
         (tester) async {
       await E2E.signIn(tester);
+      // The **router is global state the tests above share** — `05` finishes on
+      // the accounts screen, so its history is still on the stack and this walk
+      // would land on `accounts` where it expects `dashboard` (it did, twice).
+      // Start from the app's own empty-history state instead of inheriting one.
+      routes.reset();
+      await E2E.settle(tester, frames: 10);
       await Fixtures.openPatients(tester);
       await Fixtures.openCalendar(tester);
 

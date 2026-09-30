@@ -202,10 +202,13 @@ void registerSyncOfflineTests() {
           reason: 'the row was already local before the sync this test drives');
 
       // The user's own sync — the shell's sync action, not a call into the
-      // engine. A disabled button would make the wait below fail for a reason
-      // that has nothing to do with syncing.
-      expect(_action('sync').disabled, isFalse,
-          reason: 'the shell would not let this test sync');
+      // engine. It is **disabled while a sync is already running**, and one is:
+      // the login's own sync and the navigation sync that opening the patients
+      // list fires both land before this line. So this does not assert that the
+      // action is free *now* — a reading that only ever said `false` while the
+      // app bar ignored `NetworkAction.disabled` (§6.1) — it presses it, waiting
+      // for it to become pressable and failing with that reason if it never does
+      // (`Fixtures.tapGlobalAction`).
       await Fixtures.tapGlobalAction(tester, 'sync');
 
       await _waitForLocalRow(tester, id,

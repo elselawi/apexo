@@ -14,6 +14,7 @@ import 'package:apexo/features/stats/widgets/range_selector.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -368,8 +369,8 @@ class StatsScreen extends StatelessWidget {
               ),
               ...accounts.operators.map((account) {
                 var name = "🥼 ${accounts.name(account)}";
-                if (name.length > 17) {
-                  name = "${name.substring(0, 14)}...";
+                if (!fitsInCodePoints(name, 17)) {
+                  name = "${clipCodePoints(name, 14)}...";
                 }
                 return ComboBoxItem(value: account.id, child: Txt(name));
               }),

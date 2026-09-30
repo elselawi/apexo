@@ -13,6 +13,7 @@ import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
@@ -617,8 +618,8 @@ class ClickableBottomLabel extends StatelessWidget {
 
   Txt _buildRegularContent() {
     return Txt(
-      label.content.length > 10
-          ? '${label.content.substring(0, 10)}...'
+      !fitsInCodePoints(label.content, 10)
+          ? '${clipCodePoints(label.content, 10)}...'
           : label.content,
       overflow: TextOverflow.clip,
       style: TextStyle(fontSize: 11, color: color),

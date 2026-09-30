@@ -9,6 +9,7 @@ import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -192,8 +193,8 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
         ),
         ...accounts.list().map((account) {
           var name = "🧑‍💼 ${accounts.name(account)}";
-          if (name.length > 17) {
-            name = "${name.substring(0, 14)}...";
+          if (!fitsInCodePoints(name, 17)) {
+            name = "${clipCodePoints(name, 14)}...";
           }
           return ComboBoxItem(value: account.id, child: Text(name));
         }),

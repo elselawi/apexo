@@ -107,6 +107,65 @@ enough to run on every change.
 `dart integration_test/watch.dart [filter]` re-runs the suite on save (it shells
 out to `tools/run_e2e.ps1`).
 
+### All of them
+
+`pwsh -File tools/run_e2e.ps1` with no `-Group` runs **every registered group, in the order the
+file registers them** — and it builds once, so it is by far the cheapest way to cover the whole
+suite (25 group files; `attachments`, `notifications` and `multi_clinic` have no group file —
+`ef3a3fd` removed them with the migration). The order is not decoration: each group's tests use
+the records the groups before them left behind, so a full run is the faithful measurement, while
+one process per group is the one that says *which* group a red count belongs to:
+
+```bash
+pwsh -File tools/run_e2e_groups.ps1 -Groups login,patients,calendar
+```
+
+That loop runs `run_e2e.ps1` once per group, tees each to `tmp/run_<group>.log`, kills stray
+`flutter_tester` processes in between, and prints one summary line per group. It is what the
+results in `todo.md` were measured with.
+
+Note that a **failure to load** the file is not a group failure. Four signatures, one disease —
+a process from an earlier run that ended badly, still holding the build's own files (this cost a
+two-hour detour on 2026-09-30: `login 09` left a `cmake` behind, and *every* group after it failed
+to build):
+
+```
+00:00 +0 -1: loading … [E]  Unable to start the app on the device
+00:00 +0 -1: loading … [E]  Build process failed            (MSB8066 … flutter_assemble …
+                                                             exited with code 1)
+00:00 +0 -1: loading … [E]  Unable to generate build files  (CMake: generator platform: x64)
+                             … and inside that: cmake -E tar: error: ZIP decompression failed (-5)
+```
+
+The recovery is: kill the strays — `Get-Process apexo,flutter_tester,cmake | Stop-Process -Force`
+(`tools/run_e2e_groups.ps1` does this between groups, and `apexo`/`flutter_tester` alone are not
+enough: the locking process is usually **`cmake`**) — then delete whatever it was holding
+(`build/windows/x64/firebase_cpp_sdk_windows_*.zip` and `build/windows/x64/extracted/` for the last
+one; `build/windows/x64/CMakeCache.txt` + `CMakeFiles` for the third), and re-run. `flutter clean`
+does *not* help while a stray holds the tree, and can make it worse.
+
+Every group in a batch fails to load once this has happened, so a whole batch of
+`+0 -1: Some tests failed` means "fix the build", not "fix 25 groups".
+
+### While a run is going: do not touch `lib/` (or `integration_test/`)
+
+`tools/run_e2e.ps1` builds the app at the start of the run, and a *batch* of groups (a loop
+of `run_e2e.ps1`, one call per group) builds again for each group. An edit that lands while
+the next group is compiling goes into that build — and a half-applied edit fails the whole
+group before it runs a single test, which reads exactly like a product failure:
+
+```
+00:00 +0 -1: loading .../integration_test/e2e_test.dart [E]
+01:01 +0 -1: Some tests failed.
+```
+
+Two groups were lost to that in this session (`sync_offline`, `localization_rtl`) — one from
+a stray `),` left by an in-progress rewrite in `tag_input.dart`, one from two screens using
+`clipCodePoints` before the import that defines it was added. `dart analyze lib
+integration_test test` (0 errors expected) before launching is the cheap guard; it catches
+both of those immediately. Also note that `flutter test` buffers its output when it is piped,
+so a log that stops growing usually means the *build* is still going, not that the run hung.
+
 ### What has to be true of a test
 
 Tests must run on a native window **and** in a browser:
@@ -180,7 +239,44 @@ Tests must run on a native window **and** in a browser:
 
 ### Backlog
 
-`integration_test/todo.md` is the list of groups we still owe the app.
+`integration_test/todo.md` is the list of groups we still owe the app. Read its opening
+note first: most of its "verified green" lines were measured against the
+localpocket-migration tree, which `af8e771` rolled back — this suite was restored against a
+shape of the app that is no longer here. The keys it waits for are attached again (the audit
+in §0.2 is at zero), but **the migration branch's bug fixes are not**: the rollback dropped
+the code with the UI, so the suite keeps re-finding bugs that section 6.1 had already
+recorded as fixed.
+
+### Before believing a red group: check the keys, and reproduce off the suite
+
+A group that dies with `Timed out after 60s waiting for the <screen>` **after** a nav tap has
+almost always tapped correctly and is waiting for a key that does not exist. Two things
+answer that in seconds instead of minutes:
+
+- **The key audit.** `pwsh -File tools/key_audit.ps1` lists every `WK` key declared in
+  `lib/widget_keys.dart` and attached to nothing in `lib/`, and which of those the suite
+  uses. 2026-09-28: 52 were unattached, which reddened most groups; all 52 are attached now
+  and the audit exits 0, so the next such timeout really is about the screen.
+- **A widget test in `test/widget/` instead of an e2e run.** `E2E.boot` + one group is 30s at
+  best and minutes when it fails; the same question asked of a bare widget is under a second.
+  Two are kept as examples (and as regressions):
+  `test/widget/app/navigation_body_test.dart` (a `NavigationView` whose `selected` the caller
+  changes — the shell's own shape) and
+  `test/widget/features/accounts_counts_row_test.dart` (a layout overflow at four widths).
+- **A red group with no app frame in the stack may not be about that group at all.** Flutter
+  painting/library exceptions (a layout overflow, an unpaired surrogate handed to
+  `RenderParagraph`) are caught by the *framework*, so the report says only
+  `EXCEPTION CAUGHT BY PAINTING LIBRARY` and reds whichever test is running. Print the value
+  where it is built rather than reading the stack: a temporary check in `Txt.build`
+  (`lib/services/localization/locale.dart`) that prints the data and its code units found
+  `settings_general`'s four reds in one run, and the same check inside the replacement helper
+  named the widget that built it.
+
+Run one test of a group by name, which still pays a full boot but only one test:
+
+```bash
+pwsh -File tools/run_e2e.ps1 -Group "lifecycle_platform 05:"
+```
 
 ## Writing a test
 

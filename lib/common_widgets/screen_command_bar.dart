@@ -1,4 +1,5 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -87,31 +88,36 @@ class TopSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoTextField(
-      decoration: BoxDecoration(
-          color: Colors.transparent,
-          border: Border.all(color: Colors.transparent)),
-      placeholder: txt("searchPlaceholder"),
-      placeholderStyle: TextStyle(
-          fontSize: 18,
-          color: FluentTheme.of(context).inactiveColor.withAlpha(140)),
-      prefix: const Text(
-        "🔍",
-        style: TextStyle(fontSize: 18),
+    return Semantics(
+      key: WK.listSearch,
+      container: true,
+      textField: true,
+      child: CupertinoTextField(
+        decoration: BoxDecoration(
+            color: Colors.transparent,
+            border: Border.all(color: Colors.transparent)),
+        placeholder: txt("searchPlaceholder"),
+        placeholderStyle: TextStyle(
+            fontSize: 18,
+            color: FluentTheme.of(context).inactiveColor.withAlpha(140)),
+        prefix: const Text(
+          "🔍",
+          style: TextStyle(fontSize: 18),
+        ),
+        controller: controller,
+        onChanged: (text) => setState(() {}),
+        suffix: controller.text.isNotEmpty
+            ? IconButton(
+                icon: const Icon(
+                  WindowsIcons.clear,
+                  size: 20,
+                ),
+                onPressed: () {
+                  controller.clear();
+                  setState(() {});
+                })
+            : null,
       ),
-      controller: controller,
-      onChanged: (text) => setState(() {}),
-      suffix: controller.text.isNotEmpty
-          ? IconButton(
-              icon: const Icon(
-                WindowsIcons.clear,
-                size: 20,
-              ),
-              onPressed: () {
-                controller.clear();
-                setState(() {});
-              })
-          : null,
     );
   }
 }

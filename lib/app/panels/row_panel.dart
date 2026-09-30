@@ -125,5 +125,6 @@ final class RowPanel<T extends Model> extends Panel {
     } else {
       store.unarchive(item.id);
     }
+    markSaved();
   }
 }

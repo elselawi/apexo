@@ -40,34 +40,55 @@ In previous versions of apexo, [in an old github account of mine that I lost acc
 - __iOS__: All features should/are tested and works (available on [App Store](https://apps.apple.com/us/app/apexo-app/id6767690393)).
 - __MacOS__: All features should/are tested and works (available to [Download](https://apexo.app/#download)).
 
+## Architecture and ownership
+
+Apexo retains its custom observables, feature singletons, Hive storage and PocketBase protocol. The data infrastructure is organized by dependency and resource ownership:
+
+| Location | Responsibility |
+|---|---|
+| `lib/core/model.dart` | Model identity/serialization and existing presentation metadata |
+| `lib/core/reactive/observable_base.dart` | Standalone observable values and observer dispatch; Dart-only, no persistence or application imports |
+| `lib/core/reactive/observable.dart` | Model dictionaries, immutable snapshots and JSON change detection |
+| `lib/core/persistence/` | Hive/PocketBase adapters, persisted observable objects and the serial operation queue |
+| `lib/core/synchronization/` | Pure conflict/deferred-key policy, push wire data, document loading and the store's application-effects contract |
+| `lib/core/lifecycle/` | Session-owned callback registrations and drainable realtime subscriptions |
+| `lib/core/store.dart` | Public document façade and synchronization orchestration |
+| `lib/app/data/` | Application composition: concrete store effects, clinic-aware model loading, login binding and store initialization |
+| `lib/features/<feature>/` | Feature models, queries/caches, screens and panel openers |
+| `lib/services/notifications/` | Payload interpretation, outbox/relay delivery and platform/in-app notification presentation |
+| `lib/utils/` | Existing platform adapters and shared helpers; not broadly relocated by this refactor |
+
+**Dependency direction:** features/application composition depend on core; core does not import login, settings, notification delivery, error dialogs or application logging. A standalone `Store` has inert `StoreEffects` and a default model loader. Production feature stores explicitly supply `applicationStoreEffects` and `loadApplicationDocuments`; tests can supply recording effects/loaders without initializing login/settings. The app installs observable diagnostic callbacks at startup; primitive users can override reporters per instance.
+
+**Resource owners:** each store has one `SerialOperationQueue` for document writes, sync passes and attachment operations. Caller-visible failures do not poison later operations, and draining includes work appended during completion. `RealtimeSubscription` owns pending registration, cancellation and the active subscription. The PocketBase adapter owns its connectivity retry timer. `StoreSessionBinding` serializes adapter replacement, invalidates the old session, drains store work before closing Hive, and owns the login/logout registration. A per-activation `SessionCallbacks` removes sync/reconnect/network callbacks on stop; callbacks copied by a dispatcher become inert, and old teardown cannot remove a successor's registration. Online second-stage callbacks check their activation identity before publishing registrations. Feature-specific demo seeding and post-sync work remain explicit callbacks rather than a generic feature template.
+
+**Adding a persistent feature:** extend `Model`, retain the existing JSON format, extend `Store` with explicit production effects/loader, and own one `StoreSessionBinding` with the collection namespace, loading text and optional demo seed. Call its idempotent `install()` from `init()`, add feature-local caches/queries, and register the singleton in `lib/app/data/initialize_stores.dart`. For a standalone controller, import the observable base rather than a persisted object. For a new service, keep transport/platform effects out of reactive primitives; inject only the effects needed by independently tested logic.
+
+**Panels:** `RowPanel` owns one independent `RowDraft`; `DelegatedPanel` delegates persistence and pending-edit checks to caller-managed drafts. Both implement the shared `Panel` host contract. This refactor leaves that existing separation and draft isolation unchanged.
+
+**Compatibility and limits:** no Hive box/key, model JSON, deferred FILE encoding, PocketBase schema/cursor or push payload changes are required. All old import paths are replaced directly, with no compatibility barrels. The façade still orchestrates attachment reconciliation and conflict I/O; models still expose UI metadata and feature-specific authorization. Login, the notification outbox and AI token foundation remain application services with singleton coupling. The known timestamp-cursor and baseline-free conflict-merge limitations are unchanged. This is a bounded architecture refactor, not a new persistence/session protocol.
+
+Dependency-boundary and owned-lifecycle tests in `test/unit/core/` prevent reintroducing application imports into core, persistence into primitive reactivity, and feature-local callback registration.
+
 ## Testing
 
 ### Unit tests
 
-**TL;DR:** Run all test partitions in order:
+Run the deterministic suite serially, excluding live backends:
 
-```bash
-flutter test test --exclude-tags "serial || live_backend" && flutter test test --tags "serial || live_backend" -j 1
+```powershell
+flutter test test --exclude-tags live_backend -j 1
 ```
 
-> Windows PowerShell 5.1 does not support &&; use PowerShell 7+
+For the smaller deterministic unit partition:
 
-- **Regarding the test tags**:
-   - `live_backend` tests require a live backend and a `test/secret.dart` file. Copy `test/secret.dart.example` to `test/secret.dart` and configure the credentials.
-   - `serial` tests must run sequentially using the `-j 1` parameter.
-
-
-#### Run only deterministic, parallel-tolerant tests:
-
-```bash
-flutter test test --exclude-tags "serial || live_backend"
+```powershell
+flutter test test\unit --exclude-tags live_backend -j 1
 ```
 
-#### Run serial deterministic tests and live-backend tests:
+Tests share Hive and application singletons; use `-j 1`, including tests without a `serial` tag. Persistence tests should use isolated directories from `test/helpers/hive_setup.dart`.
 
-```bash
-flutter test test --tags "serial || live_backend" -j 1
-```
+Live-backend tests are separate and must be explicitly requested/configured. They require local credentials in `test/secret.dart` (based on `test/secret.dart.example`) and the `live_backend` tag; they are never part of the deterministic command above.
 
 ## Building & Distribution
 

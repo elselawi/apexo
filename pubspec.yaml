@@ -64,6 +64,7 @@ dev_dependencies:
   yaml: ^3.1.2
   msix: ^3.16.13
   mocktail: ^1.0.5
+  plugin_platform_interface: ^2.1.8
 
 msix_config:
   display_name: Apexo.app

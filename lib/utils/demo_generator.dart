@@ -575,9 +575,9 @@ List<Note> demoNotes(int length) {
               (_) =>
                   ["Demo User", _noteBodies[rng.nextInt(_noteBodies.length)]],
             )
-          : [],
+          : const <List<String>>[],
       "done": isDone,
-      "attachments": [],
+      "attachments": const <String>[],
       "createdBy": "",
       "assignedTo": "",
       "dueDate": dueDate.millisecondsSinceEpoch ~/ (60 * 60 * 1000),

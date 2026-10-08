@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:apexo/core/save_local.dart';
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_local.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/safe_dir.dart';
@@ -13,7 +13,7 @@ import '../secret.dart';
 class TestUtils {
   static Future<void> removeLocalData() async {
     final directory = Directory(await filesDir());
-    if (await directory.exists()) {
+    if (directory.existsSync()) {
       await for (var entity in directory.list(recursive: false)) {
         if (entity is File &&
             (entity.path.endsWith("hive") || entity.path.endsWith("lock"))) {

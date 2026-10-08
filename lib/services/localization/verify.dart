@@ -20,7 +20,7 @@ void main() {
   final localizationDir = Directory(scriptDir.path);
 
   if (!localizationDir.existsSync()) {
-    print(
+    stdout.writeln(
         '${_red}ERROR: Could not find localization directory at ${localizationDir.path}$_reset');
     exit(1);
   }
@@ -28,14 +28,14 @@ void main() {
   // ── 1. Discover all locale files ──
   final localeFiles = _discoverLocaleFiles(localizationDir);
   if (localeFiles.isEmpty) {
-    print('${_red}No locale files found.$_reset');
+    stdout.writeln('${_red}No locale files found.$_reset');
     exit(1);
   }
-  print('$_bold📁 Found ${localeFiles.length} locale files:$_reset');
+  stdout.writeln('$_bold📁 Found ${localeFiles.length} locale files:$_reset');
   for (final f in localeFiles) {
     final marker =
         _basename(f.path) == 'en.dart' ? ' $_green(reference)$_reset' : '';
-    print('   $_dim${_basename(f.path)}$_reset$marker');
+    stdout.writeln('   $_dim${_basename(f.path)}$_reset$marker');
   }
 
   // Use en.dart as the canonical reference
@@ -51,8 +51,8 @@ void main() {
   }
 
   // ── 3. Cross-reference keys across ALL files ──
-  print('\n$_bold🔍 CROSS-REFERENCING KEYS ACROSS ALL LOCALES$_reset');
-  print('$_dim${'─' * 60}$_reset');
+  stdout.writeln('\n$_bold🔍 CROSS-REFERENCING KEYS ACROSS ALL LOCALES$_reset');
+  stdout.writeln('$_dim${'─' * 60}$_reset');
 
   final allKeySets = <String, Set<String>>{};
   for (final e in locales.entries) {
@@ -70,32 +70,32 @@ void main() {
 
     if (missing.isNotEmpty) {
       allMatch = false;
-      print(
+      stdout.writeln(
           '$_red  ✗ $refName → ${entry.key}: MISSING ${missing.length} key(s)$_reset');
       for (final k in missing) {
-        print(
+        stdout.writeln(
             '     $_red- "$k"$_reset  $_dim($refName = "${locales[refName]![k]}")$_reset');
       }
     }
     if (extra.isNotEmpty) {
       allMatch = false;
-      print(
+      stdout.writeln(
           '$_yellow  ⚠ ${entry.key}: ${extra.length} extra key(s) not in $refName$_reset');
       for (final k in extra) {
-        print(
+        stdout.writeln(
             '     $_yellow+ "$k"$_reset  $_dim= "${locales[entry.key]![k]}"$_reset');
       }
     }
   }
 
   if (allMatch) {
-    print(
+    stdout.writeln(
         '$_green  ✓ All ${localeFiles.length} files have identical keys (${refKeys.length} keys)$_reset');
   }
 
   // ── 4. Scan codebase for txt("...") calls ──
-  print('\n$_bold🔎 SCANNING CODEBASE FOR UNLOCALIZED STRINGS$_reset');
-  print('$_dim${'─' * 60}$_reset');
+  stdout.writeln('\n$_bold🔎 SCANNING CODEBASE FOR UNLOCALIZED STRINGS$_reset');
+  stdout.writeln('$_dim${'─' * 60}$_reset');
 
   final workspaceRoot = _findWorkspaceRoot(localizationDir);
   final txtCalls = _scanCodebaseForTxtCalls(workspaceRoot);
@@ -112,7 +112,7 @@ void main() {
 
   final unlocalized = usedKeys.difference(refKeys);
   if (unlocalized.isNotEmpty) {
-    print(
+    stdout.writeln(
         '$_yellow  ⚠ ${unlocalized.length} string(s) used via txt() but NOT localized:$_reset');
     for (final s in unlocalized) {
       final locations = txtCalls
@@ -120,16 +120,17 @@ void main() {
           .map((c) => '${_relativePath(c.file, workspaceRoot)}:${c.line}')
           .toSet()
           .take(3);
-      print('  $_yellow  "$s"$_reset  $_dim→ ${locations.join(', ')}$_reset');
+      stdout.writeln(
+          '  $_yellow  "$s"$_reset  $_dim→ ${locations.join(', ')}$_reset');
     }
   } else {
-    print(
+    stdout.writeln(
         '$_green  ✓ All txt() calls reference existing dictionary keys$_reset');
   }
 
   // ── 5. Unused localization strings: blind search for definitively unused ──
-  print('\n$_bold🧹 UNUSED LOCALIZATION STRINGS$_reset');
-  print('$_dim${'─' * 60}$_reset');
+  stdout.writeln('\n$_bold🧹 UNUSED LOCALIZATION STRINGS$_reset');
+  stdout.writeln('$_dim${'─' * 60}$_reset');
 
   final initiallyUnused = refKeys.difference(usedKeys);
   final definitelyUnused = <String>[];
@@ -149,62 +150,64 @@ void main() {
     }
 
     if (definitelyUnused.isNotEmpty) {
-      print(
+      stdout.writeln(
           '$_red  ✗ ${definitelyUnused.length} key(s) DEFINITIVELY UNUSED (string not found anywhere in code):$_reset');
       for (final k in definitelyUnused) {
-        print('  $_red  "$k"$_reset  $_dim= "${locales[refName]![k]}"$_reset');
+        stdout.writeln(
+            '  $_red  "$k"$_reset  $_dim= "${locales[refName]![k]}"$_reset');
       }
     }
 
     if (maybeDynamic.isNotEmpty) {
-      print(
+      stdout.writeln(
           '$_yellow  ⚠ ${maybeDynamic.length} key(s) may be used dynamically (string found in code, but not as txt("...")):$_reset');
       for (final k in maybeDynamic) {
-        print(
+        stdout.writeln(
             '  $_yellow  "$k"$_reset  $_dim= "${locales[refName]![k]}"$_reset');
       }
     }
 
     if (definitelyUnused.isEmpty && maybeDynamic.isEmpty) {
-      print(
+      stdout.writeln(
           '$_green  ✓ All ${refKeys.length} keys are referenced in code$_reset');
     }
   } else {
-    print(
+    stdout.writeln(
         '$_green  ✓ All ${refKeys.length} keys are referenced in code$_reset');
   }
 
   // ── 6. Dynamic txt() calls (variable / interpolation) ──
-  print('\n$_bold🔄 DYNAMIC txt() CALLS (cannot statically verify)$_reset');
-  print('$_dim${'─' * 60}$_reset');
+  stdout.writeln(
+      '\n$_bold🔄 DYNAMIC txt() CALLS (cannot statically verify)$_reset');
+  stdout.writeln('$_dim${'─' * 60}$_reset');
   if (dynamicUsages.isNotEmpty) {
     final seen = <String>{};
     for (final call in dynamicUsages) {
       final loc =
           '${_relativePath(call.file, workspaceRoot)}:${call.line}  $_dim→ ${call.excerpt}$_reset';
       if (seen.add(loc)) {
-        print('  $_cyan  $loc$_reset');
+        stdout.writeln('  $_cyan  $loc$_reset');
       }
     }
   } else {
-    print('$_green  ✓ None$_reset');
+    stdout.writeln('$_green  ✓ None$_reset');
   }
 
   // ── 7. Summary ──
-  print('\n$_bold📊 SUMMARY$_reset');
-  print('$_dim${'─' * 60}$_reset');
-  print('  Locale files          : ${localeFiles.length}');
-  print('  Reference keys        : ${refKeys.length}');
-  print('  Keys used in code     : ${usedKeys.length}');
-  print(
+  stdout.writeln('\n$_bold📊 SUMMARY$_reset');
+  stdout.writeln('$_dim${'─' * 60}$_reset');
+  stdout.writeln('  Locale files          : ${localeFiles.length}');
+  stdout.writeln('  Reference keys        : ${refKeys.length}');
+  stdout.writeln('  Keys used in code     : ${usedKeys.length}');
+  stdout.writeln(
       '  Keys match across all : ${allMatch ? '${_green}YES$_reset' : '${_red}NO$_reset'}');
-  print('  Unlocalized strings   : ${unlocalized.length}');
-  print('  Definitively unused   : ${definitelyUnused.length}');
-  print('  Possibly dynamic      : ${maybeDynamic.length}');
+  stdout.writeln('  Unlocalized strings   : ${unlocalized.length}');
+  stdout.writeln('  Definitively unused   : ${definitelyUnused.length}');
+  stdout.writeln('  Possibly dynamic      : ${maybeDynamic.length}');
 
   // ── 8. Per-file coverage ──
-  print('\n$_bold📋 PER-FILE COVERAGE$_reset');
-  print('$_dim${'─' * 60}$_reset');
+  stdout.writeln('\n$_bold📋 PER-FILE COVERAGE$_reset');
+  stdout.writeln('$_dim${'─' * 60}$_reset');
   for (final entry in locales.entries) {
     final coverage = refKeys.isEmpty
         ? 100.0
@@ -212,11 +215,11 @@ void main() {
             refKeys.length *
             100);
     final c = coverage == 100.0 ? _green : _yellow;
-    print(
+    stdout.writeln(
         '  ${entry.key.padRight(30)} ${entry.value.length.toString().padLeft(4)} entries   coverage: $c${coverage.toStringAsFixed(1)}%$_reset');
   }
 
-  print('');
+  stdout.writeln('');
 }
 
 // ──────────────────────────────────────────────────────────────

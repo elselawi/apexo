@@ -1,15 +1,17 @@
 @Tags(['live_backend', 'serial'])
 library;
 
+import 'package:apexo/core/synchronization/conflict_merge.dart';
+import 'package:apexo/core/synchronization/deferred_file_keys.dart';
 import 'dart:convert';
 
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/utils/uuid.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/core/model.dart';
-import 'package:apexo/core/observable.dart';
-import 'package:apexo/core/save_local.dart';
+import 'package:apexo/core/reactive/observable.dart';
+import 'package:apexo/core/persistence/save_local.dart';
 import 'package:pocketbase/pocketbase.dart';
 import '../test_utils.dart';
 
@@ -51,11 +53,11 @@ class FilePerson extends Model {
 }
 
 void main() {
-  group('Store.mergeConflict (field-level merge)', () {
+  group('mergeConflict (field-level merge)', () {
     test('scalar union: field only on one side is preserved', () {
       final local = {'id': 'x', 'name': 'Alice'};
       final remote = {'id': 'x', 'phone': '555'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -68,14 +70,14 @@ void main() {
     test('scalar LWW: both sides have different non-default values', () {
       final local = {'id': 'x', 'name': 'Alice'};
       final remote = {'id': 'x', 'name': 'Bob'};
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
       );
       expect(mergedLocalWins['name'], 'Alice');
 
-      final mergedRemoteWins = Store.mergeConflict(
+      final mergedRemoteWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -88,7 +90,7 @@ void main() {
       // Union should take remote's 12.
       final local = {'id': 'x', 'name': 'Alice'};
       final remote = {'id': 'x', 'name': 'Alice', 'age': 12};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -106,7 +108,7 @@ void main() {
         'id': 'x',
         'teeth': {'38': 'filling'}
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -125,14 +127,14 @@ void main() {
         'id': 'x',
         'teeth': {'31': 'crown-remote'}
       };
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
       );
       expect((mergedLocalWins['teeth'] as Map)['31'], 'crown-local');
 
-      final mergedRemoteWins = Store.mergeConflict(
+      final mergedRemoteWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -155,7 +157,7 @@ void main() {
         'id': 'x',
         'teeth': {'31': 'crown'}
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false, // remote wins timestamp
@@ -176,7 +178,7 @@ void main() {
         'id': 'x',
         'operatorsIDs': ['b', 'c']
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -194,7 +196,7 @@ void main() {
         'id': 'x',
         'tags': ['vip', 'diabetic']
       };
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -213,7 +215,7 @@ void main() {
         'imgs': ['a.png', 'c.png']
       };
       // Server only has a.png and b.png.
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -231,7 +233,7 @@ void main() {
       };
       final remote = {'id': 'x'};
       // pending.png is not on the server yet but is queued for upload.
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -254,7 +256,7 @@ void main() {
         'dcmImgs': ['scan.dcm', 'removed.dcm']
       };
       // Server has photo.png and scan.dcm only.
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -269,7 +271,7 @@ void main() {
     test('date always present, resolved by LWW', () {
       final local = {'id': 'x', 'date': 1000};
       final remote = {'id': 'x', 'date': 2000};
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -280,7 +282,7 @@ void main() {
     test('id always preserved', () {
       final local = {'id': 'x', 'name': 'Alice'};
       final remote = {'id': 'x', 'name': 'Bob'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -291,7 +293,7 @@ void main() {
     test('both sides identical → idempotent merge', () {
       final local = {'id': 'x', 'name': 'Alice', 'age': 30};
       final remote = {'id': 'x', 'name': 'Alice', 'age': 30};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -304,7 +306,7 @@ void main() {
     test('both sides empty (only id) → merged has only id', () {
       final local = {'id': 'x'};
       final remote = {'id': 'x'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -316,7 +318,7 @@ void main() {
     test('archived field treated as scalar LWW', () {
       final local = {'id': 'x', 'archived': true};
       final remote = {'id': 'x', 'name': 'Alice'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -329,14 +331,14 @@ void main() {
     test('archived conflict resolved by LWW', () {
       final local = {'id': 'x', 'archived': true};
       final remote = {'id': 'x', 'archived': false};
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
       );
       expect(mergedLocalWins['archived'], true);
 
-      final mergedRemoteWins = Store.mergeConflict(
+      final mergedRemoteWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -347,7 +349,7 @@ void main() {
     test('non-string scalar types (int, bool, double) preserved', () {
       final local = {'id': 'x', 'count': 42, 'active': true, 'rate': 3.14};
       final remote = {'id': 'x', 'count': 99, 'active': false, 'rate': 2.71};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -368,7 +370,7 @@ void main() {
         'id': 'x',
         'customList': ['b', 'c']
       };
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -386,7 +388,7 @@ void main() {
         'id': 'x',
         'drawings': {'img2.png': 'drawing-data-2'}
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -405,7 +407,7 @@ void main() {
         'id': 'x',
         'teethExtraNotes': {'38': 'note about 38'}
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -427,7 +429,7 @@ void main() {
         'id': 'x',
         'teeth': {'31': 'remote-crown', '38': 'remote-filling'}
       };
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -437,7 +439,7 @@ void main() {
       expect(teeth['38'], 'remote-filling'); // remote-only → survives
       expect(teeth['45'], 'local-filling'); // local-only → survives
 
-      final mergedRemoteWins = Store.mergeConflict(
+      final mergedRemoteWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -457,7 +459,7 @@ void main() {
         'id': 'x',
         'teeth': {'31': 'crown'}
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -468,7 +470,7 @@ void main() {
     test('map: empty on both sides → omitted from merged', () {
       final local = {'id': 'x', 'teeth': <String, String>{}};
       final remote = {'id': 'x', 'teeth': <String, String>{}};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -482,7 +484,7 @@ void main() {
         'teeth': {'31': 'crown'}
       };
       final remote = {'id': 'x', 'teeth': <String, String>{}};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false, // remote (empty) wins timestamp
@@ -496,7 +498,7 @@ void main() {
     test('operatorsIDs: empty on both sides → omitted', () {
       final local = {'id': 'x', 'operatorsIDs': <String>[]};
       final remote = {'id': 'x', 'operatorsIDs': <String>[]};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -510,7 +512,7 @@ void main() {
         'operatorsIDs': ['a', 'b']
       };
       final remote = {'id': 'x', 'operatorsIDs': <String>[]};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -528,7 +530,7 @@ void main() {
         'id': 'x',
         'operatorsIDs': ['a', 'b']
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -547,7 +549,7 @@ void main() {
         'id': 'x',
         'prescriptions': ['paracetamol 500mg']
       };
-      final mergedLocalWins = Store.mergeConflict(
+      final mergedLocalWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -555,7 +557,7 @@ void main() {
       expect((mergedLocalWins['prescriptions'] as List).cast<String>(),
           ['ibuprofen 400mg', 'amoxicillin 500mg']);
 
-      final mergedRemoteWins = Store.mergeConflict(
+      final mergedRemoteWins = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -576,26 +578,26 @@ void main() {
       final remote = {'id': 'x', 'tags': <String>[]};
       // Remote wins (empty list) → tags should be taken from remote
       // (empty) → but LWW takes winner's value which is [] → omitted.
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false, // remote wins
       );
       // Remote's tags is [] — LWW takes it. But [] is falsy-ish in our
       // merge: we take winner[key] which is []. It stays as [].
-      expect(merged['tags'], []);
+      expect(merged['tags'], const <String>[]);
     });
 
     test('imgs: empty on both sides → empty list', () {
       final local = {'id': 'x', 'imgs': <String>[]};
       final remote = {'id': 'x', 'imgs': <String>[]};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
         serverFiles: [],
       );
-      expect(merged['imgs'], []);
+      expect(merged['imgs'], const <String>[]);
     });
 
     test('imgs: only on local, server has them → kept', () {
@@ -604,7 +606,7 @@ void main() {
         'imgs': ['a.png', 'b.png']
       };
       final remote = {'id': 'x'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -620,7 +622,7 @@ void main() {
         'id': 'x',
         'imgs': ['a.png']
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -637,7 +639,7 @@ void main() {
       };
       final remote = {'id': 'x'};
       // a.png is both on the server AND in pendingUploads.
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -658,13 +660,13 @@ void main() {
         'id': 'x',
         'imgs': ['old3.png']
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
         serverFiles: [], // server has none of these
       );
-      expect(merged['imgs'], []);
+      expect(merged['imgs'], const <String>[]);
     });
 
     test('dcmImgs with .dicom extension recognized as DICOM', () {
@@ -674,7 +676,7 @@ void main() {
       };
       final remote = {'id': 'x'};
       // Server has scan.dicom and a regular photo.png.
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -694,7 +696,7 @@ void main() {
         'dcmImgs': ['scan.dcm', 'weird.png']
       };
       final remote = {'id': 'x'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -718,7 +720,7 @@ void main() {
         'dcmImgs': ['scan.dcm', 'scan2.dcm']
       };
       // Server has: photo.png, xray.png (regular), scan.dcm, scan2.dcm (DICOM)
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -736,7 +738,7 @@ void main() {
         'dcmImgs': ['scan.DCM']
       };
       final remote = {'id': 'x'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -779,7 +781,7 @@ void main() {
         'archived': false,
       };
 
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -839,7 +841,7 @@ void main() {
         'imgs': ['photo.png', 'photo2.png'],
       };
 
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false,
@@ -883,10 +885,10 @@ void main() {
         'operatorsIDs': ['op2'],
       };
 
-      final mergedLocal = Store.mergeConflict(
-          localJson: local, remoteJson: remote, localWins: true);
-      final mergedRemote = Store.mergeConflict(
-          localJson: local, remoteJson: remote, localWins: false);
+      final mergedLocal =
+          mergeConflict(localJson: local, remoteJson: remote, localWins: true);
+      final mergedRemote =
+          mergeConflict(localJson: local, remoteJson: remote, localWins: false);
 
       // Union fields are identical:
       expect(mergedLocal['phone'], mergedRemote['phone']);
@@ -910,14 +912,14 @@ void main() {
         'id': 'x',
         'imgs': ['c.png']
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
         serverFiles: [],
         pendingUploads: {},
       );
-      expect(merged['imgs'], []);
+      expect(merged['imgs'], const <String>[]);
     });
 
     test('map with non-Map value (malformed) → treated as empty', () {
@@ -928,7 +930,7 @@ void main() {
         'id': 'x',
         'teeth': {'31': 'crown'}
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -944,7 +946,7 @@ void main() {
         'id': 'x',
         'operatorsIDs': ['op1']
       };
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -967,7 +969,7 @@ void main() {
       final localCopy = jsonDecode(jsonEncode(local)) as Map<String, dynamic>;
       final remoteCopy = jsonDecode(jsonEncode(remote)) as Map<String, dynamic>;
 
-      Store.mergeConflict(
+      mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -986,7 +988,7 @@ void main() {
         'imgs': ['a.png']
       };
       final remote = {'id': 'x'};
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: true,
@@ -1001,20 +1003,20 @@ void main() {
   group('Store deferred-file helpers', () {
     test('parseDeferredRetries reads the retry segment', () {
       expect(
-        Store.parseDeferredRetries('FILE||row||path||photo.png||4'),
+        parseDeferredRetries('FILE||row||path||photo.png||4'),
         4,
       );
     });
 
     test('parseDeferredRetries defaults legacy and malformed keys to zero', () {
-      expect(Store.parseDeferredRetries('FILE||row||path||photo.png'), 0);
-      expect(Store.parseDeferredRetries('FILE||row||path||photo.png||bad'), 0);
-      expect(Store.parseDeferredRetries('ordinary-document-id'), 0);
+      expect(parseDeferredRetries('FILE||row||path||photo.png'), 0);
+      expect(parseDeferredRetries('FILE||row||path||photo.png||bad'), 0);
+      expect(parseDeferredRetries('ordinary-document-id'), 0);
     });
 
     test('buildDeferredRetryKey appends retries to a legacy file key', () {
       expect(
-        Store.buildDeferredRetryKey('FILE||row||path||photo.png', 1),
+        buildDeferredRetryKey('FILE||row||path||photo.png', 1),
         'FILE||row||path||photo.png||1',
       );
     });
@@ -1022,13 +1024,13 @@ void main() {
     test('buildDeferredRetryKey replaces retries without changing key data',
         () {
       expect(
-        Store.buildDeferredRetryKey('FILE||row||path||photo.png||2', 3),
+        buildDeferredRetryKey('FILE||row||path||photo.png||2', 3),
         'FILE||row||path||photo.png||3',
       );
     });
 
     test('filenamesFromDeferred includes upload filenames only', () {
-      final filenames = Store.filenamesFromDeferred({
+      final filenames = filenamesFromDeferred({
         'FILE||row-a||path-a||upload-a.png||0': 1,
         'FILE||row-b||path-b||upload-b.dcm||3': 1,
         'FILE||row-c||delete-me.png': 0,
@@ -1039,7 +1041,7 @@ void main() {
     });
 
     test('filenamesFromDeferred deduplicates matching upload filenames', () {
-      final filenames = Store.filenamesFromDeferred({
+      final filenames = filenamesFromDeferred({
         'FILE||a||one||same.png||0': 1,
         'FILE||b||two||same.png||4': 1,
       });
@@ -1161,7 +1163,7 @@ void main() {
       await store.local!.clear();
       await store.deleteMemoryAndLoadFromPersistence();
       // allow for Hive to process the changes
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       expect(store.docs.length, equals(0));
       store.init();
     });
@@ -1191,7 +1193,7 @@ void main() {
       store.set(Person.fromJson({"id": "id1"}));
       expect(store.docs.length, 1);
       expect(store.docs.values.first.id, "id1");
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observedChangesIds.contains("id1"), true);
     });
 
@@ -1208,7 +1210,7 @@ void main() {
       expect(store.docs.length, 2);
       expect(store.docs.values.first.id, "id1");
       expect(store.docs.values.last.id, "id2");
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observerCalled, 1);
     });
 
@@ -1224,7 +1226,7 @@ void main() {
       store.delete("id1");
       expect(store.docs.length, 1);
       expect(store.docs.values.first.archived, true);
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observerCalled, 2);
     });
 
@@ -1240,7 +1242,7 @@ void main() {
       store.archive("id1");
       expect(store.docs.length, 1);
       expect(store.docs.values.first.archived, true);
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observerCalled, 2);
     });
 
@@ -1259,7 +1261,7 @@ void main() {
       store.unarchive("id1");
       expect(store.docs.length, 1);
       expect(store.docs.values.first.archived, false);
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observerCalled, 3);
     });
 
@@ -1328,7 +1330,7 @@ void main() {
         if (events.first.id != "__ignore_view__") observersCalled++;
       });
       await store.reload();
-      await Future.delayed(const Duration(milliseconds: 10));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
       expect(observersCalled, 0);
     });
   });
@@ -1363,7 +1365,7 @@ void main() {
       await store.local!.clear();
       await store.deleteMemoryAndLoadFromPersistence();
       // allow for Hive to process the changes
-      await Future.delayed(const Duration(milliseconds: 200));
+      await Future<void>.delayed(const Duration(milliseconds: 200));
       expect(store.docs.length, equals(0));
       expect(await store.local!.getVersion(), 0);
       expect((await local.getAll()), isEmpty);
@@ -1696,7 +1698,7 @@ void main() {
 
       remote.isOnline = false;
       store.set(Person.fromJson({"id": id0}));
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
 
       await store.waitUntilChangesAreProcessed();
 
@@ -1739,7 +1741,7 @@ void main() {
         RowToWriteRemotely(
             id: id3, data: '{"id": "$id3", "name": "name3", "age": 13}'),
       ]);
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
       await store.waitUntilChangesAreProcessed();
       remote.isOnline = false;
       store
@@ -1790,7 +1792,7 @@ void main() {
       store.set(Person.fromJson({"id": id1, "age": 11}));
       await store.waitUntilChangesAreProcessed();
 
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
       await remote.put([
         RowToWriteRemotely(
             id: id1, data: '{"id": "$id1", "name": "name1", "age": 111}'),
@@ -1845,7 +1847,7 @@ void main() {
       final id4 = uuid();
       store.set(Person.fromJson({"id": id1, "name": "local-1"}));
       await store.waitUntilChangesAreProcessed();
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
       await remote.put([
         RowToWriteRemotely(
             id: id1, data: '{"id": "$id1", "name": "remote-1", "age": 111}'),
@@ -1915,7 +1917,7 @@ void main() {
         RowToWriteRemotely(
             id: id3, data: '{"id": "$id3", "name": "name3", "age": 13}'),
       ]);
-      await Future.delayed(const Duration(seconds: 1));
+      await Future<void>.delayed(const Duration(seconds: 1));
       expect(await store.inSync(), equals(false));
       await store.synchronize();
       expect(await store.inSync(), equals(true));
@@ -2003,7 +2005,7 @@ void main() {
       final id = uuid();
       await remote.put([RowToWriteRemotely(id: id, data: '{"id": "$id"}')]);
 
-      await Future.delayed(const Duration(milliseconds: 6000));
+      await Future<void>.delayed(const Duration(milliseconds: 6000));
 
       expect(store2.docs.length, equals(1));
       expect(store2.docs.values.first.id, equals(id));

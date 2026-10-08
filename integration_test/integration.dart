@@ -1,5 +1,5 @@
 import 'package:apexo/app/app.dart';
-import 'package:apexo/utils/init_stores.dart';
+import 'package:apexo/app/data/initialize_stores.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
@@ -56,7 +56,7 @@ void main() async {
         logger('\x1B[31m❌❌❌❌❌ INTEGRATION TEST FAILED! ❌❌❌❌❌\x1B[0m', null, 1);
       }
 
-      await Future.delayed(const Duration(hours: 2));
+      await Future<void>.delayed(const Duration(hours: 2));
     });
   });
 }

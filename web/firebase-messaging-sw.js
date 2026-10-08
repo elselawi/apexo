@@ -11,14 +11,11 @@ self.lang = "en";
 
 // intercept messages from the main thread to update the language
 self.addEventListener('message', (event) => {
-    console.log("Message received in SW:", event.data);
     if (event.data.type === "LANG_CHANGED") {
-        console.log("Language changed to:", event.data.lang);
         self.lang = event.data.lang;
     }
 
     if (event.data.type === "SAVE_CURRENT_ACCOUNT_ID") {
-        console.log("Current account ID saved:", event.data.currentAccountID);
         self.currentAccountID = event.data.currentAccountID;
     }
 });

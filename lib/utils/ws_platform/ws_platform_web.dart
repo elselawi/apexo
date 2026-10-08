@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:web_socket_channel/html.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
@@ -18,6 +17,5 @@ WebSocketChannel connectWebSocket(
   }
   final webUri = uri.replace(queryParameters: queryParams);
 
-  debugPrint('[WSVoice] 🌐 WebSocket URL: $webUri');
   return HtmlWebSocketChannel.connect(webUri);
 }

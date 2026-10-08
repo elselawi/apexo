@@ -279,7 +279,7 @@ class WSVoiceTranscriptionService extends AIService {
       return;
     }
 
-    debugPrint('[WSVoice] 📩 Received: $text');
+    debugPrint('[WSVoice] 📩 WebSocket message received.');
 
     // --- setupComplete -------------------------------------------------
     // Server confirms the session is ready. Only now is it safe to begin
@@ -301,7 +301,7 @@ class WSVoiceTranscriptionService extends AIService {
       final inputTrans = content['inputTranscription'] as Map<String, dynamic>?;
       final userText = inputTrans?['text'] as String? ?? '';
       if (userText.isNotEmpty) {
-        debugPrint('[WSVoice] 🎤 inputTranscription: "$userText"');
+        debugPrint('[WSVoice] 🎤 Input transcription received.');
         _appendText(userText);
       }
 
@@ -312,7 +312,7 @@ class WSVoiceTranscriptionService extends AIService {
           content['outputTranscription'] as Map<String, dynamic>?;
       final modelText = outputTrans?['text'] as String? ?? '';
       if (modelText.isNotEmpty) {
-        debugPrint('[WSVoice] 🤖 outputTranscription (ignored): "$modelText"');
+        debugPrint('[WSVoice] 🤖 Output transcription received and ignored.');
       }
 
       // Append a space after each completed turn to separate sentences.
@@ -337,7 +337,7 @@ class WSVoiceTranscriptionService extends AIService {
     if (msg.containsKey('error')) {
       final err = msg['error'] as Map<String, dynamic>? ?? {};
       final detail = 'WS error ${err['code']}: ${err['message']}';
-      debugPrint('[WSVoice] $detail');
+      debugPrint('[WSVoice] Worker returned an error.');
       if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
         _setupCompleter!.completeError(Exception(detail));
       } else {
@@ -392,7 +392,7 @@ class WSVoiceTranscriptionService extends AIService {
       try {
         result = _executeTool(name, args);
       } catch (e) {
-        debugPrint('[WSVoice] Tool error ($name): $e');
+        debugPrint('[WSVoice] Tool error for $name.');
         result = {'error': e.toString()};
       }
 
@@ -415,7 +415,7 @@ class WSVoiceTranscriptionService extends AIService {
   /// Execute a tool function locally.
   /// Override or extend for custom tool implementations.
   Map<String, dynamic> _executeTool(String name, Map<String, dynamic> args) {
-    debugPrint('[WSVoice] Unknown tool call: $name($args)');
+    debugPrint('[WSVoice] Unknown tool call: $name.');
     return {'status': 'unknown tool: $name'};
   }
 
@@ -424,7 +424,7 @@ class WSVoiceTranscriptionService extends AIService {
   // ---------------------------------------------------------------------
 
   void _onWsError(Object error) {
-    debugPrint('[WSVoice] WS error: $error');
+    debugPrint('[WSVoice] WebSocket error.');
     if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
       _setupCompleter!.completeError(error);
       return;
@@ -438,7 +438,7 @@ class WSVoiceTranscriptionService extends AIService {
   void _onWsDone() {
     final code = _ws?.closeCode;
     final reason = _ws?.closeReason;
-    debugPrint('[WSVoice] WS closed. code=$code reason="$reason"');
+    debugPrint('[WSVoice] WebSocket closed. code=$code');
 
     if (_setupCompleter != null && !_setupCompleter!.isCompleted) {
       _setupCompleter!.completeError(
@@ -457,12 +457,10 @@ class WSVoiceTranscriptionService extends AIService {
   // -------------------------------------------------------------------------
 
   void _appendText(String token) {
-    debugPrint('[WSVoice] ✏️ Appending: "$token"');
     final base = _session.transcript;
     // Insert a space between pre-existing content and the new transcription
     final sep = base.isNotEmpty && !base.endsWith(' ') ? ' ' : '';
     final next = '$base$sep$token';
-    debugPrint('[WSVoice] 📝 Full transcript now: "$next"');
     _controller.value = TextEditingValue(
       text: next,
       selection: TextSelection.collapsed(offset: next.length),

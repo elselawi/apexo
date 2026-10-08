@@ -50,6 +50,12 @@ $entryPoint = $Entry
 # register order is the run order: a group's tests depend on what the groups
 # before it left behind, so a group has to be run in isolation or as part of the
 # whole suite, never as a name filter.
+#
+# The whole `e2e_test.dart` registers, as of 2026-09-28 (25 groups). **Three names
+# here have no group file** — `attachments`, `notifications` and `multi_clinic` were
+# removed by `ef3a3fd` with the migration they tested — and they are kept in the list
+# only so that `-Group attachments` is an error rather than a silent `--plain-name`
+# filter that matches no test:
 $groupNames = @(
     'login', 'patients', 'calendar', 'appointments', 'patient_panel',
     'tooth_chart', 'patient_portal', 'accessibility', 'upgrade',
@@ -59,6 +65,13 @@ $groupNames = @(
     'localization_rtl', 'notifications', 'errors_and_recovery', 'perf_budgets',
     'dicom', 'multi_clinic'
 )
+
+if ($Group -in @('attachments', 'notifications', 'multi_clinic')) {
+    throw "E2E group '$Group' was removed and cannot be run."
+}
+if ($Target -eq 'web' -and $Group -and $groupNames -notcontains $Group) {
+    throw "Web runs require an E2E group name; test-name filters are not supported."
+}
 
 $filterArgs = @()
 $groupDefine = @()

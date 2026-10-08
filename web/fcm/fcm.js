@@ -236,7 +236,7 @@ class FCMManager {
                 serviceWorkerRegistration: this.registration
             });
 
-            console.log("Token retrieved:", token);
+            console.log("Device token retrieved");
             return token;
         } catch (e) {
             console.error("Token error:", e);

@@ -197,6 +197,22 @@ void main() {
       expect(columns[1].order, 1);
       expect(columns[2].order, 2);
     });
+
+    test('generated notes keep comments and attachments well shaped', () {
+      final notes = demoNotes(20).whereType<Note>().where((n) => !n.isColumn);
+      final noteWithComments =
+          notes.firstWhere((note) => note.comments.isNotEmpty);
+
+      for (final comment in noteWithComments.comments) {
+        expect(comment, hasLength(2));
+        expect(comment[0], isNotEmpty);
+        expect(comment[1], isNotEmpty);
+      }
+
+      for (final note in notes) {
+        expect(note.attachments, isEmpty);
+      }
+    });
   });
 
   group('demo generator — large counts', () {

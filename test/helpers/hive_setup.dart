@@ -22,7 +22,7 @@ Future<Directory> setupTestHive() async {
 /// Closes all Hive boxes and deletes the temp directory.
 Future<void> teardownTestHive(Directory dir) async {
   await Hive.close();
-  if (await dir.exists()) {
+  if (dir.existsSync()) {
     await dir.delete(recursive: true);
   }
 }

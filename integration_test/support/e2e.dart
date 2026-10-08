@@ -8,7 +8,7 @@ import 'package:apexo/features/settings/settings_stores.dart'
     show localSettings;
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart' show login;
-import 'package:apexo/utils/init_stores.dart';
+import 'package:apexo/app/data/initialize_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';

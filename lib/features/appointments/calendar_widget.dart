@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
@@ -139,6 +140,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
   Widget _buildCommandBar() {
     return ScreenCommandBar(
       mainButton: IconButton(
+        key: WK.btnNewAppointment,
         onPressed: () => widget.onAddNew(selectedDate),
         icon: ButtonContent(FluentIcons.add, txt("newAppointment")),
       ),
@@ -153,14 +155,26 @@ class WeekAgendaCalendarState<Item extends Appointment>
         child: Card(
           color: Colors.transparent,
           elevation: 0,
-          child: _buildTableCalendar(),
+          child: LayoutBuilder(builder: (context, constraints) {
+            // Integer page extents avoid accumulated fractional scroll errors
+            // without making older appointments inaccessible.
+            return Align(
+              alignment: Alignment.topCenter,
+              child: SizedBox(
+                width: constraints.maxWidth.floorToDouble(),
+                child: _buildTableCalendar(),
+              ),
+            );
+          }),
         ));
   }
 
   Widget _buildTableCalendar() {
-    return TableCalendar(
-      firstDay: now.subtract(const Duration(days: 9999)),
-      lastDay: now.add(const Duration(days: 9999)),
+    final firstDay = now.subtract(const Duration(days: 9999));
+    final lastDay = now.add(const Duration(days: 9999));
+    return TableCalendar<Item>(
+      firstDay: selectedDate.isBefore(firstDay) ? selectedDate : firstDay,
+      lastDay: selectedDate.isAfter(lastDay) ? selectedDate : lastDay,
       focusedDay: selectedDate,
       daysOfWeekVisible: true,
       rowHeight: 30,
@@ -208,6 +222,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
               const Divider(size: 20, direction: Axis.vertical),
               if (!isSameDay(day, DateTime.now()))
                 IconButton(
+                  key: WK.calendarToday,
                   onPressed: _goToToday,
                   iconButtonMode: IconButtonMode.large,
                   icon: Row(
@@ -231,18 +246,27 @@ class WeekAgendaCalendarState<Item extends Appointment>
           );
         },
         defaultBuilder: (context, day, focusedDay) {
-          return DayCell(day: day, type: DayCellType.normal);
+          return DayCell(
+              key: WK.calendarDay(day), day: day, type: DayCellType.normal);
         },
         todayBuilder: (context, day, focusedDay) {
-          return DayCell(day: day, type: DayCellType.today);
+          return DayCell(
+              key: WK.calendarDay(day), day: day, type: DayCellType.today);
         },
         selectedBuilder: (context, day, focusedDay) {
-          return DayCell(day: day, type: DayCellType.selected);
+          // The *selected* cell carries `calendarSelected` instead of its date
+          // key — `table_calendar` builds it from `selectedBuilder`, and a
+          // fixture that wants a day taps `calendarDay(day)` (so the day already
+          // selected has nothing to tap; `Fixtures.selectDay` is idempotent for
+          // exactly this reason).
+          return DayCell(
+              key: WK.calendarSelected, day: day, type: DayCellType.selected);
         },
         markerBuilder: (context, day, events) {
           return events.isEmpty
               ? null
-              : AppointmentsNumberIndicator(events: events, day: day);
+              : AppointmentsNumberIndicator(
+                  key: WK.calendarDayCount(day), events: events, day: day);
         },
       ),
       onDaySelected: (newDate, focusedDay) {

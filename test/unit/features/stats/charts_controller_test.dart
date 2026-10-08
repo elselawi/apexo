@@ -3,6 +3,7 @@ library;
 
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
@@ -78,12 +79,29 @@ void main() {
       expect(chartsCtrl.start().day, expectedStart.day);
     });
 
-    test('end defaults to 31 days after start', () {
+    test('end defaults to the end of the current month', () {
       final now = DateTime.now();
       chartsCtrl.resetSelected();
-      final expectedEnd =
-          DateTime(now.year, now.month, 1).add(const Duration(days: 31));
-      expect(chartsCtrl.end().difference(expectedEnd).inDays, 0);
+      final expectedEnd = DateTime(now.year, now.month + 1, 0, 23, 59, 59, 999);
+      expect(chartsCtrl.end(), expectedEnd);
+    });
+
+    test('default range excludes the start of the next month', () async {
+      final now = DateTime.now();
+      final nextMonth = DateTime(now.year, now.month + 1, 1);
+      chartsCtrl.resetSelected();
+      chartsCtrl.filterByOperatorID('');
+
+      final appointment = testAppointment(
+        id: 'charts-next-month',
+        date: nextMonth,
+      );
+      appointments.set(appointment);
+      injectedApptIds.add(appointment.id);
+
+      await flushObservers();
+
+      expect(chartsCtrl.filteredAppointments, isNot(contains(appointment)));
     });
 
     test('interval defaults to StatsInterval.days', () {
@@ -175,7 +193,7 @@ void main() {
     });
 
     test('filteredReceipts is a list', () {
-      expect(chartsCtrl.filteredReceipts, isA<List>());
+      expect(chartsCtrl.filteredReceipts, isA<List<Expense>>());
     });
 
     test('filteredAppointments respects date range', () async {

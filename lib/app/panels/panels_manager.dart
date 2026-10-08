@@ -1,5 +1,5 @@
 import 'package:apexo/app/panels/panel.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 
 abstract class PanelsManager {
   static final ObservableState<List<Panel>> active = ObservableState([]);

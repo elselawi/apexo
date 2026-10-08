@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -20,12 +21,13 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    unawaited(_loadSettings());
   }
 
   Future<void> _loadSettings() async {
     try {
       final collection = await login.pb!.collections.getOne("data");
+      if (!mounted) return;
       final imgsField = collection.fields.firstWhere((f) => f.name == "imgs");
       final maxSizeBytes = imgsField.data["maxSize"] as int? ?? 0;
       _maxSizeController.text = maxSizeBytes > 0
@@ -126,6 +128,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        key: WK.serviceSection('file_upload_settings'),
         leading: const Icon(FluentIcons.upload),
         header: Txt(txt("file_upload_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
@@ -148,6 +151,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
                     Txt(txt("file_upload_max_size")),
                     const SizedBox(height: 5),
                     CupertinoTextField(
+                      key: WK.serviceField('file_upload_maxSize'),
                       controller: _maxSizeController,
                       placeholder: "15",
                       keyboardType: TextInputType.number,

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -19,6 +20,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/widget_keys.dart';
 
 final treatments = txOptions.where((x) => x.type != StateType.state).toList();
 
@@ -203,35 +205,36 @@ class _PatientsPageState extends State<_PatientsPage> {
   ScreenCommandBar _buildCommandBar(BuildContext context) {
     return ScreenCommandBar(
       mainButton: IconButton(
+        key: WK.btnNewPatient,
         icon: ButtonContent(FluentIcons.add, txt("newPatient")),
         onPressed: () {
-          openPatient();
+          unawaited(openPatient());
         },
       ),
       otherButtons: [
         IconButton(
             icon: ButtonContent(WindowsIcons.copy, txt("import")),
             onPressed: () {
-              showDialog(
+              unawaited(showDialog(
                   barrierDismissible: true,
                   dismissWithEsc: true,
                   context: context,
                   builder: (BuildContext context) {
                     return const ImportPatientsDialog();
-                  });
+                  }));
             }),
         if (selected.isNotEmpty)
           IconButton(
               icon: ButtonContent(
                   WindowsIcons.copy, "${txt("export")} (${selected.length})"),
               onPressed: () {
-                showDialog(
+                unawaited(showDialog(
                     barrierDismissible: true,
                     dismissWithEsc: true,
                     context: context,
                     builder: (BuildContext context) {
                       return ExportPatientsDialog(ids: selected);
-                    });
+                    }));
               })
       ],
     );
@@ -314,7 +317,7 @@ class _PatientsPageState extends State<_PatientsPage> {
       String searchStringLowerCased) {
     return GestureDetector(
       onTap: () {
-        openPatient(patient);
+        unawaited(openPatient(patient));
       },
       child: Row(
         spacing: 5,
@@ -346,7 +349,7 @@ class _PatientsPageState extends State<_PatientsPage> {
   Widget _buildTreatmentLabels(BoxConstraints constraints, Patient patient) {
     return GestureDetector(
       onTap: () {
-        openPatient(patient, 1);
+        unawaited(openPatient(patient, 1));
       },
       child: SizedBox(
         width: constraints.maxWidth - 255,
@@ -538,9 +541,9 @@ class ClickableBottomLabel extends StatelessWidget {
       child: GestureDetector(
         onTap: () {
           if (label.title == txt("phone")) {
-            phoneButtonKey.currentState?.showMenu();
+            unawaited(phoneButtonKey.currentState?.showMenu());
           } else {
-            openPatient(patient, targetTab);
+            unawaited(openPatient(patient, targetTab));
           }
         },
         child: Container(
@@ -576,7 +579,7 @@ class ClickableBottomLabel extends StatelessWidget {
                       color: label.color == null ? null : Colors.white),
                   style: darkIconButtonStyle(context, label.color),
                   onPressed: () {
-                    openPatient(patient, targetTab);
+                    unawaited(openPatient(patient, targetTab));
                   },
                 ),
               Column(

@@ -104,7 +104,7 @@ Future<void> showStaticNotifications() async {
                               return HyperlinkButton(
                                 onPressed: () {
                                   action.action();
-                                  _notificationsFlyoutController.close();
+                                  _notificationsFlyoutController.close<void>();
                                 },
                                 child: Text(action.label),
                               );
@@ -124,7 +124,7 @@ Future<void> showStaticNotifications() async {
                             "shouldShowPrompt",
                             "yes",
                           );
-                          _notificationsFlyoutController.close();
+                          _notificationsFlyoutController.close<void>();
                         },
                         child: ButtonContent(
                           FluentIcons.ringer_active,

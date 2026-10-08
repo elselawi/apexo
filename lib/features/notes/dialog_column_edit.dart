@@ -6,17 +6,18 @@ import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
 void showColumnEditDialog(BuildContext context, {Note? column}) {
-  showDialog(
+  unawaited(showDialog(
     context: context,
     dismissWithEsc: true,
     barrierDismissible: true,
     builder: (context) => _ColumnEditingWidget(column: column),
-  );
+  ));
 }
 
 class _ColumnEditingWidget extends StatefulWidget {
@@ -69,6 +70,7 @@ class _ColumnEditingWidgetState extends State<_ColumnEditingWidget> {
                 label: txt("columnTitle"),
                 isHeader: true,
                 child: CupertinoTextField(
+                  key: WK.fieldColumnTitle,
                   controller: controller,
                   placeholder: "${txt("columnTitle")}...",
                   autofocus: true,

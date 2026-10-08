@@ -237,14 +237,18 @@ class _HeroHeaderState extends State<_HeroHeader> {
                         _HeaderCommunicationAction(
                           icon: FluentIcons.phone,
                           label: txt("call"),
-                          onTap: () => unawaited(
-                              openExternal(Uri.parse("tel:${widget.phone}"))),
+                          onTap: () {
+                            unawaited(
+                                openExternal(Uri.parse("tel:${widget.phone}")));
+                          },
                         ),
                         _HeaderCommunicationAction(
                           icon: FluentIcons.message,
                           label: txt("text"),
-                          onTap: () => unawaited(
-                              openExternal(Uri.parse("sms:${widget.phone}"))),
+                          onTap: () {
+                            unawaited(
+                                openExternal(Uri.parse("sms:${widget.phone}")));
+                          },
                         ),
                         _HeaderCommunicationAction(
                           icon: FluentIcons.chat,

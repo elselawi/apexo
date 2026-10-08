@@ -43,6 +43,16 @@ void main() {
       expect(row['age'], isNull);
     });
 
+    test('a final empty quoted field is retained without a newline', () {
+      final result = csvToJsonList('name,note\nJohn,""');
+      expect(result, hasLength(1));
+      expect(rowAt(result, 0), {'name': 'John', 'note': null});
+    });
+
+    test('a single empty quoted value is retained without a newline', () {
+      expect(csvToJsonList('value\n""'), [null]);
+    });
+
     test('quoted fields with commas inside', () {
       final result = csvToJsonList('name,note\nJohn,"Hello, World"');
       expect(rowAt(result, 0)['note'], 'Hello, World');
@@ -83,6 +93,10 @@ void main() {
       final result = csvToJsonList('not,valid,csv\n');
       // This may or may not return data depending on structure
       expect(result, isEmpty);
+    });
+
+    test('unterminated quoted field returns an empty list', () {
+      expect(csvToJsonList('name,note\nJohn,"unterminated'), isEmpty);
     });
 
     test('dot-notation unflatten: nested object', () {

@@ -98,7 +98,8 @@ final class RowPanel<T extends Model> extends Panel {
     if (onSave != null) {
       onSave!();
     } else {
-      store.set(item);
+      store.set(store.modeling(
+          jsonDecode(jsonEncode(item.toJson())) as Map<String, dynamic>));
     }
     // The record is stored now, so it is clean and it exists: without this the
     // panel would keep saying "Cancel" over work it has just saved, and the
@@ -125,6 +126,9 @@ final class RowPanel<T extends Model> extends Panel {
     } else {
       store.unarchive(item.id);
     }
-    markSaved();
+    item.archived = archived;
+    final saved = jsonDecode(_savedJson) as Map<String, dynamic>;
+    saved['archived'] = archived;
+    _savedJson = jsonEncode(saved);
   }
 }

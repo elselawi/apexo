@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/notes/dialog_note_edit.dart';
@@ -140,6 +141,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
 
     return Expanded(
       child: SingleChildScrollView(
+        key: WK.notesBoard,
         scrollDirection: Axis.horizontal,
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,12 +156,16 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
                 ..sort((a, b) => a.date.compareTo(b.date) * sortDir);
 
               return KanbanColumn(
-                key: Key(column.id),
+                key: WK.columnRoot(column.id),
                 column: column,
                 columnNotes: tNotes,
               );
             }),
             KanbanColumn(
+              // The uncategorized column is not a stored row — it collects the
+              // notes with no column — so its id is the empty string (the
+              // fixture calls the same value `uncategorizedColumnId`).
+              key: WK.columnRoot(''),
               column: null,
               columnNotes: (grouped[""] ?? [])
                 ..addAll(
@@ -176,6 +182,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
   Widget _buildCommandBar() {
     return ScreenCommandBar(
       mainButton: IconButton(
+        key: WK.btnNewNote,
         onPressed: () => showNoteEditDialog(context),
         icon: ButtonContent(FluentIcons.add, txt("newNote")),
       ),
@@ -221,6 +228,7 @@ class _AddColumnButton extends StatelessWidget {
       margin: const EdgeInsets.only(top: 25),
       width: 220,
       child: Button(
+        key: WK.btnAddColumn,
         style: ButtonStyle(
           backgroundColor: const WidgetStatePropertyAll(Colors.transparent),
           shape: WidgetStatePropertyAll(

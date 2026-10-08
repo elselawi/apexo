@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/current_account.dart';
@@ -82,6 +84,7 @@ class DashboardScreen extends StatelessWidget {
                         login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
+                        id: 'patientsToday',
                         icon: WindowsIcons.contact,
                         onPressed: () => routes.navigate(AppRoute.calendar),
                         height: height,
@@ -89,7 +92,9 @@ class DashboardScreen extends StatelessWidget {
                         items: dashboardCtrl.todayAppointments
                             .map((e) => ListTile(
                                   contentPadding: EdgeInsets.zero,
-                                  onPressed: () => openAppointment(e, 0),
+                                  onPressed: () {
+                                    openAppointment(e, 0);
+                                  },
                                   title: ItemTitle(item: e, maxWidth: 123),
                                   trailing: Text(DF.time(e.date)),
                                   subtitle: Text(
@@ -101,6 +106,7 @@ class DashboardScreen extends StatelessWidget {
                         login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
+                        id: 'newPatientsTodayList',
                         height: height,
                         icon: WindowsIcons.calendar,
                         onPressed: () => routes.navigate(AppRoute.calendar),
@@ -108,7 +114,9 @@ class DashboardScreen extends StatelessWidget {
                         items: dashboardCtrl.newPatientsToday.map((e) {
                           final a = e.allAppointments.first;
                           return ListTile(
-                            onPressed: () => openPatient(e, 2),
+                            onPressed: () {
+                              unawaited(openPatient(e, 2));
+                            },
                             title: ItemTitle(item: e),
                             subtitle: Text(
                                 "${a.subtitleLine1.isNotEmpty ? "${a.subtitleLine1}\n" : ""}${a.subtitleLine2}"),
@@ -119,13 +127,16 @@ class DashboardScreen extends StatelessWidget {
                         login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
+                        id: 'labworksDue',
                         height: height,
                         icon: FluentIcons.manufacturing,
                         onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("due")})",
                         items: labworks.due
                             .map((e) => ListTile(
-                                  onPressed: () => openPatient(e.patient, 2),
+                                  onPressed: () {
+                                    unawaited(openPatient(e.patient, 2));
+                                  },
                                   title: ItemTitle(item: e),
                                   subtitle: Txt(
                                       "${DateTime.now().difference(e.date).inDays} ${txt("daysAgo")}"),
@@ -136,13 +147,16 @@ class DashboardScreen extends StatelessWidget {
                         login.perm(Perm.appointments).some)
                       _buildDashboardList(
                         context: context,
+                        id: 'labworksUndelivered',
                         height: height,
                         icon: FluentIcons.manufacturing,
                         onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("undelivered")})",
                         items: labworks.notDeliveredPatients
                             .map((e) => ListTile(
-                                  onPressed: () => openPatient(e, 2),
+                                  onPressed: () {
+                                    unawaited(openPatient(e, 2));
+                                  },
                                   title: ItemTitle(item: e),
                                   subtitle: Txt(
                                       "${DateTime.now().difference(e.doneAppointments.lastOrNull?.date ?? e.allAppointments.last.date).inDays} ${txt("daysAgo")}"),
@@ -152,6 +166,7 @@ class DashboardScreen extends StatelessWidget {
                     if (login.perm(Perm.expenses).some)
                       _buildDashboardList(
                         context: context,
+                        id: 'expensesDue',
                         height: height,
                         icon: WindowsIcons.payment_card,
                         onPressed: () => routes.navigate(AppRoute.expenses),
@@ -166,11 +181,11 @@ class DashboardScreen extends StatelessWidget {
                                         .bodyStrong,
                                   ),
                                   onPressed: () {
-                                    openExpenses(
+                                    unawaited(openExpenses(
                                       expenses.ordersPerSupplier[e.id]!,
                                       e.supplierName,
                                       e.id,
-                                    );
+                                    ));
                                   },
                                   subtitle:
                                       Text("${e.duePayments} ${currency()}"),
@@ -188,6 +203,7 @@ class DashboardScreen extends StatelessWidget {
 
   Container _buildDashboardList({
     required BuildContext context,
+    required String id,
     required double height,
     required String title,
     required List<Widget> items,
@@ -197,6 +213,7 @@ class DashboardScreen extends StatelessWidget {
     const double colWidth = 265;
 
     return Container(
+      key: WK.dashboardSquare(id),
       width: colWidth,
       height: 100,
       decoration: BoxDecoration(
@@ -293,6 +310,7 @@ class DashboardScreen extends StatelessWidget {
           children: [
             if (login.perm(Perm.appointments).some)
               dashboardSquare(
+                'appointmentsToday',
                 Colors.purple,
                 FluentIcons.goto_today,
                 dashboardCtrl.todayAppointments.length.toString(),
@@ -300,6 +318,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             if (login.perm(Perm.patients).some)
               dashboardSquare(
+                'newPatientsToday',
                 Colors.blue,
                 FluentIcons.people,
                 dashboardCtrl.newPatientsToday.length.toString(),
@@ -307,6 +326,7 @@ class DashboardScreen extends StatelessWidget {
               ),
             if (login.perm(Perm.revenue).read)
               dashboardSquare(
+                'paymentsToday',
                 Colors.teal,
                 WindowsIcons.payment_card,
                 "${dashboardCtrl.paymentsToday.toStringAsFixed(2)} ${currency()}",
@@ -319,10 +339,11 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Padding dashboardSquare(
-      AccentColor color, IconData icon, String title, String subtitle,
+  Padding dashboardSquare(String id, AccentColor color, IconData icon,
+      String title, String subtitle,
       [bool isMoney = false]) {
     return Padding(
+      key: WK.dashboardSquare(id),
       padding: const EdgeInsets.all(8.0),
       child: Container(
         decoration: BoxDecoration(
@@ -357,6 +378,7 @@ class DashboardScreen extends StatelessWidget {
                     children: [
                       if (isMoney)
                         MoneyDisplay(
+                          key: WK.dashboardCount(id),
                           title,
                           style: TextStyle(
                             fontSize: 28,
@@ -367,6 +389,7 @@ class DashboardScreen extends StatelessWidget {
                       else
                         Text(
                           title,
+                          key: WK.dashboardCount(id),
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,

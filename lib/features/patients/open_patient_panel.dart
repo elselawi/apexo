@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:apexo/app/panels/panel_tab.dart';
@@ -13,7 +14,7 @@ import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/ai_services/dental_history.dart';
 import 'package:apexo/services/login.dart';
@@ -250,12 +251,12 @@ class _PrintQRButton extends StatelessWidget {
                 ],
               ),
               onPressed: () {
-                printingQRCode(
+                unawaited(printingQRCode(
                   context,
                   patient.shortLink,
                   "Access your information",
                   "Scan to visit link:\n${patient.shortLink}\nto access your appointments, payments and photos.",
-                );
+                ));
               }),
         ],
       ),

@@ -300,7 +300,15 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
           onTap: () => unawaited(_open(context, tKey)),
           excludeSemantics: true,
           child: GestureDetector(
-            key: WK.tooth(tKey, selected: widget.tooth.selected),
+            // `selected` means "this tooth carries a condition **in the draft**",
+            // which is `currentNote != null` — not the `_Tooth.selected` flag,
+            // which is only ever set once, in `initState`, from the notes the
+            // chart opened with. Recording a condition never updated it, so the
+            // key stayed `not-selected` and both `tooth_chart 02`/`03` and
+            // `patient_panel 05` waited forever for `tooth-iso-<n>-selected`.
+            // History (`oldNote` with no current note) must stay unselected —
+            // that is what `patient_panel 05` asserts.
+            key: WK.tooth(tKey, selected: widget.currentNote != null),
             onTap: () => unawaited(_open(context, tKey)),
             child: Tooltip(
               message: widget.notation(tKey),

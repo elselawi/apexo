@@ -41,7 +41,6 @@ class PatientTableLabel {
 }
 
 class Patient extends Model {
-  @override
   Patient.fromJson(super.json) : super.fromJson();
   List<String> get allPredefinedTreatments {
     final List<String> list = List.from(teeth.values);

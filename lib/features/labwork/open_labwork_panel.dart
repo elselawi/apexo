@@ -6,7 +6,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
@@ -14,6 +14,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:apexo/app/panels/panels_manager.dart';
@@ -200,6 +201,7 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
                 )
               else
                 ComboBox<String>(
+                  key: WK.fieldLabworkAppointment,
                   items: (selectedPatient!.allAppointments.toList()
                         ..sort((a, b) => a.date.compareTo(b.date)))
                       .map((e) => ComboBoxItem(

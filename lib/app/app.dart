@@ -45,9 +45,9 @@ class ApexoApp extends StatelessWidget {
 
   @override
   StatelessElement createElement() {
-    PatientSide.fromHref();
+    unawaited(PatientSide.fromHref());
     Future.delayed(const Duration(milliseconds: 1000), () {
-      showDialogsIfNeeded();
+      unawaited(showDialogsIfNeeded());
     });
     return super.createElement();
   }
@@ -112,13 +112,34 @@ class ApexoApp extends StatelessWidget {
         });
   }
 
-  void showDialogsIfNeeded() async {
+  /// Set once the changelog dialog has been raised in this process.
+  ///
+  /// The check runs from **two** places now (startup's one-second timer and
+  /// `login.activate`, which is what makes the welcome dialog reachable), and a
+  /// second raise leaves two dialogs stacked — `upgrade 01` sets a stale
+  /// `lastSeenVersion` itself, and the timer then raised a second changelog over
+  /// the one the test was closing, so it waited 60s for `ContentDialog` to
+  /// disappear. The device value alone is not enough of a guard: the *test* is
+  /// allowed to make it stale.
+  static bool _changelogShown = false;
+
+  /// Shows the changelog / welcome dialogs if this launch owes one.
+  ///
+  /// **Static, because `login.activate` calls it too.** `createElement`'s
+  /// one-second timer runs *before* the login that creates a clinic can set
+  /// `launch.isFirstLaunch`, so the welcome dialog was unreachable: nothing
+  /// re-checked the flag (`login 12`, a 180s wait for a dialog that could never
+  /// come). Nothing here reads instance state — every value is a global — so a
+  /// class-level function is enough, and the check is idempotent.
+  static Future<void> showDialogsIfNeeded() async {
     await version.init();
 
     // Show changelog dialog when the app version changes (post-update).
-    if (localSettings.lastSeenVersion != version.current() &&
+    if (!_changelogShown &&
+        localSettings.lastSeenVersion != version.current() &&
         version.current() != "0.0.0" &&
         bContext.mounted) {
+      _changelogShown = true;
       final entry = await changelog.forVersion(version.current());
       localSettings.lastSeenVersion = version.current();
       localSettings.notifyAndPersist();
@@ -342,6 +363,12 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
   final controller = FlyoutController();
 
   @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return FlyoutTarget(
       controller: controller,
@@ -357,7 +384,7 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
                   selected: route == routes.currentRoute(),
                   text: Text(route.title),
                   onPressed: () {
-                    controller.close();
+                    controller.close<void>();
                     routes.navigate(route);
                   },
                 );

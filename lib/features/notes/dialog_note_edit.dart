@@ -12,6 +12,7 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/logger.dart';
@@ -20,12 +21,12 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 void showNoteEditDialog(BuildContext context, {Note? note, String? columnID}) {
-  showDialog(
+  unawaited(showDialog(
     context: context,
     dismissWithEsc: true,
     barrierDismissible: true,
     builder: (context) => NoteEditDialog(note: note, columnID: columnID),
-  );
+  ));
 }
 
 class NoteEditDialog extends StatefulWidget {
@@ -107,6 +108,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                       setState(() => selectedColumnID = value ?? ''),
                 ),
                 CupertinoTextField(
+                  key: WK.fieldNoteTitle,
                   placeholderStyle: TextStyle(
                     color: (titleIsEmpty ? Colors.red : Colors.black)
                         .withAlpha(100),
@@ -121,6 +123,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
                   placeholder: "${txt("title")}...",
                 ),
                 CupertinoTextField(
+                  key: WK.fieldNoteText,
                   controller: noteController,
                   placeholder: "${txt("note")}...",
                   maxLines: 3,

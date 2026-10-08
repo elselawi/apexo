@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -40,7 +41,7 @@ class _DurationPillState extends State<DurationPill> {
       child: GestureDetector(
         onTap: widget.disabled
             ? null
-            : () => _durationFlyout.showFlyout(
+            : () => unawaited(_durationFlyout.showFlyout<void>(
                   builder: (ctx) => MenuFlyout(
                     items: [
                       MenuFlyoutItem(
@@ -62,14 +63,14 @@ class _DurationPillState extends State<DurationPill> {
                           text: Text("$d ${txt("minutes")}"),
                           onPressed: () {
                             widget.onSet(d);
-                            _durationFlyout.close();
+                            _durationFlyout.close<void>();
                             setState(() {});
                           },
                         );
                       }),
                     ],
                   ),
-                ),
+                )),
         child: MouseRegion(
           cursor: SystemMouseCursors.click,
           child: Container(

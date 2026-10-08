@@ -5,10 +5,11 @@ import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/utils/get_deterministic_item.dart';
 import 'package:apexo/common_widgets/transitions/border.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/features/settings/services_settings/services_list_item.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -53,18 +54,19 @@ class _BackupsSettingsState extends State<BackupsSettings> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    unawaited(_loadSettings());
   }
 
   Future<void> _loadSettings() async {
     try {
       final settings = await login.pb!.settings.getAll();
-      final backups = settings['backups'] ?? {};
+      if (!mounted) return;
+      final backups = settings['backups'] as Map<String, dynamic>? ?? {};
       _cronController.text = backups['cron'] as String? ?? '';
       _maxKeepController.text = (backups['cronMaxKeep'] ?? '5').toString();
       _autoBackupEnabled.value = (backups['cron'] as String? ?? '').isNotEmpty;
 
-      final s3 = backups['s3'] ?? {};
+      final s3 = backups['s3'] as Map<String, dynamic>? ?? {};
       _s3Enabled.value = s3['enabled'] as bool? ?? false;
       _endpointController.text = s3['endpoint'] as String? ?? '';
       _bucketController.text = s3['bucket'] as String? ?? '';
@@ -178,6 +180,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        key: WK.serviceSection('backups'),
         leading: const Icon(FluentIcons.folder),
         header: Txt(txt("backups")),
         trailing: const AppliesToIndicator(scope: Scope.system),
@@ -248,6 +251,15 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               spacing: 5,
               children: [
                 ComboBox<String>(
+                  // The **preset picker**, which is what a test means by
+                  // "the cron field": the box beside it only *shows* the cron
+                  // expression and is `enabled: false` (a tap on it does nothing,
+                  // which `backups 04` spent 60s discovering — a missed tap only
+                  // warns, and the wait for a preset list that can never open
+                  // follows). `Fixtures.serviceFieldText` reads a
+                  // `CupertinoTextField` *or* a `ComboBox`, which is what makes
+                  // this the key's home.
+                  key: WK.serviceField('backups_cron'),
                   value: _cronController.text.isEmpty
                       ? null
                       : _cronController.text,
@@ -290,6 +302,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   Txt(txt("backups_max_keep")),
                   const SizedBox(height: 5),
                   CupertinoTextField(
+                    key: WK.serviceField('backups_maxKeep'),
                     controller: _maxKeepController,
                     placeholder: "5",
                     keyboardType: TextInputType.number,
@@ -324,6 +337,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               Txt(txt("s3_endpoint")),
               const SizedBox(height: 5),
               CupertinoTextField(
+                key: WK.serviceField('backups_s3_endpoint'),
                 controller: _endpointController,
                 placeholder: "https://s3.amazonaws.com",
               ),
@@ -479,6 +493,9 @@ class _BackupsSettingsState extends State<BackupsSettings> {
 
   Widget buildBackupTile(BackupFile element, BuildContext context) {
     return ServicesListItem(
+      // The row's own file name is what the suite addresses it by — a backup
+      // has no record id, and the date is not unique on a busy day.
+      key: WK.backupRow(element.key),
       title: DF.fullCompact(element.date),
       subtitle: element.key,
       actions: [
@@ -532,7 +549,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
         child: ButtonContent(FluentIcons.upload, txt("upload")),
         onPressed: () {
           if (backups.uploading()) return;
-          backups.pickAndUpload();
+          unawaited(backups.pickAndUpload());
         },
       ),
     );
@@ -550,7 +567,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
         child: ButtonContent(FluentIcons.add, txt("createNew")),
         onPressed: () {
           if (backups.creating()) return;
-          backups.newBackup();
+          unawaited(backups.newBackup());
         },
       ),
     );
@@ -577,7 +594,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
           icon: const Icon(FluentIcons.update_restore),
           onPressed: () {
             if (backups.restoring().containsKey(element.key)) return;
-            showRestoreDialog(context, element);
+            unawaited(showRestoreDialog(context, element));
           },
         ),
       ),
@@ -621,14 +638,13 @@ class _BackupsSettingsState extends State<BackupsSettings> {
           preview: Txt("${txt("backup")}: ${DF.full(element.date)}"),
           restorable: false,
           onConfirm: () {
-            backups.delete(element.key);
+            unawaited(backups.delete(element.key));
           },
           child: const Icon(WindowsIcons.delete),
         ),
       ),
     );
   }
-
 
   Tooltip buildDownloadButton(BackupFile element, BuildContext context) {
     return Tooltip(

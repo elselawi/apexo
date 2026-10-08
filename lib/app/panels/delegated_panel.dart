@@ -57,7 +57,7 @@ final class DelegatedPanel extends Panel {
 
   /// Whether the records this panel shows are not stored yet. A panel that does
   /// not know is showing stored records.
-  final bool _isNew;
+  bool _isNew;
 
   /// Answers [isArchived] when the caller has an archive flag to report; a
   /// panel that aggregates several records has none, and answers `false`.
@@ -93,9 +93,11 @@ final class DelegatedPanel extends Panel {
   /// silently returning; the ids it answers with are what this panel reports.
   @override
   Future<void> persist() async {
-    for (final id in await onSave()) {
+    final ids = await onSave();
+    for (final id in ids) {
       recordSaved(id);
     }
+    if (ids.isNotEmpty) _isNew = false;
   }
 
   @override

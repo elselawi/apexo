@@ -1,7 +1,10 @@
+import 'package:apexo/core/reactive/observable_base.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/app/app.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/utils/dicom_init.dart';
-import 'package:apexo/utils/init_stores.dart';
+import 'package:apexo/app/data/initialize_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +16,11 @@ import 'package:apexo/utils/js/js_bridge.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  reactiveErrorReporter = (error, stack) => logger(error, stack);
+  reactiveSilentErrorReporter = (error, stack) {
+    login.askForLoginAgain(error);
+    logger(error, stack);
+  };
   await initializeDateFormatting('en', null);
   await initializeDateFormatting('ar', null);
   await initializeDateFormatting('es', null);
@@ -31,6 +39,13 @@ void main() async {
 
   // initialize stores
   initializeStores();
+
+  // Register the DICOM scan lifecycle (the login activator) *before* any
+  // login can run. `dicomCtrl` is a lazily-initialized top-level final, so
+  // nothing else touches it early enough: without this the periodic
+  // auto-scan timer is never started and X-rays are only picked up when the
+  // dentist opens the DICOM page.
+  initializeDicomScan();
 
   if (kIsWeb) {
     JSBridge.removeItemFromSessionStorage('canvaskit_reload_count');

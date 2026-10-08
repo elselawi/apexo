@@ -3,7 +3,7 @@ library;
 
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 

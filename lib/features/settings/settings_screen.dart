@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -19,6 +19,7 @@ import 'package:apexo/features/settings/services_settings/s3_settings.dart';
 import 'package:apexo/features/settings/services_settings/smtp_settings.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -40,6 +41,7 @@ class SettingsScreen extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: ListView(
+        key: WK.settingsList,
         children: [
           if (login.isAdmin)
             SettingsItem(
@@ -101,7 +103,6 @@ class SettingsScreen extends StatelessWidget {
             apply: (newVal) {
               localSettings.selectedLocale = int.parse(newVal);
               localSettings.notifyAndPersist();
-              networkActions.resync();
             },
           ),
           if (login.isAdmin)
@@ -355,7 +356,7 @@ class SettingsItem extends StatefulWidget {
   final List<ComboBoxItem<String>> options;
   final Widget? footer;
   final String initValue;
-  final Function(String newVal) apply;
+  final void Function(String newVal) apply;
 
   @override
   State<StatefulWidget> createState() => SettingsItemState();
@@ -383,6 +384,11 @@ class SettingsItemState extends State<SettingsItem> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        // One key per card, by the identifier the screen gives it. It sits on the
+        // `Expander` because that is the box whose *height* says whether the card
+        // is open — a shut fluent `Expander` keeps its content laid out and
+        // findable, so "is it open?" cannot be asked of its children.
+        key: WK.settingsItem(widget.identifier),
         leading: Icon(widget.icon),
         header: Txt(widget.title),
         content: SizedBox(

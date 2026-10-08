@@ -35,8 +35,8 @@ class CalendarScreen extends StatelessWidget {
                   ),
                   ...accounts.operators.map((account) {
                     var name = "🥼 ${accounts.name(account)}";
-                    if (name.length > 17) {
-                      name = "${name.substring(0, 14)}...";
+                    if (!fitsInCodePoints(name, 17)) {
+                      name = "${clipCodePoints(name, 14)}...";
                     }
                     return ComboBoxItem(value: account.id, child: Text(name));
                   }),

@@ -222,6 +222,15 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ButtonContent(WindowsIcons.delete, txt("clear"), size: 16),
       onPressed: () {
         login.logout(true);
+        // `logout(true)` empties the **stored** url and email, but the three
+        // fields hold their own controllers and `fillFromPersistence` only ever
+        // writes a *non-empty* value back — so the form stayed filled with a
+        // session that no longer existed (`login 08`). Empty them here.
+        setState(() {
+          serverURLCtrl.clear();
+          emailCtrl.clear();
+          passwordCtrl.clear();
+        });
       },
     );
   }
@@ -349,12 +358,12 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.all(5),
                       child: const Icon(WindowsIcons.help, size: 12),
                     ),
-                    onPressed: () {
-                      flyoutFocusFix(context);
-                      showTeachingTip(
+                    onPressed: () async {
+                      await flyoutFocusFix(context);
+                      unawaited(showTeachingTip(
                           placementMode: FlyoutPlacementMode.topCenter,
                           builder: (ctx) => _buildServerHelpTip(ctx),
-                          flyoutController: _serverHelpFlyoutController);
+                          flyoutController: _serverHelpFlyoutController));
                     }),
               ),
               key: WK.serverField,
@@ -379,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ButtonContent(
                 WindowsIcons.open_in_new_window, txt("createNewServer")),
             onPressed: () {
-              launchUrl(Uri.parse("https://apexo.app/#download"));
+              unawaited(launchUrl(Uri.parse("https://apexo.app/#download")));
             }),
       ],
     );

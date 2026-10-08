@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:apexo/app/routing/routes.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';

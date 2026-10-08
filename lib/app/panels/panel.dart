@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:apexo/app/panels/panel_tab.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart' show nonVirtual, protected;
@@ -157,9 +157,15 @@ abstract base class Panel {
   /// settlement.
   @nonVirtual
   Future<void> save() async {
-    await persist();
-    settle();
-    await readTitle(refresh: true);
+    if (inProgress()) return;
+    inProgress(true);
+    try {
+      await persist();
+      settle();
+      await readTitle(refresh: true);
+    } finally {
+      inProgress(false);
+    }
   }
 
   /// The panel's own write, run by [save] and by nothing else.

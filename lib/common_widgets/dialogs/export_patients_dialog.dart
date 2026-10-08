@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert' show utf8;
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
@@ -221,7 +222,7 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
 }
 
 void showHowTo(FlyoutController controller) {
-  controller.showFlyout(
+  unawaited(controller.showFlyout<void>(
     builder: (ctx) {
       return SizedBox(
         child: TeachingTip(
@@ -230,7 +231,7 @@ void showHowTo(FlyoutController controller) {
         ),
       );
     },
-  );
+  ));
 }
 
 Tab _createExporterTab(
@@ -450,7 +451,7 @@ class _StyledSelectableTextState extends State<StyledSelectableText> {
                       ],
                     ),
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: widget.text));
+                      unawaited(Clipboard.setData(ClipboardData(text: widget.text)));
                       setState(() => didCopy = true);
                       Future.delayed(const Duration(seconds: 2), () {
                         if (context.mounted) setState(() => didCopy = false);

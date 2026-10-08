@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
@@ -31,13 +32,14 @@ class _S3SettingsState extends State<S3Settings> {
   @override
   void initState() {
     super.initState();
-    _loadS3Settings();
+    unawaited(_loadS3Settings());
   }
 
   Future<void> _loadS3Settings() async {
     try {
       final settings = await login.pb!.settings.getAll();
-      final s3 = settings['s3'] ?? {};
+      if (!mounted) return;
+      final s3 = settings['s3'] as Map<String, dynamic>? ?? {};
 
       endpointController.text = s3['endpoint'] as String? ?? '';
       bucketController.text = s3['bucket'] as String? ?? '';
@@ -135,6 +137,7 @@ class _S3SettingsState extends State<S3Settings> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        key: WK.serviceSection('s3_settings'),
         leading: const Icon(FluentIcons.cloud_upload),
         header: Txt(txt("s3_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
@@ -172,6 +175,7 @@ class _S3SettingsState extends State<S3Settings> {
                     Txt(txt("s3_endpoint")),
                     const SizedBox(height: 5),
                     CupertinoTextField(
+                      key: WK.serviceField('s3_endpoint'),
                       controller: endpointController,
                       placeholder: "https://s3.amazonaws.com",
                     ),
@@ -184,6 +188,7 @@ class _S3SettingsState extends State<S3Settings> {
                           Txt(txt("s3_bucket")),
                           const SizedBox(height: 5),
                           CupertinoTextField(
+                            key: WK.serviceField('s3_bucket'),
                             controller: bucketController,
                             placeholder: "my-bucket",
                           ),
@@ -196,6 +201,7 @@ class _S3SettingsState extends State<S3Settings> {
                           Txt(txt("s3_region")),
                           const SizedBox(height: 5),
                           CupertinoTextField(
+                            key: WK.serviceField('s3_region'),
                             controller: regionController,
                             placeholder: "us-east-1",
                           ),
@@ -211,6 +217,7 @@ class _S3SettingsState extends State<S3Settings> {
                           Txt(txt("s3_accessKey")),
                           const SizedBox(height: 5),
                           CupertinoTextField(
+                            key: WK.serviceField('s3_accessKey'),
                             controller: accessKeyController,
                             placeholder: "AKIA...",
                           ),
@@ -226,6 +233,7 @@ class _S3SettingsState extends State<S3Settings> {
                             valueListenable: showSecretKey,
                             builder: (context, show, _) {
                               return CupertinoTextField(
+                                key: WK.serviceField('s3_secretKey'),
                                 controller: secretKeyController,
                                 placeholder: txt("leaveBlankToKeepUnchanged"),
                                 obscureText: !show,

@@ -34,7 +34,7 @@ class EmailButton extends StatelessWidget {
           color: FluentTheme.of(context).inactiveColor,
         ),
         onPressed: () {
-          launchUrl(Uri.parse('mailto:$email'));
+          unawaited(launchUrl(Uri.parse('mailto:$email')));
         },
       ),
     );
@@ -154,7 +154,7 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
         text: Txt(txt("call")),
         leading: const Icon(FluentIcons.phone),
         onPressed: () {
-          launchUrl(Uri.parse("tel:${fullPhoneNumber(num)}"));
+          unawaited(launchUrl(Uri.parse("tel:${fullPhoneNumber(num)}")));
         },
         closeAfterClick: true,
       ),
@@ -162,7 +162,7 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
         text: Txt(txt("text")),
         leading: const Icon(FluentIcons.message),
         onPressed: () {
-          launchUrl(Uri.parse("sms:${fullPhoneNumber(num)}"));
+          unawaited(launchUrl(Uri.parse("sms:${fullPhoneNumber(num)}")));
         },
         closeAfterClick: true,
       ),
@@ -170,7 +170,7 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
         text: Txt(txt("whatsapp")),
         leading: const Icon(WindowsIcons.message),
         onPressed: () {
-          launchUrl(Uri.parse("https://wa.me/${fullPhoneNumber(num)}"));
+          unawaited(launchUrl(Uri.parse("https://wa.me/${fullPhoneNumber(num)}")));
         },
         closeAfterClick: true,
       ),
@@ -178,7 +178,7 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
         text: Txt(txt("telegram")),
         leading: const Icon(FluentIcons.send),
         onPressed: () {
-          launchUrl(Uri.parse("https://t.me/${fullPhoneNumber(num)}"));
+          unawaited(launchUrl(Uri.parse("https://t.me/${fullPhoneNumber(num)}")));
         },
         closeAfterClick: true,
       ),

@@ -166,7 +166,7 @@ class _ScanReceiptDialogContentState extends State<_ScanReceiptDialogContent> {
       expenses.set(transientOrder);
 
       // wait for the order to be saved and have an ID before uploading the image
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
       // 3. upload the receipt photo to the order
       final imgName = await handleNewImage(

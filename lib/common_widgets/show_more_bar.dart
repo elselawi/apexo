@@ -1,4 +1,5 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class ShowMoreBar extends StatelessWidget {
@@ -39,6 +40,7 @@ class ShowMoreBar extends StatelessWidget {
           ),
           if (all > slice)
             Button(
+              key: WK.showMore,
               onPressed: () {
                 callBack();
                 WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -1,6 +1,7 @@
+import 'package:apexo/core/persistence/observable_persisting_object.dart';
 import 'dart:convert';
 import 'package:apexo/common_widgets/error_dialog.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/demo_generator.dart';

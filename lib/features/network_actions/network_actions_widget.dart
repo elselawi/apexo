@@ -7,6 +7,7 @@ import 'package:apexo/common_widgets/transitions/rotate.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class NetworkActions extends StatelessWidget {
@@ -66,6 +67,7 @@ class NetworkActions extends StatelessWidget {
     }
 
     return Stack(
+      key: WK.globalAction(action.identifier),
       alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
@@ -83,7 +85,10 @@ class NetworkActions extends StatelessWidget {
         message: action.tooltip,
         child: IconButton(
           icon: action.icon,
-          onPressed: action.onPressed,
+          // A disabled action is *offered* and cannot be pressed: passing
+          // `onPressed` through regardless left the flag meaningless and a tap
+          // silently did nothing (todo.md §6.1).
+          onPressed: action.disabled == true ? null : action.onPressed,
           iconButtonMode: IconButtonMode.large,
           style: ButtonStyle(
               shape: WidgetStatePropertyAll(RoundedRectangleBorder(

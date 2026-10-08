@@ -951,11 +951,11 @@ class _TimelineChipState extends State<TimelineChip> {
             ? null
             : () {
                 if (_operatorsFlyout.isOpen) {
-                  _operatorsFlyout.close();
+                  _operatorsFlyout.close<void>();
                 } else {
-                  _operatorsFlyout.showFlyout(
+                  unawaited(_operatorsFlyout.showFlyout<void>(
                     builder: (ctx) => _buildOperatorsFlyoutContent(ctx, ops),
-                  );
+                  ));
                 }
               },
         child: MouseRegion(

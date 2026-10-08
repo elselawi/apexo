@@ -1,7 +1,7 @@
 @Tags(['serial'])
 library;
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';

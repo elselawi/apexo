@@ -122,7 +122,8 @@ class Note extends Model {
     /* 8 */
     if (json["comments"] != null) {
       comments = [];
-      for (var comment in json["comments"] as List<dynamic>) {
+      for (final value in json["comments"] as List<dynamic>) {
+        final comment = value as List<dynamic>;
         comments.add([comment[0] as String, comment[1] as String]);
       }
     }

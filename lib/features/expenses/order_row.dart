@@ -9,6 +9,7 @@ import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/ai_services/receipt_scanner.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -501,6 +502,12 @@ class OrderRowState extends State<OrderRow>
     final theme = FluentTheme.of(context);
 
     return CupertinoTextField(
+      // The two money fields of an order, addressed apart: the fixture types into
+      // `fieldOrderCost` / `fieldOrderPaid` (and `enterField` wants the key on a
+      // wrapper with the `EditableText` under it, which a field is).
+      key: isEditable
+          ? (label == "due" ? WK.fieldOrderCost : WK.fieldOrderPaid)
+          : null,
       prefix: Row(
         spacing: 5,
         children: [
@@ -679,6 +686,7 @@ class OrderRowState extends State<OrderRow>
       child: FlyoutTarget(
         controller: moreOptionsCtrl,
         child: IconButton(
+          key: WK.orderMenu,
           icon: inProgress
               ? const SizedBox(
                   width: 15,
@@ -690,7 +698,7 @@ class OrderRowState extends State<OrderRow>
           onPressed: () async {
             if (inProgress) return;
             await flyoutFocusFix(context);
-            unawaited(moreOptionsCtrl.showFlyout(builder: (context) {
+            unawaited(moreOptionsCtrl.showFlyout<void>(builder: (context) {
               return MenuFlyout(
                 items: [
                   MenuFlyoutItem(
@@ -713,7 +721,7 @@ class OrderRowState extends State<OrderRow>
                         ? WindowsIcons.undo
                         : WindowsIcons.delete),
                     onPressed: () {
-                      moreOptionsCtrl.close();
+                      moreOptionsCtrl.close<void>();
                       WidgetsBinding.instance.addPostFrameCallback((_) async {
                         await flyoutFocusFix(context);
                         final supplierName = expenses.suppliers

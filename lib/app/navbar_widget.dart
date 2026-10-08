@@ -26,7 +26,7 @@ class BottomNavBar extends StatelessWidget {
               offset: const Offset(0.0, -2.0), // Cast shadow upwards
               blurRadius: 15.0,
               spreadRadius: 1.0,
-              color: Colors.black.withOpacity(0.05), // Slight, elegant shadow
+              color: Colors.black.withValues(alpha: 0.05), // Slight, elegant shadow
             ),
           ],
           border: Border(
@@ -86,7 +86,7 @@ class BottomNavBar extends StatelessWidget {
                         color: FluentTheme.of(context)
                             .resources
                             .dividerStrokeColorDefault
-                            .withOpacity(0.1),
+                            .withValues(alpha: 0.1),
                       ),
                     if (showMore)
                       Expanded(
@@ -119,7 +119,7 @@ class BottomNavBarButton extends StatelessWidget {
     final theme = FluentTheme.of(context);
     final color = active
         ? Colors.blue
-        : (theme.typography.body?.color?.withOpacity(0.6) ?? Colors.grey);
+        : (theme.typography.body?.color?.withValues(alpha: 0.6) ?? Colors.grey);
 
     return HoverButton(
       onPressed: () => routes.navigate(route),
@@ -131,7 +131,7 @@ class BottomNavBarButton extends StatelessWidget {
           curve: Curves.easeOutQuint,
           decoration: BoxDecoration(
             color: active
-                ? Colors.blue.withOpacity(0.08) // Indicative active pill
+                ? Colors.blue.withValues(alpha: 0.08) // Indicative active pill
                 : (isHovered
                     ? theme.resources.subtleFillColorSecondary
                     : Colors.transparent),
@@ -252,7 +252,7 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
             curve: Curves.easeOutQuint,
             decoration: BoxDecoration(
               color: isActive
-                  ? Colors.blue.withOpacity(0.08)
+                  ? Colors.blue.withValues(alpha: 0.08)
                   : (isHovered
                       ? theme.resources.subtleFillColorSecondary
                       : Colors.transparent),

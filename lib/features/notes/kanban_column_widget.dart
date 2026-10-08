@@ -9,6 +9,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class KanbanColumn extends StatefulWidget {
@@ -192,6 +193,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
                 child: Tooltip(
                   message: txt("editColumn"),
                   child: GestureDetector(
+                    key: WK.columnHeader(widget.column?.id ?? ''),
                     onTap: () {
                       if (widget.column != null) {
                         showColumnEditDialog(context, column: widget.column);
@@ -212,7 +214,8 @@ class _KanbanColumnState extends State<KanbanColumn> {
                       icon: const Icon(WindowsIcons.more),
                       onPressed: () async {
                         await flyoutFocusFix(context);
-                        unawaited(moreMenuFlyout.showFlyout(builder: (context) {
+                        unawaited(moreMenuFlyout.showFlyout<void>(
+                            builder: (context) {
                           return MenuFlyout(
                             items: [
                               MenuFlyoutItem(
@@ -220,7 +223,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
                                 leading: const Icon(FluentIcons.edit),
                                 onPressed: () {
                                   if (moreMenuFlyout.isOpen) {
-                                    moreMenuFlyout.close();
+                                    moreMenuFlyout.close<void>();
                                   }
                                   WidgetsBinding.instance
                                       .addPostFrameCallback((_) {
@@ -302,6 +305,7 @@ class _KanbanColumnState extends State<KanbanColumn> {
 
   IconButton _buildAddNoteButton(FluentThemeData theme, BuildContext context) {
     return IconButton(
+      key: WK.btnAddNote,
       style: _addNoteButtonStyle(context),
       icon: const Icon(FluentIcons.add),
       onPressed: () {

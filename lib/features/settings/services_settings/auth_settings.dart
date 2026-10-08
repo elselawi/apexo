@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -23,13 +24,14 @@ class _AuthSettingsState extends State<AuthSettings> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    unawaited(_loadSettings());
   }
 
   Future<void> _loadSettings() async {
     try {
       final users = await login.pb!.collections.getOne("users");
       final superusers = await login.pb!.collections.getOne("_superusers");
+      if (!mounted) return;
       final usersSec = users.authToken?.duration ?? 0;
       final superusersSec = superusers.authToken?.duration ?? 0;
       _usersDurationController.text =
@@ -132,6 +134,7 @@ class _AuthSettingsState extends State<AuthSettings> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        key: WK.serviceSection('auth_settings'),
         leading: const Icon(FluentIcons.authenticator_app),
         header: Txt(txt("auth_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),

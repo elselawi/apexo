@@ -90,9 +90,13 @@ List<List<String>> _parseCsv(String csv) {
     }
   }
 
+  if (inQuotes) {
+    throw const FormatException('Unterminated quoted CSV field');
+  }
+
   // Add last field and row if any
-  if (currentField.isNotEmpty ||
-      (csv.isNotEmpty && csv[csv.length - 1] == ',')) {
+  if (currentField.isNotEmpty || currentRow.isNotEmpty ||
+      (csv.isNotEmpty && csv[csv.length - 1] != '\n' && csv[csv.length - 1] != '\r')) {
     currentRow.add(currentField.toString());
   }
   if (currentRow.isNotEmpty) rows.add(currentRow);

@@ -102,7 +102,7 @@ class _PanelScreenState extends State<PanelScreen> {
         }
 
         if (value.logicalKey == LogicalKeyboardKey.controlLeft ||
-            value.logicalKey == LogicalKeyboardKey.controlLeft) {
+                    value.logicalKey == LogicalKeyboardKey.controlRight) {
           if (value is KeyDownEvent) {
             ctrlPressed = true;
           } else {
@@ -264,9 +264,11 @@ class _PanelScreenState extends State<PanelScreen> {
                     } catch (e, st) {
                       logger('Saving "${widget.panel.itemId}" failed', st);
                       showErrorMessage(e, "savingFailed");
+                      return;
                     }
                     if (!mounted) return;
-                    setState(() => isNew = false);
+                    _syncPendingEdits();
+                    setState(() => isNew = widget.panel.isNew);
                   }
                 : null,
             style: greyButtonStyle.copyWith(

@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -204,7 +206,7 @@ class _LabworksTableState extends State<LabworksTable> {
           return HoverButton(
             onPressed: () {
               if (canEditLabwork(apt) == false) return;
-              openLabworkPanel(apt);
+              unawaited(openLabworkPanel(apt));
               return;
             },
             builder: (context, states) {
@@ -304,9 +306,10 @@ class _LabworksTableState extends State<LabworksTable> {
           (login.perm(Perm.postOp).none || login.perm(Perm.appointments).none)
               ? const SizedBox.shrink()
               : IconButton(
+                  key: WK.btnNewLabwork,
                   icon: ButtonContent(WindowsIcons.add, txt("newLabwork")),
                   onPressed: () {
-                    openLabworkPanel(null);
+                    unawaited(openLabworkPanel(null));
                   }),
     );
   }

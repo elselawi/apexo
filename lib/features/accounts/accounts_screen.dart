@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/transitions/rotate.dart';
@@ -81,24 +84,21 @@ class _AccountsScreenState extends State<AccountsScreen> {
               ),
               Container(
                 decoration: topBarDecoration(context, Colors.grey),
-                child: Row(
+                padding: const EdgeInsets.all(8),
+                // A `Wrap`, not a `Row`: this strip is drawn at every width the
+                // app allows — a phone layout is 300px — and a `Row` lays its
+                // children out at their natural width and then reports
+                // `A RenderFlex overflowed by 261 pixels on the right`, which
+                // reds whatever test is running. Wrapping moves the counts to
+                // the next line instead (todo.md §6.1).
+                child: Wrap(
+                  spacing: 20,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            spacing: 20,
-                            children: [
-                              _buildRefreshButton(),
-                              Txt(txt("${txt("admins")}: ${admins.length}")),
-                              Txt(txt("${txt("users")}: ${users.length}")),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildRefreshButton(),
+                    Txt(txt("${txt("admins")}: ${admins.length}")),
+                    Txt(txt("${txt("users")}: ${users.length}")),
                   ],
                 ),
               ),
@@ -144,7 +144,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                               subtitle: Txt(
                                   filteredList[index].getStringValue("email")),
                               onPressed: () {
-                                openAccount(accountFromJson(account.toJson()
+                                unawaited(openAccount(accountFromJson(account.toJson()
                                   ..addAll({
                                     "name": account.getStringValue("name"),
                                     "email": account.getStringValue("email"),
@@ -153,7 +153,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                     "operate": account.getIntValue("operate"),
                                     "type": account.getStringValue("type"),
                                     "id": account.id,
-                                  })));
+                                  }))));
                               },
                             );
                           },
@@ -171,6 +171,11 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   WidgetStatePropertyAll(Colors.grey.withAlpha(30)))
           : null,
       child: Row(
+        // A `Row` defaults to `mainAxisSize.max`, and a `Row` hands a non-flex
+        // child **unbounded** width — so this one claimed whatever the command
+        // bar had and reported `A RenderFlex overflowed by 16 pixels on the
+        // right` at a 1280px window (and 5.3px from the counts row it sat in).
+        mainAxisSize: MainAxisSize.min,
         children: [
           RotatingWrapper(
             rotate: inProgress,
@@ -198,16 +203,18 @@ class _AccountsScreenState extends State<AccountsScreen> {
   Widget _buildCommandBar(BuildContext context) {
     return ScreenCommandBar(
       mainButton: IconButton(
+        key: WK.btnNewAccount,
         icon: ButtonContent(FluentIcons.add_friend, txt("newUser")),
         onPressed: () {
-          openAccount(accountFromJson({"type": "user"}));
+          unawaited(openAccount(accountFromJson({"type": "user"})));
         },
       ),
       otherButtons: [
         IconButton(
+          key: WK.btnNewAdmin,
           icon: ButtonContent(FluentIcons.contact_lock, txt("newAdmin")),
           onPressed: () {
-            openAccount(accountFromJson({"type": "admin"}));
+            unawaited(openAccount(accountFromJson({"type": "admin"})));
           },
         ),
       ],

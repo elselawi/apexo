@@ -11,7 +11,7 @@ import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/ai_services/post_op_notes.dart';
@@ -389,7 +389,7 @@ class _AppointmentDetailsState extends State<_AppointmentDetails> {
                   FilledButton(
                     child: ButtonContent(FluentIcons.go, txt("open")),
                     onPressed: () {
-                      openPatient(widget.appointment.patient!);
+                      unawaited(openPatient(widget.appointment.patient!));
                     },
                   )
               ]),
@@ -646,13 +646,13 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 ],
               ),
               onPressed: () {
-                printingPrescription(
+                unawaited(printingPrescription(
                   context,
                   widget.appointment.prescriptions,
                   widget.appointment.patient?.title ?? "",
                   widget.appointment.patient?.age.toString() ?? "",
                   widget.appointment.patient?.link ?? "",
-                );
+                ));
               }),
         const Divider(direction: Axis.horizontal),
         Row(
@@ -844,24 +844,43 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                spacing: 5,
-                                children: [
-                                  Icon(WindowsIcons.history,
-                                      size: 16,
-                                      color: FluentTheme.of(context)
-                                          .typography
-                                          .bodyStrong!
-                                          .color),
-                                  Txt("${txt("otherAppointments")} (${widget.patient.allAppointments.length - 1})",
-                                      style: FluentTheme.of(context)
-                                          .typography
-                                          .bodyStrong),
-                                ],
+                              // Both sides are intrinsic-width: a long patient
+                              // name plus the heading measured wider than the
+                              // flyout's 340px cap and reported "A RenderFlex
+                              // overflowed by 18 pixels on the right". Flexible
+                              // on both, and each labels itself with an ellipsis
+                              // rather than pushing the row apart.
+                              Flexible(
+                                child: Row(
+                                  spacing: 5,
+                                  children: [
+                                    Icon(WindowsIcons.history,
+                                        size: 16,
+                                        color: FluentTheme.of(context)
+                                            .typography
+                                            .bodyStrong!
+                                            .color),
+                                    Flexible(
+                                      child: Txt(
+                                          "${txt("otherAppointments")} (${widget.patient.allAppointments.length - 1})",
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: FluentTheme.of(context)
+                                              .typography
+                                              .bodyStrong),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              Text(
-                                widget.patient.title,
-                                style: const TextStyle(fontSize: 11),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  widget.patient.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
                               )
                             ],
                           ),
@@ -897,7 +916,7 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
                                   Navigator.pop(context);
                                   WidgetsBinding.instance
                                       .addPostFrameCallback((_) {
-                                    openPatient(widget.patient, 2);
+                                      unawaited(openPatient(widget.patient, 2));
                                   });
                                 },
                                 child: ButtonContent(
@@ -1062,7 +1081,10 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
               Expanded(
                 child: TextFormBox(
                   prefix: const Icon(WindowsIcons.quick_note),
-                  key: WK.fieldLabworkLabName,
+                  // The order-notes box, not the lab-name one: it carried
+                  // `fieldLabworkLabName` as well, so that key matched *two*
+                  // widgets and this field could not be addressed at all.
+                  key: WK.fieldLabworkOrderNotes,
                   decoration: WidgetStatePropertyAll(BoxDecoration(
                       color: Colors.transparent,
                       border: Border.all(color: Colors.transparent))),
@@ -1078,6 +1100,7 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
           ),
           const SizedBox(height: 5),
           Checkbox(
+            key: WK.fieldLabworkReceived,
             checked: widget.appointment.labworkReceived,
             onChanged: (v) =>
                 setState(() => widget.appointment.labworkReceived = v ?? false),

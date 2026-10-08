@@ -10,6 +10,7 @@ import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
@@ -401,6 +402,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
 
   CupertinoTextField _noteEditingTextField(FluentThemeData theme) {
     return CupertinoTextField(
+      key: WK.noteCardNote,
       readOnly: !canEdit,
       controller: _noteController,
       onChanged: (value) {
@@ -416,6 +418,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       maxLines: null,
       suffix: _showNoteSaveButton
           ? IconButton(
+              key: WK.btnNoteTextSave,
               icon: const Icon(WindowsIcons.save),
               onPressed: () {
                 notes.set(widget.note..note = _noteController.text);
@@ -617,6 +620,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     return FlyoutTarget(
       controller: _confirmDeleteFlyoutCtrl,
       child: IconButton(
+        key: WK.btnNoteDelete,
         style: _iconButtonStyle(theme,
             color: isDeleted ? Colors.teal : Colors.errorPrimaryColor),
         icon: Icon(isDeleted ? WindowsIcons.undo : WindowsIcons.delete),
@@ -680,9 +684,9 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
                 notes.set(widget.note..done = checked == true);
                 // Trigger checkbox rotation animation when note is marked as done
                 if (checked == true) {
-                  _checkBoxScaleAnimationController.forward().then((_) {
+                  unawaited(_checkBoxScaleAnimationController.forward().then((_) {
                     _checkBoxScaleAnimationController.reverse();
-                  });
+                  }));
                 }
               },
             ),
@@ -821,6 +825,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
 
   CupertinoTextField _titleEditingTextField(FluentThemeData theme) {
     return CupertinoTextField(
+      key: WK.noteCardTitle,
       controller: _titleController,
       onChanged: (value) {
         setState(() {
@@ -833,6 +838,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       },
       suffix: _showTitleSaveButton
           ? IconButton(
+              key: WK.btnNoteTitleSave,
               icon: const Icon(WindowsIcons.save),
               onPressed: () {
                 notes.set(widget.note..title = _titleController.text);

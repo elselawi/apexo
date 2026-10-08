@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -177,7 +178,9 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           storeIcon: FluentIcons.medication_admin,
           subtitle: '$g, ${p.age}',
           onRestore: () => patients.unarchive(p.id),
-          onOpen: () => openPatient(p),
+          onOpen: () {
+            unawaited(openPatient(p));
+          },
         );
       case "appointments":
         final a = appointments.get(key[0])!;
@@ -191,7 +194,9 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           storeIcon: WindowsIcons.calendar,
           subtitle: ops.isNotEmpty ? '$d — $ops' : d,
           onRestore: () => appointments.unarchive(a.id),
-          onOpen: () => openAppointment(a),
+          onOpen: () {
+            openAppointment(a);
+          },
         );
       case "expenses":
         final e = expenses.get(key[0])!;
@@ -206,12 +211,14 @@ class _ArchivedPageState extends State<_ArchivedPage> {
               : '${DF.commonDate(e.date)} - ${"${e.items.length} ${txt("items")}"}',
           onRestore: () => expenses.unarchive(e.id),
           onOpen: e.isOrder
-              ? () => openExpenses(
+              ? () {
+                  unawaited(openExpenses(
                     [e],
                     "${e.fromSupplierName}-${DF.allNumbers(e.date)}-${txt("deleted")}${e.id}",
                     null,
                     true,
-                  )
+                  ));
+                }
               : null,
         );
       case "notes":

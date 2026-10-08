@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/launch.dart';
@@ -7,6 +8,18 @@ import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/que.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../core/model.dart';
+
+/// The avatar's letter: the first *whole* character of an item's title.
+///
+/// `("${title} ").substring(0, 1)` splits a surrogate pair. Titles do start
+/// with an emoji — a labwork's is `"📌 undelivered"` — and half of one is not a
+/// string Flutter will draw: the paragraph builder rejects it with
+/// `Invalid argument(s): string is not well-formed UTF-16`, which fails the
+/// frame the item appears in.
+String initialOf(Model item) {
+  final title = item.title.isEmpty ? " " : item.title;
+  return String.fromCharCode(title.runes.first);
+}
 
 class TreatmentLabel {
   TreatmentLabel(
@@ -53,7 +66,7 @@ class _ItemTitleState extends State<ItemTitle> {
   @override
   void dispose() {
     super.dispose();
-    if (_avatarToEvict != null) _avatarToEvict!.evict();
+    if (_avatarToEvict != null) unawaited(_avatarToEvict!.evict());
   }
 
   @override
@@ -87,14 +100,14 @@ class _ItemTitleState extends State<ItemTitle> {
                   backgroundColor: color,
                   backgroundImage:
                       (snapshot.data != null) ? snapshot.data : null,
-                  child: (widget.item.archived == true &&
-                          widget.archivedStyling)
-                      ? Icon(WindowsIcons.delete, size: widget.radius)
-                      : snapshot.data == null
-                          ? widget.icon == null
-                              ? Txt(("${widget.item.title} ").substring(0, 1))
-                              : Icon(widget.icon, size: widget.radius)
-                          : null,
+                  child:
+                      (widget.item.archived == true && widget.archivedStyling)
+                          ? Icon(WindowsIcons.delete, size: widget.radius)
+                          : snapshot.data == null
+                              ? widget.icon == null
+                                  ? Txt(initialOf(widget.item))
+                                  : Icon(widget.icon, size: widget.radius)
+                              : null,
                 );
               }),
         const SizedBox(width: 5),
@@ -104,19 +117,24 @@ class _ItemTitleState extends State<ItemTitle> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                constraints: BoxConstraints(
-                  minWidth: widget.maxWidth < 100 ? widget.maxWidth : 100,
-                  maxWidth: widget.maxWidth,
-                ),
-                child: Txt(
-                  widget.item.title,
-                  overflow: TextOverflow.ellipsis,
-                  style: FluentTheme.of(context)
-                      .typography
-                      .bodyStrong
-                      ?.copyWith(backgroundColor: color.withAlpha(25)),
+              // `Flexible`, and no *minimum*: the floor used to be the caller's
+              // `maxWidth`, and a dashboard square hands this row 117.3px of
+              // space while asking for `maxWidth: 123` — which is exactly the
+              // `A RenderFlex overflowed by 5.7 pixels on the right` that redded
+              // `dashboard 02`. The chip ellipsizes its own text, so it is the
+              // side that gives.
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  constraints: BoxConstraints(maxWidth: widget.maxWidth),
+                  child: Txt(
+                    widget.item.title,
+                    overflow: TextOverflow.ellipsis,
+                    style: FluentTheme.of(context)
+                        .typography
+                        .bodyStrong
+                        ?.copyWith(backgroundColor: color.withAlpha(25)),
+                  ),
                 ),
               ),
               if (widget.labels.isNotEmpty)
@@ -201,7 +219,7 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
       child: GestureDetector(
         onTap: widget.showToolTip
             ? () {
-                _showTreatmentLabelDetails();
+                unawaited(_showTreatmentLabelDetails());
               }
             : null,
         child: Container(

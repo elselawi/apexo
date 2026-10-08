@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:apexo/common_widgets/static_notifications_widget.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/network_actions/errors_list_widget.dart';
@@ -9,7 +11,7 @@ import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../services/login.dart';
-import '../../core/observable.dart';
+import '../../core/reactive/observable.dart';
 
 class ErrorItem {
   ErrorItem({required this.message, required this.when, this.count = 1});
@@ -20,6 +22,7 @@ class ErrorItem {
 
 class NetworkAction {
   NetworkAction({
+    required this.identifier,
     required this.tooltip,
     required this.icon,
     required this.onPressed,
@@ -30,6 +33,13 @@ class NetworkAction {
     this.animate,
     this.badge,
   });
+
+  /// A stable id for this action (`notifications`, `theme`, `sync`, `errors`).
+  ///
+  /// The actions are anonymous icons, and a fluent `Tooltip` is not what
+  /// `find.byTooltip` matches, so this is the only handle a test can address one
+  /// by — `WK.globalAction(identifier)`.
+  final String identifier;
   String tooltip;
   Widget icon;
   void Function()? onPressed;
@@ -44,8 +54,8 @@ class NetworkAction {
 class _NetworkActions {
   final isSyncing = ObservableState(0);
 
-  Map<String, void Function()> syncCallbacks = {};
-  Map<String, void Function()> reconnectCallbacks = {};
+  Map<String, FutureOr<void> Function()> syncCallbacks = {};
+  Map<String, FutureOr<void> Function()> reconnectCallbacks = {};
 
   // Error tracking
   final List<ErrorItem> _errors = [];
@@ -78,8 +88,9 @@ class _NetworkActions {
       return;
     }
     await login.activate(login.url, [login.token], true);
-    for (var callback in reconnectCallbacks.values) {
-      callback();
+    if (loginCtrl.loginError().isNotEmpty) return;
+    for (final callback in reconnectCallbacks.values.toList()) {
+      await callback();
     }
     if (network.isOnline()) {
       _errors.clear();
@@ -88,19 +99,21 @@ class _NetworkActions {
   }
 
   Future<void> resync() async {
-    if (launch.open() == Open.patient) {
-      isSyncing(isSyncing() + 1);
-      await patientSide.activate();
-      isSyncing(isSyncing() - 1);
-      return;
-    }
-
+    if (launch.isDemo) return;
     isSyncing(isSyncing() + 1);
-    await login.activate(login.url, [login.token], true);
-    isSyncing(isSyncing() - 1);
+    try {
+      if (launch.open() == Open.patient) {
+        await patientSide.activate();
+        return;
+      }
 
-    for (var callback in syncCallbacks.values) {
-      callback();
+      await login.activate(login.url, [login.token], true);
+      if (loginCtrl.loginError().isNotEmpty) return;
+      for (final callback in syncCallbacks.values.toList()) {
+        await callback();
+      }
+    } finally {
+      isSyncing(isSyncing() - 1);
     }
   }
 
@@ -116,6 +129,7 @@ class _NetworkActions {
       // ),
       if (launch.open() != Open.login)
         NetworkAction(
+          identifier: 'notifications',
           tooltip: txt("notifications"),
           activeColor: Colors.blue,
           badge: staticNotifications.notifications.isNotEmpty
@@ -126,6 +140,7 @@ class _NetworkActions {
           onPressed: showStaticNotifications,
         ),
       NetworkAction(
+        identifier: 'theme',
         tooltip: "Theme",
         icon: Icon((localSettings.selectedTheme == ThemeMode.light)
             ? FluentIcons.sunny
@@ -141,6 +156,7 @@ class _NetworkActions {
         activeColor: Colors.transparent,
       ),
       NetworkAction(
+        identifier: 'sync',
         tooltip: txt("synchronizing"),
         icon: const Icon(FluentIcons.sync),
         onPressed: () async {
@@ -160,6 +176,7 @@ class _NetworkActions {
         activeColor: Colors.blue,
       ),
       NetworkAction(
+        identifier: 'errors',
         tooltip: hasErrors() ? txt("errors") : txt("reconnect"),
         icon: Icon((network.isOnline() && !loginCtrl.proceededOffline())
             ? FluentIcons.streaming

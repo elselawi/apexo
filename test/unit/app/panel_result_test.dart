@@ -85,6 +85,54 @@ void main() {
     });
   });
 
+  test('saving blocks duplicate writes and clears progress after failure', () async {
+    final write = Completer<List<String>>();
+    var calls = 0;
+    final panel = DelegatedPanel(
+      itemId: 'new-record',
+      singularName: 'orders',
+      unicodeSymbol: '📁',
+      icon: WindowsIcons.folder,
+      isNew: true,
+      checkUnsavedChanges: () => true,
+      onSave: () {
+        calls++;
+        return write.future;
+      },
+      tabs: [],
+    );
+
+    final saving = panel.save();
+    expect(panel.inProgress(), isTrue);
+    await panel.save();
+    expect(calls, 1);
+    final failure = expectLater(saving, throwsStateError);
+    write.completeError(StateError('write failed'));
+    await failure;
+    expect(panel.inProgress(), isFalse);
+    expect(panel.isNew, isTrue);
+    expect(await settled(panel), isFalse);
+  });
+
+  test('a successful delegated save changes a new panel into an existing one', () async {
+    final panel = DelegatedPanel(
+      itemId: 'new-record',
+      singularName: 'orders',
+      unicodeSymbol: '📁',
+      icon: WindowsIcons.folder,
+      isNew: true,
+      checkUnsavedChanges: () => true,
+      onSave: () async => ['new-record'],
+      tabs: [],
+    );
+
+    await panel.save();
+    expect(panel.inProgress(), isFalse);
+    expect(panel.isNew, isFalse);
+    expect(panel.identifier, 'new-record');
+    expect(panel.savedId, 'new-record');
+  });
+
   group('finishing is idempotent', () {
     test('a second finish adds nothing', () async {
       final panel = panelFor();

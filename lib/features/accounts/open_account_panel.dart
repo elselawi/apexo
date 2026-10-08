@@ -1,3 +1,4 @@
+import 'package:apexo/app/data/application_store_effects.dart';
 import 'dart:async';
 import 'package:apexo/app/panels/panel_tab.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
@@ -12,6 +13,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/services/launch.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
@@ -59,6 +61,8 @@ class AccountModel extends Model {
 class _AccountStore extends Store<AccountModel> {
   _AccountStore()
       : super(
+          effects: applicationStoreEffects,
+          loadDocuments: loadApplicationDocuments,
           modeling: (json) => AccountModel.fromJson(json),
           isDemo: launch.isDemo,
         );
@@ -68,7 +72,7 @@ class _AccountStore extends Store<AccountModel> {
     if (filtered.isNotEmpty) {
       final record = filtered.first;
       final isAdmin = record.getStringValue("type") == "admin";
-      accounts.delete(isAdmin: isAdmin, id: id);
+      unawaited(accounts.delete(isAdmin: isAdmin, id: id));
     }
   }
 
@@ -92,7 +96,7 @@ class _AccountStore extends Store<AccountModel> {
   void set(AccountModel item) {
     final editing = accounts.list().any((e) => e.id == item.id);
     if (editing) {
-      accounts.update(
+      unawaited(accounts.update(
         id: item.id,
         isAdmin: item.isAdmin,
         email: item.email,
@@ -100,16 +104,16 @@ class _AccountStore extends Store<AccountModel> {
         name: item.name,
         permissions: item.permissions,
         operates: item.operates,
-      );
+      ));
     } else {
-      accounts.newAccount(
+      unawaited(accounts.newAccount(
         isAdmin: item.isAdmin,
         email: item.email,
         password: item.password,
         name: item.name,
         permissions: item.permissions,
         operates: item.operates,
-      );
+      ));
     }
   }
 }
@@ -212,6 +216,7 @@ class _AccountDetailsState extends State<_AccountDetails> {
         InfoLabel(
           label: txt("name"),
           child: CupertinoTextField(
+            key: WK.fieldAccountName,
             controller: nameController,
             placeholder: txt("name"),
             onChanged: (value) => widget.account.name = value,
@@ -221,6 +226,7 @@ class _AccountDetailsState extends State<_AccountDetails> {
         InfoLabel(
           label: txt("email"),
           child: CupertinoTextField(
+            key: WK.fieldAccountEmail,
             controller: emailController,
             placeholder: txt("validEmailMustBeProvided"),
             onChanged: (value) => widget.account.email = value,
@@ -230,6 +236,7 @@ class _AccountDetailsState extends State<_AccountDetails> {
         InfoLabel(
           label: txt("password"),
           child: CupertinoTextField(
+            key: WK.fieldAccountPassword,
             controller: passwordController,
             obscureText: true,
             placeholder: txt("minimumPasswordLength"),
@@ -260,6 +267,7 @@ class _AccountDetailsState extends State<_AccountDetails> {
                 ),
                 const SizedBox(height: 10),
                 ..._permissionDefs.map((def) => PermissionSelector(
+                      key: WK.permissionSelector(def.titleKey),
                       title: txt(def.titleKey),
                       initialSelected: widget.account.permissions[def.index],
                       levels: def.levels
@@ -305,6 +313,7 @@ class _OperatesToggleState extends State<_OperatesToggle> {
   @override
   Widget build(BuildContext context) {
     return Checkbox(
+      key: WK.accountOperates,
       checked: checked,
       onChanged: (state) {
         setState(() {

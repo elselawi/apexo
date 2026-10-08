@@ -335,7 +335,7 @@ class _GridGalleryState extends State<GridGallery>
     _entranceController.dispose();
     _uploadFlyoutCtrl.dispose();
     for (final provider in _imageProviders) {
-      provider.evict();
+      unawaited(provider.evict());
     }
     super.dispose();
   }
@@ -527,7 +527,7 @@ class _GridGalleryState extends State<GridGallery>
 
   // ── Slideshow / viewer ──
 
-  void _handleFileTap(String img) {
+  Future<void> _handleFileTap(String img) async {
     // DCM X-rays open the interactive viewer (which parses the raw .dcm
     // itself — no dependency on the PNG preview being ready yet). Only entries
     // explicitly in `dcmImgs` route here — a `.dcm` file attached to a
@@ -537,23 +537,27 @@ class _GridGalleryState extends State<GridGallery>
       if (onTapDcm != null) {
         onTapDcm(context, widget.rowId, img);
       } else {
-        openDicomViewerPanel(context, widget.rowId, img);
+        await openDicomViewerPanel(context, widget.rowId, img);
       }
       return;
     }
     if (!isAnImageName(img)) {
       setState(() => _downloadingFiles.add(img));
-      downloadFile(widget.rowId, img).whenComplete(() {
+      try {
+        await downloadFile(widget.rowId, img);
+      } catch (error) {
+        if (mounted) showErrorMessage(error, "downloadingFile");
+      } finally {
         if (mounted) setState(() => _downloadingFiles.remove(img));
-      });
+      }
       return;
     }
-    _openSingleImage(img);
+    await _openSingleImage(img);
   }
 
   Future<void> _openSingleImage(String img) async {
     final provider = await _loadImages([img]);
-    if (provider == null || !context.mounted) return;
+    if (provider == null || !mounted) return;
     showImageViewer(
       context,
       provider.first,
@@ -571,7 +575,7 @@ class _GridGalleryState extends State<GridGallery>
 
   Future<void> _openSlideShow([int initialIndex = 0]) async {
     final providers = await _loadImages(viewableImgs);
-    if (providers == null || !context.mounted) return;
+    if (providers == null || !mounted) return;
     final multi = MultiImageProvider(providers, initialIndex: initialIndex);
     unawaited(showImageViewerPager(
       context,
@@ -857,7 +861,7 @@ class _ImageTileState extends State<_ImageTile> {
 
   @override
   void dispose() {
-    _pngReadySub?.cancel();
+    unawaited(_pngReadySub?.cancel());
     super.dispose();
   }
 

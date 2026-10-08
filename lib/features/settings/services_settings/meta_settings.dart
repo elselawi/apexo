@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -21,17 +22,18 @@ class _MetaSettingsState extends State<MetaSettings> {
   @override
   void initState() {
     super.initState();
-    _loadSettings();
+    unawaited(_loadSettings());
   }
 
   Future<void> _loadSettings() async {
     try {
       final settings = await login.pb!.settings.getAll();
-      final meta = settings['meta'] ?? {};
+      if (!mounted) return;
+      final meta = settings['meta'] as Map<String, dynamic>? ?? {};
       _appNameController.text = meta['appName'] as String? ?? '';
       _appUrlController.text = meta['appURL'] as String? ?? '';
     } catch (e) {
-      // Controllers remain empty on error
+      return;
     }
     if (!mounted) return;
     bool emptyFields = false;
@@ -117,6 +119,7 @@ class _MetaSettingsState extends State<MetaSettings> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        key: WK.serviceSection('meta_settings'),
         leading: const Icon(FluentIcons.settings),
         header: Txt(txt("meta_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),

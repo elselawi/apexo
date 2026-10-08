@@ -10,6 +10,7 @@ import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/order_row.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -155,7 +156,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
     widget.allOrders.insert(0, expense);
     justCreatedId = expense.id;
 
-    await Future.delayed(const Duration(milliseconds: 100));
+    await Future<void>.delayed(const Duration(milliseconds: 100));
     if (_scrollController.hasClients) {
       await _scrollController.animateTo(
         _scrollController.position.minScrollExtent,
@@ -218,6 +219,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                           FlyoutTarget(
                             controller: pickSupplierForAdditionFlyout,
                             child: Button(
+                              key: WK.btnAddOrder,
                               child: ButtonContent(
                                   WindowsIcons.add, txt("addOrder")),
                               onPressed: () async {
@@ -232,18 +234,16 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                                                 leading: const Icon(
                                                     WindowsIcons.folder),
                                                 onPressed: () {
-                                                  setState(() {
-                                                    addOrderForSupplier(e.id);
-                                                  });
-                                                },
-                                              ))
+                                                    unawaited(
+                                                        addOrderForSupplier(e.id));
+                                                  },
+                                                ))
                                           .toList(),
                                     );
                                   }));
                                 } else {
-                                  setState(() {
-                                    addOrderForSupplier(widget.supplierId!);
-                                  });
+                                  unawaited(
+                                      addOrderForSupplier(widget.supplierId!));
                                 }
                               },
                             ),

@@ -168,6 +168,25 @@ void main() {
       expect(wasDemo, isA<bool>());
     });
 
+    test('failed authentication skips stale sync and reconnect callbacks',
+        () async {
+      var calls = 0;
+      final previousOpen = launch.open();
+      final previousError = loginCtrl.loginError();
+      launch.open(Open.login);
+      networkActions.syncCallbacks['stale'] = () => calls++;
+      networkActions.reconnectCallbacks['stale'] = () => calls++;
+      try {
+        await networkActions.resync();
+        await networkActions.performReconnect();
+        expect(calls, 0);
+        expect(networkActions.isSyncing(), 0);
+      } finally {
+        launch.open(previousOpen);
+        loginCtrl.loginError(previousError);
+      }
+    });
+
     test('resync is callable without throwing in demo mode', () async {
       // In test env, launch.open() == Open.login (default). resync's
       // patient branch should not catch the staff branch.

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -277,10 +278,12 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         // still hold the input next to it (or fit the field when the input is
         // gone because the limit is reached).
         final inputVisible = _tags.length < widget.limit && widget.enabled;
-        final chipLimit = constraints.maxWidth -
-            fieldChrome -
-            tokenSpacing -
-            (inputVisible ? 80 : 0);
+        final availableWidth =
+            math.max(0.0, constraints.maxWidth - fieldChrome);
+        final chipLimit = math.max(
+          0.0,
+          availableWidth - tokenSpacing - (inputVisible ? 80 : 0),
+        );
 
         double usedWidth = 0;
         final visibleTags = <TagInputItem>[];
@@ -311,7 +314,17 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         return FlyoutTarget(
           controller: _hiddenTappedFlyoutController,
           child: Container(
-            height: widget.multiline ? visibleTags.length * 40 + 40 : 40,
+            // **Multiline fields size themselves.** The height used to be
+            // `visibleTags.length * 40 + 40` for both modes — a number that
+            // ignores three things: the border and padding (4px a side, 8px
+            // together, not the 6 the formula assumed), the `spacing: 3` between
+            // the chips in a `Column`, and the 250ms its `AnimatedSize` spends
+            // still taller than its target after a tag is removed. Adding then
+            // removing a prescription (the appointment panel's field) reported
+            // `A RenderFlex overflowed by 4.0 pixels on the bottom` for exactly
+            // that window (`appointments 14`). The row case keeps its height: it
+            // is one line by construction.
+            height: widget.multiline ? null : 40,
             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
             decoration: BoxDecoration(
               color: FluentTheme.of(context).cardColor,
@@ -335,7 +348,10 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                                       visibleTags, tokenSpacing)),
                         ),
                         if (_tags.length < widget.limit && widget.enabled)
-                          _buildAutoSuggestInputTextBox(),
+                          // Not an `Expanded`: the field is only bounded in the
+                          // row case, and a flex child of an unbounded `Column`
+                          // is an error. `AutoSuggestBox` knows its own height.
+                          _buildAutoSuggestInputTextBox(expand: false),
                       ])
                 : Row(
                     children: [
@@ -347,7 +363,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                       // container below spends on its own padding and border.
                       ConstrainedBox(
                         constraints: BoxConstraints(
-                            maxWidth: constraints.maxWidth - fieldChrome),
+                            maxWidth: availableWidth),
                         child: AnimatedSize(
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.easeInOut,
@@ -386,109 +402,114 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     );
   }
 
-  Expanded _buildAutoSuggestInputTextBox() {
-    return Expanded(
-      child: AutoSuggestBox(
-        clearButtonEnabled: _tags.isEmpty ? true : false,
-        decoration: _tags.isNotEmpty
-            ? null
-            : WidgetStatePropertyAll(BoxDecoration(
-                color: Colors.transparent,
-                border: Border.all(color: Colors.transparent))),
-        unfocusedColor: widget.inactiveColor ??
-            (_tags.isNotEmpty ? null : Colors.transparent),
-        highlightColor: _tags.isNotEmpty ? null : Colors.transparent,
-        enabled: widget.enabled,
-        noResultsFoundBuilder: (context) => Padding(
-          padding: const EdgeInsets.all(10),
-          child: widget.strict
-              ? Txt(
-                  txt("noResultsFound"),
-                  style: TextStyle(
-                    color: FluentTheme.of(context).shadowColor,
-                    fontStyle: FontStyle.italic,
-                  ),
-                )
-              : Text(
-                  txt("startTyping"),
-                  style: TextStyle(
-                      fontStyle: FontStyle.italic,
-                      fontSize: 12,
-                      color:
-                          FluentTheme.of(context).inactiveColor.withAlpha(155)),
+  /// The box the user types a new tag into.
+  ///
+  /// [expand] is the **row** case: there the field shares one line with the
+  /// chips and takes what is left of it. A multiline field sizes itself (see the
+  /// container above), so there the box keeps its own height — a flex child of
+  /// an unbounded `Column` is a layout error, not a layout.
+  Widget _buildAutoSuggestInputTextBox({bool expand = true}) {
+    final box = AutoSuggestBox<String>(
+      clearButtonEnabled: _tags.isEmpty ? true : false,
+      decoration: _tags.isNotEmpty
+          ? null
+          : WidgetStatePropertyAll(BoxDecoration(
+              color: Colors.transparent,
+              border: Border.all(color: Colors.transparent))),
+      unfocusedColor: widget.inactiveColor ??
+          (_tags.isNotEmpty ? null : Colors.transparent),
+      highlightColor: _tags.isNotEmpty ? null : Colors.transparent,
+      enabled: widget.enabled,
+      noResultsFoundBuilder: (context) => Padding(
+        padding: const EdgeInsets.all(10),
+        child: widget.strict
+            ? Txt(
+                txt("noResultsFound"),
+                style: TextStyle(
+                  color: FluentTheme.of(context).shadowColor,
+                  fontStyle: FontStyle.italic,
                 ),
-        ),
-        controller: _controller,
-        focusNode: _focusNode,
-        placeholder: widget.placeholder,
-        key: autoSuggestBoxRef,
-        trailingIcon: widget.enabled
-            ? IconButton(
-                icon: autoSuggestBoxRef.currentState == null
-                    ? const Icon(WindowsIcons.chevron_down)
-                    : autoSuggestBoxRef.currentState!.isOverlayVisible
-                        ? const Icon(WindowsIcons.chevron_up)
-                        : const Icon(WindowsIcons.chevron_down),
-                iconButtonMode: IconButtonMode.large,
-                style: const ButtonStyle(iconSize: WidgetStatePropertyAll(14)),
-                onPressed: () {
-                  setState(() {
-                    _focusNode.requestFocus();
-                    if (autoSuggestBoxRef.currentState == null) return;
-                    if (autoSuggestBoxRef.currentState!.isOverlayVisible ==
-                        false) {
-                      autoSuggestBoxRef.currentState!.showOverlay();
-                    } else {
-                      autoSuggestBoxRef.currentState!.dismissOverlay();
-                    }
-                  });
-                })
-            : null,
-        items: _filteredSuggestions
-            .map(
-              (s) => AutoSuggestBoxItem(
-                value: s.value,
-                label: s.label,
-                // The rows are drawn by [_buildSuggestionRow], so the selection
-                // callback has to travel with the item: `AutoSuggestBox` only
-                // invokes `onSelected` from its own row widget.
-                onSelected: () => _onSuggestionSelected(s),
-                onFocusChange: (focused) {
-                  // fluent calls this from its own `dispose()`: `_unselectAll()`
-                  // walks every item and fires `onFocusChange(false)`, at which
-                  // point the element is already defunct and the widget tree is
-                  // locked — so this `setState` cannot be taken.
-                  //
-                  // Note that **no guard expresses that window**: during it
-                  // `State.mounted` is still true (`_element` is cleared after
-                  // `dispose()` returns) and `context.mounted` is still true too
-                  // (`Element.mounted` is `_parent != null`). The harness drops
-                  // the resulting assertion on the fluent frame
-                  // (`E2E.installKnownFlutterIssueFilters`, which matches the
-                  // stack, not the message); this early return only covers the
-                  // ordinary case of a callback after our own dispose.
-                  if (!mounted || !context.mounted) return;
-                  setState(() {
-                    if (focused) {
-                      _focusedSuggestion = s.label;
-                    } else if (_focusedSuggestion == s.label) {
-                      _focusedSuggestion = null;
-                    }
-                  });
-                },
+              )
+            : Text(
+                txt("startTyping"),
+                style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    fontSize: 12,
+                    color:
+                        FluentTheme.of(context).inactiveColor.withAlpha(155)),
               ),
-            )
-            .toList(),
-        itemBuilder: (context, item) => _buildSuggestionRow(context, item),
-        onSelected: _onSuggestionSelected,
-        onChanged: (text, reason) {
-          if (widget.strict) return;
-          setState(() {
-            _suggestions.setAll(0, [TagInputItem(value: text, label: text)]);
-          });
-        },
       ),
+      controller: _controller,
+      focusNode: _focusNode,
+      placeholder: widget.placeholder,
+      key: autoSuggestBoxRef,
+      trailingIcon: widget.enabled
+          ? IconButton(
+              icon: autoSuggestBoxRef.currentState == null
+                  ? const Icon(WindowsIcons.chevron_down)
+                  : autoSuggestBoxRef.currentState!.isOverlayVisible
+                      ? const Icon(WindowsIcons.chevron_up)
+                      : const Icon(WindowsIcons.chevron_down),
+              iconButtonMode: IconButtonMode.large,
+              style: const ButtonStyle(iconSize: WidgetStatePropertyAll(14)),
+              onPressed: () {
+                setState(() {
+                  _focusNode.requestFocus();
+                  if (autoSuggestBoxRef.currentState == null) return;
+                  if (autoSuggestBoxRef.currentState!.isOverlayVisible ==
+                      false) {
+                    autoSuggestBoxRef.currentState!.showOverlay();
+                  } else {
+                    autoSuggestBoxRef.currentState!.dismissOverlay();
+                  }
+                });
+              })
+          : null,
+      items: _filteredSuggestions
+          .map(
+            (s) => AutoSuggestBoxItem(
+              value: s.value,
+              label: s.label,
+              // The rows are drawn by [_buildSuggestionRow], so the selection
+              // callback has to travel with the item: `AutoSuggestBox` only
+              // invokes `onSelected` from its own row widget.
+              onSelected: () => _onSuggestionSelected(s),
+              onFocusChange: (focused) {
+                // fluent calls this from its own `dispose()`: `_unselectAll()`
+                // walks every item and fires `onFocusChange(false)`, at which
+                // point the element is already defunct and the widget tree is
+                // locked — so this `setState` cannot be taken.
+                //
+                // Note that **no guard expresses that window**: during it
+                // `State.mounted` is still true (`_element` is cleared after
+                // `dispose()` returns) and `context.mounted` is still true too
+                // (`Element.mounted` is `_parent != null`). The harness drops
+                // the resulting assertion on the fluent frame
+                // (`E2E.installKnownFlutterIssueFilters`, which matches the
+                // stack, not the message); this early return only covers the
+                // ordinary case of a callback after our own dispose.
+                if (!mounted || !context.mounted) return;
+                setState(() {
+                  if (focused) {
+                    _focusedSuggestion = s.label;
+                  } else if (_focusedSuggestion == s.label) {
+                    _focusedSuggestion = null;
+                  }
+                });
+              },
+            ),
+          )
+          .toList(),
+      itemBuilder: (context, item) => _buildSuggestionRow(context, item),
+      onSelected: _onSuggestionSelected,
+      onChanged: (text, reason) {
+        if (widget.strict) return;
+        setState(() {
+          _suggestions.setAll(0, [TagInputItem(value: text, label: text)]);
+        });
+      },
     );
+    return expand ? Expanded(child: box) : box;
   }
 
   /// One row of the suggestion dropdown.

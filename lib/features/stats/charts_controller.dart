@@ -1,4 +1,4 @@
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -36,10 +36,11 @@ class _ChartsController {
   final filterByOperatorID = ObservableState("");
   final start =
       ObservableState(DateTime(DateTime.now().year, DateTime.now().month, 1));
-  final end = ObservableState(
-      DateTime(DateTime.now().year, DateTime.now().month, 1)
-          .add(const Duration(days: 31)));
+  final end = ObservableState(_endOfMonth(DateTime.now()));
   final interval = ObservableState(StatsInterval.days);
+
+  static DateTime _endOfMonth(DateTime date) =>
+      DateTime(date.year, date.month + 1, 0, 23, 59, 59, 999);
   String get intervalString {
     return chartsCtrl.interval().name;
   }
@@ -225,7 +226,7 @@ class _ChartsController {
   void resetSelected() {
     final now = DateTime.now();
     start(DateTime(now.year, now.month, 1));
-    end(DateTime(now.year, now.month, 1).add(const Duration(days: 31)));
+    end(_endOfMonth(now));
     interval(StatsInterval.days);
   }
 

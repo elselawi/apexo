@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -34,15 +35,16 @@ class _SmtpSettingsState extends State<SmtpSettings> {
   @override
   void initState() {
     super.initState();
-    _loadSmtpSettings();
+    unawaited(_loadSmtpSettings());
   }
 
   Future<void> _loadSmtpSettings() async {
     try {
       final settings = await login.pb!.settings.getAll();
+      if (!mounted) return;
 
-      final smtp = settings['smtp'] ?? {};
-      final meta = settings['meta'] ?? {};
+      final smtp = settings['smtp'] as Map<String, dynamic>? ?? {};
+      final meta = settings['meta'] as Map<String, dynamic>? ?? {};
 
       hostController.text = smtp['host'] as String? ?? '';
       portController.text = (smtp['port'] ?? '').toString();
@@ -166,7 +168,9 @@ class _SmtpSettingsState extends State<SmtpSettings> {
 
   Widget _appPasswordLink(String provider, String url) {
     return GestureDetector(
-      onTap: () => launchUrl(Uri.parse(url)),
+      onTap: () {
+        unawaited(launchUrl(Uri.parse(url)));
+      },
       child: Text(
         "${txt("smtp_app_passwords")} ($provider)",
         style: TextStyle(
@@ -183,6 +187,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
       child: Expander(
+        key: WK.serviceSection('smtp_settings'),
         leading: const Icon(FluentIcons.mail),
         header: Txt(txt("smtp_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
@@ -241,6 +246,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             Txt(txt("smtp_host")),
                             const SizedBox(height: 5),
                             CupertinoTextField(
+                              key: WK.serviceField('smtp_host'),
                               controller: hostController,
                               placeholder: "smtp.example.com",
                             ),
@@ -253,6 +259,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             Txt(txt("smtp_port")),
                             const SizedBox(height: 5),
                             CupertinoTextField(
+                              key: WK.serviceField('smtp_port'),
                               controller: portController,
                               placeholder: "587",
                               keyboardType: TextInputType.number,
@@ -270,14 +277,17 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                               builder: (context, value, _) {
                                 return ComboBox<String>(
                                   value: value ? "always" : "auto",
+                                  isExpanded: true,
                                   items: [
                                     ComboBoxItem(
                                       value: "auto",
-                                      child: Txt(txt("smtp_tls_auto")),
+                                      child: Txt(txt("smtp_tls_auto"),
+                                          overflow: TextOverflow.ellipsis),
                                     ),
                                     ComboBoxItem(
                                       value: "always",
-                                      child: Txt(txt("smtp_tls_always")),
+                                      child: Txt(txt("smtp_tls_always"),
+                                          overflow: TextOverflow.ellipsis),
                                     ),
                                   ],
                                   onChanged: (v) =>
@@ -313,6 +323,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             valueListenable: showPassword,
                             builder: (context, show, _) {
                               return CupertinoTextField(
+                                key: WK.serviceField('smtp_password'),
                                 controller: passwordController,
                                 placeholder: txt("leaveBlankToKeepUnchanged"),
                                 obscureText: !show,
@@ -333,13 +344,14 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             },
                           ),
                           _hint("smtp_password_hint"),
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 4,
                             children: [
                               _appPasswordLink(
                                 "Gmail",
                                 "https://myaccount.google.com/apppasswords",
                               ),
-                              const SizedBox(width: 8),
                               _appPasswordLink(
                                 "Outlook",
                                 "https://account.live.com/proofs/Manage/additional",

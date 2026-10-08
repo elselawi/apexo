@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -60,6 +61,7 @@ class _SuppliersListState extends State<SuppliersList> {
           children: [
             ScreenCommandBar(
               mainButton: IconButton(
+                key: WK.btnNewSupplier,
                 icon: ButtonContent(WindowsIcons.add, txt("addSupplier")),
                 onPressed: _showAddSupplierDialog,
               ),
@@ -91,11 +93,11 @@ class _SuppliersListState extends State<SuppliersList> {
                               WindowsIcons.text_bullet_list_square,
                               txt("viewAllOrders")),
                           onPressed: () {
-                            openExpenses(
+                            unawaited(openExpenses(
                               expenses.allOrders,
                               txt("viewAllOrders"),
                               null,
-                            );
+                            ));
                           },
                         ),
                         Row(
@@ -207,11 +209,11 @@ class _SuppliersListState extends State<SuppliersList> {
         return SupplierListTile(
             supplier: supplier,
             onPressed: () {
-              openExpenses(
+              unawaited(openExpenses(
                 expenses.ordersPerSupplier[supplier.id]!,
                 supplier.supplierName,
                 supplier.id,
-              );
+              ));
             });
       },
     );
@@ -222,7 +224,7 @@ class _SuppliersListState extends State<SuppliersList> {
   }
 
   void _showAddSupplierDialog() {
-    showDialog(
+    unawaited(showDialog(
       barrierDismissible: true,
       dismissWithEsc: true,
       context: context,
@@ -236,7 +238,7 @@ class _SuppliersListState extends State<SuppliersList> {
         },
         icon: FluentIcons.shop,
       ),
-    );
+    ));
   }
 
   void _scanReceipt(BuildContext outerContext, ImageSource source) async {
@@ -343,7 +345,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
                       text: Txt(txt("rename")),
                       leading: const Icon(WindowsIcons.edit),
                       onPressed: () {
-                        menuController.close();
+                        menuController.close<void>();
                         WidgetsBinding.instance.addPostFrameCallback((_) {
                           _showRenameSupplierDialog(context, widget.supplier);
                         });
@@ -354,7 +356,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
                       text: Txt(txt("delete")),
                       leading: const Icon(WindowsIcons.delete),
                       onPressed: () {
-                        menuController.close();
+                        menuController.close<void>();
                         WidgetsBinding.instance.addPostFrameCallback((_) async {
                           await flyoutFocusFix(context);
                           unawaited(archiveConfirmationController.showFlyout(
@@ -416,7 +418,7 @@ class _DuePaymentAmount extends StatelessWidget {
 }
 
 void _showRenameSupplierDialog(BuildContext context, Expense supplier) {
-  showDialog(
+  unawaited(showDialog(
     context: context,
     barrierDismissible: true,
     dismissWithEsc: true,
@@ -428,5 +430,5 @@ void _showRenameSupplierDialog(BuildContext context, Expense supplier) {
       },
       icon: FluentIcons.edit,
     ),
-  );
+  ));
 }

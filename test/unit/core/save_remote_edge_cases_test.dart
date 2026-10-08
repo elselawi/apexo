@@ -1,4 +1,4 @@
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/services/dicom/dicom_orphans_cleaner.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketbase/pocketbase.dart';

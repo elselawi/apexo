@@ -1,4 +1,4 @@
-import 'package:apexo/services/notifications/push_data.dart';
+import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/services/notifications/push_interpretation.dart';
 import 'package:flutter_test/flutter_test.dart';
 

@@ -46,144 +46,57 @@ features/accounts/              ← without Store, but with panel
 
 ## Store Pattern (`lib/features/<name>/<name>_store.dart`)
 
-Each store is a **singleton** instance exported at module level:
+Each store is a **singleton** instance exported at module level. Keep models,
+queries/caches and screens feature-local; application/session integration belongs
+to `lib/app/data/`.
 
 ```dart
-const _storeName = "patients";
-
 class Patients extends Store<Patient> {
   Patients() : super(
     modeling: Patient.fromJson,
+    effects: applicationStoreEffects,
+    loadDocuments: loadApplicationDocuments,
     isDemo: launch.isDemo,
-    showArchived: showArchived,
-    onSyncStart: () { networkActions.isSyncing(networkActions.isSyncing() + 1); },
-    onSyncEnd: () { networkActions.isSyncing(networkActions.isSyncing() - 1); },
+    onSyncStart: () => networkActions.isSyncing(networkActions.isSyncing() + 1),
+    onSyncEnd: () => networkActions.isSyncing(networkActions.isSyncing() - 1),
+  );
+
+  late final session = StoreSessionBinding<Patient>(
+    store: this,
+    name: 'patients',
+    loadingMessage: 'Synchronizing patients',
+    seedDemo: () => demoPatients(100),
   );
 
   @override
-  init() {
+  void init() {
     super.init();
-    login.activators[_storeName] = () async {
-      await loaded;
-      local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
-      await deleteMemoryAndLoadFromPersistence();
-
-      if (launch.isDemo) {
-        if (docs.isEmpty) setAll(demoPatients(100));
-      } else {
-        remote = SaveRemote(
-          pbInstance: login.pb!,
-          storeName: _storeName,
-          onOnlineStatusChange: (current) {
-            if (network.isOnline() != current) network.isOnline(current);
-          },
-        );
-      }
-
-      return () async {
-        loginCtrl.loadingIndicator("Synchronizing patients");
-        await synchronize();
-        networkActions.syncCallbacks[_storeName] = synchronize;
-        networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
-        network.onOnline[_storeName] = synchronize;
-        network.onOffline[_storeName] = cancelRealtimeSub;
-      };
-    };
+    session.install();
   }
-
-  // Cached computed queries
-  List<String> get allTags { ... }
-}
-
-final patients = Patients();
-// Don't forget to call patients.init() in initializeStores()
-```
-
-### Key Store Patterns
-
-1. **`login.activators`**: Each store registers an activator that sets up local/remote storage after login. This is the lazy-init pattern — stores are created early but only activate after authentication.
-
-2. **Demo data**: Check `launch.isDemo` and seed with generated data if the store is empty.
-
-3. **Sync tracking**: Use `onSyncStart`/`onSyncEnd` to increment/decrement `networkActions.isSyncing`.
-
-4. **Cached queries**: Build derived indexes (e.g., `byPatient`, `todayAppointments`) as lazily-computed getters. Nullify the cache when the observableMap changes.
-
-5. **`networkActions` registration**: After init, register sync callbacks so the network actions widget can trigger sync/reconnect.
-
-6. **`network.onOnline`/`network.onOffline`**: Register for connectivity change events.
-
-## Panel Pattern (`lib/features/<name>/open_<name>_panel.dart`)
-
-Panels are the **detail/edit view** system. They slide in from the right side of the screen.
-
-### Panel Function Signature
-
-```dart
-Future<Patient> openPatient([Patient? patient, int? selectedTabIndex]) {
-  final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
-  final panel = Panel<Patient>(
-    singularName: "patient",
-    unicodeSymbol: "👤",
-    selectedTabIndex: selectedTabIndex,
-    item: editingCopy,
-    store: patients,
-    icon: FluentIcons.medication_admin,
-    title: patients.get(editingCopy.id) == null
-        ? txt("newPatient")
-        : editingCopy.title,
-    tabs: [
-      PanelTab(
-        title: txt("patientDetails"),
-        icon: FluentIcons.medication_admin,
-        body: _PatientDetails(editingCopy),
-      ),
-      // ... more tabs ...
-    ],
-  );
-  PanelsManager.open(panel);
-  return panel.result.future;
 }
 ```
 
-### Panel Constructor Parameters
+The binding installs the two-stage login activator, drains before replacing Hive,
+constructs remote persistence, and removes all session callbacks on stop.
+Do not register network/sync/logout callbacks separately in feature stores.
+Optional post-sync behavior stays feature-owned through `afterSynchronize`;
+use its `isCurrent` check after awaits before publishing session-bound state.
 
-| Parameter | Purpose |
-|-----------|---------|
-| `item` | The **editable copy** of the model (use `Model.fromJson(item.toJson() ?? {})`) |
-| `store` | The singleton store for persistence |
-| `singularName` | Used for logging/identification |
-| `unicodeSymbol` | Emoji shown in the panel header |
-| `tabs` | List of `PanelTab` — each has title, icon, body widget |
-| `icon` | FluentUI icon for the panel header |
-| `title` | Panel title (dynamic — shows "New X" for unsaved items) |
-| `selectedTabIndex` | Which tab to open initially |
-| `showBottomControls` | Whether to show Save/Cancel buttons (default `true`) |
-| `inherentlyScrollable` | If `true`, the tab body is not wrapped in `SingleChildScrollView` |
-| `canNotBeNew` | If `true`, the panel can only edit existing items |
-| `checkUnsavedChanges` | Custom function to detect unsaved changes (for multi-item panels) |
-| `onSave` | Custom save handler (for multi-item panels) |
+## Panel pattern
 
-### Panel Lifecycle
+Use `RowPanel<T>` and its independent `RowDraft` for one stored record.
+Use `DelegatedPanel` for caller-managed collections with explicit save,
+pending-edit and archive callbacks. Both implement the non-generic `Panel`
+host contract. `panel.result` is a `Future<void>`; inspect `savedId`/
+`savedIds` for records written. Do not share drafts between panels.
 
-1. **Open**: `PanelsManager.open(panel)` — adds to the panel stack
-2. **Edit**: User modifies the editable copy in the tab bodies
-3. **Save**: Panel compares `jsonEncode(item.toJson())` vs `savedJson` every 750ms; Save button calls `store.set(item)`
-4. **Close**: If unsaved changes, shows confirm dialog; otherwise removes from stack
-5. **Result**: `panel.result.future` completes with the saved item when the panel closes
+### Adding a persistent feature
 
-### Adding a New Feature (Checklist)
-
-1. Create `lib/features/<name>/` directory
-2. Create `<name>_model.dart` extending `Model`
-3. Create `<name>_store.dart` extending `Store<Model>` with singleton
-4. Register the store in `lib/utils/init_stores.dart` (call `.init()`)
-5. Create `<name>_screen.dart` — the list/datatable view
-6. Create `open_<name>_panel.dart` — the detail/edit panel builder
-7. Add an `AppRoute` value in `lib/app/routing/app_route.dart` (and its screen in
-   `buildScreen`)
-8. Add a "New X" button that calls the panel function
-9. Add localization keys for all user-facing strings
+1. Create the feature model/store/screen/panel opener under `lib/features/<name>/`.
+2. Supply explicit application effects/loader and one session binding.
+3. Initialize the singleton in `lib/app/data/initialize_stores.dart`.
+4. Add the route/screen and localized UI strings.
+5. Add deterministic tests with isolated Hive where persistence is involved.
 
 ## Screen Pattern
 
@@ -223,7 +136,7 @@ final dashboardCtrl = DashboardController();
 | Mistake | Fix |
 |---------|-----|
 | Mutating `item` directly instead of the editing copy | Always use `Model.fromJson(item.toJson() ?? {})` for the panel's editing copy |
-| Forgetting to call `.init()` on a new store | Add to `initializeStores()` in `lib/utils/init_stores.dart` |
+| Forgetting to call `.init()` on a new store | Add to `initializeStores()` in `lib/app/data/initialize_stores.dart` |
 | Not registering `login.activators` | Store won't have local/remote set up after login |
 | Using `Text(txt("key"))` in feature screens | Use `Txt("key")` so text updates on language switch |
 | Not adding localization keys | Run `dart run lib/services/localization/verify.dart` to catch missing keys |

@@ -114,6 +114,29 @@ void main() {
     });
   });
 
+  test('queued status changes dispatch their own value', () async {
+    await settle();
+    final calls = <String>[];
+    network.onOnline['edge'] = () => calls.add('online');
+    network.onOffline['edge'] = () => calls.add('offline');
+    network.isOnline(true);
+    network.isOnline(false);
+    await settle();
+    expect(calls, ['online', 'offline']);
+  });
+
+  test('asynchronous failures and callback removal do not block siblings',
+      () async {
+    await settle();
+    var calls = 0;
+    network.onOnline['fail'] = () async => throw StateError('async failure');
+    network.onOnline['remove'] = () => network.onOnline.remove('remove');
+    network.onOnline['later'] = () => calls++;
+    network.isOnline(true);
+    await settle();
+    expect(calls, 1);
+  });
+
   group('callback isolation', () {
     test('removing an online callback prevents it from firing', () async {
       var fired = false;
@@ -138,9 +161,7 @@ void main() {
     });
 
     test('a throwing callback does not break the observable stream', () async {
-      // Once a registered callback throws, the inner for-loop in the
-      // observer aborts, so sibling callbacks registered after it on the
-      // same edge will not fire. We pin that behavior down here.
+      // A failing listener must not prevent sibling services from reacting.
       var later = 0;
       network.onOnline['throws'] = () => throw StateError('boom');
       network.onOnline['later'] = () => later++;
@@ -148,7 +169,7 @@ void main() {
       // The assignment itself must not propagate the throw to the caller.
       expect(() => network.isOnline(true), returnsNormally);
       await settle();
-      expect(later, 0);
+      expect(later, 1);
 
       // Reassigning also works without throwing — the observer is not
       // detached from the stream after a thrown callback.

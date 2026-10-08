@@ -22,7 +22,7 @@ Apexo has a **multi-layered push notification system** that works across Android
 
 | Layer | File | Role |
 |-------|------|------|
-| **Push Data** | `model_push_data.dart` | Serializable push payload — shared with `fcm/push_data.js` for web |
+| **Push Data** | `lib/core/synchronization/push_data.dart` | Core-owned wire payload, with no delivery/UI imports — shared with `fcm/push_data.js` for web |
 | **Push Generation** | `Store._processChanges()` in `core/store.dart` | Generates `PushData` from store changes based on `targetsToPushTo`, `pushIfChanged`, `pushOnCreation` |
 | **Relay Client** | `push_relay.dart` | Sends push payloads to the Cloudflare Worker relay at `apexo-notifications-relay.alisaleem.workers.dev` |
 | **Deferred Queue** | `push_deferring.dart` | Hive-persisted queue for pushes that couldn't be sent while offline |
@@ -129,5 +129,5 @@ On web, instead of using the Flutter FCM plugin directly, notifications go throu
 |---------|-----|
 | Forgetting to call `Messaging.initializeReceiving()` | Must be called before `runApp()` in `main.dart` |
 | Not calling `Messaging.identifyDevice()` after login | Device won't be registered with the relay server |
-| Editing `model_push_data.dart` without syncing `fcm/push_data.js` | Web push display will break — the JS file mirrors this Dart model |
+| Editing `lib/core/synchronization/push_data.dart` without syncing `fcm/push_data.js` | Web push display will break — the JS file mirrors this Dart model |
 | Assuming notifications work on desktop | Only static in-app notifications work on Windows/macOS |

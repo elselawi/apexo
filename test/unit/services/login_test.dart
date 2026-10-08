@@ -275,7 +275,7 @@ void main() {
 
   group('Login service — onLogoutCallbacks', () {
     test('onLogoutCallbacks is a global list', () {
-      expect(onLogoutCallbacks, isA<List>());
+      expect(onLogoutCallbacks, isA<List<void Function()>>());
     });
 
     test('onLogoutCallbacks can register and invoke callbacks', () {
@@ -433,19 +433,19 @@ void main() {
       expect(json['pushNotificationsToken'], 'push-token');
     });
 
-    test('fromJson restores credentials with null-coalescing', () {
-      login.fromJson({'url': null, 'email': null, 'token': null});
+    test('fromJson restores credentials with null-coalescing', () async {
+      await login.fromJson({'url': null, 'email': null, 'token': null});
       // Fields should default to empty strings via ?? operator
       expect(login.url, isEmpty);
       expect(login.email, isEmpty);
       expect(login.token, isEmpty);
     });
 
-    test('toJson round-trip preserves savedPermissions', () {
+    test('toJson round-trip preserves savedPermissions', () async {
       login.savedPermissions = [0, 2, 1];
       final json = login.toJson();
       // Re-read
-      login.fromJson(json);
+      await login.fromJson(json);
       expect(login.savedPermissions.length, greaterThanOrEqualTo(3));
       expect(login.savedPermissions[0], 0);
       expect(login.savedPermissions[1], 2);

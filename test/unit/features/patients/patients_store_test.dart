@@ -1,7 +1,7 @@
 @Tags(['serial'])
 library;
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:flutter_test/flutter_test.dart';

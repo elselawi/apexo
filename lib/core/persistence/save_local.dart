@@ -74,8 +74,8 @@ class SaveLocal {
   // Get version from meta box
   Future<int> getVersion() async {
     try {
-      final Box box = await metaHiveBox;
-      return int.parse(box.get(_versionKey) as String? ?? "0");
+      final Box<String> box = await metaHiveBox;
+      return int.parse(box.get(_versionKey) ?? "0");
     } catch (e, s) {
       throw StorageException('Failed to get version: $e', s);
     }
@@ -84,7 +84,7 @@ class SaveLocal {
   // Put version into meta box
   Future<void> putVersion(int versionValue) async {
     try {
-      final Box box = await metaHiveBox;
+      final Box<String> box = await metaHiveBox;
       await box.put(_versionKey, versionValue.toString());
     } catch (e, s) {
       throw StorageException('Failed to put version: $e', s);
@@ -94,8 +94,8 @@ class SaveLocal {
   // Get deferred data from meta box
   Future<Map<String, int>> getDeferred() async {
     try {
-      final Box box = await metaHiveBox;
-      final jsonString = box.get(_deferredKey) as String? ?? "{}";
+      final Box<String> box = await metaHiveBox;
+      final jsonString = box.get(_deferredKey) ?? "{}";
       return Map<String, int>.from(
           jsonDecode(jsonString) as Map<dynamic, dynamic>);
     } catch (e, s) {
@@ -106,7 +106,7 @@ class SaveLocal {
   // Put deferred data into meta box
   Future<void> putDeferred(Map<String, int> deferred) async {
     try {
-      final Box box = await metaHiveBox;
+      final Box<String> box = await metaHiveBox;
       await box.put(_deferredKey, jsonEncode(deferred));
     } catch (e, s) {
       throw StorageException('Failed to put deferred data: $e', s);

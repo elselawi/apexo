@@ -1,21 +1,21 @@
-import 'package:apexo/core/observable.dart';
+import 'dart:async';
+
+import 'package:apexo/core/reactive/observable.dart';
+import 'package:apexo/utils/logger.dart';
 
 class _Network {
   _Network() {
-    isOnline.observe((_) {
-      if (isOnline()) {
-        for (var cb in onOnline.values) {
-          cb();
-        }
-      } else {
-        for (var cb in onOffline.values) {
-          cb();
-        }
+    isOnline.observe((online) {
+      final callbacks = (online ? onOnline : onOffline).values.toList();
+      for (final callback in callbacks) {
+        unawaited(Future<void>.sync(callback).catchError((Object e, StackTrace s) {
+          logger('Network status callback failed: $e', s);
+        }));
       }
     });
   }
-  Map<String, void Function()> onOnline = {};
-  Map<String, void Function()> onOffline = {};
+  Map<String, FutureOr<void> Function()> onOnline = {};
+  Map<String, FutureOr<void> Function()> onOffline = {};
   final isOnline = ObservableState(false);
 }
 

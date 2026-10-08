@@ -1,148 +1,6 @@
-import 'dart:async';
-import 'dart:convert';
-import 'package:apexo/services/login.dart';
-import 'package:apexo/utils/safe_dir.dart';
-import 'package:apexo/utils/logger.dart';
-import 'package:apexo/utils/safe_hive_init.dart';
-import 'package:hive_flutter/adapters.dart';
-import 'model.dart';
-
-/// This file introduces 4 types of observable objects
-/// all of which will notify their observers and automatically updates ObservableWidgets
-/// when their properties change
-/// - ObservableBase: would rarely be useful
-/// - ObservableState: would be useful for storing standalone observable state (not part of a class)
-/// - ObservablePersistingObject: same as above but with persistence
-/// - ObservableDict: Typically used by stores
-
-typedef Observer<S> = void Function(S event);
-
-/// Base observable class
-/// the observable functionality of the application is all based on this class
-class ObservableBase<S> {
-  ObservableBase() {
-    stream.listen((events) {
-      for (var observer in observers) {
-        try {
-          observer(events);
-        } catch (e, s) {
-          logger("Error while notifying an observer: $e", s);
-        }
-      }
-    });
-  }
-
-  final StreamController<S> _controller = StreamController<S>.broadcast();
-  final List<Observer<S>> observers = [];
-
-  /// The stream every listener subscribes to.
-  ///
-  /// Held rather than handed out by a getter: `StreamController.broadcast()`
-  /// returns a **new** stream object on every `.stream` access, so a getter
-  /// would make a `streams: [x.stream]` list written inside `build()` look like
-  /// it swapped its stream on every rebuild — and re-subscribe every time.
-  late final Stream<S> stream = _controller.stream;
-  double _silent = 0;
-
-  void notifyObservers(S event) {
-    if (_silent != 0) return;
-    _controller.add(event);
-  }
-
-  int observe(Observer<S> callback) {
-    final int existing = observers.indexWhere((o) => o == callback);
-    if (existing > -1) {
-      return existing;
-    }
-    observers.add(callback);
-    return observers.length - 1;
-  }
-
-  void unObserve(Observer<S> callback) {
-    observers.removeWhere((existing) => existing == callback);
-  }
-
-  void dispose() {
-    _silent = double.maxFinite;
-    observers.clear();
-    if (!_controller.isClosed) {
-      _controller.close();
-    }
-  }
-
-  void silently(void Function() fn) {
-    _silent++;
-    try {
-      fn();
-    } catch (e, s) {
-      login.askForLoginAgain(e);
-      logger("Error during silent modification: $e", s);
-    }
-    _silent--;
-  }
-}
-
-/// Creates a standalone observable value
-/// this can be accessed by calling it "()"
-/// and can be set by passing a value when calling it "(value)"
-class ObservableState<T> extends ObservableBase<T> {
-  ObservableState(this._value);
-  T _value;
-
-  T call([T? newValue]) {
-    if (newValue != null) {
-      _value = newValue;
-      notifyObservers(_value);
-    }
-    return _value;
-  }
-}
-
-/// Persists its data to a hive box
-/// however only data that are defined in toJson and fromJson will be persisted
-abstract class ObservablePersistingObject
-    extends ObservableBase<ObservablePersistingObject> {
-  ObservablePersistingObject(this.identifier, {this.storagePath}) {
-    box = () async {
-      await safeHiveInit();
-      return Hive.openBox<String>(
-        identifier,
-        path: storagePath ?? await filesDir(),
-      );
-    }();
-    ready = _initialLoad();
-  }
-
-  String identifier;
-  final String? storagePath;
-  late Future<Box<String>> box;
-  late final Future<void> ready;
-
-  Future<void> _initialLoad() async {
-    final value = (await box).get(identifier);
-    if (value == null) {
-      return;
-    }
-    fromJson(jsonDecode(value) as Map<String, dynamic>);
-    super.notifyObservers(
-        this); // calling it from super so we don't have to reload from box,
-    // yet we're notifying the view
-  }
-
-  @override
-  void notifyObservers(event) {
-    super.notifyObservers(event);
-    box.then((loadedBox) {
-      loadedBox.put(identifier, jsonEncode(toJson()));
-    });
-  }
-
-  // a short hand for calling notifyObservers
-  void notifyAndPersist() => notifyObservers(this);
-
-  fromJson(Map<String, dynamic> json);
-  Map<String, dynamic> toJson();
-}
+import '../model.dart';
+import 'observable_base.dart';
+export 'observable_base.dart';
 
 /// creates an observable dictionary
 /// values of this dictionary should extend Model
@@ -163,7 +21,7 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
       // the following gymnastics would only
       // be done when the item is meant to be pushed
       // otherwise it's just a waste of time and resources
-      final newJson = item.jsonCopyForPush;
+      final newJson = _copyJsonMap(item.jsonCopyForPush);
       final oldJson = (item.copy(true)..fromJson(_jsonCopies[item.id] ?? {}))
           .jsonCopyForPush;
 
@@ -222,10 +80,14 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   /// Use this when loading from persistence.
   void setAllWithJson(
       Map<String, G> items, Map<String, Map<String, dynamic>> jsonMaps) {
-    assert(items.length == jsonMaps.length);
+    assert(
+      items.length == jsonMaps.length,
+      'items and jsonMaps must contain the same number of entries',
+    );
 
     _dictionary.addAll(items);
-    _jsonCopies.addAll(jsonMaps);
+    _jsonCopies.addAll(jsonMaps.map(
+        (id, json) => MapEntry(id, _copyJsonMap(json))));
 
     notifyObservers(items.entries
         .map((item) => DictEvent.add(item.key, document: item.value))
@@ -234,7 +96,7 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
 
   void remove(String id) {
     if (_dictionary.containsKey(id)) {
-      _copyDictionary([id]);
+      _jsonCopies.remove(id);
       _dictionary.remove(id);
       notifyObservers([DictEvent.remove(id)]);
     }
@@ -242,6 +104,7 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
 
   void clear() {
     _dictionary.clear();
+    _jsonCopies.clear();
     notifyObservers([DictEvent.remove('__removed_all__')]);
   }
 
@@ -266,8 +129,22 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   /// Creates a deep copy of the entire dictionary
   void _copyDictionary(List<String> ids) {
     for (final id in ids) {
-      _jsonCopies[id] = _dictionary[id]!.jsonCopyForPush;
+      _jsonCopies[id] = _copyJsonMap(_dictionary[id]!.jsonCopyForPush);
     }
+  }
+
+  Map<String, dynamic> _copyJsonMap(Map<String, dynamic> json) {
+    return json.map((key, value) => MapEntry(key, _copyJsonValue(value)));
+  }
+
+  Object? _copyJsonValue(Object? value) {
+    if (value is List) {
+      return value.map(_copyJsonValue).toList();
+    }
+    if (value is Map) {
+      return value.map((key, value) => MapEntry(key, _copyJsonValue(value)));
+    }
+    return value;
   }
 }
 
@@ -306,7 +183,7 @@ class DictEvent {
 
 /// Checks if two objects (including Lists and Maps) are deeply equal.
 /// Required because Dart's `==` on Collections only checks reference.
-bool _areEqual(a, b) {
+bool _areEqual(Object? a, Object? b) {
   if (identical(a, b)) return true;
   if (a is List && b is List) {
     if (a.length != b.length) return false;

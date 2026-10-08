@@ -1,5 +1,5 @@
-import 'package:apexo/core/observable.dart';
-import 'package:apexo/core/save_local.dart';
+import 'package:apexo/core/reactive/observable.dart';
+import 'package:apexo/core/persistence/save_local.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/login.dart';
 import 'package:file_picker/file_picker.dart';
@@ -29,31 +29,44 @@ class _Backups {
 
   Future<void> newBackup() async {
     creating(true);
-    await login.pb!.backups.create("");
-    await reloadFromRemote();
-    creating(false);
+    try {
+      await login.pb!.backups.create("");
+      await reloadFromRemote();
+    } finally {
+      creating(false);
+    }
   }
 
   Future<void> delete(String key) async {
     deleting(deleting()..addAll({key: true}));
-    await login.pb!.backups.delete(key);
-    deleting(deleting()..remove(key));
-    await reloadFromRemote();
+    try {
+      await login.pb!.backups.delete(key);
+      await reloadFromRemote();
+    } finally {
+      deleting(deleting()..remove(key));
+    }
   }
 
   Future<Uri> downloadUri(String key) async {
     downloading(downloading()..addAll({key: true}));
-    final token = await login.pb!.files.getToken();
-    downloading(downloading()..remove(key));
-    return login.pb!.backups.getDownloadURL(token, key);
+    try {
+      final pb = login.pb!;
+      final token = await pb.files.getToken();
+      return pb.backups.getDownloadURL(token, key);
+    } finally {
+      downloading(downloading()..remove(key));
+    }
   }
 
   Future<void> restore(String key) async {
     restoring(restoring()..addAll({key: true}));
-    await login.pb!.backups.restore(key);
-    await Future.wait(removeAllLocalData.map((e) => e()));
-    restoring(restoring()..remove(key));
-    login.logout(false);
+    try {
+      await login.pb!.backups.restore(key);
+      await Future.wait(removeAllLocalData.toList().map((e) => e()));
+      login.logout(false);
+    } finally {
+      restoring(restoring()..remove(key));
+    }
   }
 
   Future<void> pickAndUpload() async {
@@ -79,9 +92,12 @@ class _Backups {
       contentType: MediaType("application", "zip"),
     );
     uploading(true);
-    await login.pb!.backups.upload(multipartFile);
-    uploading(false);
-    await reloadFromRemote();
+    try {
+      await login.pb!.backups.upload(multipartFile);
+      await reloadFromRemote();
+    } finally {
+      uploading(false);
+    }
   }
 
   Future<void> reloadFromRemote() async {

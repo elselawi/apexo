@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/services/notifications/push_data.dart';
+import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;

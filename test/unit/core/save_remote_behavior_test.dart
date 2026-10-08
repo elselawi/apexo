@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/dicom/dicom_orphans_cleaner.dart';
 import 'package:http/http.dart' as http;
@@ -156,7 +156,7 @@ class _FakePocketBaseApi {
 
   Map<String, dynamic> _record(
     String rowID,
-    data,
+    Object? data,
     List<String> rowFiles,
   ) {
     final record = <String, dynamic>{
@@ -178,6 +178,10 @@ class _FakePocketBaseApi {
         headers: const {'content-type': 'application/json'},
       );
 }
+
+const Map<String, dynamic> _emptyDcmRowData = <String, dynamic>{
+  'dcmImgs': <String>[],
+};
 
 void main() {
   late _FakePocketBaseApi api;
@@ -204,6 +208,34 @@ void main() {
     appointments.remote = previousAppointmentsRemote;
     remote.timer?.cancel();
     client.close();
+  });
+
+  group('connection retries', () {
+    test('starts a single retry timer immediately', () {
+      remote.timer?.cancel();
+      remote.timer = null;
+      remote.isOnline = false;
+
+      remote.retryConnection();
+      final retryTimer = remote.timer;
+
+      expect(retryTimer, isNotNull);
+      remote.retryConnection();
+      expect(remote.timer, same(retryTimer));
+    });
+  });
+
+  test('disposed remotes cannot restart retries or report health', () async {
+    var statuses = 0;
+    remote.onOnlineStatusChange = (_) => statuses++;
+    remote.retryConnection();
+    remote.dispose();
+    expect(remote.timer!.isActive, isFalse);
+    final requests = api.requests.length;
+    remote.retryConnection();
+    await remote.checkOnline();
+    expect(api.requests.length, requests);
+    expect(statuses, 0);
   });
 
   group('authoritative file retrieval', () {
@@ -358,7 +390,7 @@ void main() {
   group('orphan cleanup mutation safety', () {
     test('dry-run reports candidates without updating PocketBase', () async {
       api.files = ['orphan.dcm', 'orphan.dcm.png', 'photo.jpg'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final result = await cleanupOrphanDcmFiles();
 
@@ -371,7 +403,7 @@ void main() {
     test('destructive cleanup revalidates and skips a newly referenced file',
         () async {
       api.files = ['late.dcm'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.revalidatedRowData = {
         'dcmImgs': ['late.dcm']
       };
@@ -386,8 +418,8 @@ void main() {
 
     test('destructive cleanup deletes only current DICOM orphans', () async {
       api.files = ['orphan.dcm', 'orphan.dcm.png', 'photo.jpg'];
-      api.rowData = {'dcmImgs': []};
-      api.revalidatedRowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
+      api.revalidatedRowData = _emptyDcmRowData;
 
       final result = await cleanupOrphanDcmFiles(dryRun: false);
 
@@ -406,7 +438,7 @@ void main() {
         });
       api.filesByRow['row-1'] = ['one.dcm', 'one.dcm.png'];
       api.filesByRow['row-2'] = ['two.dicom', 'two.dicom.png', 'ordinary.jpg'];
-      api.rowDataByRow['row-1'] = {'dcmImgs': []};
+      api.rowDataByRow['row-1'] = _emptyDcmRowData;
       api.rowDataByRow['row-2'] = {
         'dcmImgs': ['two.dicom']
       };
@@ -432,14 +464,14 @@ void main() {
 
     test('cleanup recomputes the latest file list before deletion', () async {
       api.files = ['old-orphan.dcm'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.revalidatedFilesByRow['row-1'] = [
         'new-orphan.dcm',
         'new-orphan.dcm.png',
         'ordinary.jpg',
       ];
       api.revalidateOnFirstGet = true;
-      api.revalidatedDataByRow['row-1'] = {'dcmImgs': []};
+      api.revalidatedDataByRow['row-1'] = _emptyDcmRowData;
 
       final result = await cleanupOrphanDcmFiles(dryRun: false);
 
@@ -447,7 +479,7 @@ void main() {
       expect(result.deletedFiles, ['new-orphan.dcm', 'new-orphan.dcm.png']);
       expect(api.files, ['old-orphan.dcm']);
       expect(remote.fullNamesCache['row-1'], ['ordinary.jpg']);
-      expect(jsonDecode(api.requestBodies.single)['imgs-'], [
+      expect((jsonDecode(api.requestBodies.single) as Map<String, dynamic>)['imgs-'], [
         'new-orphan.dcm',
         'new-orphan.dcm.png',
       ]);
@@ -480,8 +512,8 @@ void main() {
         });
       api.filesByRow['row-1'] = ['failed.dcm'];
       api.filesByRow['row-2'] = ['success.dcm', 'success.dcm.png'];
-      api.rowDataByRow['row-1'] = {'dcmImgs': []};
-      api.rowDataByRow['row-2'] = {'dcmImgs': []};
+      api.rowDataByRow['row-1'] = _emptyDcmRowData;
+      api.rowDataByRow['row-2'] = _emptyDcmRowData;
       api.failedDeleteRows.add('row-1');
 
       final result = await cleanupOrphanDcmFiles(dryRun: false);
@@ -522,7 +554,7 @@ void main() {
     test('empty PocketBase upload response is rejected', () async {
       api.returnEmptyUploadList = true;
       api.files = ['existing.dcm'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       await expectLater(
         remote.uploadImage(
@@ -540,7 +572,7 @@ void main() {
 
     test('deleting a DICOM original also deletes its preview', () async {
       api.files = ['scan.dcm', 'scan.dcm.png'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final deleted = await remote.deleteImage('row-1', 'scan.dcm');
 
@@ -553,7 +585,7 @@ void main() {
     test('deleting a DICOM original deletes a mixed-case preview name',
         () async {
       api.files = ['SCAN.DCM', 'SCAN.DCM.PNG'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final deleted = await remote.deleteImage('row-1', 'scan.dcm');
 
@@ -567,7 +599,7 @@ void main() {
         'deleting a DICOM original without a preview deletes only the original',
         () async {
       api.files = ['scan.dcm'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final deleted = await remote.deleteImage('row-1', 'scan.dcm');
 
@@ -579,7 +611,7 @@ void main() {
 
     test('missing DICOM original does not fuzzy-delete its preview', () async {
       api.files = ['scan.dcm.png'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final deleted = await remote.deleteImage('row-1', 'scan.dcm');
 
@@ -619,6 +651,25 @@ void main() {
       expect(api.updateCount, 1);
     });
 
+    test('ordinary upload identity ignores hash-like safe prefixes', () async {
+      api.files = ['hash_other.jpg'];
+      api.rowData = {'imgs': api.files};
+
+      final returned = await remote.uploadImage(
+        rowID: 'row-1',
+        filename: 'photo_hash.jpg',
+        predefinedMultipart: http.MultipartFile.fromString(
+          'imgs+',
+          'bytes',
+          filename: 'photo_hash.jpg',
+        ),
+      );
+
+      expect(returned, 'photo_hash.jpg');
+      expect(api.updateCount, 1);
+      expect(api.uploadedNamesByRow['row-1'], contains('photo_hash.jpg'));
+    });
+
     test('matching ordinary attachment is reused without another upload',
         () async {
       api.files = ['photo_hash12.jpg'];
@@ -644,7 +695,7 @@ void main() {
     test('DICOM: both original + preview exist → returns existing, no upload',
         () async {
       api.files = ['dcm_scan.dcm', 'dcm_scan.dcm.png'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.revalidatedFilesByRow['row-1'] = api.files;
 
       final returned = await remote.uploadImage(
@@ -674,7 +725,7 @@ void main() {
         'dcm_scan_1.dcm.png',
         'dcm_scan_2.dcm',
       ];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.revalidatedFilesByRow['row-1'] = ['dcm_scan.dcm', 'dcm_scan.dcm.png'];
       api.disappearRetainedFilesAfterDelete = false;
 
@@ -693,7 +744,7 @@ void main() {
       expect(api.uploadedNamesByRow, isEmpty);
       expect(api.files, ['dcm_scan.dcm', 'dcm_scan.dcm.png']);
       expect(remote.fullNamesCache['row-1'], api.files);
-      final deletion = jsonDecode(api.requestBodies.single);
+      final deletion = jsonDecode(api.requestBodies.single) as Map<String, dynamic>;
       expect(deletion['imgs-'], [
         'dcm_scan_1.dcm',
         'dcm_scan_1.dcm.png',
@@ -704,7 +755,7 @@ void main() {
     test('DICOM: retained-file disappearance aborts without uploading',
         () async {
       api.files = ['dcm_scan.dcm', 'dcm_scan.dcm.png', 'dcm_scan_1.dcm'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.disappearRetainedFilesAfterDelete = true;
       api.revalidatedFilesByRow['row-1'] = <String>[];
 
@@ -729,7 +780,7 @@ void main() {
     test('DICOM: only original exists → deletes it and re-uploads both',
         () async {
       api.files = ['dcm_new.dcm']; // only original, no preview
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final returned = await remote.uploadImage(
         rowID: 'row-1',
@@ -752,7 +803,7 @@ void main() {
     test('DICOM: only preview exists → deletes it and re-uploads both',
         () async {
       api.files = ['dcm_new.dcm.png']; // only preview, no original
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.disappearRetainedFilesAfterDelete = false;
 
       final returned = await remote.uploadImage(
@@ -774,7 +825,7 @@ void main() {
     test('DICOM: reversed server pair order retains the requested original',
         () async {
       api.files = ['dcm_order.dcm.png', 'dcm_order.dcm'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.revalidatedFilesByRow['row-1'] = api.files;
 
       final returned = await remote.uploadImage(
@@ -794,7 +845,7 @@ void main() {
     test('DICOM: reversed server pair order retains the requested original 2',
         () async {
       api.files = ['dcm_order.dcm', 'dcm_order.dcm.png', "k.dcm.png", "k.dcm"];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
       api.revalidatedFilesByRow['row-1'] = api.files;
 
       final returned = await remote.uploadImage(
@@ -813,7 +864,7 @@ void main() {
 
     test('DICOM: no matching files → fresh upload', () async {
       api.files = ['other.dcm', 'other.dcm.png'];
-      api.rowData = {'dcmImgs': []};
+      api.rowData = _emptyDcmRowData;
 
       final returned = await remote.uploadImage(
         rowID: 'row-1',

@@ -3,7 +3,7 @@
 ///
 /// This file is the **wire shape only** — the fields, how a payload serializes,
 /// and how a store change becomes one. The three things that used to share this
-/// file live beside it now, deliberately:
+/// responsibilities live in `services/notifications/`:
 ///
 /// * `push_interpretation.dart` — what a payload *means*, and how it reads in
 ///   each language;

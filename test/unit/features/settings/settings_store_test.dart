@@ -1,7 +1,8 @@
 @Tags(['serial'])
 library;
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/persistence/observable_persisting_object.dart';
+
 import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';

@@ -1,15 +1,21 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:apexo/core/save_local.dart';
+import 'package:apexo/core/persistence/save_local.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/services/notifications/push_data.dart';
+import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 
 class _DeferredPush {
-  late final Future<Box<String>> hiveBox;
+  /// **`late`, not `late final`.** [reset] exists so that the *next* login re-runs
+  /// [init] for its own clinic server — and assigning a `late final` a second time
+  /// throws `LateInitializationError`. That throw lands inside
+  /// `Messaging.identifyDevice`, which `login.activate` awaits, so on every login
+  /// after the first one in a process the clinic's relay key was never ensured and
+  /// no device was registered (`accounts 08`, which signs in twice).
+  late Future<Box<String>> hiveBox;
 
   bool _initialized = false;
 
@@ -66,7 +72,7 @@ class _DeferredPush {
       final box = await hiveBox;
       final List<String> keysToDelete = [];
       for (var encoded in box.values) {
-        final decoded = jsonDecode(encoded);
+        final decoded = jsonDecode(encoded) as Map<String, dynamic>;
         if (decoded['store'] == store) {
           keysToDelete.add(decoded['id'] as String);
         }

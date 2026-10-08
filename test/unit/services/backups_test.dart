@@ -1,7 +1,25 @@
 import 'package:apexo/services/backups.dart';
+import 'package:apexo/services/login.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('failed backup operations release all busy flags', () async {
+    final oldPocketBase = login.pb;
+    login.pb = null;
+    try {
+      await expectLater(backups.newBackup(), throwsA(anything));
+      await expectLater(backups.delete('backup'), throwsA(anything));
+      await expectLater(backups.downloadUri('backup'), throwsA(anything));
+      await expectLater(backups.restore('backup'), throwsA(anything));
+      expect(backups.creating(), isFalse);
+      expect(backups.deleting(), isEmpty);
+      expect(backups.downloading(), isEmpty);
+      expect(backups.restoring(), isEmpty);
+    } finally {
+      login.pb = oldPocketBase;
+    }
+  });
+
   group('_Backups — observable defaults', () {
     test('singleton exists', () {
       expect(backups, isNotNull);

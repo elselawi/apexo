@@ -1,13 +1,9 @@
-import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/app/data/application_store_effects.dart';
+import 'package:apexo/app/data/store_session_binding.dart';
 import 'package:apexo/services/launch.dart';
-import 'package:apexo/services/network.dart';
-import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
 
 import 'patient_model.dart';
-import '../../services/login.dart';
-import '../../core/save_local.dart';
-import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
 import '../../core/store.dart';
 
@@ -16,6 +12,8 @@ const _storeName = "patients";
 class Patients extends Store<Patient> {
   Patients()
       : super(
+          effects: applicationStoreEffects,
+          loadDocuments: loadApplicationDocuments,
           modeling: Patient.fromJson,
           isDemo: launch.isDemo,
           onSyncStart: () {
@@ -26,42 +24,17 @@ class Patients extends Store<Patient> {
           },
         );
 
+  late final _session = StoreSessionBinding<Patient>(
+    store: this, name: _storeName,
+    loadingMessage: 'Synchronizing patients',
+    seedDemo: () => demoPatients(100),
+  );
+
   @override
   void init() {
     super.init();
-    onLogoutCallbacks.add(endSession);
-    login.activators[_storeName] = () async {
-      await loaded;
+    _session.install();
 
-      await deactivatePersistenceSession();
-      await local?.dispose();
-      local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
-      await deleteMemoryAndLoadFromPersistence();
-
-      if (launch.isDemo) {
-        if (docs.isEmpty) setAll(demoPatients(100));
-      } else {
-        remote = SaveRemote(
-          pbInstance: login.pb!,
-          storeName: _storeName,
-          onOnlineStatusChange: (current) {
-            if (network.isOnline() != current) {
-              network.isOnline(current);
-            }
-          },
-        );
-      }
-
-      return () async {
-        loginCtrl.loadingIndicator("Synchronizing patients");
-        await synchronize();
-        networkActions.syncCallbacks[_storeName] = synchronize;
-        networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
-
-        network.onOnline[_storeName] = synchronize;
-        network.onOffline[_storeName] = cancelRealtimeSub;
-      };
-    };
   }
 
   List<String> get allTags {

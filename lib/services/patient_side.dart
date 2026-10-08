@@ -1,4 +1,5 @@
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/persistence/observable_persisting_object.dart';
+import 'dart:async';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
@@ -179,36 +180,29 @@ class PatientSide extends ObservablePersistingObject {
           "$server/api/collections/data/records?page=1&perPage=500&skipTotal=1"));
       if (activation != _activationGeneration) return;
 
-      final settingsJson = jsonDecode(settingsRes.body);
-      currency = (settingsJson["items"] as List<dynamic>)
-              .where((item) => (item["id"] as String).startsWith("currency"))
-              .firstOrNull?["data"]?["value"] as String? ??
-          "";
-
-      phone = (settingsJson["items"] as List<dynamic>)
-              .where((item) => (item["id"] as String).startsWith("phone"))
-              .firstOrNull?["data"]?["value"] as String? ??
-          "";
-
-      countryCode = (settingsJson["items"] as List<dynamic>)
-              .where((item) => (item["id"] as String).startsWith("country"))
-              .firstOrNull?["data"]?["value"] as String? ??
-          "";
-
-      clinicNameAndAddress = (settingsJson["items"] as List<dynamic>)
-              .where((item) =>
-                  (item["id"] as String).startsWith("prescription_header"))
-              .firstOrNull?["data"]?["value"] as String? ??
-          "";
+      final settingsJson = jsonDecode(settingsRes.body) as Map<String, dynamic>;
+      final settings = (settingsJson['items'] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
+      String settingValue(String prefix) {
+        final row = settings.where((item) =>
+            (item['id'] as String).startsWith(prefix)).firstOrNull;
+        final data = row?['data'] as Map<String, dynamic>?;
+        return data?['value'] as String? ?? '';
+      }
+      currency = settingValue('currency');
+      phone = settingValue('phone');
+      countryCode = settingValue('country');
+      clinicNameAndAddress = settingValue('prescription_header');
 
       // getting appointments
       final appointmentsRes = await _httpGet(Uri.parse(
           "$server/api/collections/public/records?page=1&perPage=9999&filter=pid%3D%22$patientID%22&pid=$patientID"));
       if (activation != _activationGeneration) return;
 
-      final appointmentsJson = jsonDecode(appointmentsRes.body);
+      final appointmentsJson = jsonDecode(appointmentsRes.body) as Map<String, dynamic>;
 
-      final items = appointmentsJson["items"] as List<dynamic>;
+      final items = (appointmentsJson["items"] as List<dynamic>)
+          .cast<Map<String, dynamic>>();
 
       if (items.firstOrNull != null) {
         collectionId = items.first["collectionId"] as String? ?? "";
@@ -218,7 +212,7 @@ class PatientSide extends ObservablePersistingObject {
       imgLinks.clear();
       for (final item in items) {
         appointments
-            .add(PatientAppointment.fromJson(item as Map<String, dynamic>));
+            .add(PatientAppointment.fromJson(item));
       }
 
       for (final appointment in appointments) {
@@ -276,7 +270,7 @@ class PatientSide extends ObservablePersistingObject {
         name.isNotEmpty &&
         patientID.isNotEmpty &&
         relayKey.isNotEmpty) {
-      activate();
+      unawaited(activate().catchError((_) {}));
     }
   }
 
@@ -317,8 +311,11 @@ Future<dynamic> _scanQRAPI(XFile xFile) async {
   final streamedResponse = await request.send();
   final response = await http.Response.fromStream(streamedResponse);
   try {
-    final json = jsonDecode(response.body);
-    final String shortLink = json[0]['symbol'][0]['data'] as String;
+    final results = jsonDecode(response.body) as List<dynamic>;
+    final result = results.first as Map<String, dynamic>;
+    final symbols = result['symbol'] as List<dynamic>;
+    final symbol = symbols.first as Map<String, dynamic>;
+    final shortLink = symbol['data'] as String;
     final longLink = (await http.post(Uri.parse(shortLink))).body;
     return decode(longLink.replaceAll("https://web.apexo.app/", "")).split("|");
   } catch (e) {

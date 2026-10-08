@@ -41,7 +41,7 @@ class SaveRemote {
     required this.pbInstance,
     this.onOnlineStatusChange,
   }) {
-    checkOnline();
+    unawaited(checkOnline());
   }
   final String storeName;
   final PocketBase pbInstance;
@@ -53,6 +53,14 @@ class SaveRemote {
   void Function(bool)? onOnlineStatusChange;
 
   bool isOnline = true;
+  bool _disposed = false;
+
+  void dispose() {
+    _disposed = true;
+    timer?.cancel();
+    onOnlineStatusChange = null;
+  }
+
   // Scope the in-flight guard to both row and filename. A hash-only key can
   final Map<String, Future<String>> _uploadsInFlight = {};
 
@@ -61,28 +69,31 @@ class SaveRemote {
   }
 
   void retryConnection() {
+    if (_disposed) return;
     if (timer != null && timer!.isActive) {
       return;
     }
-    Timer.periodic(const Duration(seconds: 5), (t) {
-      timer = t;
+    timer = Timer.periodic(const Duration(seconds: 5), (t) {
       if (isOnline) {
-        timer!.cancel();
+        t.cancel();
       } else {
-        checkOnline();
+        unawaited(checkOnline());
       }
     });
   }
 
   Future<void> checkOnline() async {
+    if (_disposed) return;
     try {
       await pbInstance.health.check().timeout(const Duration(seconds: 3));
     } catch (e) {
+      if (_disposed) return;
       isOnline = false;
       retryConnection();
       if (onOnlineStatusChange != null) onOnlineStatusChange!(isOnline);
       return;
     }
+    if (_disposed) return;
     isOnline = true;
     if (timer != null) {
       timer!.cancel();
@@ -217,7 +228,15 @@ class SaveRemote {
     final requestedBase = p.basenameWithoutExtension(requested).toLowerCase();
     final hash = requestedBase.split('_').last;
     final existingBase = p.basenameWithoutExtension(existing).toLowerCase();
-    return existingBase.split('_').contains(hash);
+    final existingParts = existingBase.split('_');
+    for (var i = 0; i < existingParts.length; i++) {
+      if (existingParts[i] != hash) continue;
+      final collisionSuffix = existingParts.skip(i + 1);
+      if (collisionSuffix.every((part) => RegExp(r'^\d+$').hasMatch(part))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /// Returns the normalized DICOM upload identity, ignoring a PocketBase

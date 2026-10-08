@@ -203,6 +203,34 @@ void main() {
       expect(patientSide.patientID, 'pid2');
       expect(patientSide.relayKey, isEmpty);
     });
+
+    test('failed persisted-session activation does not leak an unhandled error',
+        () async {
+      final requestStarted = Completer<void>();
+      final side = PatientSide(
+        server: '',
+        name: '',
+        patientID: '',
+        relayKey: '',
+        httpGet: (_) {
+          requestStarted.complete();
+          return Future<http.Response>.error(Exception('network down'));
+        },
+      );
+
+      side.fromJson({
+        'server': 'https://clinic.example',
+        'name': 'Patient',
+        'patientID': 'patient-id',
+        'relayKey': 'relay',
+      });
+
+      await requestStarted.future;
+      await Future<void>.delayed(Duration.zero);
+
+      expect(loginCtrl.loadingPatientSide(), isFalse);
+      expect(loginCtrl.loginError(), contains('network down'));
+    });
   });
 
   group('PatientSide — logoutPatientSide', () {

@@ -1,3 +1,5 @@
+import 'package:apexo/core/persistence/observable_persisting_object.dart';
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:apexo/app/app.dart';
@@ -6,6 +8,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
@@ -18,7 +21,6 @@ import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import '../core/observable.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
 
@@ -122,7 +124,7 @@ class _LoginService extends ObservablePersistingObject {
         strErr.contains("403");
     if (e is ClientException && authError) {
       didAskForLoginAgain = true;
-      showDialog(
+      unawaited(showDialog(
         context: bContext,
         barrierDismissible: false,
         dismissWithEsc: false,
@@ -145,7 +147,7 @@ class _LoginService extends ObservablePersistingObject {
             ],
           );
         },
-      );
+      ));
     }
   }
 
@@ -156,6 +158,10 @@ class _LoginService extends ObservablePersistingObject {
       email = "";
     }
     token = "";
+    localSettings.aiToken = null;
+    localSettings.aiTokenServer = '';
+    localSettings.aiTokenExpiry = null;
+    localSettings.notifyAndPersist();
     if (pb != null) {
       pb!.authStore.clear();
     }
@@ -335,6 +341,14 @@ class _LoginService extends ObservablePersistingObject {
       }
 
       loginCtrl.proceededOffline(false);
+    } else if (!online) {
+      // `proceededOffline` means "**this** session is the offline one": the
+      // shell's sync action disables itself on it and the errors action becomes
+      // a reconnect. It only defaulted to true on a cold start, so a login that
+      // *proceeded offline* left it at whatever the last online login made it
+      // (`false`) and the shell still offered a sync that could not work
+      // (`login 09`).
+      loginCtrl.proceededOffline(true);
     }
 
     // Initialize deferred push storage unconditionally (online OR offline)
@@ -353,6 +367,12 @@ class _LoginService extends ObservablePersistingObject {
 
     didAskForLoginAgain = false;
     launch.open(Open.staff);
+    // The startup check runs from a one-second timer in `ApexoApp.createElement`
+    // — *before* the login that creates a clinic can set `launch.isFirstLaunch`,
+    // so the welcome dialog was unreachable (`login 12`). The check is idempotent:
+    // it shows the changelog for a version the device has not seen, and the
+    // welcome dialog only when this launch found no collections at all.
+    unawaited(ApexoApp.showDialogsIfNeeded());
     return loginCtrl.finishedLoginProcess();
   }
 

@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:apexo/services/ai_services.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 
@@ -9,6 +11,27 @@ void main() {
     test('workerUrl is the correct endpoint', () {
       expect(AIService.workerUrl, 'https://dataextraction.apexo.app');
     });
+  });
+
+  test('cached AI tokens belong to their clinic server', () async {
+    final saved = localSettings.toJson();
+    final oldServer = login.url;
+    final oldPocketBase = login.pb;
+    try {
+      login.url = 'https://clinic-a.test';
+      localSettings.aiToken = 'cached-ai-token';
+      localSettings.aiTokenServer = login.url;
+      localSettings.aiTokenExpiry = DateTime.now().add(const Duration(hours: 24));
+      expect(await AIService.getToken(), 'cached-ai-token');
+      login.url = 'https://clinic-b.test';
+      login.pb = null;
+      await expectLater(AIService.getToken(), throwsA(anything));
+      expect(localSettings.aiTokenServer, 'https://clinic-a.test');
+    } finally {
+      localSettings.fromJson(saved);
+      login.url = oldServer;
+      login.pb = oldPocketBase;
+    }
   });
 
   group('AIService.parseResponse', () {

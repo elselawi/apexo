@@ -1,12 +1,8 @@
-import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/app/data/application_store_effects.dart';
+import 'package:apexo/app/data/store_session_binding.dart';
 import 'package:apexo/services/launch.dart';
-import 'package:apexo/services/network.dart';
-import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
-import '../../core/save_local.dart';
-import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
-import '../../services/login.dart';
 import 'expense_model.dart';
 import '../../core/store.dart';
 
@@ -15,6 +11,8 @@ const _storeName = "expenses";
 class Expenses extends Store<Expense> {
   Expenses()
       : super(
+          effects: applicationStoreEffects,
+          loadDocuments: loadApplicationDocuments,
           modeling: Expense.fromJson,
           isDemo: launch.isDemo,
           onSyncStart: () {
@@ -25,42 +23,19 @@ class Expenses extends Store<Expense> {
           },
         );
 
+  late final _session = StoreSessionBinding<Expense>(
+    store: this, name: _storeName,
+    loadingMessage: 'Synchronizing expenses',
+    seedDemo: () => demoExpenses(100),
+  );
+
   @override
   void init() {
     super.init();
-    onLogoutCallbacks.add(endSession);
+    _session.install();
     observableMap.observe((_) => nullifyExpensesCache());
 
-    login.activators[_storeName] = () async {
-      await loaded;
 
-      await deactivatePersistenceSession();
-      await local?.dispose();
-      local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
-      await deleteMemoryAndLoadFromPersistence();
-      if (launch.isDemo) {
-        if (docs.isEmpty) setAll(demoExpenses(100));
-      } else {
-        remote = SaveRemote(
-          pbInstance: login.pb!,
-          storeName: _storeName,
-          onOnlineStatusChange: (current) {
-            if (network.isOnline() != current) {
-              network.isOnline(current);
-            }
-          },
-        );
-      }
-      return () async {
-        loginCtrl.loadingIndicator("Synchronizing expenses");
-        await synchronize();
-        networkActions.syncCallbacks[_storeName] = synchronize;
-        networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
-
-        network.onOnline[_storeName] = synchronize;
-        network.onOffline[_storeName] = cancelRealtimeSub;
-      };
-    };
   }
 
   void nullifyExpensesCache() {

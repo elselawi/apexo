@@ -1,12 +1,14 @@
 @Tags(['serial'])
 library;
 
+import 'package:apexo/core/synchronization/conflict_merge.dart';
+import 'package:apexo/core/synchronization/deferred_file_keys.dart';
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:apexo/core/model.dart';
-import 'package:apexo/core/save_local.dart';
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_local.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/core/store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketbase/pocketbase.dart';
@@ -60,9 +62,9 @@ class _MergeSyncStore extends Store<_MergeSyncModel> {
 }
 
 void main() {
-  group('Store.mergeConflict scalar and map behavior', () {
+  group('mergeConflict scalar and map behavior', () {
     test('preserves fields present on only one side', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {'id': 'row', 'name': 'Alice'},
         remoteJson: const {'id': 'row', 'phone': '555'},
         localWins: true,
@@ -73,12 +75,12 @@ void main() {
     });
 
     test('uses the selected winner for same-field scalar conflicts', () {
-      final localWins = Store.mergeConflict(
+      final localWins = mergeConflict(
         localJson: const {'id': 'row', 'name': 'Alice'},
         remoteJson: const {'id': 'row', 'name': 'Bob'},
         localWins: true,
       );
-      final remoteWins = Store.mergeConflict(
+      final remoteWins = mergeConflict(
         localJson: const {'id': 'row', 'name': 'Alice'},
         remoteJson: const {'id': 'row', 'name': 'Bob'},
         localWins: false,
@@ -89,7 +91,7 @@ void main() {
     });
 
     test('merges different map keys and resolves same-key conflicts', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'teeth': {'11': 'crown', '12': 'local'},
@@ -109,7 +111,7 @@ void main() {
     });
 
     test('unions additive operator assignments without duplicates', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'operatorsIDs': ['a', 'b']
@@ -125,14 +127,14 @@ void main() {
     });
   });
 
-  group('Store.mergeConflict image reconciliation', () {
+  group('mergeConflict image reconciliation', () {
     test('keeps a server-present DICOM reference case-insensitively', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'dcmImgs': ['scan.dcm']
         },
-        remoteJson: const {'id': 'row', 'dcmImgs': []},
+        remoteJson: const {'id': 'row', 'dcmImgs': <String>[]},
         localWins: true,
         serverFiles: const ['SCAN.DCM'],
       );
@@ -141,21 +143,21 @@ void main() {
     });
 
     test('keeps a pending upload only for the supplied row context', () {
-      final withPendingRow = Store.mergeConflict(
+      final withPendingRow = mergeConflict(
         localJson: const {
           'id': 'row-a',
           'dcmImgs': ['scan.dcm']
         },
-        remoteJson: const {'id': 'row-a', 'dcmImgs': []},
+        remoteJson: const {'id': 'row-a', 'dcmImgs': <String>[]},
         localWins: true,
         pendingUploads: const {'scan.dcm'},
       );
-      final withoutPendingRow = Store.mergeConflict(
+      final withoutPendingRow = mergeConflict(
         localJson: const {
           'id': 'row-b',
           'dcmImgs': ['scan.dcm']
         },
-        remoteJson: const {'id': 'row-b', 'dcmImgs': []},
+        remoteJson: const {'id': 'row-b', 'dcmImgs': <String>[]},
         localWins: true,
       );
 
@@ -164,12 +166,12 @@ void main() {
     });
 
     test('does not keep a DICOM preview as a raw DICOM reference', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'dcmImgs': ['scan.dcm.png']
         },
-        remoteJson: const {'id': 'row', 'dcmImgs': []},
+        remoteJson: const {'id': 'row', 'dcmImgs': <String>[]},
         localWins: true,
         serverFiles: const ['scan.dcm.png'],
       );
@@ -179,7 +181,7 @@ void main() {
 
     test('server files are authoritative for ordinary images and DICOM files',
         () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'imgs': ['local.jpg', 'missing.jpg', 'scan.dcm'],
@@ -208,13 +210,17 @@ void main() {
 
     test('pending uploads preserve missing files with case-insensitive names',
         () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'imgs': ['queued.jpg'],
           'dcmImgs': ['queued.dicom'],
         },
-        remoteJson: const {'id': 'row', 'imgs': [], 'dcmImgs': []},
+        remoteJson: const {
+          'id': 'row',
+          'imgs': <String>[],
+          'dcmImgs': <String>[]
+        },
         localWins: true,
         serverFiles: const [],
         pendingUploads: const {'QUEUED.JPG', 'QUEUED.DICOM'},
@@ -229,24 +235,24 @@ void main() {
         'FILE||row-a||C:/a||same.dcm||0': 1,
         'FILE||row-b||C:/b||same.dcm||0': 1,
       };
-      final rowAPending = Store.filenamesFromDeferredForRow(deferred, 'row-a');
-      final rowBPending = Store.filenamesFromDeferredForRow(deferred, 'row-b');
+      final rowAPending = filenamesFromDeferredForRow(deferred, 'row-a');
+      final rowBPending = filenamesFromDeferredForRow(deferred, 'row-b');
 
-      final rowA = Store.mergeConflict(
+      final rowA = mergeConflict(
         localJson: const {
           'id': 'row-a',
           'dcmImgs': ['same.dcm']
         },
-        remoteJson: const {'id': 'row-a', 'dcmImgs': []},
+        remoteJson: const {'id': 'row-a', 'dcmImgs': <String>[]},
         localWins: true,
         pendingUploads: rowAPending,
       );
-      final rowB = Store.mergeConflict(
+      final rowB = mergeConflict(
         localJson: const {
           'id': 'row-b',
           'dcmImgs': ['same.dcm']
         },
-        remoteJson: const {'id': 'row-b', 'dcmImgs': []},
+        remoteJson: const {'id': 'row-b', 'dcmImgs': <String>[]},
         localWins: true,
         pendingUploads: rowBPending,
       );
@@ -256,7 +262,7 @@ void main() {
       expect(rowA['dcmImgs'], ['same.dcm']);
       expect(rowB['dcmImgs'], ['same.dcm']);
       expect(
-        Store.filenamesFromDeferredForRow(deferred, 'row-c'),
+        filenamesFromDeferredForRow(deferred, 'row-c'),
         isEmpty,
       );
     });
@@ -270,15 +276,15 @@ void main() {
         'FILE||row||||missing-path.dcm||0': 1,
         'DOC||row': 1,
       };
-      final pending = Store.filenamesFromDeferredForRow(deferred, 'row');
+      final pending = filenamesFromDeferredForRow(deferred, 'row');
 
       expect(pending, {'valid.dcm'});
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'imgs': ['old.jpg', 'valid.dcm'],
         },
-        remoteJson: const {'id': 'row', 'imgs': []},
+        remoteJson: const {'id': 'row', 'imgs': <String>[]},
         localWins: true,
         pendingUploads: pending,
       );
@@ -286,7 +292,7 @@ void main() {
     });
 
     test('image fields tolerate null and non-list JSON values', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {'id': 'row', 'imgs': 'not-a-list', 'dcmImgs': null},
         remoteJson: const {'id': 'row', 'imgs': null, 'dcmImgs': 'invalid'},
         localWins: true,
@@ -402,8 +408,8 @@ void main() {
       final result = await store.debugSyncTry();
 
       expect(result.exception, isNull);
-      expect(jsonDecode(await local.get(rowA))['dcmImgs'], ['same.dcm']);
-      expect(jsonDecode(remote.pushed.single.data)['dcmImgs'], ['same.dcm']);
+      expect((jsonDecode(await local.get(rowA)) as Map<String, dynamic>)['dcmImgs'], ['same.dcm']);
+      expect((jsonDecode(remote.pushed.single.data) as Map<String, dynamic>)['dcmImgs'], ['same.dcm']);
     });
 
     test('conflict merge trusts server file type and case-insensitive presence',
@@ -440,9 +446,9 @@ void main() {
     });
   });
 
-  group('Store.mergeConflict scalar, list, and identity edge cases', () {
+  group('mergeConflict scalar, list, and identity edge cases', () {
     test('preserves the record ID from local when both IDs are present', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {'id': 'local-id', 'name': 'Alice'},
         remoteJson: const {'id': 'remote-id', 'name': 'Bob'},
         localWins: false,
@@ -452,7 +458,7 @@ void main() {
     });
 
     test('uses remote value for a scalar when remote wins', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {'id': 'row', 'date': '2026-08-01'},
         remoteJson: const {'id': 'row', 'date': '2026-08-02'},
         localWins: false,
@@ -462,7 +468,7 @@ void main() {
     });
 
     test('uses local value for whole-list tags and prescriptions', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'tags': ['local', 'shared'],
@@ -481,7 +487,7 @@ void main() {
     });
 
     test('uses remote value for whole-list fields when remote wins', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'tags': ['local']
@@ -497,7 +503,7 @@ void main() {
     });
 
     test('merges all configured map fields independently', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'teeth': {'11': 'crown'},
@@ -526,7 +532,7 @@ void main() {
 
     test('operatorsIDs deduplicate exact values but preserve distinct casing',
         () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'operatorsIDs': ['A', 'a']
@@ -542,8 +548,12 @@ void main() {
     });
 
     test('missing map and union fields do not create empty fields', () {
-      final merged = Store.mergeConflict(
-        localJson: const {'id': 'row', 'teeth': {}, 'operatorsIDs': []},
+      final merged = mergeConflict(
+        localJson: const {
+          'id': 'row',
+          'teeth': <String, String>{},
+          'operatorsIDs': <String>[]
+        },
         remoteJson: const {'id': 'row'},
         localWins: true,
       );
@@ -553,7 +563,7 @@ void main() {
     });
 
     test('map values are stringified consistently', () {
-      final merged = Store.mergeConflict(
+      final merged = mergeConflict(
         localJson: const {
           'id': 'row',
           'teeth': {'11': 1},

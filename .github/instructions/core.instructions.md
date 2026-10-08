@@ -64,7 +64,7 @@ MyModel copy(bool blank) {
 }
 ```
 
-## Observable System (`lib/core/observable.dart`)
+## Observable System (`lib/core/reactive/observable.dart`)
 
 ### ObservableState\<T\>
 
@@ -84,7 +84,7 @@ A reactive key-value map used internally by `Store`. Tracks add/remove/modify ev
 
 ### ObservablePersistingObject
 
-For singletons that need Hive persistence (e.g., `_LoginService`, `localSettings`). Extend it, define `toJson()`/`fromJson()`, and pass a unique `identifier` string.
+Imported separately from `lib/core/persistence/observable_persisting_object.dart`. For singletons that need Hive persistence (e.g., `_LoginService`, `localSettings`). Extend it, define `toJson()`/`fromJson()`, and pass a unique `identifier` string.
 
 ## Store (`lib/core/store.dart`)
 
@@ -119,30 +119,26 @@ The `Store<G extends Model>` is the central data management class. Every feature
 - Offline changes are **deferred** and synced when connectivity returns
 - `manualSyncOnly: true` disables automatic sync (used for settings stores)
 
-### Example: Creating a Store
+### Explicit application wiring
 
-```dart
-final myStore = Store<MyModel>(
-  modeling: MyModel.fromJson,
-  local: SaveLocal(name: "my_models", uniqueId: login.uniqueID),
-  remote: SaveRemote(storeName: "my_models", pbInstance: pb!),
-  showArchived: showArchived,  // optional
-  isDemo: launch.isDemo,       // optional
-);
-myStore.init();
-```
+Production stores pass `effects: applicationStoreEffects` and
+`loadDocuments: loadApplicationDocuments` from `lib/app/data/`.
+Core stores default to inert effects and an application-independent loader;
+tests can inject either without constructing login/settings singletons.
+`StoreSessionBinding` owns feature login/logout integration and callback cleanup.
+See the architecture/ownership section of `README.md` for the complete pattern.
 
-## SaveLocal (`lib/core/save_local.dart`)
+## SaveLocal (`lib/core/persistence/save_local.dart`)
 
 Hive-based persistence. Each store gets two Hive boxes:
 - **`{name}-main`**: Stores document JSON keyed by ID
 - **`{name}-meta`**: Stores version number and deferred sync timestamps
 
-## SaveRemote (`lib/core/save_remote.dart`)
+## SaveRemote (`lib/core/persistence/save_remote.dart`)
 
 PocketBase-based sync. Key behaviors:
 - Uses a single `data` collection in PocketBase with a `store` column to namespace rows
-- **Version-based sync**: each write increments a version; pulls only rows with version > local version
+- **Timestamp-cursor sync**: pulls rows updated after the locally stored timestamp cursor (protocol unchanged)
 - **Online detection**: periodic health checks, auto-retry on failure
 - Timestamps formatted as `yyyy-MM-dd HH:mm:ss.SSS` (SQLite-compatible, no `T` separator)
 

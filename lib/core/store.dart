@@ -1,28 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:apexo/common_widgets/error_dialog.dart';
-import 'package:apexo/services/login.dart';
-import 'package:apexo/services/notifications/static_notifications.dart';
-import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
-import 'package:apexo/services/notifications/push_data.dart';
-import 'package:apexo/services/notifications/push_interpretation.dart';
-import 'package:apexo/services/notifications/push_relay.dart';
-import 'package:apexo/services/notifications/push_deferring.dart';
+import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/logger.dart';
 import 'package:http/http.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
 import 'model.dart';
-import 'observable.dart';
-import 'save_local.dart';
-import 'save_remote.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/utils/phone_numbers_extractor.dart';
+import 'persistence/serial_operation_queue.dart';
+import 'lifecycle/realtime_subscription.dart';
+import 'synchronization/conflict_merge.dart';
+import 'synchronization/deferred_file_keys.dart';
+import 'synchronization/store_effects.dart';
+import 'synchronization/document_loading.dart';
+import 'reactive/observable.dart';
+import 'persistence/save_local.dart';
+import 'persistence/save_remote.dart';
 
-typedef ModellingFunc<G> = G Function(Map<String, dynamic> input);
+export 'synchronization/document_loading.dart' show ModellingFunc;
 
 class SyncResult {
   SyncResult({this.pushed, this.pulled, this.conflicts, this.exception});
@@ -50,7 +46,10 @@ class Store<G extends Model> {
     this.onSyncStart,
     this.onSyncEnd,
     this.manualSyncOnly,
-  }) : observableMap = ObservableDict() {
+    this.effects = const StoreEffects(),
+    DocumentLoader<G>? loadDocuments,
+  }) : loadDocuments = loadDocuments ?? loadStoreDocuments<G>,
+       observableMap = ObservableDict() {
     // loading from local
     loaded = deleteMemoryAndLoadFromPersistence();
   }
@@ -60,15 +59,20 @@ class Store<G extends Model> {
   /// can be re-discovered on the next directory scan.
   static final List<void Function(String filename)> onFileDeadLettered = [];
 
+  final StoreEffects effects;
+  final DocumentLoader<G> loadDocuments;
   late Future<void> loaded;
-  final Function? onSyncStart;
-  final Function? onSyncEnd;
+  final void Function()? onSyncStart;
+  final void Function()? onSyncEnd;
   final ObservableDict<G> observableMap;
   final Set<DictEvent> changes = {};
   Map<String, G> archived = {};
   SaveLocal? local;
   SaveRemote? remote;
-  Future<void> Function()? realtimeSub;
+  late final _realtime = RealtimeSubscription(onError: (error, stack) {
+    effects.authenticationFailed(error);
+    effects.log('Realtime subscription failed: $error', stack);
+  });
   final int debounceMS;
   late ModellingFunc<G> modeling;
   bool deferredPresent = false;
@@ -76,15 +80,18 @@ class Store<G extends Model> {
   bool? manualSyncOnly;
   bool? isDemo;
   int _persistenceSession = 0;
-  final Set<Future<void>> _activePersistenceTasks = {};
+  final SerialOperationQueue _persistence = SerialOperationQueue();
+  Future<List<SyncResult>>? _syncTask;
+  bool _initialized = false;
 
   @mustCallSuper
   void init() {
-    // setting up sync queue
-    _setupSyncJobTimer();
+    if (_initialized) return;
+    _initialized = true;
 
     // setting up observers
     observableMap.observe((events) {
+      if (events.isEmpty) return;
       if (events[0].type == DictEventType.modify &&
           events[0].id == "__ignore_view__") {
         // this is a view change not a storage change
@@ -113,20 +120,19 @@ class Store<G extends Model> {
     if (local == null) {
       return;
     }
-    final Map<String, String> all = (await local!.getAll());
+    final session = _persistenceSession;
+    final sessionLocal = local!;
+    final Map<String, String> all = await sessionLocal.getAll();
     // Decode JSON strings in a background isolate
     final Map<String, Map<String, dynamic>> decoded =
-        await compute(_decodeAllDocs, all);
+        await compute(decodeStoreDocuments, all);
 
-    // Capture the ISO country code so the compute isolate can use it
-    // for phone-number parsing (isolates don't share memory with main).
-    final capturedIsoCC = isoCC();
-
-    // model json maps to document in a background isolate
-    final modellingResult = await compute(
-        _modelAllDocs<G>,
-        _ModelAllDocsParams(
-            modeling: modeling, decoded: decoded, isoCC: capturedIsoCC));
+    final modellingResult = await loadDocuments(modeling, decoded);
+    if (session != _persistenceSession ||
+        !identical(local, sessionLocal) ||
+        changes.isNotEmpty) {
+      return;
+    }
     final Map<String, G> modeled = modellingResult[0];
     archived = modellingResult[1];
     // silent for persistence; use the optimized setAllWithJson
@@ -144,13 +150,14 @@ class Store<G extends Model> {
   }
 
   void _processChanges() {
-    final task = _processChangesForSession(
-      _persistenceSession,
-      local,
-      remote,
-    );
-    _activePersistenceTasks.add(task);
-    task.whenComplete(() => _activePersistenceTasks.remove(task));
+    final session = _persistenceSession;
+    final sessionLocal = local;
+    final sessionRemote = remote;
+    unawaited(_persistence.run(() => _processChangesForSession(
+      session, sessionLocal, sessionRemote,
+    )).catchError((Object e, StackTrace s) {
+      effects.log('Error while persisting store changes: $e', s);
+    }));
   }
 
   Future<void> _processChangesForSession(
@@ -165,111 +172,121 @@ class Store<G extends Model> {
     }
 
     if (changes.isEmpty) return;
-    if (observableMap.docs.isEmpty) return;
-
-    onSyncStart?.call();
-    lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
-
-    final Map<String, String> toWrite = {};
-    final Map<String, int> toDefer = {};
-    final List<PushData> toPush = [];
-
-    final List<DictEvent> changesToProcess = [...changes];
-
-    for (DictEvent e in changesToProcess) {
-      final G? item = observableMap.get(e.id);
-      if (item == null) {
-        changes.remove(e);
-        continue;
-      }
-      final String serialized = _serialize(item);
-      toWrite[e.id] = serialized;
-      toDefer[e.id] = lastProcessChanges;
-
-      // push notifications processing
-      final doc = e.document;
-
-      if (sessionRemote == null) continue;
-      if (doc == null) continue;
-      if (e.type == DictEventType.remove) continue;
-      if (e.type == DictEventType.add && doc.pushOnCreation == false) continue;
-      if (e.type == DictEventType.modify &&
-          !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) {
-        continue;
-      }
-      final pushTargets = doc.targetsToPushTo;
-      toPush.add(PushData(
-        store: sessionRemote.storeName,
-        id: e.id,
-        readableIdentifier: doc.title,
-        isCreation: e.type == DictEventType.add,
-        isUpdate: e.type == DictEventType.modify,
-        updatedFields: e.modifiedKeys,
-        oldVals: e.oldVals,
-        newVals: e.newVals,
-        targetIDs: pushTargets,
-      ));
-    }
-
-    await sessionLocal.put(toWrite);
-    if (session != _persistenceSession) return;
-
-    if (sessionRemote == null) {
+    if (observableMap.docs.isEmpty) {
       changes.clear();
-      onSyncEnd?.call();
       return;
     }
 
-    final Map<String, int> lastDeferred = await sessionLocal.getDeferred();
-    if (session != _persistenceSession) return;
-    if (sessionRemote.isOnline && lastDeferred.isEmpty) {
-      try {
-        await sessionRemote.put(toWrite.entries
-            .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
-            .toList());
-        if (session != _persistenceSession) return;
-        changes.clear();
+    onSyncStart?.call();
+    try {
+      lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
 
-        await PushRelay.sendPush(toPush);
+      final Map<String, String> toWrite = {};
+      final Map<String, int> toDefer = {};
+      final List<PushData> toPush = [];
 
-        onSyncEnd?.call();
-        // while we have the connection lets synchronize
-        // don't put "await" before synchronize() since we don't want catch the error
-        // if it gets caught it means the same file will be placed in deferred
-        if (manualSyncOnly != true) {
-          // this condition is especially helpful during testing
-          // to have fine grained control over synchronization steps
-          unawaited(synchronize());
+      final List<DictEvent> changesToProcess = [...changes];
+
+      for (DictEvent e in changesToProcess) {
+        final G? item = observableMap.get(e.id);
+        if (item == null) {
+          changes.remove(e);
+          continue;
         }
-        return;
-      } catch (e, s) {
-        login.askForLoginAgain(e);
-        showErrorMessage(e, "sendingUpdatesToServer");
-        logger("Error during sending (Will defer updates): $e", s);
-      }
-    }
+        final String serialized = _serialize(item);
+        toWrite[e.id] = serialized;
+        toDefer[e.id] = lastProcessChanges;
 
-    /**
+        // push notifications processing
+        final doc = e.document;
+
+        if (sessionRemote == null) continue;
+        if (doc == null) continue;
+        if (e.type == DictEventType.remove) continue;
+        if (e.type == DictEventType.add && doc.pushOnCreation == false) {
+          continue;
+        }
+        if (e.type == DictEventType.modify &&
+            !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) {
+          continue;
+        }
+        final pushTargets = doc.targetsToPushTo;
+        toPush.add(PushData(
+          store: sessionRemote.storeName,
+          id: e.id,
+          readableIdentifier: doc.title,
+          isCreation: e.type == DictEventType.add,
+          isUpdate: e.type == DictEventType.modify,
+          updatedFields: e.modifiedKeys,
+          oldVals: e.oldVals,
+          newVals: e.newVals,
+          targetIDs: pushTargets,
+        ));
+      }
+
+      await sessionLocal.put(toWrite);
+      if (session != _persistenceSession) return;
+
+      if (sessionRemote == null) {
+        changes.removeAll(changesToProcess);
+        return;
+      }
+
+      final Map<String, int> lastDeferred = await sessionLocal.getDeferred();
+      if (session != _persistenceSession) return;
+      // Journal before network I/O so an interrupted write stays retryable.
+      await sessionLocal.putDeferred({...lastDeferred, ...toDefer});
+      if (session != _persistenceSession) return;
+      if (toPush.isNotEmpty) await effects.enqueuePushes(toPush);
+      deferredPresent = true;
+      if (session != _persistenceSession) return;
+      if (sessionRemote.isOnline && lastDeferred.isEmpty) {
+        try {
+          await sessionRemote.put(toWrite.entries
+              .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
+              .toList());
+          if (session != _persistenceSession) return;
+          await effects.sendPushes(toPush);
+          if (session != _persistenceSession) return;
+          final remaining = await sessionLocal.getDeferred();
+          remaining.removeWhere((key, value) => toDefer[key] == value);
+          await sessionLocal.putDeferred(remaining);
+          deferredPresent = remaining.isNotEmpty;
+          changes.removeAll(changesToProcess);
+          // while we have the connection lets synchronize
+          // don't put "await" before synchronize() since we don't want catch the error
+          // if it gets caught it means the same file will be placed in deferred
+          if (manualSyncOnly != true) {
+            // this condition is especially helpful during testing
+            // to have fine grained control over synchronization steps
+            unawaited(synchronize());
+          }
+          return;
+        } catch (e, s) {
+          effects.authenticationFailed(e);
+          effects.reportError(e, "sendingUpdatesToServer");
+          effects.log("Error during sending (Will defer updates): $e", s);
+        }
+      }
+
+      /**
 	 * If we reached here, it means that its either
 	 * 1. we're offline
 	 * 2. there was an error during sending updates
 	 * 3. there are already deferred updates
 	 */
-    await sessionLocal.putDeferred({}
-      ..addAll(lastDeferred)
-      ..addAll(toDefer));
-    if (session != _persistenceSession) return;
-
-    if (toPush.isNotEmpty) {
-      await deferredPush.putBulk(toPush);
+      changes.removeAll(changesToProcess);
+    } finally {
+      onSyncEnd?.call();
     }
-    deferredPresent = true;
-    changes.clear();
-    await reload();
-    onSyncEnd?.call();
   }
 
-  Future<SyncResult> _syncTry() async {
+  Future<SyncResult> _syncTry(int session) async {
+    final local = this.local;
+    final remote = this.remote;
+    if (session != _persistenceSession) {
+      return SyncResult(exception: 'persistence session ended');
+    }
     if (isDemo == true) {
       return SyncResult(exception: "sync is disabled in demo mode");
     }
@@ -278,14 +295,18 @@ class Store<G extends Model> {
           exception: "local/remote persistence layers are not defined");
     }
 
-    if (remote!.isOnline == false) {
+    if (remote.isOnline == false) {
       return SyncResult(exception: "remote server is offline");
     }
     try {
-      final int localVersion = await local!.getVersion();
-      final int remoteVersion = await remote!.getVersion();
+      final int localVersion = await local.getVersion();
+      final int remoteVersion = await remote.getVersion();
 
-      final Map<String, int> deferred = await local!.getDeferred();
+      final Map<String, int> deferred = await local.getDeferred();
+      final processedDeferred = Map<String, int>.of(deferred);
+      if (session != _persistenceSession) {
+        return SyncResult(exception: 'persistence session ended');
+      }
       int conflicts = 0;
 
       if (localVersion == remoteVersion && deferred.isEmpty) {
@@ -294,7 +315,10 @@ class Store<G extends Model> {
 
       // fetch updates since our local version
       final VersionedResult remoteUpdates =
-          await remote!.getSince(version: localVersion);
+          await remote.getSince(version: localVersion);
+      if (session != _persistenceSession) {
+        return SyncResult(exception: 'persistence session ended');
+      }
 
       if (remoteVersion == 0 &&
           localVersion > 0 &&
@@ -303,9 +327,9 @@ class Store<G extends Model> {
         // we try to refresh the token
         // if this fails the authentication will throw an exception and the user will be asked to login again
         try {
-          await login.authenticateWithToken(login.token);
+          await effects.refreshAuthentication();
         } catch (e) {
-          login.askForLoginAgain(e);
+          effects.authenticationFailed(e);
           return SyncResult(exception: "Failed to refresh token: $e");
         }
       }
@@ -352,9 +376,9 @@ class Store<G extends Model> {
       // reference on the wrong row.
       for (final c in conflictsFound) {
         final localJson =
-            jsonDecode(await local!.get(c.dfID)) as Map<String, dynamic>;
+            jsonDecode(await local.get(c.dfID)) as Map<String, dynamic>;
         final remoteJson = jsonDecode(c.remoteData) as Map<String, dynamic>;
-        final serverFiles = remote!.fullNamesCache[c.dfID] ?? const <String>[];
+        final serverFiles = remote.fullNamesCache[c.dfID] ?? const <String>[];
         final pendingUploads = filenamesFromDeferredForRow(deferred, c.dfID)
             .where((f) => f.isNotEmpty)
             .toSet();
@@ -390,7 +414,7 @@ class Store<G extends Model> {
       // those will be built in the for loop below
       final Map<String, String> toRemoteWrite = {};
 
-      final List<Future Function()> fileHandling = [];
+      final List<Future<void> Function()> fileHandling = [];
       // Track FILE keys whose operation succeeds so we can safely clear
       // them at the end without wiping re-queued failure entries.
       final succeededFileKeys = <String>{};
@@ -402,7 +426,7 @@ class Store<G extends Model> {
           // FILE||row||filename. Ignore malformed entries rather than
           // allowing one corrupt queue key to abort the entire sync pass.
           if (!isValidDeferredFileKey(entry.key, entry.value)) {
-            logger('Deferred file: discarding malformed key "${entry.key}"',
+            effects.log('Deferred file: discarding malformed key "${entry.key}"',
                 null, 1);
             succeededFileKeys.add(entry.key);
             continue;
@@ -413,7 +437,7 @@ class Store<G extends Model> {
           final String filename = upload ? deferredFile[3] : "";
           final int retries = parseDeferredRetries(entry.key);
           if (retries < 0) {
-            logger(
+            effects.log(
                 'Deferred file: discarding negative retry key "${entry.key}"',
                 null,
                 1);
@@ -429,7 +453,7 @@ class Store<G extends Model> {
             if (upload) {
               // Dead-letter: too many retries.
               if (retries >= maxRetries) {
-                logger(
+                effects.log(
                     'Deferred upload: permanently failed for '
                     '"$filename" after $retries retries — removing from model',
                     null,
@@ -459,11 +483,12 @@ class Store<G extends Model> {
                     filename: filename,
                   );
                 }
-                final pbName = await remote!.uploadImage(
+                final pbName = await remote.uploadImage(
                   rowID: rowID,
                   filename: filename,
                   predefinedMultipart: multipart,
                 );
+                if (session != _persistenceSession) return;
                 // PB may assign a different name — patch the model first
                 // so _ensureDcmInModel sees the correct name and avoids
                 // creating a duplicate entry.
@@ -480,23 +505,23 @@ class Store<G extends Model> {
                 succeededFileKeys.add(entry.key);
               } catch (e, s) {
                 // Upload failed — keep in queue with incremented retries.
-                logger(
+                effects.log(
                     'Deferred upload: attempt ${retries + 1}/$maxRetries '
                     'failed for "$filename" — $e',
                     s,
                     1);
-                final currentDeferred = await local!.getDeferred();
+                final currentDeferred = await local.getDeferred();
                 currentDeferred.remove(entry.key);
                 currentDeferred[newKey] = 1;
-                await local!.putDeferred(currentDeferred);
+                await local.putDeferred(currentDeferred);
               }
             } else {
-              await remote!.deleteImage(rowID, pathOrName);
+              await remote.deleteImage(rowID, pathOrName);
               succeededFileKeys.add(entry.key);
             }
           });
         } else {
-          toRemoteWrite.addAll({entry.key: await local!.get(entry.key)});
+          toRemoteWrite.addAll({entry.key: await local.get(entry.key)});
         }
       }
 
@@ -504,29 +529,41 @@ class Store<G extends Model> {
       // These were removed from `deferred` above and need to be pushed.
       toRemoteWrite.addAll(mergedConflictsToRemote);
 
+      if (session != _persistenceSession) {
+        return SyncResult(exception: 'persistence session ended');
+      }
       if (toLocalWrite.isNotEmpty) {
-        await local!.put(toLocalWrite);
+        await local.put(toLocalWrite);
       }
       if (toRemoteWrite.isNotEmpty) {
-        await remote!.put(toRemoteWrite.entries
+        await remote.put(toRemoteWrite.entries
             .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
             .toList());
 
+        if (session != _persistenceSession) {
+          return SyncResult(exception: 'persistence session ended');
+        }
         final winningPushes = (await Future.wait(toRemoteWrite.keys.map(
-          (k) async => await deferredPush.getByID(k),
+          (k) async => await effects.pendingPush(k),
         )))
             .where((x) => x != null)
             .cast<PushData>()
             .toList();
 
-        await PushRelay.sendPush(winningPushes);
-        await deferredPush.clearByStore(remote!.storeName);
+        await effects.sendPushes(winningPushes);
+        if (session != _persistenceSession) {
+          return SyncResult(exception: 'persistence session ended');
+        }
+        await effects.clearPushes(remote.storeName);
       }
 
       // When all JSON-related updates are done, handle files serially. Each
       // failed upload updates the shared deferred map; running these in
       // parallel can cause one failure to overwrite another failure's retry.
       for (final handleFile in fileHandling) {
+        if (session != _persistenceSession) {
+          return SyncResult(exception: 'persistence session ended');
+        }
         await handleFile();
       }
 
@@ -535,16 +572,22 @@ class Store<G extends Model> {
       // - Succeeded FILE entries are tracked in succeededFileKeys.
       // - Failed FILE entries were re-queued with incremented retries
       //   by the catch block — those must NOT be cleared here.
-      final currentDeferred = await local!.getDeferred();
-      currentDeferred.removeWhere(
-          (k, _) => !k.startsWith("FILE") || succeededFileKeys.contains(k));
-      await local!.putDeferred(currentDeferred);
+      if (session != _persistenceSession) {
+        return SyncResult(exception: 'persistence session ended');
+      }
+      final currentDeferred = await local.getDeferred();
+      currentDeferred.removeWhere((key, value) =>
+          succeededFileKeys.contains(key) ||
+          (!key.startsWith('FILE') && processedDeferred[key] == value));
+      await local.putDeferred(currentDeferred);
       deferredPresent = currentDeferred.isNotEmpty;
 
       // set local version to the version given by the current request
       // this might be outdated as soon as this functions ends
       // that's why this function will run on a while loop (below)
-      await local!.putVersion(remoteUpdates.version);
+      await local.putVersion(remoteUpdates.version > localVersion
+          ? remoteUpdates.version
+          : localVersion);
 
       // but if we had deferred updates then the remoteUpdates.version is outdated
       // so we need to fetch the latest version again
@@ -563,15 +606,15 @@ class Store<G extends Model> {
           final id = element.key;
           final document =
               modeling(jsonDecode(element.value) as Map<String, dynamic>);
-          if (!document.targetsToPushTo.contains(login.currentAccountID)) {
+          if (!document.targetsToPushTo.contains(effects.currentAccountID)) {
             continue;
           }
 
           if (modeling({}).pushOnCreation && !docs.containsKey(id)) {
             final readableIdentifier = document.title;
 
-            final List<String> displayTuple = PushData(
-              store: remote!.storeName,
+            final push = PushData(
+              store: remote.storeName,
               id: id,
               readableIdentifier: readableIdentifier,
               isCreation: true,
@@ -580,14 +623,11 @@ class Store<G extends Model> {
               oldVals: [],
               newVals: [],
               targetIDs: [],
-            ).displayTuple();
-
-            await staticNotifications.dingANotification(
-              title: displayTuple[0],
-              body: displayTuple[1],
-              icon: WindowsIcons.add,
             );
-          } else if (document.pushIfChanged.isNotEmpty) {
+
+            await effects.notify(push);
+          } else if (document.pushIfChanged.isNotEmpty &&
+              docs.containsKey(id)) {
             final oldJson = docs[id]!.toJson();
             final newJson = document.toJson();
             final diff = diffJson(oldJson, newJson).toList();
@@ -595,8 +635,8 @@ class Store<G extends Model> {
               continue;
             }
             final readableIdentifier = document.title;
-            final List<String> displayTuple = PushData(
-              store: remote!.storeName,
+            final push = PushData(
+              store: remote.storeName,
               id: id,
               readableIdentifier: readableIdentifier,
               isCreation: false,
@@ -605,18 +645,16 @@ class Store<G extends Model> {
               oldVals: diff.map((key) => oldJson[key]).toList(),
               newVals: diff.map((key) => newJson[key]).toList(),
               targetIDs: [],
-            ).displayTuple();
-
-            await staticNotifications.dingANotification(
-              title: displayTuple[0],
-              body: displayTuple[1],
-              icon: FluentIcons.edit,
             );
+
+            await effects.notify(push);
           }
         }
       }
 
-      await reload();
+      if (session == _persistenceSession && changes.isEmpty) {
+        await deleteMemoryAndLoadFromPersistence();
+      }
 
       return SyncResult(
           pulled: toLocalWrite.length,
@@ -624,54 +662,17 @@ class Store<G extends Model> {
           conflicts: conflicts,
           exception: null);
     } catch (e, s) {
-      login.askForLoginAgain(e);
-      logger("Error during synchronization: $e", s);
+      effects.authenticationFailed(e);
+      effects.log("Error during synchronization: $e", s);
       return SyncResult(exception: e.toString());
     }
   }
 
-  // the following logic is for the task management of synchronization
-  // it's not really a task runner,
-  // since it allows only for one task to be in the que with no concurrency
-  // any task that would be added will override the previous one
-
-  bool _jobRunning = false;
-  void _setupSyncJobTimer() {
-    // the following timer would run indefinitely,
-    // checking whether there's a sync job exists or not
-    Timer.periodic(Duration(milliseconds: debounceMS), (timer) async {
-      if (_jobRunning) {
-        return;
-      }
-      _jobRunning = true;
-      try {
-        if (_syncJob != null) {
-          await _syncJob!();
-          _syncJob = null;
-        }
-      } catch (e, s) {
-        login.askForLoginAgain(e);
-        logger("Error during synchronization: $e", s);
-      }
-      _jobRunning = false;
-    });
-  }
-
-  // holds the next job
-  Future<void> Function()? _syncJob;
-  // holds the result of the last job that ran
   List<SyncResult>? lastRes;
 
   // ----------------------------- Public API --------------------------------
 
-  void cancelRealtimeSub() {
-    if (realtimeSub != null) {
-      // cancel the subscription once we go offline
-      realtimeSub!();
-      // and set this to null so that we get to subscribe again when we go online
-      realtimeSub = null;
-    }
-  }
+  void cancelRealtimeSub() => _realtime.cancel();
 
   /// Stops session-scoped persistence safely before its local/remote targets
   /// are replaced (for example when a user signs into another clinic).
@@ -680,14 +681,15 @@ class Store<G extends Model> {
   /// finish before its Hive boxes can be closed by the caller.
   Future<void> deactivatePersistenceSession() async {
     _persistenceSession++;
-    _syncJob = null;
+    final syncing = _syncTask;
     changes.clear();
     deferredPresent = false;
     cancelRealtimeSub();
+    remote?.dispose();
+    if (syncing != null) await syncing;
 
-    while (_activePersistenceTasks.isNotEmpty) {
-      await Future.wait(_activePersistenceTasks.toList(), eagerError: false);
-    }
+    await _persistence.drain();
+    await _realtime.drain();
   }
 
   /// Ends session-bound listeners and queued persistence work on logout.
@@ -695,34 +697,28 @@ class Store<G extends Model> {
   /// later login to the same clinic can load its offline data normally.
   void endSession() {
     _persistenceSession++;
-    _syncJob = null;
     changes.clear();
     deferredPresent = false;
     cancelRealtimeSub();
+    remote?.dispose();
     remote = null;
   }
 
   /// Syncs the local database with the remote database
-  Future<List<SyncResult>> synchronize() async {
-    // this would only register a job
-    // and wait patiently for its result
-    // if runs out of patience
-    // then it would steal the last result
-    // and shows as its own
-    // pretty weird... but it works
-    List<SyncResult>? res;
-    final sw = Stopwatch();
-    sw.start();
-    final session = _persistenceSession;
-    _syncJob = () async {
-      if (session != _persistenceSession) return;
-      res = await _syncRequest(session);
-      lastRes = res;
-    };
-    while (res == null && sw.elapsed.inSeconds < 10) {
-      await Future.delayed(Duration(milliseconds: debounceMS));
+  Future<List<SyncResult>> synchronize() {
+    return _syncTask ??= _runSynchronization(_persistenceSession);
+  }
+
+  Future<List<SyncResult>> _runSynchronization(int session) async {
+    try {
+      await Future<void>.delayed(Duration(milliseconds: debounceMS));
+      final operation = _persistence.run(() => _syncRequest(session));
+      final result = await operation;
+      if (session == _persistenceSession) lastRes = result;
+      return result;
+    } finally {
+      _syncTask = null;
     }
-    return res ?? lastRes ?? [];
   }
 
   Future<List<SyncResult>> _syncRequest(int session) async {
@@ -740,39 +736,30 @@ class Store<G extends Model> {
     // regardless of that... on first sync
     // we need to set up the realtime subscription
     final sessionRemote = remote;
-    if (sessionRemote != null &&
-        realtimeSub == null &&
-        manualSyncOnly != true) {
-      unawaited(sessionRemote.pbInstance
+    if (sessionRemote != null && manualSyncOnly != true) {
+      _realtime.start(() => sessionRemote.pbInstance
           .collection(dataCollectionName)
-          .subscribe("*", (msg) {
+          .subscribe('*', (msg) {
         if (session == _persistenceSession &&
-            msg.record?.data["store"] == sessionRemote.storeName) {
-          synchronize();
+            msg.record?.data['store'] == sessionRemote.storeName) {
+          unawaited(synchronize());
         }
-      }).then((cancellation) {
-        if (session == _persistenceSession) {
-          realtimeSub = cancellation;
-        } else {
-          cancellation();
-        }
-      }).catchError((Object e, StackTrace s) {
-        login.askForLoginAgain(e);
-        logger("Error during realtime subscription: $e", s);
       }));
     }
 
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
     onSyncStart?.call();
-    final List<SyncResult> tries = [];
-    while (true) {
-      if (session != _persistenceSession) break;
-      final SyncResult result = await _syncTry();
-      tries.add(result);
-      if (result.exception != null) break;
+    try {
+      final List<SyncResult> tries = [];
+      while (session == _persistenceSession) {
+        final SyncResult result = await _syncTry(session);
+        tries.add(result);
+        if (result.exception != null) break;
+      }
+      return tries;
+    } finally {
+      onSyncEnd?.call();
     }
-    onSyncEnd?.call();
-    return tries;
   }
 
   //// Returns true if the local database is in sync with the remote database
@@ -782,16 +769,15 @@ class Store<G extends Model> {
       if (deferredPresent) return false;
       return await local!.getVersion() == await remote!.getVersion();
     } catch (e, s) {
-      login.askForLoginAgain(e);
-      logger("Error during inSync check: $e", s);
+      effects.authenticationFailed(e);
+      effects.log("Error during inSync check: $e", s);
       return false;
     }
   }
 
   /// Reloads the store from the local database
   Future<void> reload() async {
-    // wait for any changes to be processed, since we're going to delete the dictionary
-    await Future.delayed(Duration(milliseconds: debounceMS + 2));
+    await waitUntilChangesAreProcessed();
     await deleteMemoryAndLoadFromPersistence();
   }
 
@@ -845,42 +831,59 @@ class Store<G extends Model> {
     archive(id);
   }
 
-  /// delete an image
-  Future<void> deleteImg(String rowID, String name) async {
-    onSyncStart?.call();
-    if (remote == null) {
-      throw Exception("remote persistence layer is not defined");
-    }
-    if (local == null) {
-      throw Exception("local persistence layer is not defined");
-    }
-    final Map<String, int> lastDeferred = await local!.getDeferred();
-    if (remote!.isOnline && lastDeferred.isEmpty) {
-      try {
-        await remote!.deleteImage(rowID, name);
-        onSyncEnd?.call();
-        unawaited(synchronize());
-        return;
-      } catch (e, s) {
-        showErrorMessage(e, "deletingFile");
-        login.askForLoginAgain(e);
-        logger("Error during deleting the file (Will defer upload): $e", s);
+  Future<T> _queuePersistence<T>(Future<T> Function() action) {
+    final session = _persistenceSession;
+    return _persistence.run(() {
+      if (session != _persistenceSession) {
+        throw StateError('Persistence session ended');
       }
-    }
+      return action();
+    });
+  }
 
-    /**
+  /// delete an image
+  Future<void> deleteImg(String rowID, String name) =>
+      _queuePersistence(() => _deleteImg(rowID, name));
+
+  Future<void> _deleteImg(String rowID, String name) async {
+    final local = this.local;
+    final remote = this.remote;
+    onSyncStart?.call();
+    try {
+      if (remote == null) {
+        throw Exception("remote persistence layer is not defined");
+      }
+      if (local == null) {
+        throw Exception("local persistence layer is not defined");
+      }
+      final Map<String, int> lastDeferred = await local.getDeferred();
+      if (remote.isOnline && lastDeferred.isEmpty) {
+        try {
+          await remote.deleteImage(rowID, name);
+          unawaited(synchronize());
+          return;
+        } catch (e, s) {
+          effects.reportError(e, "deletingFile");
+          effects.authenticationFailed(e);
+          effects.log("Error during deleting the file (Will defer upload): $e", s);
+        }
+      }
+
+      /**
      * If we reached here it means that its either
      * 1. we're offline
      * 2. there was an error during sending updates
      * 3. there are already deferred updates
      */
-    // DEFERRED Structure: "FILE||{rowID}||path:{0 for deleting, 1 for uploading}"
+      // DEFERRED Structure: "FILE||{rowID}||path:{0 for deleting, 1 for uploading}"
 
-    await local!.putDeferred({}
-      ..addAll(lastDeferred)
-      ..addAll({"FILE||$rowID||$name": 0}));
-    deferredPresent = true;
-    onSyncEnd?.call();
+      await local.putDeferred({}
+        ..addAll(lastDeferred)
+        ..addAll({"FILE||$rowID||$name": 0}));
+      deferredPresent = true;
+    } finally {
+      onSyncEnd?.call();
+    }
   }
 
   /// Deletes a DCM X-ray and its PNG preview from PocketBase.
@@ -899,7 +902,7 @@ class Store<G extends Model> {
     try {
       await deleteImg(rowID, '$dcmName.png');
     } catch (e, s) {
-      logger("deleteDcmImg: PNG preview not deleted (may not exist): $e", s);
+      effects.log("deleteDcmImg: PNG preview not deleted (may not exist): $e", s);
     }
   }
 
@@ -911,44 +914,57 @@ class Store<G extends Model> {
     required String filename,
     String? path,
     XFile? file,
-  }) async {
-    onSyncStart?.call();
-    if (remote == null) {
-      throw Exception("remote persistence layer is not defined");
-    }
-    if (local == null) {
-      throw Exception("local persistence layer is not defined");
-    }
-    final lastDeferred = await local!.getDeferred();
-    if (remote!.isOnline && lastDeferred.isEmpty) {
-      try {
-        final pbName = await remote!.uploadImage(
-          rowID: rowID,
-          filename: filename,
-          path: path,
-          file: file,
-        );
-        onSyncEnd?.call();
-        unawaited(synchronize());
-        return pbName;
-      } catch (e, s) {
-        login.askForLoginAgain(e);
-        showErrorMessage(e, "uploadingFile");
-        logger("Error during upload (Will defer): $e", s);
-      }
-    }
+  }) =>
+      _queuePersistence(() =>
+          _uploadImg(rowID: rowID, filename: filename, path: path, file: file));
 
-    // Defer: "FILE||{rowID}||{path}||{filename}||{retries}" → 1 (upload).
-    // Preserve an XFile's path when no native filesystem path was supplied;
-    // this is required for blob/web uploads to remain retryable.
-    final deferredPath = path ?? file?.path ?? '';
-    await local!.putDeferred({
-      ...lastDeferred,
-      "FILE||$rowID||$deferredPath||$filename||0": 1,
-    });
-    deferredPresent = true;
-    onSyncEnd?.call();
-    return filename;
+  Future<String> _uploadImg({
+    required String rowID,
+    required String filename,
+    String? path,
+    XFile? file,
+  }) async {
+    final local = this.local;
+    final remote = this.remote;
+    onSyncStart?.call();
+    try {
+      if (remote == null) {
+        throw Exception("remote persistence layer is not defined");
+      }
+      if (local == null) {
+        throw Exception("local persistence layer is not defined");
+      }
+      final lastDeferred = await local.getDeferred();
+      if (remote.isOnline && lastDeferred.isEmpty) {
+        try {
+          final pbName = await remote.uploadImage(
+            rowID: rowID,
+            filename: filename,
+            path: path,
+            file: file,
+          );
+          unawaited(synchronize());
+          return pbName;
+        } catch (e, s) {
+          effects.authenticationFailed(e);
+          effects.reportError(e, "uploadingFile");
+          effects.log("Error during upload (Will defer): $e", s);
+        }
+      }
+
+      // Defer: "FILE||{rowID}||{path}||{filename}||{retries}" → 1 (upload).
+      // Preserve an XFile's path when no native filesystem path was supplied;
+      // this is required for blob/web uploads to remain retryable.
+      final deferredPath = path ?? file?.path ?? '';
+      await local.putDeferred({
+        ...lastDeferred,
+        "FILE||$rowID||$deferredPath||$filename||0": 1,
+      });
+      deferredPresent = true;
+      return filename;
+    } finally {
+      onSyncEnd?.call();
+    }
   }
 
   /// notifies the view that the store has changed
@@ -957,9 +973,10 @@ class Store<G extends Model> {
   }
 
   Future<void> waitUntilChangesAreProcessed() async {
-    await Future.delayed(Duration(milliseconds: debounceMS + 2));
-    while (changes.isNotEmpty) {
-      await Future.delayed(const Duration(milliseconds: 30));
+    await Future<void>.delayed(Duration.zero);
+    await _persistence.drain();
+    if (local != null && changes.isNotEmpty) {
+      throw StateError('Store changes could not be persisted');
     }
   }
 
@@ -1070,330 +1087,15 @@ class Store<G extends Model> {
   bool debugIsDcmFile(String name) => _isDcmFile(name);
 
   @visibleForTesting
-  Future<SyncResult> debugSyncTry() => _syncTry();
+  Future<SyncResult> debugSyncTry() => _syncTry(_persistenceSession);
 
-  // ── Static helpers (extracted from _syncTry / _healDanglingDcmImgs) ─
-
-  /// Returns whether a deferred FILE key has a supported shape and value.
-  /// Uploads use `FILE||rowID||path||filename[||retries]`; deletes use
-  /// `FILE||rowID||filename` and carry value 0.
-  @visibleForTesting
-  static bool isValidDeferredFileKey(String key, int value) {
-    final parts = key.split('||');
-    if (!key.startsWith('FILE||') || parts.length < 3 || parts[1].isEmpty) {
-      return false;
-    }
-    if (value == 0) return parts.length == 3 && parts[2].isNotEmpty;
-    if (value != 1 ||
-        (parts.length != 4 && parts.length != 5) ||
-        parts[2].isEmpty ||
-        parts[3].isEmpty) {
-      return false;
-    }
-    if (parts.length == 5 && (int.tryParse(parts[4]) ?? -1) < 0) {
-      return false;
-    }
-    return true;
-  }
-
-  /// Returns the retry count embedded in a deferred FILE key, or 0 for
-  /// legacy 4-segment keys.  Format: `FILE||rowID||path||filename||retries`.
-  @visibleForTesting
-  static int parseDeferredRetries(String key) {
-    final parts = key.split('||');
-    if (parts.length >= 5) return int.tryParse(parts[4]) ?? 0;
-    return 0;
-  }
-
-  /// Builds a new deferred FILE key with [newRetries] substituted into the
-  /// retries slot.  Legacy 4-segment keys grow a 5th segment; 5+-segment
-  /// keys overwrite the last segment.
-  @visibleForTesting
-  static String buildDeferredRetryKey(String key, int newRetries) {
-    final parts = key.split('||');
-    final next = newRetries.toString();
-    if (parts.length > 4) {
-      parts[4] = next;
-    } else {
-      parts.add(next);
-    }
-    return parts.join('||');
-  }
-
-  /// Extracts the filename (segment index 3) from every `FILE||…` key in
-  /// [deferred] whose value indicates an upload (value == 1).  Delete
-  /// entries (value == 0 / 3-segment keys) produce empty strings and are
-  /// harmless in the returned set.
-  ///
-  /// Used by [DicomController._healDanglingDcmImgs] to skip filenames that
-  /// are currently queued for upload.
-  @visibleForTesting
-  static Set<String> filenamesFromDeferred(Map<String, int> deferred) {
-    return deferred.entries
-        .where((entry) => isValidDeferredFileKey(entry.key, entry.value))
-        .where((entry) => entry.value == 1)
-        .map((entry) => entry.key.split('||')[3])
-        .toSet();
-  }
-
-  /// Returns deferred upload filenames belonging to one model row.
-  ///
-  /// Cleanup must scope this check to the appointment being inspected. A
-  /// filename queued for another row must not protect a missing file here.
-  static Set<String> filenamesFromDeferredForRow(
-      Map<String, int> deferred, String rowID) {
-    return deferred.entries
-        .where((entry) =>
-            isValidDeferredFileKey(entry.key, entry.value) &&
-            entry.value == 1 &&
-            entry.key.startsWith('FILE||$rowID||'))
-        .map((entry) => entry.key.split('||')[3])
-        .toSet();
-  }
-
-  /// Field names that store image filenames in the model JSON.  These are
-  /// reconciled against the server's actual file list during merge instead
-  /// of being union/LWW-merged, because PocketBase's `imgs` column is the
-  /// authoritative source of which files exist.
-  static const _imageFields = ['imgs', 'dcmImgs'];
-
-  /// Map fields (tooth notes, drawings) that are merged per-key with
-  /// last-writer-wins for same-key conflicts.  This lets two devices edit
-  /// *different* keys (e.g. different teeth) without losing either edit.
-  static const _mapFields = ['teeth', 'teethExtraNotes', 'drawings'];
-
-  /// List fields that are merged by union with dedup.  Only fields whose
-  /// semantics are additive (multi-assignment) belong here.
-  static const _unionListFields = ['operatorsIDs'];
-
-  /// Merges two JSON representations of the same record after a sync
-  /// conflict, instead of discarding one entire version.
-  ///
-  /// Strategies per field type (see the field sets above):
-  /// - **Scalar fields**: union — a field present on one side (and
-  ///   default-absent on the other) is kept.  When both sides have a
-  ///   non-default value that differs, last-write-wins by [localWins].
-  /// - **`imgs`/`dcmImgs`**: reconciled against [serverFiles] (the PB
-  ///   `imgs` column), which is the authoritative source of which files
-  ///   exist.  Filenames in [pendingUploads] are kept even if not yet on
-  ///   the server (deferred uploads).
-  /// - **Map fields** (`teeth`, `teethExtraNotes`, `drawings`): per-key
-  ///   LWW — different keys survive from both sides; same-key conflict
-  ///   resolved by [localWins].
-  /// - **`operatorsIDs`**: union with dedup (additive semantics).
-  /// - **`tags`/`prescriptions`**: whole-field LWW (no merge).
-  ///
-  /// [localJson]/[remoteJson] are the full `toJson()` output for each
-  /// side.  [localWins] selects the winner for same-field/same-key
-  /// conflicts.  [serverFiles] is the list of filenames PB actually has
-  /// for this record (may be empty).  [pendingUploads] is the set of
-  /// filenames queued for deferred upload to this record.
-  ///
-  /// Returns the merged JSON map.
-  @visibleForTesting
-  static Map<String, dynamic> mergeConflict({
-    required Map<String, dynamic> localJson,
-    required Map<String, dynamic> remoteJson,
-    required bool localWins,
-    List<String> serverFiles = const [],
-    Set<String> pendingUploads = const {},
-  }) {
-    final winner = localWins ? localJson : remoteJson;
-    final loser = localWins ? remoteJson : localJson;
-    final merged = <String, dynamic>{};
-
-    // Union of all keys across both sides.
-    final allKeys = <String>{...localJson.keys, ...remoteJson.keys};
-
-    for (final key in allKeys) {
-      // `id` is always present and identical — take it from either side.
-      if (key == 'id') {
-        merged['id'] = localJson['id'] ?? remoteJson['id'];
-        continue;
-      }
-
-      final localVal = localJson[key];
-      final remoteVal = remoteJson[key];
-
-      // ── Image fields: reconcile against the server's actual files ──
-      if (_imageFields.contains(key)) {
-        merged[key] = _mergeImageField(
-          localVal: localVal,
-          remoteVal: remoteVal,
-          serverFiles: serverFiles,
-          pendingUploads: pendingUploads,
-          isDcm: key == 'dcmImgs',
-        );
-        continue;
-      }
-
-      // ── Map fields: per-key LWW ──
-      if (_mapFields.contains(key)) {
-        final localMap = _toStringMap(localVal);
-        final remoteMap = _toStringMap(remoteVal);
-        // Winner's keys win for same-key conflicts; loser's distinct
-        // keys survive.  This preserves deletions on the winning side
-        // (a deleted key is simply absent from the winner's map).
-        final mapKeys = <String>{...localMap.keys, ...remoteMap.keys};
-        final mergedMap = <String, String>{};
-        for (final mk in mapKeys) {
-          if (winner.containsKey(key) && winner[key] is Map) {
-            // Winner takes precedence for keys it has.
-            final wMap = _toStringMap(winner[key]);
-            if (wMap.containsKey(mk)) {
-              mergedMap[mk] = wMap[mk]!;
-              continue;
-            }
-          }
-          // Otherwise take from whichever side has it.
-          if (localMap.containsKey(mk)) {
-            mergedMap[mk] = localMap[mk]!;
-          } else if (remoteMap.containsKey(mk)) {
-            mergedMap[mk] = remoteMap[mk]!;
-          }
-        }
-        if (mergedMap.isNotEmpty) merged[key] = mergedMap;
-        continue;
-      }
-
-      // ── Union list fields (operatorsIDs): union with dedup ──
-      if (_unionListFields.contains(key)) {
-        final localList = _toStringList(localVal);
-        final remoteList = _toStringList(remoteVal);
-        final union = <String>{
-          ...localList,
-          ...remoteList,
-        }.toList();
-        if (union.isNotEmpty) merged[key] = union;
-        continue;
-      }
-
-      // ── LWW list fields (tags, prescriptions) & all other scalars ──
-      // Whole-field LWW: take the winner's value if present, else the
-      // loser's.  This also covers `date` (always present → winner wins)
-      // and scalar fields like `name`/`phone`/`age`.
-      if (winner.containsKey(key)) {
-        merged[key] = winner[key];
-      } else if (loser.containsKey(key)) {
-        merged[key] = loser[key];
-      }
-    }
-
-    return merged;
-  }
-
-  /// Merges an image-filename list field (`imgs`/`dcmImgs`) by taking the
-  /// union of local and remote model lists, then keeping only filenames
-  /// that either (a) exist on the server ([serverFiles]) or (b) are
-  /// pending upload ([pendingUploads]).  [isDcm] filters the server list
-  /// to DICOM vs regular images.
-  static List<String> _mergeImageField({
-    required localVal,
-    required remoteVal,
-    required List<String> serverFiles,
-    required Set<String> pendingUploads,
-    required bool isDcm,
-  }) {
-    final localList = _toStringList(localVal);
-    final remoteList = _toStringList(remoteVal);
-    final candidates = <String>{...localList, ...remoteList};
-
-    // The server's `imgs` column holds BOTH regular images and DICOM
-    // files in one list.  Filter to the relevant subtype.
-    final serverRelevant = serverFiles
-        .where(isDcm ? _isDcmFileStatic : _isNotDcmFileStatic)
-        .map((name) => name.toLowerCase())
-        .toSet();
-    final pendingUploadNames =
-        pendingUploads.map((name) => name.toLowerCase()).toSet();
-
-    final kept = <String>[];
-    for (final name in candidates) {
-      // Keep if the server actually has the file, or if it's pending
-      // upload (deferred FILE entry not yet processed). PocketBase filenames
-      // are treated case-insensitively throughout the DICOM paths.
-      final lowerName = name.toLowerCase();
-      if (serverRelevant.contains(lowerName) ||
-          pendingUploadNames.contains(lowerName)) {
-        kept.add(name);
-      }
-    }
-    return kept;
-  }
-
-  static bool _isDcmFileStatic(String name) {
-    final lower = name.toLowerCase();
-    return lower.endsWith('.dcm') || lower.endsWith('.dicom');
-  }
-
-  static bool _isNotDcmFileStatic(String name) => !_isDcmFileStatic(name);
-
-  static Map<String, String> _toStringMap(val) {
-    if (val is Map) {
-      return val.map((k, v) => MapEntry(k.toString(), v.toString()));
-    }
-    return {};
-  }
-
-  static List<String> _toStringList(val) {
-    if (val is List) {
-      return val.map((e) => e.toString()).toList();
-    }
-    return [];
-  }
 }
 
-// The following two functions
-// are meant to be running on an isolate
-// that's why they are top-level
-// they are meant to to run jsonDecode
-// and modelling on large batches of data
-
-/// Internal record used during conflict resolution in [_syncTry].
-/// Collects the data needed for the async field-level merge pass.
 class _ConflictInfo {
-  _ConflictInfo({
-    required this.dfID,
-    required this.remoteConflictIndex,
-    required this.localWins,
-    required this.remoteData,
-  });
+  _ConflictInfo({required this.dfID, required this.remoteConflictIndex,
+    required this.localWins, required this.remoteData});
   final String dfID;
   final int remoteConflictIndex;
   final bool localWins;
   final String remoteData;
-}
-
-Map<String, Map<String, dynamic>> _decodeAllDocs(Map<String, String> encoded) {
-  return Map<String, Map<String, dynamic>>.fromEntries(encoded.entries.map(
-      (entry) => MapEntry(
-          entry.key, jsonDecode(entry.value) as Map<String, dynamic>)));
-}
-
-class _ModelAllDocsParams<G extends Model> {
-  _ModelAllDocsParams({
-    required this.modeling,
-    required this.decoded,
-    required this.isoCC,
-  });
-  final ModellingFunc<G> modeling;
-  final Map<String, Map<String, dynamic>> decoded;
-  final String isoCC;
-}
-
-List<Map<String, G>> _modelAllDocs<G extends Model>(
-    _ModelAllDocsParams<G> params) {
-  // Make the ISO country code available to PhoneNumberExtractor inside
-  // this compute isolate (the reactive globalSettings store is not
-  // accessible here).
-  setIsoCountryCodeForIsolate(params.isoCC);
-  final Map<String, G> archived = {};
-  final mapped = Map<String, G>.fromEntries(params.decoded.entries.map((entry) {
-    final modeled = params.modeling(entry.value);
-    if (modeled.archived == true) {
-      archived[modeled.id] = modeled;
-    }
-    return MapEntry(entry.key, modeled);
-  }));
-  return [mapped, archived];
 }

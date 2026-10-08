@@ -1,14 +1,10 @@
-import 'package:apexo/core/observable.dart';
-import 'package:apexo/features/login/login_controller.dart';
+import 'package:apexo/app/data/application_store_effects.dart';
+import 'package:apexo/app/data/store_session_binding.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/launch.dart';
-import 'package:apexo/services/network.dart';
-import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/demo_generator.dart';
 
-import '../../core/save_local.dart';
-import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
-import '../../services/login.dart';
 import 'appointment_model.dart';
 import '../../core/store.dart';
 
@@ -17,6 +13,8 @@ const _storeName = "appointments";
 class Appointments extends Store<Appointment> {
   Appointments()
       : super(
+          effects: applicationStoreEffects,
+          loadDocuments: loadApplicationDocuments,
           modeling: Appointment.fromJson,
           isDemo: launch.isDemo,
           onSyncStart: () {
@@ -132,43 +130,18 @@ class Appointments extends Store<Appointment> {
     nullifyAppointmentsCache(null);
   }
 
+  late final _session = StoreSessionBinding<Appointment>(
+    store: this, name: _storeName,
+    loadingMessage: 'Synchronizing appointments',
+    seedDemo: () => demoAppointments(1000),
+  );
+
   @override
   void init() {
     super.init();
-    onLogoutCallbacks.add(endSession);
+    _session.install();
     observableMap.observe(nullifyAppointmentsCache);
-    login.activators[_storeName] = () async {
-      await loaded;
 
-      await deactivatePersistenceSession();
-      await local?.dispose();
-      local = SaveLocal(name: _storeName, uniqueId: simpleHash(login.url));
-      await deleteMemoryAndLoadFromPersistence();
-
-      if (launch.isDemo) {
-        if (docs.isEmpty) setAll(demoAppointments(1000));
-      } else {
-        remote = SaveRemote(
-          pbInstance: login.pb!,
-          storeName: _storeName,
-          onOnlineStatusChange: (current) {
-            if (network.isOnline() != current) {
-              network.isOnline(current);
-            }
-          },
-        );
-      }
-
-      return () async {
-        loginCtrl.loadingIndicator("Synchronizing appointments");
-        await synchronize();
-        networkActions.syncCallbacks[_storeName] = synchronize;
-        networkActions.reconnectCallbacks[_storeName] = remote!.checkOnline;
-
-        network.onOnline[_storeName] = synchronize;
-        network.onOffline[_storeName] = cancelRealtimeSub;
-      };
-    };
   }
 
   final filterByOperatorID = ObservableState("");

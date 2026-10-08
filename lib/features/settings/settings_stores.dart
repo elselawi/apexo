@@ -1,22 +1,18 @@
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/app/data/application_store_effects.dart';
+import 'package:apexo/app/data/store_session_binding.dart';
+import 'package:apexo/core/persistence/observable_persisting_object.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
-import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/country_code_iso_fetch.dart';
-import 'package:apexo/utils/hash.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:apexo/utils/jalali_utils.dart';
-import '../../core/save_local.dart';
-import '../../core/save_remote.dart';
 import '../network_actions/network_actions_controller.dart';
-import '../../services/login.dart';
 import 'settings_model.dart';
 import '../../core/store.dart';
 
@@ -26,6 +22,8 @@ const _storeNameLocal = "settings_local";
 class GlobalSettings extends Store<Setting> {
   GlobalSettings()
       : super(
+          effects: applicationStoreEffects,
+          loadDocuments: loadApplicationDocuments,
           modeling: Setting.fromJson,
           isDemo: launch.isDemo,
           onSyncStart: () {
@@ -91,71 +89,51 @@ class GlobalSettings extends Store<Setting> {
     return super.get(id) ?? Setting.fromJson({"id": id, "value": defaults[id]});
   }
 
+  late final _session = StoreSessionBinding<Setting>(
+    store: this,
+    name: _storeNameGlobal,
+    loadingMessage: 'Synchronizing settings',
+    syncAction: () async {
+      await Future.wait([synchronize(), accounts.reloadFromRemote(), backups.reloadFromRemote()]);
+    },
+    afterSynchronize: (isCurrent) async {
+      defaults.forEach((key, value) {
+        if (!has(key)) set(Setting.fromJson({'id': key, 'value': value}));
+      });
+      await Future.wait([backups.reloadFromRemote(), accounts.reloadFromRemote()]);
+      if (!isCurrent()) return;
+      if (get('ISO_country____').value == '') {
+        final code = await getCountryCode();
+        if (isCurrent()) set(Setting.fromJson({'id': 'ISO_country____', 'value': code}));
+      }
+    },
+  );
+
   @override
   void init() {
     super.init();
-    onLogoutCallbacks.add(endSession);
-    login.activators[_storeNameGlobal] = () async {
-      await loaded;
-
-      await deactivatePersistenceSession();
-      await local?.dispose();
-      local =
-          SaveLocal(name: _storeNameGlobal, uniqueId: simpleHash(login.url));
-      await deleteMemoryAndLoadFromPersistence();
-
-      remote = SaveRemote(
-        pbInstance: login.pb!,
-        storeName: _storeNameGlobal,
-        onOnlineStatusChange: (current) {
-          if (network.isOnline() != current) {
-            network.isOnline(current);
-          }
-        },
-      );
-
-      return () async {
-        loginCtrl.loadingIndicator("Synchronizing settings");
-        await Future.wait([loaded, synchronize()]).then((_) {
-          defaults.forEach((key, value) {
-            if (has(key) == false) {
-              set(Setting.fromJson({"id": key, "value": value}));
-            }
-          });
-        });
-        networkActions.syncCallbacks[_storeNameGlobal] = () async {
-          await Future.wait([
-            synchronize(),
-            accounts.reloadFromRemote(),
-            backups.reloadFromRemote(),
-          ]);
-        };
-        networkActions.reconnectCallbacks[_storeNameGlobal] =
-            remote!.checkOnline;
-
-        network.onOnline[_storeNameGlobal] = synchronize;
-        network.onOffline[_storeNameGlobal] = cancelRealtimeSub;
-
-        // setting services
-        await Future.wait([
-          backups.reloadFromRemote(),
-          accounts.reloadFromRemote(),
-        ]);
-
-        // setting country code iso if not already set
-        if (get("ISO_country____").value == "") {
-          set(Setting.fromJson(
-              {"id": "ISO_country____", "value": await getCountryCode()}));
-        }
-      };
-    };
+    _session.install();
   }
 }
 
 String currency() => globalSettings.get("currency_______").value;
-String isoCC() => globalSettings.isoCountryCode.isEmpty
-    ? "US"
-    : globalSettings.isoCountryCode.substring(0, 2).toUpperCase();
+
+/// The clinic's ISO country code, as the phone parser and `IsoCode.byName` want
+/// it: two letters, upper case.
+///
+/// The setting is free text — the card is a plain text field, and
+/// `getCountryCode` answers with one of the API's two-letter codes — so it can
+/// hold something else. `substring(0, 2)` on a pasted flag emoji (four code
+/// units) hands the rest of the app a string that ends in half a surrogate pair,
+/// which Flutter's paragraph builder refuses to draw.
+String isoCC() {
+  final code = globalSettings.isoCountryCode;
+  if (code.isEmpty) return "US";
+  final letters = code.replaceAll(RegExp(r"[^A-Za-z]"), "");
+  if (letters.length >= 2) return letters.substring(0, 2).toUpperCase();
+  if (letters.length == 1 && code.length == 1) return code.toUpperCase();
+  return "US";
+}
 
 class LocalSettings extends ObservablePersistingObject {
   LocalSettings() : super(_storeNameLocal) {
@@ -175,6 +153,7 @@ class LocalSettings extends ObservablePersistingObject {
   int selectedLocale = 0;
   String dentalNotation = "p";
   String? aiToken;
+  String aiTokenServer = '';
   DateTime? aiTokenExpiry;
   EventsViewMode calendarEventsViewMode = EventsViewMode.agenda;
   String lastSeenVersion = "";
@@ -220,6 +199,7 @@ class LocalSettings extends ObservablePersistingObject {
     selectedTheme =
         json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;
     aiToken = json["aiToken"] as String?;
+    aiTokenServer = json['aiTokenServer'] as String? ?? '';
     aiTokenExpiry = json["aiTokenExpiry"] != null
         ? DateTime.fromMillisecondsSinceEpoch(json["aiTokenExpiry"] as int)
         : null;
@@ -241,6 +221,7 @@ class LocalSettings extends ObservablePersistingObject {
       "lastSeenVersion": lastSeenVersion,
       "calendarEventsViewMode": calendarEventsViewMode.index,
       "dicomViewerPrefs": dicomViewerPrefs,
+      'aiTokenServer': aiTokenServer,
       if (aiToken != null) "aiToken": aiToken,
       if (aiTokenExpiry != null)
         "aiTokenExpiry": aiTokenExpiry!.millisecondsSinceEpoch,
@@ -308,7 +289,6 @@ abstract class DF {
     }
     return DateFormat('MMMM yyyy', locale.s.$code).format(date);
   }
-
 
   static String jalaliDayOfWeekAbbr(DateTime date) {
     if (isPersianCalendar) {

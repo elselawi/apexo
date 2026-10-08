@@ -1,11 +1,15 @@
 @Tags(['serial'])
 library;
 
+import 'package:apexo/core/persistence/observable_persisting_object.dart';
+
 import 'package:apexo/core/model.dart';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
+import 'package:apexo/features/notes/notes_model.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'dart:io';
+import 'dart:async';
 import '../../helpers/hive_setup.dart';
 
 void main() {
@@ -172,6 +176,21 @@ void main() {
       await flushNotifications();
       expect(notifiedAfter, true);
     });
+  });
+
+  test('observers may unsubscribe themselves during dispatch', () async {
+    final observable = ObservableBase<int>();
+    addTearDown(observable.dispose);
+    final calls = <int>[];
+    void first(int value) {
+      calls.add(value);
+      observable.unObserve(first);
+    }
+    observable.observe(first);
+    observable.observe((value) => calls.add(value + 1));
+    observable.notifyObservers(1);
+    await flushNotifications();
+    expect(calls, [1, 2]);
   });
 
   group('ObservableState', () {
@@ -482,10 +501,37 @@ void main() {
       final b = dict.keys;
       expect(identical(a, b), isFalse);
     });
+
+    test('captures push diffs before in-place collection mutations', () async {
+      final dict = ObservableDict<Note>();
+      final model = Note.fromJson({
+        'id': 'push-model',
+        'createdBy': 'creator',
+        'attachments': ['before'],
+      });
+      List<DictEvent>? event;
+      dict.observe((events) => event = events);
+
+      dict.set(model);
+      await flushNotifications();
+      model.attachments.add('after');
+      dict.set(model);
+      model.attachments.add('later');
+      await flushNotifications();
+
+      expect(event, isNotNull);
+      expect(event!.single.modifiedKeys, ['attachments']);
+      expect(event!.single.oldVals, [
+        ['before']
+      ]);
+      expect(event!.single.newVals, [
+        ['before', 'after']
+      ]);
+    });
   });
 
   // ---------------------------------------------------------------------------
-  // diffJson — top-level helper used by ObservableDict and Store.mergeConflict
+  // diffJson — top-level helper used by ObservableDict and mergeConflict
   // ---------------------------------------------------------------------------
   group('diffJson', () {
     test('empty on both sides → empty set', () {
@@ -614,6 +660,21 @@ void main() {
       expect(obj.value, 'reloaded');
     });
 
+    test('ready waits for asynchronous restoration', () async {
+      final box = await Hive.openBox<String>('persist-test-obj', path: hiveDirectory.path);
+      await box.put('persist-test-obj', '{"value":"loaded"}');
+      final obj = _AsyncPersistingTestObj('persist-test-obj', hiveDirectory.path);
+      addTearDown(obj.dispose);
+      await obj.started.future;
+      var ready = false;
+      final loading = obj.ready.then((_) => ready = true);
+      await flushNotifications();
+      expect(ready, isFalse);
+      obj.gate.complete();
+      await loading;
+      expect(obj.value, 'loaded');
+    });
+
     test('notifyAndPersist is shorthand for notifyObservers(this)', () async {
       final obj = _PersistingTestObj('persist-test-obj', hiveDirectory.path);
       await obj.ready;
@@ -636,6 +697,23 @@ class _PersistingTestObj extends ObservablePersistingObject {
   @override
   void fromJson(Map<String, dynamic> json) {
     value = json['value'] as String? ?? '';
+  }
+
+  @override
+  Map<String, dynamic> toJson() => {'value': value};
+}
+
+class _AsyncPersistingTestObj extends ObservablePersistingObject {
+  _AsyncPersistingTestObj(super.id, String path) : super(storagePath: path);
+  final gate = Completer<void>();
+  final started = Completer<void>();
+  String value = '';
+
+  @override
+  Future<void> fromJson(Map<String, dynamic> json) async {
+    started.complete();
+    await gate.future;
+    value = json['value'] as String;
   }
 
   @override

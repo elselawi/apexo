@@ -15,17 +15,22 @@ class AIService {
 
   // Keep track of any in-flight authentication request to deduplicate concurrent calls
   static Future<String>? _authFuture;
+  static String? _authServer;
+  static String? _authCredential;
 
   // ---------------------------------------------------------------------------
   //  Token management (shared across all AI services)
   // ---------------------------------------------------------------------------
 
   /// Authenticates with the Worker and returns a bearer token valid for 24h.
-  static Future<String> _authenticate() async {
+  static Future<String> _authenticate(String server, String credential) async {
     final key = await PushRelay.ensureKey();
+    if (login.url != server || login.token != credential) {
+      throw StateError('Session changed while authenticating AI services');
+    }
     final r = await http.post(
       Uri.parse('$workerUrl/auth'),
-      headers: {'x-server': login.url, 'x-worker-key': key},
+      headers: {'x-server': server, 'x-worker-key': key},
     );
     if (r.statusCode != 200) {
       final body = jsonDecode(r.body) as Map<String, dynamic>;
@@ -37,18 +42,26 @@ class AIService {
 
   /// Returns a valid bearer token, re-authenticating if expired or missing.
   static Future<String> getToken() async {
-    if (localSettings.hasValidAiToken) {
+    final server = login.url;
+    final credential = login.token;
+    if (localSettings.hasValidAiToken && localSettings.aiTokenServer == server) {
       return localSettings.aiToken!;
     }
 
-    if (_authFuture != null) {
+    if (_authFuture != null && _authServer == server && _authCredential == credential) {
       return _authFuture!;
     }
-    final future = _authenticate();
+    final future = _authenticate(server, credential);
     _authFuture = future;
+    _authServer = server;
+    _authCredential = credential;
 
     try {
       final token = await future;
+      if (login.url != server || login.token != credential) {
+        throw StateError('Session changed while authenticating AI services');
+      }
+      localSettings.aiTokenServer = server;
       localSettings.aiToken = token;
       localSettings.aiTokenExpiry =
           DateTime.now().add(const Duration(hours: 24));

@@ -19,7 +19,7 @@ library;
 
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/services/notifications/push_data.dart';
+import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/utils/logger.dart';
 
 /// The reading of a payload: the notification's title and body, as the OS

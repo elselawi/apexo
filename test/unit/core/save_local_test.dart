@@ -2,7 +2,7 @@
 library;
 
 import 'dart:io';
-import 'package:apexo/core/save_local.dart';
+import 'package:apexo/core/persistence/save_local.dart';
 import 'package:test/test.dart';
 import '../../helpers/hive_setup.dart';
 

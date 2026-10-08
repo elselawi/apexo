@@ -1,4 +1,4 @@
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/dicom/dicom_lru.dart';
 import 'package:apexo/utils/hash.dart';
@@ -82,7 +82,7 @@ Future<Uint8List?> fetchDcmBytes({
   if (!kIsWeb) {
     try {
       final file = await getOrCreateFile(cacheName);
-      if (!await file.exists()) {
+      if (!await checkIfFileExists(cacheName)) {
         await file.writeAsBytes(bytes);
       }
       await lru.touch(cacheName, bytes.length);

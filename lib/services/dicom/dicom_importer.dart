@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -42,6 +42,11 @@ class DicomParsedFile {
   final String patientName;
   final String patientId;
   final DateTime? dcmDate;
+
+  /// The best available calendar date for this file: the DICOM study date,
+  /// falling back to the file's modification time when the tag is missing.
+  /// Never epoch (1970) — that would bury an undated X-ray decades in the past.
+  DateTime get effectiveDate => dcmDate ?? mtime;
 
   @override
   String toString() =>
@@ -115,6 +120,17 @@ class DicomPendingImport {
   final bool autoLinked;
 
   int get fileCount => files.length;
+
+  /// Stable identity for this batch, used for UI selection and widget keys
+  /// and for the persisted rejection / manual-match hints.
+  ///
+  /// Anonymous studies (blank DICOM patient IDs) cannot use the empty string:
+  /// every anonymous batch would share it, so selecting, unmatching, or
+  /// approving one would affect them all. Fall back to the first file's dedup
+  /// key, which is unique per anonymous file.
+  String get selectionKey => dicomPatientId.isNotEmpty
+      ? dicomPatientId
+      : (files.isNotEmpty ? 'anonymous:${files.first.dedupKey}' : 'anonymous');
 
   DicomPendingImport copyWithFiles(List<DicomParsedFile> nextFiles) {
     final nextNames = nextFiles
@@ -252,6 +268,15 @@ enum ScanPhase {
   persisting,
   matching,
 }
+
+// --------------- Import phase ---------------------
+
+/// High-level phase of an import run.
+///
+/// [importProgress] alone cannot tell the UI that all files were uploaded but
+/// the appointment JSON is still being synchronized with the server. That
+/// final sync can block for several seconds, so it gets its own phase.
+enum ImportPhase { idle, uploading, syncing }
 
 // --------------- Core scan + parse + match ------------------------------------------------------------------
 
@@ -504,6 +529,10 @@ List<DicomPendingImport> _buildPending(
   for (final entry in groups.entries) {
     final files = entry.value;
     final dicomPatientId = files.first.patientId.trim();
+    // Persisted hints/rejections are keyed per batch. Named patients use the
+    // DICOM patient ID; anonymous batches use the dedup-key group key so they
+    // no longer all collapse onto the empty string.
+    final storeKey = dicomPatientId.isEmpty ? entry.key : dicomPatientId;
 
     final nameCounts = <String, int>{};
     for (final f in files) {
@@ -545,8 +574,7 @@ List<DicomPendingImport> _buildPending(
 
     if (matchedId == null && dicomPatientName.isNotEmpty) {
       // Check pending manual matches as a hint (not an approved link).
-      final pendingId =
-          dicomPatientId.isEmpty ? null : pendingMatches[dicomPatientId];
+      final pendingId = pendingMatches[storeKey];
       if (pendingId != null && pendingId.isNotEmpty) {
         final snap = patientSnapshots.firstWhere((p) => p.id == pendingId,
             orElse: () => const _PatientSnapshot('', ''));
@@ -563,7 +591,7 @@ List<DicomPendingImport> _buildPending(
     if (matchedId == null && dicomPatientName.isNotEmpty) {
       // If the dentist previously rejected the fuzzy suggestion, don't
       // suggest it again — leave the match empty so they pick manually.
-      if (dicomPatientId.isEmpty || !unmatchedIds.contains(dicomPatientId)) {
+      if (!unmatchedIds.contains(storeKey)) {
         String? bestId;
         String? bestName;
         double bestNameScore = 0.0;
@@ -767,7 +795,9 @@ class DicomImporter {
         _setAppointment = setAppointment ?? appointments.set,
         _appointmentsForPatient = appointmentsForPatient ??
             ((id) =>
-                appointments.byPatient[id]?["all"] ?? const <Appointment>[]),
+                (appointments.byPatient[id]?["all"] ?? const <Appointment>[])
+                    .where((a) => a.archived != true)
+                    .toList()),
         _ensureAppointmentPersisted = ensureAppointmentPersisted ??
             (() async {
               await appointments.waitUntilChangesAreProcessed();
@@ -829,6 +859,8 @@ class DicomImporter {
       ObservableState<({int current, int total})>((current: 0, total: 0));
   final ObservableState<ScanPhase> scanPhase =
       ObservableState<ScanPhase>(ScanPhase.idle);
+  final ObservableState<ImportPhase> importPhase =
+      ObservableState<ImportPhase>(ImportPhase.idle);
   final ObservableState<({int current, int total, String path, bool cacheHit})>
       scanFileProgress =
       ObservableState<({int current, int total, String path, bool cacheHit})>(
@@ -849,9 +881,31 @@ class DicomImporter {
 
   // --------------- Scan ---------------------
 
+  /// `true` when the most recent [scanAndBuildPending] returned early because
+  /// it was cancelled. Callers must then keep the existing pending list
+  /// instead of replacing it with the (empty) cancelled result.
+  bool _lastScanCancelled = false;
+  bool get lastScanWasCancelled => _lastScanCancelled;
+
   Future<List<DicomPendingImport>> scanAndBuildPending() async {
     final scanOverride = scanOverrideForTesting;
-    if (scanOverride != null) return scanOverride();
+    if (scanOverride != null) {
+      _lastScanCancelled = false;
+      return scanOverride();
+    }
+    _lastScanCancelled = false;
+    try {
+      return await _scanAndBuildPending();
+    } finally {
+      // Always return the scan-phase state to idle. Without this, an exception
+      // raised mid-scan (e.g. a Hive error while persisting side effects)
+      // leaves `scanPhase` pinned at `persisting`, keeping `isScanning` true
+      // and permanently disabling the "Scan now" button.
+      _finishScan();
+    }
+  }
+
+  Future<List<DicomPendingImport>> _scanAndBuildPending() async {
     final totalSw = Stopwatch()..start();
     final watchDirs = _getWatchDirs();
     if (watchDirs.isEmpty) return const <DicomPendingImport>[];
@@ -881,6 +935,7 @@ class DicomImporter {
         '${patientSnapshots.length} patients, ${links.length} links)');
 
     if (isCancelled()) {
+      _lastScanCancelled = true;
       _finishScan();
       return const <DicomPendingImport>[];
     }
@@ -896,6 +951,7 @@ class DicomImporter {
 
     for (var di = 0; di < watchDirs.length; di++) {
       if (isCancelled()) {
+        _lastScanCancelled = true;
         _finishScan();
         return const <DicomPendingImport>[];
       }
@@ -938,6 +994,7 @@ class DicomImporter {
     }
 
     if (isCancelled()) {
+      _lastScanCancelled = true;
       _killIsolate();
       _finishScan();
       return const <DicomPendingImport>[];
@@ -994,7 +1051,6 @@ class DicomImporter {
         'DicomImporter.scan: resolved patients in ${resolveSw.elapsedMilliseconds}ms '
         '${pending.length} pending imports. TOTAL ${totalSw.elapsedMilliseconds}ms.');
 
-    _finishScan();
     return pending;
   }
 
@@ -1097,7 +1153,7 @@ class DicomImporter {
   }) async {
     final resultPort = ReceivePort();
     final cancelReceivePort = ReceivePort();
-    late StreamSubscription cancelSub;
+    late StreamSubscription<dynamic> cancelSub;
     cancelSub = cancelReceivePort.listen((msg) {
       if (msg is SendPort) {
         _isolateCancelSendPort = msg;
@@ -1124,23 +1180,23 @@ class DicomImporter {
     _runningIsolate = isolate;
 
     final completer = Completer<_ScanResult>();
-    late StreamSubscription sub;
+    late StreamSubscription<dynamic> sub;
     sub = resultPort.listen((msg) {
       if (msg is _IsolateProgress) {
         onFileProgress(msg.current, msg.total, msg.path, msg.cacheHit);
         return;
       }
       if (msg is _ScanResult) {
-        sub.cancel();
-        cancelSub.cancel();
+        unawaited(sub.cancel());
+        unawaited(cancelSub.cancel());
         resultPort.close();
         cancelReceivePort.close();
         if (!completer.isCompleted) completer.complete(msg);
         return;
       }
       // isolate error or unexpected message
-      sub.cancel();
-      cancelSub.cancel();
+      unawaited(sub.cancel());
+      unawaited(cancelSub.cancel());
       resultPort.close();
       cancelReceivePort.close();
       if (!completer.isCompleted) {
@@ -1173,6 +1229,7 @@ class DicomImporter {
     final approveSw = Stopwatch()..start();
     log.info(
         'DicomImporter.approveImport: starting for dicomPatient="${pending.dicomPatientId}" apexoPatient="$targetId" (${pending.files.length} files)');
+    importPhase(ImportPhase.uploading);
 
     final claimedFiles = <DicomParsedFile>[];
     final failedFiles = <DicomParsedFile>[];
@@ -1210,9 +1267,9 @@ class DicomImporter {
         if (pending.dicomPatientId.trim().isNotEmpty) {
           await _setPatient(pending.dicomPatientId.trim(), targetId);
           // Clean up any pending manual match — the real link replaces it.
-          await _clearPendingMatch(pending.dicomPatientId.trim());
           await _clearUnmatched(pending.dicomPatientId.trim());
         }
+        await _clearPendingMatch(pending.selectionKey);
       } catch (e, st) {
         // Do not continue with imported markers if the patient link could not
         // be persisted. Otherwise the next scan hides these files while the
@@ -1258,7 +1315,7 @@ class DicomImporter {
       // drift creating duplicate appointments for the same study date).
       final byDate = <DateTime, List<DicomParsedFile>>{};
       for (final f in toProcess) {
-        final raw = f.dcmDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final raw = f.effectiveDate;
         final day = DateTime(raw.year, raw.month, raw.day);
         byDate.putIfAbsent(day, () => []).add(f);
       }
@@ -1276,21 +1333,28 @@ class DicomImporter {
             .toList();
 
         final Appointment appt;
+        final bool wasCreated;
         if (existing.isNotEmpty) {
           appt = existing.first;
+          wasCreated = false;
         } else {
           // The PocketBase row must exist before an online file upload can
-          // target it. New appointments remain unarchived according to the
-          // appointment lifecycle policy, even if an upload later fails.
+          // target it. If every upload then fails the row is archived below
+          // so it never lingers as an empty appointment.
           appt = Appointment.fromJson({})
             ..patientID = targetId
             ..isDone = true
             ..date =
                 DateTime(studyDate.year, studyDate.month, studyDate.day, 12);
+          wasCreated = true;
           _setAppointment(appt);
+          importPhase(ImportPhase.syncing);
           await _ensureAppointmentPersisted();
+          importPhase(ImportPhase.uploading);
         }
 
+        var groupSucceeded = 0;
+        importPhase(ImportPhase.uploading);
         for (final f in files) {
           try {
             final fileSw = Stopwatch()..start();
@@ -1312,6 +1376,7 @@ class DicomImporter {
                 .toList();
             appt.dcmImgs.add(dcmName);
             successfulFiles++;
+            groupSucceeded++;
           } catch (e, st) {
             try {
               // The registry marker is a reservation, not proof that the
@@ -1335,8 +1400,15 @@ class DicomImporter {
           done++;
           importProgress((current: done, total: total));
         }
+        // A newly-created appointment that received no files would otherwise
+        // linger as an empty record in PocketBase (and the patient's chart)
+        // when every upload failed — archive it instead.
+        if (wasCreated && groupSucceeded == 0) {
+          appt.archived = true;
+        }
         // Persist the final file list after processing this date group.
         _setAppointment(appt);
+        importPhase(ImportPhase.syncing);
         await _ensureAppointmentPersisted();
       }
 
@@ -1373,6 +1445,8 @@ class DicomImporter {
         );
       }
       rethrow;
+    } finally {
+      importPhase(ImportPhase.idle);
     }
   }
 

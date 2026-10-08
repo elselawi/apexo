@@ -337,6 +337,8 @@ class Es implements En {
     "dicomNoNewFiles_desc":
         "Todos los archivos escaneados ya están importados. Los nuevos aparecerán en el próximo escaneo.",
     "dicomImportingFiles": "Importando {current} de {total} archivos…",
+    "dicomSyncingImport": "Sincronizando radiografías importadas…",
+    "dicomImportComplete": "Importación completada",
     "dicomUnknownPatient": "Paciente desconocido",
     "dicomPatientId": "ID DICOM",
     "dicomFiles": "archivos",

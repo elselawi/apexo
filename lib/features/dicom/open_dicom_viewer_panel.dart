@@ -122,7 +122,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
   @override
   void initState() {
     super.initState();
-    _load();
+    unawaited(_load());
   }
 
   Future<void> _load() async {
@@ -299,7 +299,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
     final c = _controller;
     if (c == null || !c.hasData) return;
     c.resetWindowing();
-    c.setColorMap(DicomColorMap.grayscale);
+    unawaited(c.setColorMap(DicomColorMap.grayscale));
     if (c.invert) c.toggleInvert();
     while (c.rotationSteps != 0) {
       c.rotateCounterClockwise();
@@ -375,9 +375,9 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
     final curWidth = c.windowWidth;
     bool isSelected(DicomWindowPreset p) =>
         curCenter == p.center && curWidth == p.width;
-    _windowFlyoutCtrl.showFlyout(
+    unawaited(_windowFlyoutCtrl.showFlyout<void>(
       builder: (ctx) => MenuFlyout(items: _buildPresetItems(isSelected)),
-    );
+    ));
   }
 
   List<MenuFlyoutItem> _buildPresetItems(
@@ -400,7 +400,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
 
   void _showColorFlyout() {
     final curMap = _controller?.colorMap;
-    _colorFlyoutCtrl.showFlyout(
+    unawaited(_colorFlyoutCtrl.showFlyout<void>(
       builder: (ctx) => MenuFlyout(
           items: DicomColorMap.values.map((map) {
         return MenuFlyoutItem(
@@ -408,12 +408,12 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
               curMap == map ? const Icon(FluentIcons.accept, size: 14) : null,
           text: Text(_dicomLabel(map.label)),
           onPressed: () {
-            _controller!.setColorMap(map);
+            unawaited(_controller!.setColorMap(map));
             Navigator.pop(ctx);
           },
         );
       }).toList()),
-    );
+    ));
   }
 
   // ── Build ──────────────────────────────────────────────────────

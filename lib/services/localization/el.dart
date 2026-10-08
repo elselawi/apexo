@@ -336,6 +336,8 @@ class El implements En {
     "dicomNoNewFiles_desc":
         "Όλα τα σαρωμένα αρχεία είναι ήδη εισαγμένα. Τα νέα θα εμφανιστούν στην επόμενη σάρωση.",
     "dicomImportingFiles": "Εισαγωγή {current} από {total} αρχεία…",
+    "dicomSyncingImport": "Συγχρονισμός εισαγόμενων ακτινογραφιών…",
+    "dicomImportComplete": "Η εισαγωγή ολοκληρώθηκε",
     "dicomUnknownPatient": "Άγνωστος ασθενής",
     "dicomPatientId": "DICOM ID",
     "dicomFiles": "αρχεία",

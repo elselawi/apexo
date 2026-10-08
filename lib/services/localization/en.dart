@@ -333,6 +333,8 @@ class En {
     "dicomNoNewFiles_desc":
         "All scanned files are already imported. New files will appear here on the next scan.",
     "dicomImportingFiles": "Importing {current} of {total} files…",
+    "dicomSyncingImport": "Syncing imported X-rays…",
+    "dicomImportComplete": "Import complete",
     "dicomUnknownPatient": "Unknown patient",
     "dicomPatientId": "DICOM ID",
     "dicomFiles": "files",

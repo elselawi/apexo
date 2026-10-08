@@ -1,7 +1,8 @@
+import 'package:apexo/core/synchronization/deferred_file_keys.dart';
 import 'dart:async';
 import 'dart:io' show Platform;
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -10,6 +11,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';
 import 'package:apexo/services/dicom/persistence/dicom_matched_store.dart';
 import 'package:apexo/services/dicom/persistence/dicom_unmatched_store.dart';
+import 'package:apexo/services/dicom/dicom_helpers.dart' as dcm_helpers;
 import 'package:apexo/services/dicom/dicom_importer.dart';
 import 'package:apexo/services/login.dart' show login, onLogoutCallbacks;
 import 'package:apexo/utils/logger.dart';
@@ -97,13 +99,17 @@ class DicomController {
   ObservableState<({int current, int total, String path, bool cacheHit})>
       get scanFileProgress => _importer.scanFileProgress;
 
+  /// Re-export of the importer's high-level phase — distinguishes uploading
+  /// files from synchronizing the appointment records with the server.
+  ObservableState<ImportPhase> get importPhase => _importer.importPhase;
+
   /// `true` while a scan is in flight (any phase except idle).
   bool get isScanning => _importer.scanPhase() != ScanPhase.idle;
 
   /// `true` while an import is in flight (`importProgress.total > 0`).
   bool get isImporting {
     final p = importProgress();
-    return p.total > 0;
+    return _approving || p.total > 0;
   }
 
   final DicomImporter _importer;
@@ -112,6 +118,7 @@ class DicomController {
   late final Future<Future<void> Function()> Function() _dicomActivator;
   late final void Function() _logoutCallback;
   late final void Function(String filename) _deadLetterCallback;
+  bool _approving = false;
 
   /// Releases global lifecycle callbacks owned by this controller.
   ///
@@ -161,55 +168,57 @@ class DicomController {
   /// Returns the count of approved batches.
   /// Only successfully approved items are removed from pending — failed ones
   /// remain so the dentist can retry.
-  /// Progress bar stays visible across all items (reset only at the end).
-  Future<int> batchApprove(Set<String> dicomPatientIds) async {
+  ///
+  /// [selectionKeys] holds [DicomPendingImport.selectionKey] values, not raw
+  /// DICOM patient IDs: anonymous batches have a blank patient ID and would
+  /// otherwise all be selected at once.
+  Future<int> batchApprove(Set<String> selectionKeys) async {
     if (isImporting) return 0;
 
-    // Count total batches upfront so we can show aggregate progress.
     final toApprove = pending()
         .where((pi) =>
-            dicomPatientIds.contains(pi.dicomPatientId) &&
+            selectionKeys.contains(pi.selectionKey) &&
             pi.matchedPatient != null)
         .toList();
     if (toApprove.isEmpty) return 0;
 
-    final batchTotal = toApprove.length;
-    var batchDone = 0;
-    var approved = 0;
-    final succeeded = <DicomPendingImport>{};
-
-    final partial = <DicomPendingImport, DicomPendingImport>{};
-    for (final pi in toApprove) {
-      try {
-        final result = await _importer.approveImport(pi);
-        if (result.complete) {
-          approved++;
-          succeeded.add(pi);
-        } else {
-          partial[pi] = pi.copyWithFiles(result.failedFiles);
+    _approving = true;
+    try {
+      var approved = 0;
+      final succeeded = <DicomPendingImport>{};
+      final partial = <DicomPendingImport, DicomPendingImport>{};
+      for (final pi in toApprove) {
+        try {
+          final result = await _importer.approveImport(pi);
+          if (result.complete) {
+            approved++;
+            succeeded.add(pi);
+          } else {
+            partial[pi] = pi.copyWithFiles(result.failedFiles);
+          }
+        } catch (e, s) {
+          logger(
+              'DicomController.batchApprove error for ${pi.selectionKey}: $e',
+              s,
+              2);
         }
-      } catch (e, s) {
-        logger(
-            'DicomController.batchApprove error for ${pi.dicomPatientId}: $e',
-            s,
-            2);
       }
-      batchDone++;
-      // Show aggregate batch progress — don't reset to (0,0) between items
-      // so the bar stays visible the whole time.
-      importProgress((current: batchDone, total: batchTotal));
-    }
 
-    importProgress((current: 0, total: 0));
-
-    // Only remove items that were actually approved successfully.
-    if (succeeded.isNotEmpty || partial.isNotEmpty) {
-      pending(pending()
-          .where((x) => !succeeded.contains(x))
-          .map((x) => partial[x] ?? x)
-          .toList());
+      // Only remove items that were actually approved successfully.
+      if (succeeded.isNotEmpty || partial.isNotEmpty) {
+        pending(pending()
+            .where((x) => !succeeded.contains(x))
+            .map((x) => partial[x] ?? x)
+            .toList());
+      }
+      return approved;
+    } finally {
+      // The importer reports per-file progress. Do not overwrite it with batch
+      // counts (that made the bar jump between file and batch indices); just
+      // reset to idle once all batches are done.
+      importProgress((current: 0, total: 0));
+      _approving = false;
     }
-    return approved;
   }
 
   // ── Actions ──────────────────────────────────────────────────────────
@@ -225,13 +234,20 @@ class DicomController {
     scanning(true);
     try {
       final result = await _importer.scanAndBuildPending();
-      pending(result);
-      if (result.isEmpty && autoImport && _periodicTimer != null) {
-        // Periodic tick with nothing new — keep the log quiet.
-        log.info('DicomController.refresh: scan complete → no new files');
+      // A cancelled scan returns an empty list, but that must not be mistaken
+      // for "no files found" — otherwise the dentist's pending cards vanish.
+      if (_importer.lastScanWasCancelled) {
+        log.info('DicomController.refresh: scan cancelled → keeping pending');
+        return;
       } else {
-        log.info('DicomController.refresh: scan complete → '
-            '${result.length} pending imports');
+        pending(result);
+        if (result.isEmpty && autoImport && _periodicTimer != null) {
+          // Periodic tick with nothing new — keep the log quiet.
+          log.info('DicomController.refresh: scan complete → no new files');
+        } else {
+          log.info('DicomController.refresh: scan complete → '
+              '${result.length} pending imports');
+        }
       }
       // Auto-approve linked patients — same behaviour whether triggered
       // by the periodic timer or the manual "Scan now" button.
@@ -278,7 +294,7 @@ class DicomController {
     final generation = ++_periodicGeneration;
     _periodicTimer = Timer.periodic(_pollInterval, (_) => _tick(generation));
     // Fire the first tick immediately.
-    _tick(generation);
+    unawaited(_tick(generation));
   }
 
   /// Stops the periodic scan timer and cancels any in-flight scan.
@@ -287,10 +303,10 @@ class DicomController {
   /// the activator re-runs (re-login to same or different server).
   void stopPeriodicScan() {
     ++_periodicGeneration;
+    cancelScan();
     if (_periodicTimer != null) {
       _periodicTimer!.cancel();
       _periodicTimer = null;
-      cancelScan();
       log.info('DicomController: periodic scan stopped');
     }
     _healed = false;
@@ -385,7 +401,7 @@ class DicomController {
         continue;
       }
       final pendingUploadFilenames =
-          Store.filenamesFromDeferredForRow(deferred, appt.id);
+          filenamesFromDeferredForRow(deferred, appt.id);
       final stale = staleDcmFileNames(
         appointmentDcmFiles: appt.dcmImgs,
         serverFiles: serverNames,
@@ -428,7 +444,7 @@ class DicomController {
       }
       if (!isCurrent()) return false;
       final currentDeferred = await appointments.local?.getDeferred() ?? {};
-      final currentPending = Store.filenamesFromDeferredForRow(
+      final currentPending = filenamesFromDeferredForRow(
         currentDeferred,
         appt.id,
       );
@@ -485,14 +501,22 @@ class DicomController {
     required List<String> serverFiles,
     required Set<String> pendingUploadFiles,
   }) {
-    final serverSet = serverFiles.map((name) => name.toLowerCase()).toSet();
-    final pendingSet =
-        pendingUploadFiles.map((name) => name.toLowerCase()).toSet();
-    return appointmentDcmFiles
-        .where((name) =>
-            !serverSet.contains(name.toLowerCase()) &&
-            !pendingSet.contains(name.toLowerCase()))
-        .toList();
+    // PocketBase appends a collision suffix to uploaded files (e.g.
+    // `dcm_abc123.dcm` becomes `dcm_abc123_x7y8z9.dcm`), and `dcmImgs` may
+    // hold either the original or its `.dcm.png` preview. Comparing raw strings
+    // would flag a present file as stale, strip it from the appointment, and
+    // cause it to be re-uploaded and duplicated. Compare logical identities
+    // instead, falling back to the lowercased name when a file is not a
+    // recognised DICOM upload name.
+    String identityOf(String name) =>
+        dcm_helpers.dcmUploadIdentity(name) ?? name.toLowerCase();
+
+    final serverIdentities = serverFiles.map(identityOf).toSet();
+    final pendingIdentities = pendingUploadFiles.map(identityOf).toSet();
+    return appointmentDcmFiles.where((name) {
+      final id = identityOf(name);
+      return !serverIdentities.contains(id) && !pendingIdentities.contains(id);
+    }).toList();
   }
 
   bool _healed = false;
@@ -508,6 +532,10 @@ class DicomController {
   /// Visible for testing so unit tests can verify the filtering + approval
   /// logic without going through the full scan pipeline.
   Future<void> autoApproveLinked() async {
+    // Never run concurrently with a manual approve — both mutate appointments
+    // and share the import-progress observable. The next periodic tick retries.
+    if (isImporting) return;
+
     final current = pending();
     final autoLinked = current.where((pi) => pi.autoLinked).toList();
     if (autoLinked.isEmpty) return;
@@ -516,29 +544,38 @@ class DicomController {
         '${autoLinked.length} linked patient(s)');
     final approvedItems = <DicomPendingImport>{};
     final partial = <DicomPendingImport, DicomPendingImport>{};
-    for (final pi in autoLinked) {
-      try {
-        final result = await _importer.approveImport(pi);
-        if (result.complete) {
-          approvedItems.add(pi);
-        } else {
-          partial[pi] = pi.copyWithFiles(result.failedFiles);
+    _approving = true;
+    try {
+      for (final pi in autoLinked) {
+        try {
+          final result = await _importer.approveImport(pi);
+          if (result.complete) {
+            approvedItems.add(pi);
+          } else {
+            partial[pi] = pi.copyWithFiles(result.failedFiles);
+          }
+        } catch (e, s) {
+          logger(
+              'DicomController.autoApproveLinked: failed for '
+              '${pi.selectionKey}: $e',
+              s,
+              2);
         }
-      } catch (e, s) {
-        logger(
-            'DicomController.autoApproveLinked: failed for '
-            '${pi.dicomPatientId}: $e',
-            s,
-            2);
       }
-    }
-    // Remove only complete approvals. Partial outcomes remain as a reduced
-    // pending item so the failed files can be retried immediately.
-    if (approvedItems.isNotEmpty || partial.isNotEmpty) {
-      pending(current
-          .where((x) => !approvedItems.contains(x))
-          .map((x) => partial[x] ?? x)
-          .toList());
+      // Remove only complete approvals. Partial outcomes remain as a reduced
+      // pending item so the failed files can be retried immediately.
+      if (approvedItems.isNotEmpty || partial.isNotEmpty) {
+        pending(current
+            .where((x) => !approvedItems.contains(x))
+            .map((x) => partial[x] ?? x)
+            .toList());
+      }
+    } finally {
+      // The importer deliberately leaves progress at (total, total) for batch
+      // callers; without this reset `isImporting` would stay true forever and
+      // the progress bar would never disappear.
+      importProgress((current: 0, total: 0));
+      _approving = false;
     }
   }
 
@@ -550,6 +587,7 @@ class DicomController {
   /// also disables the Approve button during import).
   Future<void> approve(DicomPendingImport p, {String? apexoPatientId}) async {
     if (isImporting) return;
+    _approving = true;
     try {
       final result = await _importer.approveImport(
         p,
@@ -568,6 +606,7 @@ class DicomController {
       logger('DicomController.approve error: $e', s, 2);
     } finally {
       importProgress((current: 0, total: 0));
+      _approving = false;
     }
   }
 
@@ -579,8 +618,10 @@ class DicomController {
     p.matchedPatient = null;
     p.confidence = 0;
     p.isConfirmed = false;
-    dicomPendingMatches.remove(p.dicomPatientId);
-    dicomUnmatched.add(p.dicomPatientId);
+    // Key by the stable batch identity — anonymous batches have a blank DICOM
+    // patient ID and would otherwise all share (and clobber) one entry.
+    unawaited(dicomPendingMatches.remove(p.selectionKey));
+    unawaited(dicomUnmatched.add(p.selectionKey));
     // Re-emit the list so the card rebuilds.
     pending(List.of(pending()));
   }
@@ -594,8 +635,8 @@ class DicomController {
     p.matchedPatient = matched;
     p.confidence = 1.0;
     p.isConfirmed = true;
-    await dicomPendingMatches.set(p.dicomPatientId, apexoPatientId);
-    await dicomUnmatched.remove(p.dicomPatientId); // override the rejection
+    await dicomPendingMatches.set(p.selectionKey, apexoPatientId);
+    await dicomUnmatched.remove(p.selectionKey); // override the rejection
     pending(List.of(pending()));
   }
 

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:flutter_test/flutter_test.dart';

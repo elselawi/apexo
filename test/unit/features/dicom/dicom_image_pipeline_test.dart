@@ -59,7 +59,7 @@ void main() {
       await cache.dispose();
     }
     await DicomLruCache.instance.dispose();
-    if (await testDirectory.exists()) {
+    if (testDirectory.existsSync()) {
       await testDirectory.delete(recursive: true);
     }
   });
@@ -119,7 +119,7 @@ void main() {
       expect(await cache.isCached(name), isTrue);
 
       // Cleanup
-      if (await file.exists()) await file.delete();
+      if (file.existsSync()) await file.delete();
     });
 
     test('isCached returns false for unknown name', () async {
@@ -146,7 +146,7 @@ void main() {
 
       expect(entryAfter.lastAccess.isAfter(entryBefore.lastAccess), isTrue);
 
-      if (await file.exists()) await file.delete();
+      if (file.existsSync()) await file.delete();
     });
   });
 
@@ -197,7 +197,7 @@ void main() {
       // Cleanup
       for (final name in names) {
         final file = io.File('${dir.path}/$name');
-        if (await file.exists()) await file.delete();
+        if (file.existsSync()) await file.delete();
       }
       await cache.clear();
     });
@@ -221,7 +221,7 @@ void main() {
       expect(active, isNotEmpty);
       expect(active.first.name, name);
 
-      if (await file.exists()) await file.delete();
+      if (file.existsSync()) await file.delete();
       await cache.clear();
     });
   });

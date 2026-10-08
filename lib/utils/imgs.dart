@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/services/dicom/dicom_parser.dart';
@@ -22,9 +22,14 @@ import 'package:path/path.dart' as path;
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 
+bool _directoryExists(String path) => Directory(path).existsSync();
+bool _fileExists(String path) => File(path).existsSync();
+int _fileModified(String path) =>
+    File(path).lastModifiedSync().millisecondsSinceEpoch;
+
 Future<void> createDirectory(String path) async {
   final Directory dir = Directory(path);
-  if (await dir.exists()) {
+  if (await compute(_directoryExists, path)) {
     return;
   } else {
     await dir.create(recursive: true);
@@ -33,7 +38,7 @@ Future<void> createDirectory(String path) async {
 
 Future<bool> checkIfFileExists(String name) async {
   final File file = File(path.join(await filesDir(), name));
-  return await file.exists();
+  return await compute(_fileExists, file.path);
 }
 
 Future<File> getOrCreateFile(String name) async {
@@ -83,7 +88,9 @@ Future<String> handleNewImage({
   if (fromLink || sourcePath.startsWith("blob:") || kIsWeb) {
     hashInput = sourcePath; // fallback: path hash
   } else {
-    final mtime = File(sourcePath).lastModifiedSync().millisecondsSinceEpoch;
+    // Async stat: this can run against a network share where a synchronous
+    // stat would freeze the UI isolate.
+    final mtime = await compute(_fileModified, sourcePath);
     hashInput = '${path.basename(sourcePath)}_$mtime'; // name + mtime
   }
   final imgName = '${safe}_${simpleHash(hashInput)}$extension';
@@ -127,7 +134,7 @@ Future<String> handleNewImage({
       final newPath = path.join(path.dirname(savedFile.path), finalFileName);
       await savedFile.rename(newPath);
       final oldThumb = File(_nameToThumbName(savedFile.path));
-      if (await oldThumb.exists()) {
+      if (await compute(_fileExists, oldThumb.path)) {
         await oldThumb.rename(_nameToThumbName(newPath));
       }
     } catch (_) {}
@@ -177,13 +184,15 @@ Future<String> handleNewDcm({
   }
 
   // Generate a unique filename.
-  final mtime = File(sourcePath).lastModifiedSync().millisecondsSinceEpoch;
+  // Async stat: watch folders can live on network shares where a synchronous
+  // stat blocks the UI isolate for the duration of the round-trip.
+  final mtime = await compute(_fileModified, sourcePath);
   final hashInput = '${path.basename(sourcePath)}_$mtime';
   final dcmName = 'dcm_${simpleHash(hashInput)}.dcm';
 
   // Save the .dcm to filesDir().
   final savedFile = await getOrCreateFile(dcmName);
-  if (!await savedFile.exists()) {
+  if (!await compute(_fileExists, savedFile.path)) {
     await savedFile.writeAsBytes(bytes);
   }
 
@@ -358,7 +367,7 @@ Future<ImageProvider?> _getImage(String rowID, String name, bool thumb) async {
 
 Future<File> savePickedImage(File image, String newName) async {
   final File newImage = await getOrCreateFile(newName);
-  if (await newImage.exists()) return newImage;
+  if (await compute(_fileExists, newImage.path)) return newImage;
   return await image.copy(newImage.path);
 }
 
@@ -367,13 +376,13 @@ Future<File> saveImageFromUrl(String imageUrl, [String? givenName]) async {
 
   // in case of web, we store the image link in the hive store
   if (kIsWeb) {
-    await Hive.openBox(webImagesStore);
-    await Hive.box(webImagesStore).put(imageName, imageUrl);
+    await Hive.openBox<String>(webImagesStore);
+    await Hive.box<String>(webImagesStore).put(imageName, imageUrl);
     return File(imageUrl);
   }
 
   final File newImage = await getOrCreateFile(imageName);
-  if (await newImage.exists()) return newImage;
+  if (await compute(_fileExists, newImage.path)) return newImage;
 
   final response = await http.get(Uri.parse(imageUrl));
   if (response.statusCode == 200) {

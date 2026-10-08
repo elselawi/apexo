@@ -101,7 +101,7 @@ Future<List<RemoteDcmFileRow>> getDcmFileRows() async {
   return result;
 }
 
-Map<String, dynamic> _asJsonMap(value) {
+Map<String, dynamic> _asJsonMap(Object? value) {
   if (value is Map) {
     return value.map((key, item) => MapEntry(key.toString(), item));
   }
@@ -184,19 +184,33 @@ List<String> orphanDcmFileNames({
   required List<String> referencedDcmFiles,
 }) {
   final refs = <String>{};
+  // PocketBase may append a collision suffix to the stored name
+  // (`dcm_abc.dcm` → `dcm_abc_x1.dcm`), so also match by logical upload
+  // identity — otherwise a referenced file with a suffix looks orphaned and
+  // would be deleted.
+  final refIdentities = <String>{};
   for (final name in referencedDcmFiles) {
     final lower = p.basename(name).toLowerCase();
     refs.add(lower);
     if (isDcmPreviewName(lower)) {
       refs.add(lower.substring(0, lower.length - '.png'.length));
     }
+    final identity = dcmUploadIdentity(lower);
+    if (identity != null) refIdentities.add(identity);
   }
   return serverFiles.where((name) {
     final lower = p.basename(name).toLowerCase();
-    if (isDcmFileName(lower)) return !refs.contains(lower);
+    final identity = dcmUploadIdentity(lower);
+    if (isDcmFileName(lower)) {
+      if (refs.contains(lower)) return false;
+      if (identity != null && refIdentities.contains(identity)) return false;
+      return true;
+    }
     if (isDcmPreviewName(lower)) {
       final original = lower.substring(0, lower.length - '.png'.length);
-      return !refs.contains(original);
+      if (refs.contains(original)) return false;
+      if (identity != null && refIdentities.contains(identity)) return false;
+      return true;
     }
     return false;
   }).toList();

@@ -87,19 +87,38 @@ class DicomFileCache {
   static final DicomFileCache _instance = DicomFileCache._();
   static DicomFileCache get instance => _instance;
 
-  late final Future<Box<String>> _box;
-  bool _initialized = false;
+  Future<Box<String>>? _box;
+  Future<void>? _initialization;
 
-  Future<void> init() async {
-    if (_initialized) return;
-    _initialized = true;
+  Future<void> init() {
+    final existing = _initialization;
+    if (existing != null) return existing;
+
+    final initialization = _initialize();
+    _initialization = initialization;
+    // If opening fails, clear the memoized future so a later call retries and
+    // no half-open box is left behind (which would throw
+    // LateInitializationError on every subsequent access).
+    unawaited(initialization.catchError((_) {
+      if (identical(_initialization, initialization)) {
+        _initialization = null;
+        _box = null;
+      }
+    }));
+    return initialization;
+  }
+
+  Future<void> _initialize() async {
     await safeHiveInit();
-    _box = Hive.openBox<String>('dicom_file_cache', path: await filesDir());
+    final box =
+        Hive.openBox<String>('dicom_file_cache', path: await filesDir());
+    _box = box;
+    await box;
   }
 
   Future<Box<String>> get _openBox async {
-    if (!_initialized) await init();
-    return _box;
+    await init();
+    return _box!;
   }
 
   /// Returns true if the cache has an entry for [path] with the same

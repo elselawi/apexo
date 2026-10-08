@@ -329,6 +329,8 @@ class Ar implements En {
     "dicomNoNewFiles_desc":
         "جميع الملفات الممسوحة مستوردة بالفعل. ستظهر الملفات الجديدة هنا في المسح التالي.",
     "dicomImportingFiles": "جارٍ استيراد {current} من {total} ملف…",
+    "dicomSyncingImport": "جارٍ مزامنة الصور المستوردة…",
+    "dicomImportComplete": "اكتمل الاستيراد",
     "dicomUnknownPatient": "مريض غير معروف",
     "dicomPatientId": "معرّف DICOM",
     "dicomFiles": "ملفات",

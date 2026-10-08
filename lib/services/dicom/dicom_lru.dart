@@ -9,6 +9,8 @@ import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/adapters.dart';
 import 'package:path/path.dart' as p;
 
+bool _cachedFileExists(String path) => File(path).existsSync();
+
 /// A tracked downloaded `.dcm` original in the LRU cache.
 ///
 /// Hive box `dicom_lru` stores these as JSON, keyed by the local filename
@@ -108,22 +110,40 @@ class DicomLruCache {
   final String boxName;
   final DateTime Function() _clock;
 
-  late final Future<Box<String>> _box;
-  bool _initialized = false;
+  Future<Box<String>>? _box;
+  Future<void>? _initialization;
 
-  Future<void> init() async {
-    if (_initialized) return;
-    _initialized = true;
+  Future<void> init() {
+    final existing = _initialization;
+    if (existing != null) return existing;
+
+    final initialization = _initialize();
+    _initialization = initialization;
+    // If opening fails, clear the memoized future so a later call retries and
+    // no half-open box is left behind (which would throw
+    // LateInitializationError on every subsequent access).
+    unawaited(initialization.catchError((_) {
+      if (identical(_initialization, initialization)) {
+        _initialization = null;
+        _box = null;
+      }
+    }));
+    return initialization;
+  }
+
+  Future<void> _initialize() async {
     await safeHiveInit();
-    _box = Hive.openBox<String>(
+    final box = Hive.openBox<String>(
       boxName,
       path: storagePath ?? await filesDir(),
     );
+    _box = box;
+    await box;
   }
 
   Future<Box<String>> get _openBox async {
-    if (!_initialized) await init();
-    return _box;
+    await init();
+    return _box!;
   }
 
   /// Records a `.dcm` download (or updates the access timestamp on re-open).
@@ -172,7 +192,7 @@ class DicomLruCache {
           DicomLruEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>);
       if (entry.evicted) return false;
       final file = File(p.join(storagePath ?? await filesDir(), name));
-      return await file.exists();
+      return await compute(_cachedFileExists, file.path);
     } catch (_) {
       return false;
     }
@@ -229,7 +249,7 @@ class DicomLruCache {
         final entry = entries[i];
         try {
           final file = File(p.join(dir, entry.name));
-          if (await file.exists()) {
+          if (await compute(_cachedFileExists, file.path)) {
             await file.delete();
           }
         } catch (_) {
@@ -254,7 +274,7 @@ class DicomLruCache {
           final entry =
               DicomLruEntry.fromJson(jsonDecode(raw) as Map<String, dynamic>);
           final file = File(p.join(dir, entry.name));
-          if (await file.exists()) await file.delete();
+          if (await compute(_cachedFileExists, file.path)) await file.delete();
         } catch (_) {}
       }
       await box.clear();
@@ -265,12 +285,19 @@ class DicomLruCache {
 
   /// Closes the cache box. Intended for short-lived clients and tests.
   Future<void> dispose() async {
-    if (!_initialized) return;
-    final box = await _box;
-    if (box.isOpen) {
-      await box.close();
+    final initialization = _initialization;
+    if (initialization == null && _box == null) return;
+    // Wait for an in-flight open so we don't clear state mid-initialization.
+    try {
+      await initialization;
+    } catch (_) {}
+    try {
+      final box = await _box;
+      if (box != null && box.isOpen) await box.close();
+    } finally {
+      _initialization = null;
+      _box = null;
     }
-    _initialized = false;
   }
 }
 

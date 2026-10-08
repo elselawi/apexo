@@ -55,6 +55,10 @@ void main() {
       expect(nameTokens('إبراهيم'), nameTokens('ابراهيم'));
     });
 
+    test('does not strip non-honorific Arabic tokens', () {
+      expect(nameTokens('ا علي'), {'ا', 'علي'});
+    });
+
     test('order-insensitive: `John Smith` == `Smith John`', () {
       expect(nameTokens('John Smith'), nameTokens('Smith John'));
     });

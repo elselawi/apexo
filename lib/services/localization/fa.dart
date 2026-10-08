@@ -332,6 +332,8 @@ class Fa implements En {
     "dicomNoNewFiles_desc":
         "همه فایل‌های اسکن‌شده قبلاً وارد شده‌اند. فایل‌های جدید در اسکن بعدی ظاهر می‌شوند.",
     "dicomImportingFiles": "وارد کردن {current} از {total} فایل…",
+    "dicomSyncingImport": "در حال همگام‌سازی رادیوگرافی‌های واردشده…",
+    "dicomImportComplete": "واردسازی کامل شد",
     "dicomUnknownPatient": "بیمار ناشناخته",
     "dicomPatientId": "شناسه DICOM",
     "dicomFiles": "فایل",

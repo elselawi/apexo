@@ -6,8 +6,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:apexo/core/save_local.dart';
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_local.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -41,6 +41,7 @@ class _MockImporter {
   final Map<DicomPendingImport, DicomApprovalResult> approvalResultsByItem = {};
   final Set<String> approvalThrows = {};
   final Map<String, bool> unregisterResults = {};
+  Completer<DicomApprovalResult>? approvalGate;
 
   /// The pending list that [scanAndBuildPending] will return on the next
   /// call. Set this before calling [refresh] / [_tick].
@@ -121,6 +122,8 @@ class _MockImporter {
     Future<DicomApprovalResult> approveImport(
         DicomPendingImport pending) async {
       approvedItems.add(pending);
+      final gate = approvalGate;
+      if (gate != null) return gate.future;
       if (approvalThrows.contains(pending.dicomPatientId)) {
         throw StateError('controlled approval failure');
       }
@@ -181,6 +184,49 @@ class _TestController {
   late final DicomController ctrl;
 }
 
+class _CancellableScanHarness {
+  final enteredSnapshotting = Completer<void>();
+  final releaseSnapshotting = Completer<void>();
+  final approvals = <DicomPendingImport>[];
+
+  late final DicomImporter importer = DicomImporter(
+    useIsolate: false,
+    allImportedKeys: () async {
+      if (!enteredSnapshotting.isCompleted) enteredSnapshotting.complete();
+      await releaseSnapshotting.future;
+      return <String>{};
+    },
+    isImported: (_) async => false,
+    linkFile: (_, __) async => true,
+    setPatient: (_, __) async {},
+    linkedPatients: () => const <String, String>{},
+    pendingMatches: () async => const <String, String>{},
+    unmatchedIds: () async => const <String>{},
+    appointmentDayMap: () => const <String, Set<DateTime>>{},
+    scanDirectory: (_) async => const <DicomFileEntry>[],
+    readBytes: (_) async => null,
+    parseMetadata: (_) async => null,
+    cacheSnapshot: () async => const <String, DicomCachedMeta>{},
+    cachePut: (_, __) async {},
+    cachePrune: (_) async {},
+    logSkipped: ({required path, required reason}) async {},
+    clearSkipped: (_) async {},
+    allPatients: () => const <Patient>[],
+    getWatchDirs: () => const <String>[r'C:\dcm'],
+    handleNewDcm: ({required rowID, required sourcePath}) async => 'scan.dcm',
+    setAppointment: (_) {},
+    appointmentsForPatient: (_) => const <Appointment>[],
+    ensureAppointmentPersisted: () async {},
+    approvalOverrideForTesting: (pending, _) async {
+      approvals.add(pending);
+      return DicomApprovalResult(
+        successfulFiles: pending.files.length,
+        failedFiles: const [],
+      );
+    },
+  );
+}
+
 class _HealingApi {
   final filesByRow = <String, List<String>>{};
   final requests = <http.Request>[];
@@ -201,7 +247,7 @@ class _HealingApi {
               'id': rowId,
               'collectionId': 'data',
               'collectionName': 'data',
-              'data': {},
+              'data': <String, dynamic>{},
               'imgs': files,
             }),
             200,
@@ -757,6 +803,36 @@ void main() {
       await Future.wait([first, second]);
       expect(t.ctrl.scanning(), isFalse);
     });
+
+    test(
+        'refresh preserves pending without approving when a toggle-off '
+        'cancels the scan', () async {
+      final harness = _CancellableScanHarness();
+      final controller = DicomController(importer: harness.importer);
+      addTearDown(controller.dispose);
+
+      final linked = _pending(
+        dicomPatientId: 'CANCELLED-SCAN',
+        dicomPatientName: 'Cancelled',
+        autoLinked: true,
+      );
+      final manual = _pending(
+        dicomPatientId: 'MANUAL-SCAN',
+        dicomPatientName: 'Manual',
+        autoLinked: false,
+      );
+      controller.pending([linked, manual]);
+
+      final refresh = controller.refresh();
+      await harness.enteredSnapshotting.future;
+      controller.stopPeriodicScan();
+      harness.releaseSnapshotting.complete();
+      await refresh;
+
+      expect(harness.approvals, isEmpty);
+      expect(controller.pending(), [linked, manual]);
+      expect(controller.scanning(), isFalse);
+    });
   });
 
   group('DicomController — auto-approve via autoApproveLinked()', () {
@@ -962,6 +1038,33 @@ void main() {
       expect(t.ctrl.importProgress(), (current: 0, total: 0));
     });
 
+    test('blocks another approval before file progress starts', () async {
+      final first = _pending(
+        dicomPatientId: 'APPROVAL-FIRST',
+        dicomPatientName: 'First',
+      );
+      final second = _pending(
+        dicomPatientId: 'APPROVAL-SECOND',
+        dicomPatientName: 'Second',
+      );
+      t.ctrl.pending([first, second]);
+      final gate = Completer<DicomApprovalResult>();
+      t.mock.approvalGate = gate;
+
+      final firstApproval = t.ctrl.approve(first, apexoPatientId: 'patient-1');
+      expect(t.ctrl.isImporting, isTrue);
+
+      await t.ctrl.approve(second, apexoPatientId: 'patient-2');
+      expect(t.mock.approvedItems, [first]);
+
+      gate.complete(const DicomApprovalResult(
+        successfulFiles: 1,
+        failedFiles: [],
+      ));
+      await firstApproval;
+      expect(t.ctrl.pending(), [second]);
+    });
+
     test('batchApprove keeps separate blank-patient batches independent',
         () async {
       final first = _multiPending(patientId: '', count: 2);
@@ -980,7 +1083,10 @@ void main() {
       second.matchedPatient = _testPatient('patient-second');
       t.ctrl.pending([first, second]);
 
-      final count = await t.ctrl.batchApprove({''});
+      // Anonymous batches are selected by their stable selectionKey, not the
+      // (shared, empty) DICOM patient ID.
+      final count =
+          await t.ctrl.batchApprove({first.selectionKey, second.selectionKey});
 
       expect(count, 0);
       expect(t.ctrl.pending(), hasLength(2));

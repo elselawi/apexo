@@ -55,7 +55,12 @@ class DicomIOImpl {
         // Partial-write lock protection: skip files that were
         // modified within the last few seconds. The XRay software
         // may still be writing; we'll pick them up on the next resync.
-        if (now.difference(stat.modified) < _partialWriteSkipWindow) {
+        //
+        // A negative age (clock skew on the acquisition workstation or a NAS)
+        // must NOT be treated as "just modified": that would skip the file on
+        // every scan forever.
+        final age = now.difference(stat.modified);
+        if (!age.isNegative && age < _partialWriteSkipWindow) {
           log.info(
             'DicomIOImpl.scanDirectory: skipping (in-progress, deferred to next scan): "${entity.path}"',
           );

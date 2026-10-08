@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:apexo/core/observable.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:apexo/utils/safe_dir.dart';
@@ -42,7 +42,7 @@ class _LinkEntry {
   _LinkEntry({this.patient, List<String>? keys}) : keys = keys ?? [];
   factory _LinkEntry.fromJson(String json) {
     try {
-      final map = jsonDecode(json);
+      final map = jsonDecode(json) as Map<String, dynamic>;
       return _LinkEntry(
         patient: map['p'] as String?,
         keys: List<String>.from(map['k'] as List<dynamic>? ?? []),
@@ -104,12 +104,12 @@ class DicomLinksStore {
 
     final initialization = _initialize();
     _initialization = initialization;
-    initialization.catchError((_) {
+    unawaited(initialization.catchError((_) {
       if (identical(_initialization, initialization)) {
         _initialization = null;
         _box = null;
       }
-    });
+    }));
     return initialization;
   }
 

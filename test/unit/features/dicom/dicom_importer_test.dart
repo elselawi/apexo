@@ -3,7 +3,7 @@ library;
 
 import 'dart:typed_data';
 
-import 'package:apexo/core/save_remote.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';
@@ -1300,9 +1300,10 @@ void main() {
           reason:
               'file-marker rollback must preserve the confirmed patient link');
       expect(h.appointments, hasLength(1));
-      expect(h.appointments.values.single.archived, isNull,
+      expect(h.appointments.values.single.archived, isTrue,
           reason:
-              'new appointments intentionally remain unarchived after failed upload');
+              'an appointment created only for a failed upload is archived so '
+              'it never lingers as an empty record in PocketBase');
 
       // A subsequent scan must surface the file as auto-linked, not as an
       // unlinked/manual-match import.

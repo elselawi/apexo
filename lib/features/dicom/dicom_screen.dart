@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:apexo/app/app.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
@@ -16,9 +17,10 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/dicom/persistence/dicom_linked_store.dart';
 import 'package:apexo/services/dicom/dicom_importer.dart'
-    show DicomPendingImport, DicomParsedFile, ScanPhase;
+    show DicomPendingImport, DicomParsedFile, ImportPhase, ScanPhase;
 import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -27,6 +29,21 @@ String _shortName(String path) => path.split(RegExp(r'[/\\]')).last;
 
 String _fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+/// Shows a brief success bar after an import finishes, so the dentist gets
+/// confirmation instead of the progress bar silently disappearing.
+void _showImportComplete(int batches) {
+  if (!bContext.mounted) return;
+  unawaited(displayInfoBar(
+    bContext,
+    builder: (context, close) => InfoBar(
+      title: const Txt("dicomImportComplete"),
+      content: Text('$batches \u00d7 ${txt("dicomFiles")}'),
+      severity: InfoBarSeverity.success,
+      onClose: close,
+    ),
+  ));
+}
 
 // ── Screen ────────────────────────────────────────────────────────────────
 
@@ -39,6 +56,7 @@ class DicomScreen extends StatelessWidget {
       streams: [
         dicomCtrl.pending.stream,
         dicomCtrl.importProgress.stream,
+        dicomCtrl.importPhase.stream,
         dicomCtrl.scanPhase.stream,
         dicomCtrl.scanFileProgress.stream,
         globalSettings.observableMap.stream,
@@ -47,6 +65,7 @@ class DicomScreen extends StatelessWidget {
       builder: (context, _) {
         final tick = dicomCtrl.pending().hashCode +
             dicomCtrl.importProgress().hashCode +
+            dicomCtrl.importPhase().index +
             dicomCtrl.scanPhase().index;
         return _DicomPage(tick);
       },
@@ -73,7 +92,13 @@ class _DicomPageState extends State<_DicomPage> {
   @override
   void didUpdateWidget(covariant _DicomPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.tick != widget.tick) setState(() {});
+    if (oldWidget.tick != widget.tick) {
+      // Drop selections whose batch no longer exists (e.g. it was auto-approved
+      // in the background) so the count never shows a phantom "Approve (2)".
+      final present = dicomCtrl.pending().map((p) => p.selectionKey).toSet();
+      _selected.removeWhere((key) => !present.contains(key));
+      setState(() {});
+    }
   }
 
   @override
@@ -125,6 +150,7 @@ class _DicomPageState extends State<_DicomPage> {
   @override
   Widget build(BuildContext context) {
     final progress = dicomCtrl.importProgress();
+    final importPhase = dicomCtrl.importPhase();
     final phase = dicomCtrl.scanPhase();
     final fileProg = dicomCtrl.scanFileProgress();
     final isScanning = dicomCtrl.isScanning;
@@ -133,10 +159,12 @@ class _DicomPageState extends State<_DicomPage> {
     final items = _truncated;
 
     return Column(
+      key: WK.dicomScreen,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildCommandBar(),
-        if (progress.total > 0) _ImportProgressBar(progress: progress),
+        if (progress.total > 0)
+          _ImportProgressBar(progress: progress, phase: importPhase),
         if (isScanning) _ScanProgressOverlay(phase: phase, fileProg: fileProg),
         if (!isScanning && !importing) ...[
           Padding(
@@ -177,6 +205,7 @@ class _DicomPageState extends State<_DicomPage> {
 
   Button _buildScanButton(bool isScanning, bool watchDirsEmpty) {
     return Button(
+      key: WK.dicomScanButton,
       onPressed:
           isScanning || watchDirsEmpty ? null : () => dicomCtrl.refresh(),
       child: Row(
@@ -205,7 +234,7 @@ class _DicomPageState extends State<_DicomPage> {
       farItems: [
         Button(
             onPressed: () {
-              showDialog(
+              unawaited(showDialog(
                   barrierDismissible: true,
                   dismissWithEsc: true,
                   context: context,
@@ -242,7 +271,7 @@ class _DicomPageState extends State<_DicomPage> {
                             const BoxConstraints(maxHeight: 560, maxWidth: 720),
                       );
                     });
-                  });
+                  }));
             },
             child: ButtonContent(FluentIcons.link, linkedTxt)),
       ],
@@ -251,9 +280,16 @@ class _DicomPageState extends State<_DicomPage> {
           IconButton(
             icon: ButtonContent(
                 WindowsIcons.copy, '${txt("approve")} (${_selected.length})'),
-            onPressed: () {
-              dicomCtrl.batchApprove(_selected);
-              _selected.clear();
+            onPressed: () async {
+              final selection = Set<String>.from(_selected);
+              final approved = await dicomCtrl.batchApprove(selection);
+              if (!mounted) return;
+              setState(() {
+                final present =
+                    dicomCtrl.pending().map((p) => p.selectionKey).toSet();
+                _selected.removeWhere((key) => !present.contains(key));
+              });
+              if (approved > 0) _showImportComplete(approved);
             },
           ),
       ],
@@ -299,11 +335,11 @@ class _DicomPageState extends State<_DicomPage> {
         padding: EdgeInsets.zero,
         itemBuilder: (context, i) => _PendingImportCard(
           pending: items[i],
-          selected: _selected.contains(items[i].dicomPatientId),
+          selected: _selected.contains(items[i].selectionKey),
           importing: importing,
           onToggle: () {
             setState(() {
-              final id = items[i].dicomPatientId;
+              final id = items[i].selectionKey;
               _selected.contains(id) ? _selected.remove(id) : _selected.add(id);
             });
           },
@@ -586,6 +622,15 @@ class _DirectoryButtonState extends State<_DirectoryButton> {
     if (confirmed == true) {
       globalSettings.dicomWatchDirs = dirs;
       if (mounted) setState(() {});
+      // Keep the periodic timer in sync with the configured folders: start it
+      // when there is now something to watch and auto-import is on, stop it
+      // when the folders were all removed. Then scan immediately so the new
+      // folders are reflected without waiting for the next tick.
+      if (dicomCtrl.autoImport && dicomCtrl.watchDirs.isNotEmpty) {
+        dicomCtrl.startPeriodicScan();
+      } else {
+        dicomCtrl.stopPeriodicScan();
+      }
       await dicomCtrl.refresh();
     }
   }
@@ -620,11 +665,13 @@ class _DirectoryButtonState extends State<_DirectoryButton> {
 // ── Import progress bar ───────────────────────────────────────────────────
 
 class _ImportProgressBar extends StatelessWidget {
-  const _ImportProgressBar({required this.progress});
+  const _ImportProgressBar({required this.progress, required this.phase});
   final ({int current, int total}) progress;
+  final ImportPhase phase;
 
   @override
   Widget build(BuildContext context) {
+    final syncing = phase == ImportPhase.syncing;
     final pct = progress.total > 0 ? progress.current / progress.total : 0.0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -633,9 +680,11 @@ class _ImportProgressBar extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            txt("dicomImportingFiles")
-                .replaceAll("{current}", progress.current.toString())
-                .replaceAll("{total}", progress.total.toString()),
+            syncing
+                ? txt("dicomSyncingImport")
+                : txt("dicomImportingFiles")
+                    .replaceAll("{current}", progress.current.toString())
+                    .replaceAll("{total}", progress.total.toString()),
             style: const TextStyle(fontSize: 12),
           ),
           const SizedBox(height: 6),
@@ -815,7 +864,7 @@ class _PendingImportCardState extends State<_PendingImportCard> {
     return ListTile.selectable(
       selected: widget.selected,
       selectionMode: ListTileSelectionMode.multiple,
-      key: ValueKey(p.dicomPatientId),
+      key: WK.dicomPendingCard(p.selectionKey),
       margin: const EdgeInsets.only(bottom: 0),
       onSelectionChange: (_) => widget.onToggle(),
       shape: listDividerBorder(context),
@@ -849,7 +898,7 @@ class _PendingImportCardState extends State<_PendingImportCard> {
                           icon: FluentIcons.contact,
                           color: Colors.blue,
                           onPress: () {
-                            openPatient(matched);
+                            unawaited(openPatient(matched));
                           },
                         ),
                         const Padding(
@@ -897,13 +946,15 @@ class _PendingImportCardState extends State<_PendingImportCard> {
                     children: [
                       if (matched != null)
                         FilledButton(
+                          key: WK.dicomApprove,
                           onPressed:
-                              importing ? null : () => dicomCtrl.approve(p),
+                              importing ? null : () => _approve(widget.pending),
                           child: ButtonContent(
                               FluentIcons.accept, txt("approve"),
                               size: 12),
                         ),
                       Button(
+                        key: WK.dicomChangeMatch,
                         onPressed: importing
                             ? null
                             : () => _showPatientPicker(context, p),
@@ -936,6 +987,12 @@ class _PendingImportCardState extends State<_PendingImportCard> {
     if (mismatching.isEmpty && matching.isNotEmpty) return 'all_match';
     if (matching.isEmpty) return 'none_match';
     return 'partial';
+  }
+
+  Future<void> _approve(DicomPendingImport p) async {
+    await dicomCtrl.approve(p);
+    final stillPending = dicomCtrl.pending().any((x) => x.selectionKey == p.selectionKey);
+    if (!stillPending) _showImportComplete(1);
   }
 
   Future<void> _showPatientPicker(
@@ -1006,7 +1063,8 @@ class _FileList extends StatelessWidget {
   Widget build(BuildContext context) {
     final byDate = <DateTime, List<DicomParsedFile>>{};
     for (final f in pending.files) {
-      final day = f.dcmDate ?? DateTime(1970);
+      final d = f.effectiveDate;
+      final day = DateTime(d.year, d.month, d.day);
       byDate.putIfAbsent(day, () => []).add(f);
     }
     final sortedDates = byDate.keys.toList()..sort();

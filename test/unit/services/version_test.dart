@@ -1,7 +1,26 @@
 import 'package:apexo/services/version.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  PackageInfo.setMockInitialValues(
+    appName: 'Apexo',
+    packageName: 'app.apexo',
+    version: '1.2.3',
+    buildNumber: '1',
+    buildSignature: '',
+  );
+
+  test('loading the installed version does not wait for remote metadata',
+      () async {
+    final first = version.loadCurrentVersion();
+    final second = version.loadCurrentVersion();
+    expect(identical(first, second), isTrue);
+    await first.timeout(const Duration(seconds: 2));
+    expect(version.current(), '1.2.3');
+  });
+
   group('ReleaseMetadata', () {
     test('fromJson parses all fields correctly', () {
       final json = {

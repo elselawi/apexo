@@ -132,7 +132,7 @@ class ApexoApp extends StatelessWidget {
   /// come). Nothing here reads instance state — every value is a global — so a
   /// class-level function is enough, and the check is idempotent.
   static Future<void> showDialogsIfNeeded() async {
-    await version.init();
+    await version.loadCurrentVersion();
 
     // Show changelog dialog when the app version changes (post-update).
     if (!_changelogShown &&

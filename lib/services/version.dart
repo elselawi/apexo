@@ -68,8 +68,13 @@ class _VersionService {
 
   final String metadataUrl = "https://download.apexo.app/metadata.json";
 
+  Future<void>? _currentVersionReady;
+
+  Future<void> loadCurrentVersion() =>
+      _currentVersionReady ??= _setCurrentVersion();
+
   Future<void> init() async {
-    await _setCurrentVersion();
+    await loadCurrentVersion();
     await checkForUpdates();
   }
 
@@ -84,7 +89,9 @@ class _VersionService {
 
   Future<void> checkForUpdates() async {
     try {
-      final response = await http.get(Uri.parse(metadataUrl));
+      final response = await http
+          .get(Uri.parse(metadataUrl))
+          .timeout(const Duration(seconds: 10));
 
       if (response.statusCode != 200) {
         throw Exception('Failed to fetch metadata: ${response.statusCode}');

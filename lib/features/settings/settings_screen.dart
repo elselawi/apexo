@@ -239,7 +239,8 @@ class SettingsScreen extends StatelessWidget {
               scope: Scope.device,
               options: [
                 ComboBoxItem(value: "", child: Txt(txt("sameAsAppLanguage"))),
-                ...languagePickersOptions
+                ...locale.list.map((language) => ComboBoxItem(
+                    value: language.$code, child: Txt(language.$name)))
               ],
               initValue: localSettings.transcriptionLocaleNonFinal,
               apply: (newVal) {
@@ -366,11 +367,28 @@ class SettingsItemState extends State<SettingsItem> {
   final TextEditingController _controller = TextEditingController();
   String value = "";
 
+  void _setControllerText(String text) {
+    _controller.value = _controller.value.copyWith(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+      composing: TextRange.empty,
+    );
+  }
+
   @override
   void initState() {
     super.initState();
-    _controller.text = widget.initValue;
     value = widget.initValue;
+    _setControllerText(widget.initValue);
+  }
+
+  @override
+  void didUpdateWidget(covariant SettingsItem oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initValue == widget.initValue) return;
+    final hasPendingEdit = _controller.text != value;
+    value = widget.initValue;
+    if (!hasPendingEdit) _setControllerText(widget.initValue);
   }
 
   @override
@@ -407,11 +425,7 @@ class SettingsItemState extends State<SettingsItem> {
                       CupertinoTextField(
                         key: Key("${widget.identifier}_text_field"),
                         controller: _controller,
-                        onChanged: (value) {
-                          final currentPosition = _controller.selection;
-                          setState(() => _controller.text = value);
-                          _controller.selection = currentPosition;
-                        },
+                        onChanged: (_) => setState(() {}),
                         maxLines:
                             widget.inputType == InputType.multiline ? 1 : null,
                         placeholder: txt(widget.title),
@@ -462,7 +476,7 @@ class SettingsItemState extends State<SettingsItem> {
           style: greyButtonStyle,
           onPressed: () {
             setState(() {
-              _controller.text = widget.initValue;
+              _setControllerText(value);
             });
           },
           child: Row(children: [

@@ -94,17 +94,24 @@ class GlobalSettings extends Store<Setting> {
     name: _storeNameGlobal,
     loadingMessage: 'Synchronizing settings',
     syncAction: () async {
-      await Future.wait([synchronize(), accounts.reloadFromRemote(), backups.reloadFromRemote()]);
+      await Future.wait([
+        synchronize(),
+        accounts.reloadFromRemote(),
+        backups.reloadFromRemote()
+      ]);
     },
     afterSynchronize: (isCurrent) async {
       defaults.forEach((key, value) {
         if (!has(key)) set(Setting.fromJson({'id': key, 'value': value}));
       });
-      await Future.wait([backups.reloadFromRemote(), accounts.reloadFromRemote()]);
+      await Future.wait(
+          [backups.reloadFromRemote(), accounts.reloadFromRemote()]);
       if (!isCurrent()) return;
       if (get('ISO_country____').value == '') {
         final code = await getCountryCode();
-        if (isCurrent()) set(Setting.fromJson({'id': 'ISO_country____', 'value': code}));
+        if (isCurrent()) {
+          set(Setting.fromJson({'id': 'ISO_country____', 'value': code}));
+        }
       }
     },
   );
@@ -195,6 +202,13 @@ class LocalSettings extends ObservablePersistingObject {
     calendarSystem = json["calendarSystem"] as String? ?? calendarSystem;
     transcriptionLocaleNonFinal =
         json["transcriptionLocale"] as String? ?? transcriptionLocaleNonFinal;
+    const legacyLanguageCodes = ['en', 'ar', 'es', 'el', 'fa'];
+    final legacyIndex = int.tryParse(transcriptionLocaleNonFinal);
+    if (legacyIndex != null &&
+        legacyIndex >= 0 &&
+        legacyIndex < legacyLanguageCodes.length) {
+      transcriptionLocaleNonFinal = legacyLanguageCodes[legacyIndex];
+    }
     dentalNotation = json["dentalNotation"] as String? ?? dentalNotation;
     selectedTheme =
         json["selectedTheme"] == 1 ? ThemeMode.dark : ThemeMode.light;

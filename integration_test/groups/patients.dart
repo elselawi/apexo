@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart' show txt;
@@ -355,18 +356,18 @@ void registerPatientsTests() {
       await E2E.discardDraft(tester);
     });
 
-    testWidgets('17: list and grid views show the same patients',
+    testWidgets('17: patient table rows include an avatar and name',
         (tester) async {
       await E2E.signIn(tester);
       final name = await Fixtures.createPatient(tester);
-      await E2E.tap(tester, find.byKey(WK.dataTableListView),
-          description: 'grid view');
-      expect(find.byKey(const Key('patientsGrid')), findsOneWidget);
-      expect(find.text(name), findsWidgets);
-      await E2E.tap(tester, find.byKey(WK.dataTableListView),
-          description: 'list view');
-      expect(find.byKey(const Key('patientsGrid')), findsNothing);
-      expect(find.text(name), findsWidgets);
+      final title = find.byWidgetPredicate(
+          (widget) => widget is ItemTitle && widget.item.title == name);
+      expect(title, findsOneWidget);
+      expect(
+        find.descendant(of: title, matching: find.byType(CircleAvatar)),
+        findsOneWidget,
+      );
+      expect(find.byType(GridView), findsNothing);
     });
   });
 }

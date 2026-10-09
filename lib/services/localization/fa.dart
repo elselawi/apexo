@@ -12,8 +12,6 @@ class Fa implements En {
     "cancel": "لغو",
     "invalidEmail": "یک نشانی ایمیل معتبر وارد کنید.",
     "patientPageAccess": "دسترسی به صفحه بیمار",
-    "gridView": "نمای شبکه‌ای",
-    "listView": "نمای فهرست",
     "close": "بستن",
     "save": "ذخیره",
     "reset": "بازنشانی",

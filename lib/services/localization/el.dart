@@ -14,8 +14,6 @@ class El implements En {
     "cancel": "Άκυρο",
     "invalidEmail": "Εισαγάγετε έγκυρη διεύθυνση email.",
     "patientPageAccess": "Πρόσβαση στη σελίδα ασθενούς",
-    "gridView": "Προβολή πλέγματος",
-    "listView": "Προβολή λίστας",
     "close": "Κλείσιμο",
     "save": "Αποθήκευση",
     "reset": "Επαναφορά",

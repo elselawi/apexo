@@ -14,8 +14,6 @@ class Es implements En {
     "cancel": "Cancelar",
     "invalidEmail": "Introduce una dirección de correo válida.",
     "patientPageAccess": "Acceso a la página del paciente",
-    "gridView": "Vista de cuadrícula",
-    "listView": "Vista de lista",
     "close": "Cerrar",
     "save": "Guardar",
     "reset": "Restablecer",

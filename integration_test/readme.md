@@ -405,8 +405,8 @@ on this tree.
   database is a once-per-process failure mode that would poison the rest of the run.
 - **§1.2 / `05: an invalid email is rejected`** — **implemented** with optional-email validation
   before panel persistence; malformed values retain the draft and display an error.
-- **§1.2 / `10: list and grid views both render`** — **implemented** with a shared search/sort/page
-  source and selectable patient cards; covered by patients `17`.
+- **§1.2 / `10: list and grid views both render`** — **decision**: the sparse grid view was
+  removed in favor of the detailed patient table; patients `17` checks its avatar-bearing rows.
 - **§1.2 / `15: a tag can be added from the tag input`** — **implemented**: existing suggestions
   and focused Enter are exercised by `integration_test/groups/patients.dart` `07`/`08`;
   `test/unit/common_widgets/tag_input_test.dart` verifies new, strict and duplicate tag behavior.
@@ -633,8 +633,8 @@ Source implementation is not a claim that the live groups have passed.
   addresses before persistence; `patients 16` and `patient_validation_test.dart` cover it.
 - **Archiving a patient hides its appointments from the agenda** — **actionable app behavior**: still
   the current-tree product bug/decision behind the store-level workaround in `patients 15`.
-- **The patients screen has no grid/list view** — **decision**: still a product-surface fact, not a
-  missing test.
+- **The patients screen has no grid/list view** — **decision**: the sparse grid and its toggle
+  were removed; the detailed table remains the single patient-browsing view.
 - **Previous visit dental notes cannot be copied** — **decision**: still a missing feature, not a
   hidden test seam.
 - **A patient's panel cannot be reopened after booking a visit** — **actionable app bug**: still the

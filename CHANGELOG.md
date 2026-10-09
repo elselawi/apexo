@@ -1,7 +1,7 @@
 ### ____0.15.1____
 
 - New Features & Improvements
-    - Patients can be browsed as a list or a grid, with the same search, sorting and selection controls.
+    - Patient browsing keeps the detailed table view, with avatars, patient information, search, sorting and selection. Removed the sparse grid view and its toggle.
     - Patient details now warn about invalid email addresses and prevent saving them until corrected. Leaving the email blank is still allowed.
     - A new patient-page access switch lets clinics hide a patient's appointments from the patient portal. Existing clinics receive the server update on administrator sign-in; access changes take effect after synchronization.
     - Tooth treatments and notes from earlier appointments can be copied into the appointment being edited.

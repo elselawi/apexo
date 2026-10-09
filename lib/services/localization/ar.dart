@@ -12,8 +12,6 @@ class Ar implements En {
     "cancel": "إلغاء",
     "invalidEmail": "أدخل عنوان بريد إلكتروني صالحاً.",
     "patientPageAccess": "الوصول إلى صفحة المريض",
-    "gridView": "عرض شبكي",
-    "listView": "عرض قائمة",
     "close": "غلق",
     "save": "حفظ",
     "reset": "إعادة تعيين",

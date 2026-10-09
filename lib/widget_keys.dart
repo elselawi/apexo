@@ -127,7 +127,6 @@ class WK {
   static const msgWillSendReset = Key("msgWillSendReset");
   static const dataTableSearch = Key("dataTableSearch");
   static const dataTableSortBy = Key("dataTableSortBy");
-  static const dataTableListView = Key("dataTableListView");
   static const toggleSortDirection = Key("toggleSortDirection");
   static const closeModal = Key("closeModal");
   static const fieldDutyDays = Key("fieldDutyDays");

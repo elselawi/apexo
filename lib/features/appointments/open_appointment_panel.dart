@@ -581,6 +581,18 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                       initiallyExpanded: false,
                       excludedAppointment: widget.appointment,
                       title: txt("otherAppointmentsNotes"),
+                      onCopy: (source, tooth) {
+                        setState(() {
+                          final treatment = source.teeth[tooth];
+                          final note = source.teethExtraNotes[tooth];
+                          if (treatment != null) {
+                            widget.appointment.teeth[tooth] = treatment;
+                          }
+                          if (note != null) {
+                            widget.appointment.teethExtraNotes[tooth] = note;
+                          }
+                        });
+                      },
                     ),
                   ],
                 ],
@@ -916,7 +928,7 @@ class _AppointmentsHistoryFlyoutState extends State<AppointmentsHistoryFlyout> {
                                   Navigator.pop(context);
                                   WidgetsBinding.instance
                                       .addPostFrameCallback((_) {
-                                      unawaited(openPatient(widget.patient, 2));
+                                    unawaited(openPatient(widget.patient, 2));
                                   });
                                 },
                                 child: ButtonContent(
@@ -1063,7 +1075,12 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
                     child: Txt(txt("noSuggestions")),
                   ),
                   onChanged: (text, reason) {
-                    widget.appointment.labName = text;
+                    if (reason == TextChangedReason.userInput) {
+                      widget.appointment.labName = text;
+                    }
+                  },
+                  onSelected: (item) {
+                    widget.appointment.labName = item.value ?? item.label;
                   },
                   controller: labNameController,
                   items: appointments.labs

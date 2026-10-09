@@ -17,6 +17,7 @@ class AppointmentExtraNotes extends StatelessWidget {
     required this.title,
     this.bottomMargin = false,
     this.excludedAppointment,
+    this.onCopy,
   });
 
   final Patient patient;
@@ -24,6 +25,7 @@ class AppointmentExtraNotes extends StatelessWidget {
   final bool bottomMargin;
   final Appointment? excludedAppointment;
   final String title;
+  final void Function(Appointment source, String tooth)? onCopy;
 
   Patient get _patient => patient;
 
@@ -153,6 +155,13 @@ class AppointmentExtraNotes extends StatelessWidget {
                                         onPressed: () {
                                           openAppointment(appt, 1);
                                         }),
+                                    if (onCopy != null)
+                                      IconButton(
+                                        key: ValueKey(
+                                            'copyNotes-${appt.id}-$iso'),
+                                        icon: const Icon(WindowsIcons.copy),
+                                        onPressed: () => onCopy!(appt, iso),
+                                      ),
                                   ],
                                 ),
                                 Row(

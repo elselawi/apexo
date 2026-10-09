@@ -85,16 +85,9 @@ class _AccountsScreenState extends State<AccountsScreen> {
               Container(
                 decoration: topBarDecoration(context, Colors.grey),
                 padding: const EdgeInsets.all(8),
-                // A `Wrap`, not a `Row`: this strip is drawn at every width the
-                // app allows — a phone layout is 300px — and a `Row` lays its
-                // children out at their natural width and then reports
-                // `A RenderFlex overflowed by 261 pixels on the right`, which
-                // reds whatever test is running. Wrapping moves the counts to
-                // the next line instead (todo.md §6.1).
-                child: Wrap(
-                  spacing: 20,
-                  runSpacing: 8,
-                  crossAxisAlignment: WrapCrossAlignment.center,
+                child: Row(
+                  spacing: 10,
+                  //crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     _buildRefreshButton(),
                     Txt(txt("${txt("admins")}: ${admins.length}")),
@@ -144,16 +137,19 @@ class _AccountsScreenState extends State<AccountsScreen> {
                               subtitle: Txt(
                                   filteredList[index].getStringValue("email")),
                               onPressed: () {
-                                unawaited(openAccount(accountFromJson(account.toJson()
-                                  ..addAll({
-                                    "name": account.getStringValue("name"),
-                                    "email": account.getStringValue("email"),
-                                    "permissions":
-                                        account.getStringValue("permissions"),
-                                    "operate": account.getIntValue("operate"),
-                                    "type": account.getStringValue("type"),
-                                    "id": account.id,
-                                  }))));
+                                unawaited(
+                                    openAccount(accountFromJson(account.toJson()
+                                      ..addAll({
+                                        "name": account.getStringValue("name"),
+                                        "email":
+                                            account.getStringValue("email"),
+                                        "permissions": account
+                                            .getStringValue("permissions"),
+                                        "operate":
+                                            account.getIntValue("operate"),
+                                        "type": account.getStringValue("type"),
+                                        "id": account.id,
+                                      }))));
                               },
                             );
                           },

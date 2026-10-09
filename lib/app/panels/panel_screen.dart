@@ -306,8 +306,16 @@ class _PanelScreenState extends State<PanelScreen> {
             ],
           ),
           onConfirm: () async {
-            await widget.panel.setArchived(!isArchived);
-            if (mounted) setState(() {});
+            try {
+              await widget.panel.setArchived(!isArchived);
+            } catch (e, st) {
+              logger('Archiving "${widget.panel.itemId}" failed', st);
+              showErrorMessage(e, "savingFailed");
+              return;
+            }
+            if (!mounted) return;
+            _syncPendingEdits();
+            setState(() {});
           },
           style: greyButtonStyle.copyWith(
             backgroundColor: WidgetStatePropertyAll(color),

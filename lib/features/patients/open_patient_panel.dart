@@ -43,7 +43,8 @@ final transcriptionEditCounter = ObservableState(0);
 
 Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
-  final panel = RowPanel<Patient>(
+  late final RowPanel<Patient> panel;
+  panel = RowPanel<Patient>(
     singularName: "patient",
     unicodeSymbol: "👤",
     selectedTabIndex: selectedTabIndex,
@@ -51,6 +52,8 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
     store: patients,
     icon: FluentIcons.medication_admin,
     existing: patients.get(editingCopy.id) != null,
+    validate: () =>
+        Patient.isValidEmail(editingCopy.email) ? null : txt('invalidEmail'),
     // A localization key rather than a sentence: the header runs it through
     // txt(), so it follows the language the app is in now. A stored patient
     // gets their own name from readTitle() below instead.
@@ -169,7 +172,10 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
       PanelTab(
         title: txt("patientPage"),
         icon: FluentIcons.q_r_code,
-        body: _PatientQrPage(editingCopy: editingCopy),
+        body: _PatientQrPage(
+          editingCopy: editingCopy,
+          onFieldsSaved: (fields) => panel.markFieldsSaved(fields),
+        ),
         onlyIfSaved: true,
       ),
     ],
@@ -184,9 +190,11 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
 class _PatientQrPage extends StatefulWidget {
   const _PatientQrPage({
     required this.editingCopy,
+    required this.onFieldsSaved,
   });
 
   final Patient editingCopy;
+  final void Function(Iterable<String> fields) onFieldsSaved;
 
   @override
   State<_PatientQrPage> createState() => _PatientQrPageState();
@@ -203,7 +211,7 @@ class _PatientQrPageState extends State<_PatientQrPage> {
             child: ButtonContent(FluentIcons.q_r_code, txt("generateQRLink")),
             onPressed: () async {
               final pID = widget.editingCopy.id;
-              final p = patients.get(pID);
+              final p = patients.get(pID)?.copy(false);
               if (p == null) {
                 return;
               } else {
@@ -213,15 +221,35 @@ class _PatientQrPageState extends State<_PatientQrPage> {
                   showErrorMessage(e, "generatingPatientLink");
                   login.askForLoginAgain(e);
                   logger("error while generating patient link $e", stacktrace);
+                  return;
                 }
-                patients.set(p);
-                widget.editingCopy.link = p.link;
+                final current = patients.get(pID);
+                if (current == null) return;
+                final updated = current.copy(false)..link = p.link;
+                patients.set(updated);
+                widget.editingCopy.link = updated.link;
+                widget.onFieldsSaved(['link']);
               }
-              setState(() {});
+              if (mounted) setState(() {});
             },
           ),
         ),
-        if (widget.editingCopy.shortLink.isNotEmpty) ...[
+        const SizedBox(height: 10),
+        ToggleSwitch(
+          key: const Key('patientPortalAccess'),
+          content: Txt(txt('patientPageAccess')),
+          checked: !widget.editingCopy.portalAccessRevoked,
+          onChanged: (enabled) {
+            final stored = patients.get(widget.editingCopy.id);
+            if (stored == null) return;
+            final updated = stored.copy(false)..portalAccessRevoked = !enabled;
+            patients.set(updated);
+            setState(() => widget.editingCopy.portalAccessRevoked = !enabled);
+            widget.onFieldsSaved(['portalAccessRevoked']);
+          },
+        ),
+        if (!widget.editingCopy.portalAccessRevoked &&
+            widget.editingCopy.shortLink.isNotEmpty) ...[
           const SizedBox(height: 10),
           _PatientWebPage(widget.editingCopy),
           _PrintQRButton(widget.editingCopy)
@@ -525,9 +553,17 @@ class _PatientDetailsState extends State<_PatientDetails> {
                 widget.patient.email = value;
               });
             },
-            suffix: widget.patient.email.isNotEmpty
-                ? EmailButton(email: widget.patient.email)
-                : null,
+            suffix: !Patient.isValidEmail(widget.patient.email)
+                ? Tooltip(
+                    message: txt('invalidEmail'),
+                    child: const Padding(
+                      padding: EdgeInsets.all(5),
+                      child: Icon(WindowsIcons.warning),
+                    ),
+                  )
+                : widget.patient.email.isNotEmpty
+                    ? EmailButton(email: widget.patient.email)
+                    : null,
           ),
         ),
         InfoLabel(

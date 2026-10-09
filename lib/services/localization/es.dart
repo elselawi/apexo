@@ -12,6 +12,10 @@ class Es implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Cancelar",
+    "invalidEmail": "Introduce una dirección de correo válida.",
+    "patientPageAccess": "Acceso a la página del paciente",
+    "gridView": "Vista de cuadrícula",
+    "listView": "Vista de lista",
     "close": "Cerrar",
     "save": "Guardar",
     "reset": "Restablecer",

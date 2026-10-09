@@ -30,6 +30,7 @@ final class RowPanel<T extends Model> extends Panel {
     this.canNotBeNew = false,
     this.checkUnsavedChanges,
     this.onSave,
+    this.validate,
     super.inherentlyScrollable,
     super.showTitles,
     super.showBottomControls,
@@ -69,6 +70,8 @@ final class RowPanel<T extends Model> extends Panel {
   /// Replaces the default `store.set(item)` when the save is the caller's.
   final void Function()? onSave;
 
+  final String? Function()? validate;
+
   /// Whether the record was stored when the panel opened.
   ///
   /// Not the same question as "does it have an id": a new record carries an id
@@ -95,6 +98,8 @@ final class RowPanel<T extends Model> extends Panel {
 
   @override
   Future<void> persist() async {
+    final validationError = validate?.call();
+    if (validationError != null) throw FormatException(validationError);
     if (onSave != null) {
       onSave!();
     } else {
@@ -119,16 +124,32 @@ final class RowPanel<T extends Model> extends Panel {
     _existing = true;
   }
 
+  /// Acknowledges fields saved immediately without clearing other draft edits.
+  void markFieldsSaved(Iterable<String> fields) {
+    final saved = jsonDecode(_savedJson) as Map<String, dynamic>;
+    final current = item.toJson();
+    for (final field in fields) {
+      if (current.containsKey(field)) {
+        saved[field] = current[field];
+      } else {
+        saved.remove(field);
+      }
+    }
+    _savedJson = jsonEncode({
+      for (final field in {...current.keys, ...saved.keys})
+        if (saved.containsKey(field)) field: saved[field],
+    });
+  }
+
   @override
   Future<void> setArchived(bool archived) async {
-    if (archived) {
-      store.archive(item.id);
-    } else {
-      store.unarchive(item.id);
-    }
+    final validationError = validate?.call();
+    if (validationError != null) throw FormatException(validationError);
+    final updated = store.modeling(
+        jsonDecode(jsonEncode(item.toJson())) as Map<String, dynamic>)
+      ..archived = archived;
+    store.set(updated);
     item.archived = archived;
-    final saved = jsonDecode(_savedJson) as Map<String, dynamic>;
-    saved['archived'] = archived;
-    _savedJson = jsonEncode(saved);
+    markSaved();
   }
 }

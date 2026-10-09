@@ -55,6 +55,7 @@ class _PatientsPageState extends State<_PatientsPage> {
   int sortBy = -1;
   int sortDirection = 1;
   int slice = 10;
+  bool gridView = false;
 
   List<Patient> _displayedItems = [];
   int _totalFilteredCount = 0;
@@ -213,6 +214,14 @@ class _PatientsPageState extends State<_PatientsPage> {
       ),
       otherButtons: [
         IconButton(
+          key: WK.dataTableListView,
+          icon: ButtonContent(
+            gridView ? FluentIcons.list : FluentIcons.grid_view_small,
+            txt(gridView ? 'listView' : 'gridView'),
+          ),
+          onPressed: () => setState(() => gridView = !gridView),
+        ),
+        IconButton(
             icon: ButtonContent(WindowsIcons.copy, txt("import")),
             onPressed: () {
               unawaited(showDialog(
@@ -247,6 +256,40 @@ class _PatientsPageState extends State<_PatientsPage> {
         final calculatedWidth = calWidth(constraints.maxWidth);
         final calculatedSpacing = calSpacing(constraints.maxWidth);
 
+        if (gridView) {
+          return GridView.builder(
+            key: const Key('patientsGrid'),
+            controller: _scrollController,
+            padding: const EdgeInsets.all(8),
+            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: 360,
+              mainAxisExtent: 140,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+            ),
+            itemCount: _displayedItems.length,
+            itemBuilder: (context, index) {
+              final patient = _displayedItems[index];
+              return ListTile.selectable(
+                key: ValueKey(patient.id),
+                selected: selected.contains(patient.id),
+                selectionMode: ListTileSelectionMode.multiple,
+                onSelectionChange: (value) => setState(() {
+                  if (value) {
+                    selected.add(patient.id);
+                  } else {
+                    selected.remove(patient.id);
+                  }
+                }),
+                title: GestureDetector(
+                  onTap: () => unawaited(openPatient(patient)),
+                  child: Txt(patient.title),
+                ),
+                subtitle: Txt(patient.tags.join(', ')),
+              );
+            },
+          );
+        }
         return ListView.builder(
             controller: _scrollController,
             itemCount: _displayedItems.length,

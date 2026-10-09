@@ -11,6 +11,10 @@ class En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Cancel",
+    "invalidEmail": "Enter a valid email address.",
+    "patientPageAccess": "Patient page access",
+    "gridView": "Grid view",
+    "listView": "List view",
     "close": "Close",
     "save": "Save",
     "reset": "Reset",

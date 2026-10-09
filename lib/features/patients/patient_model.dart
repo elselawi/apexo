@@ -374,6 +374,28 @@ class Patient extends Model {
     return _labels = _;
   }
 
+  static bool isValidEmail(String value) {
+    final email = value.trim();
+    if (email.isEmpty) return true;
+    if (email.length > 254 || email.contains(RegExp(r'\s'))) return false;
+    final parts = email.split('@');
+    if (parts.length != 2 || parts.first.isEmpty || parts.first.length > 64) {
+      return false;
+    }
+    if (!RegExp(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$")
+            .hasMatch(parts.first) ||
+        parts.first.startsWith('.') ||
+        parts.first.endsWith('.') ||
+        parts.first.contains('..')) {
+      return false;
+    }
+    final labels = parts.last.split('.');
+    return labels.length > 1 &&
+        labels.every((label) =>
+            RegExp(r'^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$')
+                .hasMatch(label));
+  }
+
   Future<String> generatePatientLink() async {
     final longLink =
         "https://web.apexo.app/${encode("$id|$title|${login.url}|${await PushRelay.ensureKey()}")}";
@@ -394,6 +416,7 @@ class Patient extends Model {
   /* 2 */ int gender = 0; // 0 for female, 1 for male
   /* 3 */ List<ParsedPhoneNumber> phone = [];
   /* 4 */ String email = "";
+  bool portalAccessRevoked = false;
   /* 5 */ String address = "";
   /* 6 */ List<String> tags = [];
   /* 7 */ String notes = "";
@@ -421,6 +444,7 @@ class Patient extends Model {
             .map((s) => ParsedPhoneNumber(s))
             .toList();
     /* 4 */ email = json['email'] as String? ?? email;
+    portalAccessRevoked = json['portalAccessRevoked'] as bool? ?? false;
     /* 5 */ address = json['address'] as String? ?? address;
     /* 6 */ tags = List<String>.from(json['tags'] as List<dynamic>? ?? tags);
     /* 7 */ notes = json['notes'] as String? ?? notes;
@@ -440,6 +464,7 @@ class Patient extends Model {
     /* 2 */ if (gender != d.gender) json['gender'] = gender;
     /* 3 */ if (phone != d.phone) json['phone'] = phonesString;
     /* 4 */ if (email != d.email) json['email'] = email;
+    if (portalAccessRevoked) json['portalAccessRevoked'] = true;
     /* 5 */ if (address != d.address) json['address'] = address;
     /* 6 */ if (tags.toString() != d.tags.toString()) json['tags'] = tags;
     /* 7 */ if (notes != d.notes) json['notes'] = notes;

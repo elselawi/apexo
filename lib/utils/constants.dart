@@ -102,7 +102,7 @@ final publicCollectionImport = CollectionModel(
   updateRule: null,
   deleteRule: null,
   viewQuery:
-      "SELECT\n    data.id,\n    imgs,\n    json_extract(data.data, '\$.patientID') AS pid,\n    json_extract(data.data, '\$.date') AS date,\n    json_extract(data.data, '\$.prescriptions') AS prescriptions,\n    json_extract(data.data, '\$.price') AS price,\n    json_extract(data.data, '\$.paid') AS paid,\n    json_extract(data.data, '\$.isDone') AS isDone,\n    json_extract(data.data, '\$.archived') AS archived\nFROM data\nWHERE data.store = 'appointments';",
+      "SELECT\n    data.id,\n    imgs,\n    json_extract(data.data, '\$.patientID') AS pid,\n    json_extract(data.data, '\$.date') AS date,\n    json_extract(data.data, '\$.prescriptions') AS prescriptions,\n    json_extract(data.data, '\$.price') AS price,\n    json_extract(data.data, '\$.paid') AS paid,\n    json_extract(data.data, '\$.isDone') AS isDone,\n    json_extract(data.data, '\$.archived') AS archived\nFROM data\nWHERE data.store = 'appointments' AND NOT EXISTS (SELECT 1 FROM data AS patient WHERE patient.store = 'patients' AND patient.id = json_extract(data.data, '\$.patientID') AND json_extract(patient.data, '\$.portalAccessRevoked') = 1);",
 );
 
 final profilesViewCollectionImport = CollectionModel(
@@ -230,4 +230,4 @@ const rulePublicPatientScoped =
 /// change (rules, fields, indexes). On admin login the app re-imports the
 /// schema (pure upsert — never deletes) when this version is newer than the
 /// version last applied for the clinic.
-const int schemaVersion = 1;
+const int schemaVersion = 2;

@@ -12,6 +12,10 @@ class El implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Άκυρο",
+    "invalidEmail": "Εισαγάγετε έγκυρη διεύθυνση email.",
+    "patientPageAccess": "Πρόσβαση στη σελίδα ασθενούς",
+    "gridView": "Προβολή πλέγματος",
+    "listView": "Προβολή λίστας",
     "close": "Κλείσιμο",
     "save": "Αποθήκευση",
     "reset": "Επαναφορά",

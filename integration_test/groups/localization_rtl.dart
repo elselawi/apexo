@@ -41,14 +41,12 @@ TextDirection _shellDirection(WidgetTester tester) =>
 void registerLocalizationTests() {
   group('localization_rtl', () {
     testWidgets('01: every locale renders the staff shell', (tester) async {
-      // **Skipped** (todo.md §6.2): like `errors_and_recovery 01`, the run stops
-      // dead in this test — the log freezes on its first line with the app alive
-      // and nothing in it able to hang (every wait is bounded). Two of the newest
-      // groups wedge the same way on their first test, and neither `addError` nor
-      // the locale switch is obviously the trigger; until that is understood the
-      // other tests here cover the locale machinery, and the body stays as the
-      // regression.
       await E2E.signIn(tester);
+      final original = localSettings.selectedLocale;
+      addTearDown(() {
+        localSettings.selectedLocale = original;
+        localSettings.notifyAndPersist();
+      });
 
       for (var index = 0; index < locale.list.length; index++) {
         await _useLocale(tester, index);
@@ -61,8 +59,8 @@ void registerLocalizationTests() {
                 '"${locale.list[index].$code}"');
       }
 
-      await _useLocale(tester, 0);
-    }, skip: true);
+      await _useLocale(tester, original);
+    });
 
     testWidgets('02: an RTL locale mirrors the shell', (tester) async {
       await E2E.signIn(tester);

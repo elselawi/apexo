@@ -1,5 +1,6 @@
 import 'package:apexo/app/routing/app_route.dart' show AppRoute;
 import 'package:apexo/app/routing/routes.dart' show routes;
+import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart'
@@ -402,11 +403,20 @@ void registerLoginTests() {
       await E2E.boot(tester);
       await Fixtures.signOut(tester);
 
+      // Run in a dedicated process: dropping collections while previous sessions
+      // are synchronizing creates a schema-reset race.
       // A brand new PocketBase has no `data` collection *at all* — that, and not
       // an empty one, is what the app treats as "this clinic does not exist yet"
       // (`launch.isFirstLaunch`, set when the collection probe 404s). The next
       // login puts the collections back, so this is the same destructive reset a
       // run starts with, and the login group is where the suite begins.
+      addTearDown(() async {
+        launch.isFirstLaunch(false);
+        launch.dialogShown(false);
+        await Backend.resetServer();
+      });
+      launch.isFirstLaunch(false);
+      launch.dialogShown(false);
       await Backend.dropCollections();
 
       await E2E.enterCredentials(
@@ -416,9 +426,13 @@ void registerLoginTests() {
         password: pbPassword,
       );
       await E2E.tapLogin(tester);
+      await _waitForStaff(tester, 'the newly initialized clinic');
+      expect(launch.isFirstLaunch(), isTrue,
+          reason:
+              'The collection reset did not produce a first-launch session.');
       await E2E.waitFor(
         tester,
-        find.text(txt('firstLaunchDialogTitle')),
+        find.byType(FirstLaunchDialog),
         timeout: const Duration(minutes: 3),
         description: 'the first-launch dialog',
       );
@@ -427,9 +441,10 @@ void registerLoginTests() {
       // …and it behaves like every other dialog: closing it leaves a usable
       // shell behind, because the login created the collections it found missing.
       await E2E.dismissStartupDialogs(tester, waitForAppTimer: false);
-      await E2E.waitFor(tester, find.byKey(WK.globalActions),
+      await E2E.waitFor(
+          tester, find.byKey(const Key('dashboard_screen_button')),
           description: 'the staff shell');
-    });
+    }, skip: !const bool.fromEnvironment('E2E_ISOLATED_FIRST_LAUNCH'));
 
     testWidgets('13: the changelog dialog is shown on a fresh install',
         (tester) async {

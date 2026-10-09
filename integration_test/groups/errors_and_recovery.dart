@@ -34,12 +34,6 @@ void registerErrorsAndRecoveryTests() {
   group('errors_and_recovery', () {
     testWidgets('01: the errors panel collects, counts and clears them',
         (tester) async {
-      // **Skipped** (todo.md §6.2): the run stops dead in this test — the log
-      // freezes on this test's own first line with the app process alive, and no
-      // step of it times out (every wait here is bounded). Opening the panel is
-      // what it shares with nothing else in the suite, so the panel is the
-      // suspect; until that is understood, the *shell* half of the same story is
-      // asserted in `02` instead. The body is kept as the regression.
       await E2E.signIn(tester);
       expect(networkActions.hasErrors(), isFalse,
           reason: 'the shell starts with errors recorded');
@@ -74,13 +68,16 @@ void registerErrorsAndRecoveryTests() {
       // reconnecting (`onPressed: showErrorsFlyout`).
       await E2E.tapFirst(tester, find.text(txt('reconnect')),
           description: 'the panel\'s reconnect button');
-      await E2E.settle(tester, frames: 30);
+      final deadline = DateTime.now().add(const Duration(seconds: 60));
+      while (networkActions.hasErrors() && DateTime.now().isBefore(deadline)) {
+        await E2E.settle(tester, frames: 5);
+      }
 
       expect(networkActions.hasErrors(), isFalse,
           reason: 'the errors survived a reconnect');
       expect(Fixtures.globalActionBadge(tester, 'errors'), isNull,
           reason: 'the badge stayed after the errors were cleared');
-    }, skip: true);
+    });
 
     testWidgets(
         '02: proceeding offline disables the sync action and the app works',

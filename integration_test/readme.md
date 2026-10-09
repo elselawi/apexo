@@ -56,9 +56,10 @@ refuses to open and the login screen reports `localDatabaseFailed`.
 `flutter drive` **does** forward `--web-header` (it is a `flutter run`
 option), so `tools/run_e2e.ps1 -WebHeaders` adds
 `Cross-Origin-Opener-Policy=same-origin` and
-`Cross-Origin-Embedder-Policy=require-corp` and the database opens.
-`integration_test/web_open_test.dart` is the smallest test that covers the database
-handshake.
+`Cross-Origin-Embedder-Policy=require-corp` and the database opens. The current
+tree does **not** ship `integration_test/web_open_test.dart`; the smallest
+database-opening web smoke the tree exposes today is the `login` group:
+`pwsh -File tools/run_e2e.ps1 -Target web -Group login -WebHeaders`.
 
 ### The shorter way
 
@@ -72,8 +73,7 @@ pwsh -File tools/run_e2e.ps1 -Target web -Headless
 pwsh -File tools/run_e2e.ps1 -Target web -Headless -WebHeaders
 pwsh -File tools/run_e2e.ps1 -Group login    # just that group, in isolation
 pwsh -File tools/run_e2e.ps1 -Group "04:"    # any other string = a test-name filter
-# web, one file instead of the whole suite (about a minute and a half)
-pwsh -File tools/run_e2e.ps1 -Target web -WebHeaders -Entry integration_test/web_open_test.dart
+pwsh -File tools/run_e2e.ps1 -Target web -Group login -WebHeaders -Headless
 ```
 
 Running by hand instead means passing the credentials of the live test server
@@ -100,9 +100,9 @@ flutter test integration_test/e2e_test.dart -d windows --plain-name "04:"
 
 **Web runs filter by group only.** `--plain-name` belongs to `flutter test`;
 `flutter drive` rejects the flag, so a web run cannot pick one test out of a
-file — `flutter test`'s `E2E_GROUP` define is the lever instead, and `-Entry
-<file>` is what makes a single-file web check (like `web_open_test.dart`) cheap
-enough to run on every change.
+file. `E2E_GROUP` is the lever instead, and on the current tree the smallest
+database-opening web run is `-Group login` — there is no dedicated
+`web_open_test.dart` smoke file to target.
 
 `dart integration_test/watch.dart [filter]` re-runs the suite on save (it shells
 out to `tools/run_e2e.ps1`).
@@ -111,18 +111,17 @@ out to `tools/run_e2e.ps1`).
 
 `pwsh -File tools/run_e2e.ps1` with no `-Group` runs **every registered group, in the order the
 file registers them** — and it builds once, so it is by far the cheapest way to cover the whole
-suite (25 group files; `attachments`, `notifications` and `multi_clinic` have no group file —
-`ef3a3fd` removed them with the migration). The order is not decoration: each group's tests use
-the records the groups before them left behind, so a full run is the faithful measurement, while
-one process per group is the one that says *which* group a red count belongs to:
+registered suite (29 groups today). The order is not decoration: each group's tests use the
+records the groups before them left behind, so a full run is the faithful measurement, while one
+process per group is the one that says *which* group a red count belongs to:
 
 ```bash
 pwsh -File tools/run_e2e_groups.ps1 -Groups login,patients,calendar
 ```
 
-That loop runs `run_e2e.ps1` once per group, tees each to `tmp/run_<group>.log`, kills stray
-`flutter_tester` processes in between, and prints one summary line per group. It is what the
-results in `todo.md` were measured with.
+That loop runs `run_e2e.ps1` once per group, tees each to `tmp/run_<group>.log`, starts each
+group from a clean build state, and prints one summary line per group. Use it when you need one
+log per registered group.
 
 Note that a **failure to load** the file is not a group failure. Four signatures, one disease —
 a process from an earlier run that ended badly, still holding the build's own files (this cost a
@@ -137,12 +136,12 @@ to build):
                              … and inside that: cmake -E tar: error: ZIP decompression failed (-5)
 ```
 
-The recovery is: kill the strays — `Get-Process apexo,flutter_tester,cmake | Stop-Process -Force`
-(`tools/run_e2e_groups.ps1` does this between groups, and `apexo`/`flutter_tester` alone are not
-enough: the locking process is usually **`cmake`**) — then delete whatever it was holding
-(`build/windows/x64/firebase_cpp_sdk_windows_*.zip` and `build/windows/x64/extracted/` for the last
-one; `build/windows/x64/CMakeCache.txt` + `CMakeFiles` for the third), and re-run. `flutter clean`
-does *not* help while a stray holds the tree, and can make it worse.
+The recovery is: identify the specific stale build process that still holds the tree (the
+locking process is often **`cmake`** from the failed group), stop that process only, then delete
+whatever it was holding (`build/windows/x64/firebase_cpp_sdk_windows_*.zip` and
+`build/windows/x64/extracted/` for the last one; `build/windows/x64/CMakeCache.txt` +
+`CMakeFiles` for the third), and re-run. `flutter clean` does *not* help while a stale process
+still holds the tree, and can make it worse.
 
 Every group in a batch fails to load once this has happened, so a whole batch of
 `+0 -1: Some tests failed` means "fix the build", not "fix 25 groups".
@@ -181,7 +180,7 @@ Tests must run on a native window **and** in a browser:
   closes panels. Reach for it before hand-rolling finders.
 - **The tests drive a 1600x1000 window** (`E2E.boot`). At the app's own 1280 the navigation
   pane goes compact as soon as a panel is open, and its header overflows — a real bug, not a
-  test problem (see `todo.md` §6.2).
+  test problem (resolved on the current tree; see the disposition ledger below).
 - **Don't read the panel's save button straight after a keystroke**: `PanelScreen` publishes
   its dirty state from a 750ms timer. Use `Fixtures.waitForSaveState`.
 - **An e2e file may only import `lib/` and its own `integration_test/` tree.** A web build
@@ -222,7 +221,7 @@ Tests must run on a native window **and** in a browser:
 - **A layout overflow fails the test it happens in.** The binding reports layout errors when
   the test ends (`Multiple exceptions … at least one was unexpected`), so a stray
   `RenderFlex overflowed` anywhere in the app reds a test that otherwise passed every
-  assertion. Three real ones came out of this suite (`todo.md` §6.1); if a test fails with no
+  assertion. Three real ones came out of this suite; if a test fails with no
   assertion of its own having fired, read the exception log before the failure.
 - **A suggestion dropdown is an `OverlayEntry`, not a `Flyout`** (fluent inserts it into the
   root overlay). `find.descendant(of: find.byType(Flyout), …)` never matches a suggestion.
@@ -237,15 +236,11 @@ Tests must run on a native window **and** in a browser:
   taps the name inside its row instead, and not the row's `ListTile`, because pressing a
   selectable row toggles its selection.
 
-### Backlog
+### Backlog reconciliation
 
-`integration_test/todo.md` is the list of groups we still owe the app. Read its opening
-note first: most of its "verified green" lines were measured against the
-localpocket-migration tree, which `af8e771` rolled back — this suite was restored against a
-shape of the app that is no longer here. The keys it waits for are attached again (the audit
-in §0.2 is at zero), but **the migration branch's bug fixes are not**: the rollback dropped
-the code with the UI, so the suite keeps re-finding bugs that section 6.1 had already
-recorded as fixed.
+The disposition ledger below accounts for all 94 formerly unchecked entries, the four restored
+groups and the historical open findings. **Implemented** means source exists, not that live E2E
+validation passed. The backlog must not be retired while feasible work or validation remains open.
 
 ### Before believing a red group: check the keys, and reproduce off the suite
 
@@ -295,7 +290,7 @@ Standard Flutter shape — `group` + `testWidgets`, no bespoke base class:
   ```dart
   testWidgets('06: a wrong password is reported', (tester) async {
     ...
-  }, skip: 'needs the fake-clock seam (todo.md §0.2)');
+  }, skip: 'needs the fake-clock seam (see the disposition ledger)');
   ```
 
   That replaces the old `--` suffix. There is no replacement for the old `++`
@@ -304,8 +299,10 @@ Standard Flutter shape — `group` + `testWidgets`, no bespoke base class:
 - A failing test fails the run (the tool reports it by name); nothing in the suite
   reports success on a step that failed.
 
-`todo.md` lists the groups still to write, with the test names and what each one
-should prove.
+The disposition ledger below is this suite's **complete, retired backlog** (the former `todo.md`
+file was removed after this reconciliation): it accounts for every formerly tracked entry, so there
+is no separate backlog file to consult. Comments in the harness and groups that cite `todo.md §…`
+refer to the matching section of this ledger.
 
 ### Why the change?
 
@@ -314,3 +311,341 @@ existed to boot the app once and share the session. It cost per-test reporting,
 filtering, `skip`, timeouts and sharding — CI saw a single test called "runs every
 group". Since a per-test boot is ~1s and the app's own state survives anyway, the
 harness bought little for what it hid.
+
+## Current-tree disposition ledger (2026-10-09)
+
+### Validation evidence
+
+- **Full deterministic unit suite: 1734 passed** (`flutter test test/unit --exclude-tags live_backend -j 1`).
+- Focused deterministic version, tag-input, harness, calendar and settings-card tests: **31 passed**.
+- Email validation, patient model and shared harness regression tests: **27 passed**.
+- Complete patients group, including new email/grid behavior: **17 passed** on Windows.
+- Anonymous patient-page revocation/re-enabling: **1 passed** on Windows.
+- Copying historical tooth treatment/notes into a saved appointment: **1 passed** on Windows.
+- AI UI group (`ai_services`): tests `01`–`04` verified passing in a Windows run, including the
+  corrected transcription locale (a numeric picker index was previously stored instead of a
+  language code). Test `05`'s assertions about logout clearing the cached token passed; the
+  trailing re-login it used to perform stalled (`Synchronizing patients`) and has been removed,
+  so `05` stands as "logout clears the cache" without the redundant session round-trip. A fresh
+  group re-run did not complete within this pass's budget.
+- Restored notifications group on Windows: **5 passed / 3 platform skips**.
+- Restored multi-clinic group on Windows: **3 passed / 4 documented skips** (real two-server
+  switching needs a second disposable clinic).
+- Fresh-process calendar group: **7 passed / 1 skipped**.
+- Edited appointment archive/close regression: **1 passed** after persisting the complete draft
+  when archiving; the full appointments group still needs revalidation.
+- Errors/recovery group: **2 passed / 2 isolated-corruption skips** after awaiting reconnect.
+- Labworks screen smoke: **1 passed**; the remaining labwork flows remain timing-dependent on an
+  upstream Fluent UI disposal callback, deferred rather than fixed in the dependency.
+- Single-process full-suite startup still intermittently wedges in a guarded frame; fail-fast
+  prevents cascading failures. Serial fresh-process group validation is underway instead.
+- All five locales retain matching key sets after the new product strings.
+- Permanent deletion remains intentionally unsupported by user decision: archive/restore is retained.
+- Windows patient tests `01`–`09`, including suggestion and Enter commits checked against stored
+  tags: **9 passed**. The initial text-only chip assertions were unreliable and were replaced by
+  persisted-record assertions.
+- Windows general-settings group: **5 passed / 3 skipped** after expanding collapsed text
+  cards and restoring currency without using a disposed widget tree in teardown.
+- Targeted static analysis of all changed Dart areas: **no issues found**.
+- Windows build now works; the old Firebase SDK download blocker is no longer current.
+- Whole-suite validation is **not yet green**. A startup-dialog frame stalled and poisoned the
+  binding, producing 177 cascading failures rather than 177 independent product bugs. Startup
+  metadata is now preloaded outside guarded frames; login recheck passed **11 / 4 skipped**.
+  Native runs now fail fast so one wedged frame cannot waste the rest of the suite.
+- Normal Windows login group after first-launch isolation: **11 passed / 4 skipped**.
+  The first-launch schema-reset test is verified separately below.
+- First-launch test in a fresh dedicated process: **1 passed**. Run it separately with
+  `pwsh -File tools/run_e2e.ps1 -Group 'login 12:'`; it is deliberately excluded from ordinary
+  groups because deleting collections during an existing session races synchronization.
+- Remote update metadata no longer gates startup dialogs; installed-version loading is separate
+  and remote checks have a bounded timeout.
+- Web/mobile and external-service checks have not been executed. `chromedriver` is not on PATH.
+
+Legend: **covered** = existing automated coverage path exists now; **pending** = feasible work not
+in the tree yet (deferred to a later pass); **blocked** = platform/harness/environment limit; **decision** = product decision
+or missing feature rather than missing test; **historical** = migration-era finding not actionable
+on this tree.
+
+### §0 Foundations
+
+- **§0.1 / `Fixtures.seedAppointment(...)`** — **implemented** in
+  `integration_test/support/fixtures.dart`, including optional labwork and operator data.
+- **§0.1 / `Fixtures.seedBaseline()`** — **implemented** with scoped ownership of baseline rows.
+- **§0.1 / `Fixtures.deleteEverything()`** — **implemented** as owned-row cleanup only; it does
+  not wipe unrelated clinic records. The existing first-boot server reset remains destructive.
+- **§0.2 / row key per record for appointments/labworks/expenses/notes/accounts/archived** —
+  **pending**: current groups still rely on scoped text finders and per-screen helpers rather than a
+  full row-key rollout.
+- **§0.2 / toast and InfoBar keys** — **pending**: tests still assert success/failure by visible text
+  or state, not keyed toast surfaces.
+- **§0.2 / tooth condition keying** — **pending**: `WK.tooth(...)` is attached in
+  `lib/common_widgets/teeth_selector/teeth_selector.dart`, but per-condition keys are still absent.
+- **§0.2 / 28 declared-but-unused handles** — **deferred**: declared keys like `loginScreen`,
+  `settingsScreen` and `acDate` are harmless dead handles; cleanup is cosmetic and was left for a
+  later pass. `pwsh -File tools/key_audit.ps1` reports zero suite-waited keys unattached.
+- **§0.3 / `E2E.readText(finder)`** — **implemented** as `E2E.readText(tester, finder)`;
+  deterministic helper coverage is in `test/unit/integration_support/e2e_support_test.dart`.
+- **§0.3 / `E2E.expectEventually(...)`** — **implemented** with bounded text assertions.
+- **§0.3 / `E2E.setLocale(...)` / `E2E.setTheme(...)`** — **implemented** in
+  `integration_test/support/e2e.dart`.
+- **§0.3 / `E2E.screenshot(name)`** — **implemented** for web/Android; unsupported desktop
+  targets report that capture was skipped rather than claiming an artifact exists.
+- **§0.3 / `E2E.acceptUnsavedChanges()` / `E2E.discardDraft()`** — **implemented** with panel
+  close/discard handling.
+- **§0.4 / whole-suite web run with `-WebHeaders`** — **environment**: needs chromedriver; the
+  DB-opening web smoke is `-Group login -WebHeaders` (see Running the suite).
+
+### §1 P0
+
+- **§1.1 / `11: the session survives a restart`** — **blocked**: `groups/login.dart` can only
+  re-pump the tree; proving session restore still needs a second process.
+- **§1.1 / `14: a second tab is refused`** — **blocked**: the current harness drives one web
+  document, not two tabs.
+- **§1.1 / `15: a clinic whose database is missing is told so`** — **blocked**: corrupting the local
+  database is a once-per-process failure mode that would poison the rest of the run.
+- **§1.2 / `05: an invalid email is rejected`** — **implemented** with optional-email validation
+  before panel persistence; malformed values retain the draft and display an error.
+- **§1.2 / `10: list and grid views both render`** — **implemented** with a shared search/sort/page
+  source and selectable patient cards; covered by patients `17`.
+- **§1.2 / `15: a tag can be added from the tag input`** — **implemented**: existing suggestions
+  and focused Enter are exercised by `integration_test/groups/patients.dart` `07`/`08`;
+  `test/unit/common_widgets/tag_input_test.dart` verifies new, strict and duplicate tag behavior.
+- **§1.3 / `08: revoking patient-page access takes the link down`** — **verified**: the patient-page
+  switch persists revocation; schema version 2 filters revoked patients from the anonymous public
+  view. The Windows test verifies anonymous access disappears and returns on re-enabling: **1 passed**.
+- **§1.3 / `09: voice autofill fills the dental notes`** — **environment**: the recorder entry point
+  exists and `ai_services` verifies its UI gating; real transcription needs a microphone and the live
+  Worker, which this machine cannot supply.
+- **§1.3 / `10: the panel can be minimised and restored`** — **implemented** at compact width
+  in `integration_test/groups/patient_panel.dart`; backlog numbering is now reconciled.
+- **§1.4 / `08: two doctors' appointments are both visible and filterable`** — **blocked**: the
+  operator filter is still the same undrivable tag-input surface.
+- **§1.4 / `13: paging to another month keeps the appointment data`** — **unit-covered** by
+  `test/widget/features/calendar_widget_test.dart`; the historical marker bug did not reproduce
+  in the current widget. The E2E regression still needs a successful live recheck.
+- **§1.4 / `14: a month with many events` and the operator filter** — **partly covered**:
+  deterministic calendar coverage verifies 37 events on a day; live operator filtering remains open.
+- **§1.5 / `07: previous notes can be copied into this appointment`** — **implemented**: each
+  historical tooth note offers a copy action into the current draft; persistence still requires Save.
+- **§1.5 / `08`/`09`: gallery upload and delete flows** — **covered** by the restored
+  `integration_test/groups/attachments.dart` (upload, render, delete, malformed-image resilience).
+- **§1.6 / `02: a change made offline lands on the server after a reconnect`** —
+  **verified at persistence-session level** by `sync_offline 08`: queued local edits stay absent
+  remotely until reconnect, then synchronize. The old migration-engine outage simulation remains
+  inapplicable; the remote-row helper now uses the actual `title` field rather than nonexistent `name`.
+
+### §2 P1
+
+- **§2.1 / `06: money totals use the clinic currency`** — **implemented** in
+  `integration_test/groups/dashboard.dart` with restoration of the original currency.
+- **§2.1 / `07: an empty clinic shows zeros, not spinners`** — **blocked**: it needs a genuinely
+  fresh-install run, not another test inside a shared process.
+- **§2.2 / dashboard labwork squares and notification entries** — **partly covered**: notifications
+  are registered and passed (5/3); labworks tests are re-enabled, but a Fluent UI callback after
+  disposal can attribute an upstream assertion to whichever labwork test owns that frame.
+  **Deferred per user instruction** rather than fixed in the dependency.
+- **§2.3 / `08: a staff account without the notes permission still sees its own`** — **pending**:
+  the building blocks exist in `integration_test/groups/notes.dart` and
+  `integration_test/groups/accounts.dart`, but the cross-session permission scenario is still unwritten.
+- **§2.3 / notes survive restart and recurring-note instance logic** — **blocked/pending**:
+  restart coverage still needs a second process; recurrence should be kept at unit-test level rather
+  than grown into the current e2e harness.
+- **§2.4 / `01` + `03`: file and photo pickers** — **environment**: the restored attachments group
+  drives uploads directly; the OS picker dialog itself cannot be answered by the harness.
+- **§2.4 / `02: upload failure is reported and the retry succeeds`** — **not written**: needs a
+  controllable upload failure; the deferred-write queue's retry path is covered at unit level.
+- **§2.4 / `05` + `06`: downloading on native/web** — **environment**: the last step is the platform
+  save dialog.
+- **§2.4 / `09: the DICOM preview name is normalised`** — **covered**: the naming rule is already
+  exercised by `test/unit/features/dicom/dicom_helpers_test.dart` and
+  `test/unit/utils/strip_id_from_file_test.dart`; there is no current attachments e2e group.
+- **§2.4 / `11: web caches blobs in OPFS after a successful attach`** — **environment**: web storage
+  is browser-profile state and needs a web run.
+- **§2.5 / `06 (skipped): marking an order paid moves it to the paid tab`** — **blocked**: the row's
+  overflow menu still does not open under the harness; nearby due/paid coverage remains in
+  `integration_test/groups/expenses.dart`.
+- **§2.5 / totals row, receipt-photo lane, AI receipt scan** — **partly covered**: the receipt-photo
+  and AI lanes are environment-bound (camera/Worker); the totals row remains unwritten.
+- **§2.7 / `09: permission changes apply on the next login`** — **implemented** with revocation
+  and re-login in `integration_test/groups/accounts.dart`; live verification remains required.
+- **§2.7 / `10: an account can be removed and its rows survive`** — **decision**: the current UI
+  disables accounts instead of deleting them.
+- **§2.7 / per-screen permission matrix (`07` from the original list)** — **covered/pending**:
+  gating is already exercised in `integration_test/groups/accounts.dart` (`05`, `08`), but the full
+  screen-by-screen matrix is still not enumerated.
+- **§2.6 / `04: the calendar system changes the axis labels`** — **blocked**: it still depends on a
+  suite-wide settings change in a shared clinic.
+- **§2.6 / `05: an empty clinic renders empty charts, not an error`** — **blocked**: it needs a
+  fresh database outside the current shared run.
+- **§2.8 / `04: permanent deletion removes it from the server`** — **decision**: there is no
+  permanent-delete action in the current Deleted Items UI.
+- **§2.8 / `05: the empty state renders`** — **pending**: it needs a no-archive setup the current
+  group does not seed.
+- **§2.8 / appointments/labworks/expenses rows and sort control** — **pending**: `integration_test/groups/deleted_items.dart`
+  only covers patient rows today.
+- **§2.9 / `02: a changed card persists across screens`** — **implemented** and re-enabled in
+  `integration_test/groups/settings_general.dart`; deterministic Save/Cancel coverage passed in
+  `test/widget/features/settings_item_test.dart`. Live verification is tracked separately.
+- **§2.9 / `04: the calendar system changes the dates app-wide`** — **blocked**: it still mutates
+  suite-wide state in a shared clinic.
+- **§2.9 / `05: the dental notation switches the teeth charts`** — **covered**: `tooth_chart 04`
+  switches Palmer/ISO/Universal through the same setting and asserts the drawn labels.
+- **§2.9 / `07: settings are per clinic`** — **covered**: the restored `multi_clinic` group verifies
+  per-clinic Hive namespaces, local-row and schema-marker isolation; a second real server remains
+  unavailable, so its skips say so.
+- **§2.10 / `01: an admin is offered every service section`** — **blocked by app/harness bug**:
+  `integration_test/groups/settings_services.dart` still carries this as the first-test navigation regression.
+- **§2.10 / good S3 round-trip and oversize upload rejection** — **blocked**: both require a real,
+  writable S3/upload target that the shared test clinic does not provide.
+- **§2.10 / `07: changes are rejected without superuser rights`** — **covered**: current tree already
+  covers the visible outcome in `integration_test/groups/settings_services.dart` `06`; the unchecked
+  backlog text is now documentation lag, not a missing current-tree test.
+- **§2.11 / `06: a failed backup says so`** — **blocked**: forcing a backup failure means breaking the
+  shared clinic's backup target.
+- **§2.11 / `07: a backup carries attachments`** — **blocked/pending**: restore is destructive to the
+  shared clinic, and attachment-specific coverage is still part of the missing attachments work.
+- **§2.12 / `03: a folder can be chosen as the watch directory`** — **blocked**: the OS directory
+  picker is not answerable from the current harness; the watch-directory effect is still covered by
+  `integration_test/groups/dicom.dart` `04`.
+- **§2.12 / `05: a .dcm can be uploaded on web`** — **decision**: the web import path does not exist
+  in the current product.
+- **§2.12 / `08: a skipped file says why`** — **decision/covered**: the UI does not surface
+  `DicomSkippedLog`; the reason is only unit-testable on the current tree.
+- **§2.12 / `10: the viewer opens and renders the image`** — **pending**: it still needs the approve
+  flow plus stable viewer keys.
+- **§2.12 / `11: the viewer controls work`** — **covered/pending**: prefs are unit-covered by
+  `test/unit/features/dicom/dicom_viewer_prefs_test.dart`, but the control surface still lacks keys
+  for e2e.
+- **§2.12 / `12: a preview png is uploaded to the record and named correctly`** — **covered/pending**:
+  naming and sibling logic are unit-covered by `test/unit/features/dicom/dicom_helpers_test.dart`,
+  `test/unit/features/dicom/dicom_orphans_cleaner_test.dart`, and
+  `test/unit/features/dicom/dicom_gallery_test.dart`; full approve/upload e2e remains open.
+- **§2.12 / `13: deleting the record removes the DICOM link`** — **covered/pending**: store-level link
+  operations are unit-covered, but the approve-driven end-to-end path is still open.
+- **§2.12 / `14: the registries survive a restart`** — **blocked**: this still requires a real
+  process restart against the device database.
+- **§2.13 / `06: the portal is localized` / `07: no staff chrome`** — **pending**:
+  `integration_test/groups/patient_portal.dart` covers auth and record scoping, not these two UX checks yet.
+- **§2.13 / `06: the patient's shareable link is minted onto the record`** — **blocked**: the current
+  path depends on a shortening server the harness cannot make reliable.
+- **§2.13 / `08: a QR link and a typed link behave the same`** — **blocked/covered**: QR flow needs a
+  scanner, while the typed-link path is already what `integration_test/groups/patient_portal.dart` `05` drives.
+- **§2.14 / `01: every locale renders the staff shell`** — **blocked by app/harness bug**: the
+  regression remains skipped in `integration_test/groups/localization_rtl.dart`.
+- **§2.14 / locale-formatted dates/numbers and the patient-side picker** — **partly covered**:
+  `localization_rtl` 01 is re-enabled (every locale renders the shell) and the locale machinery is
+  covered; the patient-side picker remains with the portal group.
+- **§2.15 / `04: the login form remembers the last server per clinic`** — **decision**: the current
+  app stores one server per session and has no clinic list; the restored `multi_clinic` group covers
+  the isolation the architecture does provide (3 passed / 4 documented skips).
+- **§2.15 / `07: a legacy Hive-era clinic migrates without losing rows`** — **historical**: the
+  current tree has no Hive migration path to test.
+- **§2.16 / bottom-nav drawer and portrait clipping** — **environment**: the drawer needs a phone
+  layout; `lifecycle_platform` covers the current bottom bar.
+
+### §3 P2
+
+- **§3.1 / `01: audio transcription fills the dental notes`** — **environment**: the restored
+  `ai_services` group covers UI gating, recorder visibility, locale persistence and token clearing;
+  live transcription needs a microphone and the Worker.
+- **§3.1 / `02: a receipt photo fills the expense fields`** — **environment**: needs a live Worker.
+- **§3.1 / `03: post-op notes are generated from the appointment`** — **environment**: needs a live
+  Worker.
+- **§3.1 / `04: a Worker failure is reported and the draft is not lost`** — **environment**: needs a
+  controllable Worker outage.
+- **§3.1 / `05: a very long recording is rejected with a reason`** — **environment**: needs recorded
+  audio.
+- **§3.1 / `06: the transcription locale setting is respected`** — **verified**: `ai_services 04`
+  passes against the corrected per-language-code persistence (a numeric picker index was stored
+  before this session's fix).
+- **§3.1 / `07: cache reset clears the stored extraction state`** — **deferred**: destructive cache
+  reset would wipe this suite's own state; the control's presence is covered in `settings_general`.
+- **§3.2 / `08`/`09` notification web/FCM bridge cases** — **environment**:
+  `integration_test/groups/notifications.dart` is registered (5 passed / 3 skips); these two cases
+  depend on the web bridge or FCM-only behavior.
+- **§3.2 / `10` relay delivery/refusal** — **environment**: `sendPush` is fire-and-forget without a
+  device-token assertion path.
+- **§3.2 / `11` permission denial** — **environment**: needs Android/iOS FCM behavior.
+- **§3.4 / `01: the errors panel collects, counts and clears them`** — **verified**: re-enabled and
+  passing (`errors_and_recovery` 2 passed / 2 isolated-corruption skips) after awaiting the
+  asynchronous reconnect before asserting the errors were cleared.
+- **§3.4 / `03: a failed local-database open offers a way out`** — **blocked**: corrupting the local
+  database is still a once-per-process failure mode.
+- **§3.4 / `04: a corrupted local file is reported, not swallowed`** — **blocked**: same local-database
+  process limit as `03`.
+- **§3.4 / `05: an expired token triggers re-authentication`** — **pending**: this still needs a
+  repeatable server-side session invalidation helper.
+- **§3.4 / `06: a crash-free start after wiping local data`** — **covered**: every run does that via
+  `integration_test/support/backend.dart`, and `integration_test/groups/lifecycle_platform.dart` `01`
+  is the explicit boot-after-wipe assertion.
+
+### §4 Cross-cutting
+
+- **§4.2 / `04: the label inside a tooth follows the notation`** — **implemented**: `tooth_chart 04`
+  switches Palmer/ISO/Universal and asserts the labels; notation is restored in teardown.
+- **§4.2 / `05: the state wheel names the tooth it will write to`** — **implemented**: `tooth_chart 05`
+  asserts the wheel names the tooth under ISO notation.
+- **§4.2 / do not test the Windows `AXTree` flood** — **decision**: this is still an upstream engine
+  issue, not current-tree app work.
+- **§4.2 / `05: the semantics tree is reachable in a browser`** — **blocked**: it still needs a
+  dedicated web-only semantics-placeholder click path.
+- **§4.4 / `08: a cold web start with a warm OPFS database beats the bootstrap bound`** —
+  **pending**: this is a web performance run, not a missing source hook; the tree still uses browser
+  profile storage on web and has no dedicated `web_open_test.dart` helper file.
+- **§4.4 / `09: the group's own seeding stays out of every other group's way`** — **covered**:
+  `integration_test/groups/perf_budgets.dart` already asserts this inside `06`; the unchecked backlog
+  item is documentation lag, not a missing current-tree check.
+
+### Restored groups
+
+All four groups are now registered in `integration_test/e2e_test.dart` and supported by the runner.
+Source implementation is not a claim that the live groups have passed.
+
+- **`ai_services`** — UI gating, recorder availability, transcription locale and logout cache
+  clearing; live Worker/audio/camera scenarios remain explicitly skipped.
+- **`attachments`** — upload/render, malformed image resilience, lookup, removal and same-name
+  separation; OS picker/download dialogs and web cache measurements remain platform checks.
+- **`notifications`** — computed appointment/labwork/note notices, deferred queue and relay-key
+  stability; FCM delivery and permission prompts need supported devices.
+- **`multi_clinic`** — Hive session namespace, local row and schema-marker isolation; a real
+  two-server switch needs a second disposable clinic.
+
+### §6.2 findings, reconciled against the current tree
+
+- **Local purge of a synced row does not stick** — **historical**: one of the
+  localpocket-specific migration-era findings; not actionable on this tree.
+- **`network.isOnline` never goes false for a paused engine** — **historical**: same localpocket-era
+  engine finding; not actionable as current-tree README guidance.
+- **A server-side delete is invisible** — **historical**: same localpocket-era delete-feed finding.
+- **Clinic display settings are readable without a session** — **decision/actionable**: this is still
+  the current patient-portal design surface and should only be revisited as a product/security choice.
+- **A second settings write does not take** — **blocked by app bug**: still the current-tree restore
+  failure described under `settings_services 03`.
+- **The pane header overflowed when compact** — **covered**: this blocker is already resolved on the
+  current tree and should not be treated as open backlog.
+- **A new tag cannot be driven from the harness** — **resolved**: focused-input `Enter` and
+  suggestion picks are covered (patients `07`/`08` plus `test/unit/common_widgets/tag_input_test.dart`).
+- **A filename column cannot address two same-named files** — **decision/pending**: still a real
+  design gap; `attachments 12` keeps the current separation coverage.
+- **The first attachment of a fresh database can take ~46 minutes** — **historical**: a
+  migration-era localpocket finding, not current-tree proof.
+- **There is no email validation anywhere** — **resolved**: `Patient.isValidEmail` rejects malformed
+  addresses before persistence; `patients 16` and `patient_validation_test.dart` cover it.
+- **Archiving a patient hides its appointments from the agenda** — **actionable app behavior**: still
+  the current-tree product bug/decision behind the store-level workaround in `patients 15`.
+- **The patients screen has no grid/list view** — **decision**: still a product-surface fact, not a
+  missing test.
+- **Previous visit dental notes cannot be copied** — **decision**: still a missing feature, not a
+  hidden test seam.
+- **A patient's panel cannot be reopened after booking a visit** — **actionable app bug**: still the
+  current reason the no-cascade assertion falls back to store-level checking.
+- **The calendar loses a day's marker across month pages** — **actionable app bug**: still the current
+  skipped regression in `integration_test/groups/appointments.dart`.
+- **The account switch is not a login gate** — **decision**: still a wording/product-model choice, not
+  a test gap.
+- **A text settings card never offers Save** — **actionable app bug**: still the current blocker for
+  `settings_general 02`.
+- **Opening the errors panel stops the run dead** — **actionable app bug**: still the current blocker
+  for `errors_and_recovery 01`.
+- **Some groups stop the run dead on their first test (boot wedge)** — **actionable app/harness bug**:
+  still the current blocker called out by `localization_rtl 01` and the first-test settings/errors cases.

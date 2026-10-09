@@ -61,5 +61,31 @@ void registerDeletedItemsTests() {
         reason: 'the patient is still listed under the notes filter',
       );
     });
+
+    testWidgets('03: restoring a record puts it back in its screen',
+        (tester) async {
+      await E2E.signIn(tester);
+      final name = await Fixtures.createPatient(tester,
+          name: Fixtures.stamp('e2e restored-item'));
+
+      await Fixtures.openPatient(tester, name);
+      await E2E.tap(tester, find.byKey(WK.panelArchive),
+          description: 'the archive button');
+      await Fixtures.confirmFlyout(tester);
+      await Fixtures.closePanel(tester);
+
+      await Fixtures.openDeletedItems(tester);
+      await E2E.waitFor(tester, find.text(name),
+          description: 'the "$name" archived row');
+      await Fixtures.restoreFromDeletedItems(tester, name);
+      expect(find.text(name), findsNothing,
+          reason: 'the restored patient is still listed in Deleted Items');
+
+      await Fixtures.openPatients(tester);
+      await Fixtures.openPatient(tester, name);
+      expect(Fixtures.fieldText(tester, WK.fieldPatientName), name,
+          reason: 'restoring the patient did not put it back on the patients screen');
+      await Fixtures.closePanel(tester);
+    });
   });
 }

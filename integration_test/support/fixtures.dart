@@ -4,6 +4,8 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -18,7 +20,8 @@ import 'package:flutter/cupertino.dart' show CupertinoTextField;
 import 'package:flutter/material.dart' show DatePickerDialog, TextButton;
 import 'package:flutter_test/flutter_test.dart';
 import 'e2e.dart';
-import 'credentials.dart' show pbEmail, pbPassword, pbServer;
+import 'credentials.dart' show hasCredentials, pbEmail, pbPassword, pbServer;
+import 'remote_rows.dart';
 import 'store_ext.dart';
 
 /// The id of the board's uncategorized column.
@@ -27,11 +30,47 @@ import 'store_ext.dart';
 /// the empty string: `Note.unCategorized` is `isNote && columnID.isEmpty`.
 const uncategorizedColumnId = '';
 
+typedef ScopedCleanupReport = ({
+  int patients,
+  int appointments,
+  int expenses,
+  int notes,
+});
+
+typedef BaselineSeed = ({
+  List<String> patientIDs,
+  List<String> patientNames,
+  List<String> appointmentIDs,
+  String supplierID,
+  String supplierName,
+  String orderID,
+  String noteID,
+  String noteTitle,
+});
+
 /// Creates records through the UI, so a test exercises the same path a user
 /// does — the price is that seeding is slow, which is why these are for the
 /// record under test rather than for a bulk baseline (see `todo.md` §0.1).
 abstract final class Fixtures {
   // --------------------------------------------------------------- values
+
+  static const _baselineScope = 'e2e baseline';
+  static const List<String> _defaultCleanupScopes = [
+    _baselineScope,
+    'e2e patient',
+    'e2e seeded',
+    'e2e supplier',
+    'e2e note',
+    'e2e bulk',
+    'e2e scale column',
+  ];
+
+  static final Map<String, Set<String>> _ownedIds = {
+    'patients': <String>{},
+    'appointments': <String>{},
+    'expenses': <String>{},
+    'notes': <String>{},
+  };
 
   /// A name that belongs to one run, so a failed run leaves nothing ambiguous
   /// and two runs never collide.
@@ -47,6 +86,26 @@ abstract final class Fixtures {
   /// plus its content (hundreds of pixels). Anything between is not expected, so
   /// the boundary is deliberately generous.
   static const double _collapsedSectionHeight = 60;
+
+  static void _remember(String store, String id) {
+    if (id.isEmpty) return;
+    _ownedIds[store]!.add(id);
+  }
+
+  static void _rememberAll(String store, Iterable<String> ids) {
+    for (final id in ids) {
+      _remember(store, id);
+    }
+  }
+
+  static void _forgetAll(String store, Iterable<String> ids) {
+    _ownedIds[store]!.removeAll(ids);
+  }
+
+  static bool _matchesScope(String? value, Set<String> scopes) {
+    if (value == null || value.isEmpty) return false;
+    return scopes.any(value.startsWith);
+  }
 
   // ------------------------------------------------------------ navigation
 
@@ -161,19 +220,12 @@ abstract final class Fixtures {
     WidgetTester tester, {
     bool allowPrompt = true,
   }) async {
+    if (allowPrompt) {
+      await E2E.discardDraft(tester);
+      return;
+    }
     await E2E.tap(tester, find.byKey(WK.panelClose),
         description: 'the panel close button');
-    // The flyout is opened through `flyoutFocusFix`, so it is not there on the
-    // same frame. Wait for it rather than assuming either way.
-    final deadline = DateTime.now().add(const Duration(seconds: 1));
-    while (allowPrompt &&
-        find.byType(FlyoutContent).evaluate().isEmpty &&
-        DateTime.now().isBefore(deadline)) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-    if (allowPrompt && find.byType(FlyoutContent).evaluate().isNotEmpty) {
-      await confirmFlyout(tester);
-    }
     await E2E.waitForGone(tester, find.byKey(WK.panelSave),
         description: 'the panel');
   }
@@ -345,6 +397,7 @@ abstract final class Fixtures {
     await E2E.settle(tester);
     await save(tester);
     await closePanel(tester);
+    _remember('patients', await waitForPatientId(patientName, tester: tester));
     return patientName;
   }
 
@@ -470,24 +523,68 @@ abstract final class Fixtures {
     String? price,
     String? preOpNotes,
   }) async {
+    await seedAppointment(
+      tester,
+      patientName: patientName,
+      day: day,
+      price: price,
+      preOpNotes: preOpNotes,
+    );
+  }
+
+  /// Books an appointment through the panel and returns its stored id.
+  static Future<String> seedAppointment(
+    WidgetTester tester, {
+    required String patientName,
+    DateTime? day,
+    String? price,
+    String? preOpNotes,
+    String? postOpNotes,
+    String? labName,
+    String? labworkOrderNotes,
+    bool labworkReceived = false,
+  }) async {
+    final visitDay = day ?? tomorrow();
+    final beforeIds =
+        appointments.forDay(visitDay).map((row) => row.id).toSet();
     await openCalendar(tester);
-    await selectDay(tester, day ?? tomorrow());
+    await selectDay(tester, visitDay);
     await openNewAppointmentPanel(tester);
     await pickPatient(tester, patientName);
     if (preOpNotes != null) {
       await enterField(tester, WK.fieldAppointmentPreOpNotes, preOpNotes,
           scrollable: _panelBody(WK.fieldAppointmentPreOpNotes));
     }
-    if (price != null) {
-      // The price is on the operative-details tab — the panel opens on the
-      // appointment tab, and only the selected tab is built.
+    if (price != null || postOpNotes != null || labName != null) {
       await openPanelTab(tester, 'operativeDetails');
+    }
+    if (price != null) {
       await enterField(tester, WK.fieldAppointmentPrice, price,
           scrollable: _panelBody(WK.fieldAppointmentPostOpNotes));
+    }
+    if (postOpNotes != null) {
+      await enterField(tester, WK.fieldAppointmentPostOpNotes, postOpNotes,
+          scrollable: _panelBody(WK.fieldAppointmentPostOpNotes));
+    }
+    if (labName != null) {
+      await attachLabwork(
+        tester,
+        lab: labName,
+        orderNotes: labworkOrderNotes,
+        received: labworkReceived,
+      );
     }
     await E2E.settle(tester);
     await save(tester);
     await closePanel(tester);
+    final created = await _waitForNewAppointment(
+      tester: tester,
+      patientName: patientName,
+      day: visitDay,
+      beforeIds: beforeIds,
+    );
+    _remember('appointments', created.id);
+    return created.id;
   }
 
   /// The scrollable the open panel's body lives in, reached through a field that
@@ -495,6 +592,27 @@ abstract final class Fixtures {
   static Finder _panelBody(Key through) => find
       .ancestor(of: find.byKey(through), matching: find.byType(Scrollable))
       .first;
+
+  static Future<Appointment> _waitForNewAppointment({
+    required WidgetTester tester,
+    required String patientName,
+    required DateTime day,
+    required Set<String> beforeIds,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final created = appointments
+          .forDay(day)
+          .where((row) =>
+              row.patient?.title == patientName && !beforeIds.contains(row.id))
+          .toList();
+      if (created.isNotEmpty) return created.first;
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    fail('The appointment for "$patientName" on ${_dateKey(day)} was never '
+        'stored.');
+  }
 
   /// Opens the appointment on the day's list.
   ///
@@ -792,6 +910,26 @@ abstract final class Fixtures {
     );
     await E2E.settle(tester);
     await confirmDialog(tester);
+    _remember('expenses', await _waitForSupplierId(name, tester: tester));
+  }
+
+  static Future<String> _waitForSupplierId(
+    String name, {
+    WidgetTester? tester,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      for (final row in expenses.docs.values) {
+        if (row.isSupplier && row.supplierName == name) return row.id;
+      }
+      if (tester != null) {
+        await tester.pump(const Duration(milliseconds: 100));
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+    }
+    fail('The supplier "$name" was never stored.');
   }
 
   /// Confirms the open dialog (its action row holds the Save button).
@@ -1236,6 +1374,7 @@ abstract final class Fixtures {
     // its column's viewport, and a card that was never built has no finder to
     // wait for.
     final created = await waitForNote(tester, title);
+    _remember('notes', created.id);
     await revealNoteCard(tester, created.id);
   }
 
@@ -1401,6 +1540,7 @@ abstract final class Fixtures {
           'title': '$prefix ${i.toString().padLeft(4, '0')}',
         }),
     ]);
+    _rememberAll('patients', ids);
     if (tester != null) await E2E.settle(tester, frames: 5);
     return ids;
   }
@@ -1433,8 +1573,228 @@ abstract final class Fixtures {
           'price': price,
         }),
     ]);
+    _rememberAll('appointments', ids);
     if (tester != null) await E2E.settle(tester, frames: 5);
     return ids;
+  }
+
+  /// Seeds a small, reusable baseline for read-only screens.
+  ///
+  /// The returned ids let a caller narrow later assertions to exactly this seed.
+  /// Cleanup is scoped: only this baseline's own records are removed first.
+  static Future<BaselineSeed> seedBaseline(
+    WidgetTester? tester, {
+    String scope = _baselineScope,
+  }) async {
+    await deleteEverything(tester, scopes: [scope]);
+
+    final now = DateTime.now();
+    final stamp = now.millisecondsSinceEpoch;
+    final patientIDs = [for (var i = 0; i < 3; i++) _bulkId('bp', stamp, i)];
+    final patientNames = [
+      for (var i = 0; i < 3; i++) '$scope patient ${i + 1}',
+    ];
+    patients.setAll([
+      for (var i = 0; i < patientIDs.length; i++)
+        Patient.fromJson({
+          'id': patientIDs[i],
+          'title': patientNames[i],
+        }),
+    ]);
+
+    final appointmentIDs = [
+      for (var i = 0; i < 5; i++) _bulkId('ba', stamp, i)
+    ];
+    appointments.setAll([
+      Appointment.fromJson({
+        'id': appointmentIDs[0],
+        'patientID': patientIDs[0],
+        'operatorsIDs': [login.currentAccountID],
+        'date': dateToWire(DateTime(now.year, now.month, now.day, 9)),
+        'price': 120,
+        'paid': 120,
+        'isDone': true,
+      }),
+      Appointment.fromJson({
+        'id': appointmentIDs[1],
+        'patientID': patientIDs[1],
+        'operatorsIDs': [login.currentAccountID],
+        'date': dateToWire(DateTime(now.year, now.month, now.day, 14)),
+        'price': 75,
+        'hasLabwork': true,
+        'labName': '$scope lab',
+        'labworkReceived': false,
+      }),
+      Appointment.fromJson({
+        'id': appointmentIDs[2],
+        'patientID': patientIDs[0],
+        'operatorsIDs': [login.currentAccountID],
+        'date': dateToWire(DateTime(now.year, now.month, now.day - 1, 10)),
+        'price': 90,
+        'paid': 90,
+        'isDone': true,
+      }),
+      Appointment.fromJson({
+        'id': appointmentIDs[3],
+        'patientID': patientIDs[2],
+        'operatorsIDs': [login.currentAccountID],
+        'date': dateToWire(DateTime(now.year, now.month, now.day - 2, 11, 30)),
+        'price': 50,
+      }),
+      Appointment.fromJson({
+        'id': appointmentIDs[4],
+        'patientID': patientIDs[2],
+        'operatorsIDs': [login.currentAccountID],
+        'date': dateToWire(DateTime(now.year, now.month, now.day + 1, 16)),
+        'price': 60,
+      }),
+    ]);
+
+    final supplierID = _bulkId('bs', stamp, 0);
+    final supplierName = '$scope supplier';
+    final orderID = _bulkId('bo', stamp, 0);
+    expenses.setAll([
+      Expense.fromJson({
+        'id': supplierID,
+        'isSupplier': true,
+        'supplierName': supplierName,
+      }),
+      Expense.fromJson({
+        'id': orderID,
+        'supplierId': supplierID,
+        'date': now.millisecondsSinceEpoch,
+        'cost': 125,
+        'paidAmount': 0,
+        'processed': false,
+      }),
+    ]);
+
+    final noteID = _bulkId('bn', stamp, 0);
+    final noteTitle = '$scope note';
+    final noteHour = (now.millisecondsSinceEpoch / (60 * 60 * 1000)).round();
+    notes.set(Note.fromJson({
+      'id': noteID,
+      'title': noteTitle,
+      'note': '$scope note body',
+      'date': noteHour,
+      'dueDate': noteHour,
+      'createdBy': login.currentAccountID,
+      'assignedTo': login.currentAccountID,
+      'forPatient': patientIDs.first,
+    }));
+
+    _rememberAll('patients', patientIDs);
+    _rememberAll('appointments', appointmentIDs);
+    _rememberAll('expenses', [supplierID, orderID]);
+    _remember('notes', noteID);
+
+    if (tester != null) await E2E.settle(tester, frames: 5);
+    return (
+      patientIDs: patientIDs,
+      patientNames: patientNames,
+      appointmentIDs: appointmentIDs,
+      supplierID: supplierID,
+      supplierName: supplierName,
+      orderID: orderID,
+      noteID: noteID,
+      noteTitle: noteTitle,
+    );
+  }
+
+  /// Deletes only the harness-owned rows — never the whole clinic.
+  ///
+  /// Matching is deliberately narrow: remembered ids plus the explicit [scopes]
+  /// prefixes this harness seeds with.
+  static Future<ScopedCleanupReport> deleteEverything(
+    WidgetTester? tester, {
+    Iterable<String> scopes = _defaultCleanupScopes,
+  }) async {
+    final scopeSet = scopes.toSet();
+    final ownedPatients = patients.docs.values
+        .where((row) =>
+            _ownedIds['patients']!.contains(row.id) ||
+            _matchesScope(row.title, scopeSet))
+        .toList();
+    final patientIds = ownedPatients.map((row) => row.id).toSet();
+
+    final ownedAppointments = appointments.docs.values
+        .where((row) =>
+            _ownedIds['appointments']!.contains(row.id) ||
+            patientIds.contains(row.patientID))
+        .toList();
+
+    final supplierIds = expenses.docs.values
+        .where((row) =>
+            row.isSupplier &&
+            (_ownedIds['expenses']!.contains(row.id) ||
+                _matchesScope(row.supplierName, scopeSet)))
+        .map((row) => row.id)
+        .toSet();
+    final ownedExpenses = expenses.docs.values
+        .where((row) =>
+            _ownedIds['expenses']!.contains(row.id) ||
+            supplierIds.contains(row.id) ||
+            supplierIds.contains(row.supplierId))
+        .toList();
+
+    final ownedColumnIds = notes.docs.values
+        .where((row) =>
+            row.isColumn &&
+            (_ownedIds['notes']!.contains(row.id) ||
+                _matchesScope(row.title, scopeSet) ||
+                _matchesScope(row.columnName, scopeSet)))
+        .map((row) => row.id)
+        .toSet();
+    final ownedNotes = notes.docs.values
+        .where((row) =>
+            _ownedIds['notes']!.contains(row.id) ||
+            ownedColumnIds.contains(row.id) ||
+            ownedColumnIds.contains(row.columnID) ||
+            patientIds.contains(row.forPatient) ||
+            _matchesScope(row.title, scopeSet) ||
+            _matchesScope(row.columnName, scopeSet))
+        .toList();
+
+    final remoteIds = <String>{
+      ...patientIds,
+      ...ownedAppointments.map((row) => row.id),
+      ...ownedExpenses.map((row) => row.id),
+      ...ownedNotes.map((row) => row.id),
+    }.toList();
+
+    if (remoteIds.isNotEmpty && hasCredentials) {
+      final report = tester == null
+          ? await RemoteRows.deleteMany(remoteIds)
+          : await tester.runAsync(() => RemoteRows.deleteMany(remoteIds));
+      // ignore: avoid_print
+      print('🧹 scoped cleanup (${scopeSet.join(', ')}): $report');
+    }
+
+    for (final row in ownedAppointments) {
+      appointments.purge(row.id);
+    }
+    for (final row in ownedExpenses) {
+      expenses.purge(row.id);
+    }
+    for (final row in ownedNotes) {
+      notes.purge(row.id);
+    }
+    for (final row in ownedPatients) {
+      patients.purge(row.id);
+    }
+
+    _forgetAll('patients', patientIds);
+    _forgetAll('appointments', ownedAppointments.map((row) => row.id));
+    _forgetAll('expenses', ownedExpenses.map((row) => row.id));
+    _forgetAll('notes', ownedNotes.map((row) => row.id));
+
+    if (tester != null) await E2E.settle(tester, frames: 5);
+    return (
+      patients: patientIds.length,
+      appointments: ownedAppointments.length,
+      expenses: ownedExpenses.length,
+      notes: ownedNotes.length,
+    );
   }
 
   /// Removes every record in [ids] from [store] and returns how many are gone.
@@ -1456,6 +1816,7 @@ abstract final class Fixtures {
         appointments.purge(id);
       }
     }
+    _forgetAll(store, ids);
     if (tester != null) await E2E.settle(tester, frames: 5);
   }
 
@@ -1469,6 +1830,25 @@ abstract final class Fixtures {
       if (row.title == name) return row.id;
     }
     return '';
+  }
+
+  /// Waits until the patient named [name] is stored, then returns its id.
+  static Future<String> waitForPatientId(
+    String name, {
+    WidgetTester? tester,
+    Duration timeout = const Duration(seconds: 20),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final id = await patientIdOf(name);
+      if (id.isNotEmpty) return id;
+      if (tester != null) {
+        await tester.pump(const Duration(milliseconds: 100));
+      } else {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
+    }
+    fail('The patient "$name" was never stored.');
   }
 
   /// Creates one board column and [count] notes in it, with **two** bulk writes.
@@ -1506,6 +1886,8 @@ abstract final class Fixtures {
           'date': dateToWire(DateTime.now()),
         }),
     ]);
+    _remember('notes', column);
+    _rememberAll('notes', ids);
     if (tester != null) await E2E.settle(tester, frames: 5);
     return (column: column, notes: ids);
   }
@@ -1548,6 +1930,7 @@ abstract final class Fixtures {
       }));
       ids.add(id);
     }
+    _rememberAll('patients', ids);
     await E2E.settle(tester, frames: 5);
     return ids;
   }
@@ -1952,13 +2335,8 @@ abstract final class Fixtures {
     WidgetTester tester,
     String identifier,
   ) async {
-    await revealSettingsCard(tester, identifier);
-    final card = find.byKey(WK.settingsItem(identifier));
+    await expandSettingsCard(tester, identifier);
     final field = find.byKey(Key('${identifier}_text_field'));
-    if (field.evaluate().isEmpty) {
-      await E2E.tap(tester, card, description: 'the "$identifier" card');
-      await E2E.settle(tester, frames: 15);
-    }
     await E2E.waitFor(tester, field,
         description: 'the "$identifier" field',
         timeout: const Duration(seconds: 20));
@@ -1972,13 +2350,9 @@ abstract final class Fixtures {
     String identifier,
     String value,
   ) async {
-    await revealSettingsCard(tester, identifier);
+    await expandSettingsCard(tester, identifier);
     final card = find.byKey(WK.settingsItem(identifier));
     final field = find.byKey(Key('${identifier}_text_field'));
-    if (field.evaluate().isEmpty) {
-      await E2E.tap(tester, card, description: 'the "$identifier" card');
-      await E2E.settle(tester, frames: 15);
-    }
 
     await E2E.waitFor(tester, field,
         description: 'the "$identifier" field',
@@ -2204,6 +2578,7 @@ abstract final class Fixtures {
       if (labworkDue) 'labName': 'e2e lab',
       if (price > 0) 'price': price,
     }));
+    _remember('appointments', id);
     await E2E.settle(tester, frames: 10);
     return id;
   }

@@ -1,7 +1,9 @@
 import 'package:integration_test/integration_test.dart';
 import 'groups/accessibility.dart';
 import 'groups/accounts.dart';
+import 'groups/ai_services.dart';
 import 'groups/appointments.dart';
+import 'groups/attachments.dart';
 import 'groups/backups.dart';
 import 'groups/calendar.dart';
 import 'groups/dashboard.dart';
@@ -14,7 +16,9 @@ import 'groups/labworks.dart';
 import 'groups/lifecycle_platform.dart';
 import 'groups/localization_rtl.dart';
 import 'groups/login.dart';
+import 'groups/multi_clinic.dart';
 import 'groups/notes.dart';
+import 'groups/notifications.dart';
 import 'groups/patient_panel.dart';
 import 'groups/patient_portal.dart';
 import 'groups/patients.dart';
@@ -87,13 +91,17 @@ void main() {
     'expenses': registerExpensesTests,
     'dashboard': registerDashboardTests,
     'notes': registerNotesTests,
+    'attachments': registerAttachmentsTests,
     'insights': registerInsightsTests,
     'deleted_items': registerDeletedItemsTests,
     'accounts': registerAccountsTests,
     'settings_general': registerSettingsGeneralTests,
     'settings_services': registerSettingsServicesTests,
+    'ai_services': registerAiServicesTests,
     'sync_offline': registerSyncOfflineTests,
     'backups': registerBackupsTests,
+    'notifications': registerNotificationsTests,
+    'multi_clinic': registerMultiClinicTests,
     'lifecycle_platform': registerLifecyclePlatformTests,
     'localization_rtl': registerLocalizationTests,
     'errors_and_recovery': registerErrorsAndRecoveryTests,

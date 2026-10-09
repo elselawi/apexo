@@ -116,7 +116,8 @@ void registerExpensesTests() {
       await Fixtures.openOrdersTab(tester, 'due');
       expect(find.byKey(WK.fieldOrderCost), findsNothing,
           reason: 'a paid order is still counted as due');
-    }, skip: true);
+    },
+        skip: true);
 
     testWidgets('07: archiving an order takes it off both tabs',
         (tester) async {

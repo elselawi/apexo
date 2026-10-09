@@ -36,15 +36,17 @@ const _isoTeeth = [
 /// tooth is labelled `1`, so a bare `find.text('1')` would match four teeth.
 Finder _node(String iso) => find.byKey(WK.tooth(iso, selected: false));
 
-/// Sets the device's dental notation, but only when it is not already that —
-/// `Fixtures.setSettingsDropdown` fails when the picked value is already stored
-/// (no Save button appears), and this group changes the setting several times.
-Future<void> _useNotation(
-    WidgetTester tester, String code, String label) async {
+/// Sets the device's dental notation directly and lets the chart rebuild.
+///
+/// This group is about how the chart renders the notation it was given; the
+/// settings card path is exercised in `settings_general`/`localization_rtl`.
+Future<void> _useNotation(WidgetTester tester, String code) async {
   if (localSettings.dentalNotation == code) return;
-  await Fixtures.setSettingsDropdown(tester, 'dentalNotation', label);
+  localSettings.dentalNotation = code;
+  localSettings.notifyAndPersist();
+  await E2E.settle(tester, frames: 20);
   expect(localSettings.dentalNotation, code,
-      reason: 'the notation card did not take "$label"');
+      reason: 'changing the dental notation to "$code" did not stick');
 }
 
 void registerToothChartTests() {
@@ -108,21 +110,14 @@ void registerToothChartTests() {
 
     testWidgets('04: the label inside a tooth follows the notation',
         (tester) async {
-      // **Skipped**: driving the notation card and then opening a chart leaves the
-      // chart without its nodes. The wait inside `openChart` for
-      // `WK.tooth('11', selected: false)` passes, and by the time the label is read
-      // the node is gone (`Bad state: No element` out of `WidgetController.element`
-      // — through `Fixtures.labelText`, which is the shared helper, so this is not a
-      // finder shape problem). The notation *rules* themselves are pure
-      // (`_isoToUniversal`: 18→1, 11→8, 48→32) and the chart's labels are drawn by
-      // `DentalNotation`; what is untested is the settings card changing a chart
-      // that is opened after it. The body is kept as the regression.
       await E2E.signIn(tester);
+      final original = localSettings.dentalNotation;
+      addTearDown(() async => _useNotation(tester, original));
 
       // Palmer is the app's default: the label is the tooth's own digit, and the
       // quadrant is drawn as the cell's borders. Setting it here rather than
       // assuming it keeps the test honest on a device that was left differently.
-      await _useNotation(tester, 'p', txt('palmer'));
+      await _useNotation(tester, 'p');
       await openChart(tester);
       expect(Fixtures.labelText(tester, _node('11')), '1',
           reason: 'Palmer notation should label tooth 11 "1"');
@@ -131,7 +126,7 @@ void registerToothChartTests() {
       await Fixtures.closePanel(tester);
 
       // ISO: the full two-digit code.
-      await _useNotation(tester, 'i', txt('iso'));
+      await _useNotation(tester, 'i');
       await openChart(tester);
       expect(Fixtures.labelText(tester, _node('11')), '11',
           reason: 'ISO notation should label tooth 11 "11"');
@@ -140,28 +135,23 @@ void registerToothChartTests() {
 
       // Universal: the FDI number mapped to 1-32, starting at the upper-right
       // third molar (tooth 18 is 1, so tooth 11 is 8 and tooth 48 is 32).
-      await _useNotation(tester, 'u', txt('universal'));
+      await _useNotation(tester, 'u');
       await openChart(tester);
       expect(Fixtures.labelText(tester, _node('18')), '1');
       expect(Fixtures.labelText(tester, _node('11')), '8');
       expect(Fixtures.labelText(tester, _node('48')), '32');
       await Fixtures.closePanel(tester);
-
-      // Leave the device as it was found: the notation is device-scoped.
-      await _useNotation(tester, 'p', txt('palmer'));
-    }, skip: true);
+    });
 
     testWidgets('05: the state wheel names the tooth it will write to',
         (tester) async {
-      // **Skipped** for the same reason as `04`: it changes the notation before
-      // opening the chart. What it asserts — that the wheel says which tooth it is
-      // editing (`DentalNotation` inside `tooth_state_wheel.dart`) — is worth
-      // unblocking once that is understood. The body is kept as the regression.
       await E2E.signIn(tester);
+      final original = localSettings.dentalNotation;
+      addTearDown(() async => _useNotation(tester, original));
 
       // ISO, so the tooth's own name is on screen inside the wheel and can be
       // asserted: with Palmer the wheel would say "6" and the chart would too.
-      await _useNotation(tester, 'i', txt('iso'));
+      await _useNotation(tester, 'i');
       await openChart(tester);
 
       await E2E.tap(tester, _node('36'), description: 'tooth 36');
@@ -172,9 +162,15 @@ void registerToothChartTests() {
         findsWidgets,
         reason: 'the wheel does not say which tooth it is editing',
       );
+      await E2E.tap(
+        tester,
+        find.descendant(
+          of: wheel,
+          matching: find.widgetWithText(FilledButton, txt('close')),
+        ),
+        description: 'the tooth wheel close button',
+      );
       await Fixtures.closePanel(tester, allowPrompt: true);
-
-      await _useNotation(tester, 'p', txt('palmer'));
-    }, skip: true);
+    });
   });
 }

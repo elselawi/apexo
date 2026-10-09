@@ -7,11 +7,16 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart'
     show localSettings;
 import 'package:apexo/services/launch.dart';
+import 'package:apexo/services/version.dart';
+import 'package:apexo/services/changelog.dart';
 import 'package:apexo/services/login.dart' show login;
 import 'package:apexo/app/data/initialize_stores.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 import 'backend.dart';
 import 'credentials.dart';
 
@@ -130,7 +135,8 @@ abstract final class E2E {
       print('⏱️  $name STUCK for ${timeout.inSeconds}s');
       fail(
           '[e2e] "$name" did not finish within ${timeout.inSeconds}s — the run '
-          'was stuck there. See the boot-wedge entry in todo.md §6.2.');
+          'was stuck there. See the boot-wedge entry in '
+          'integration_test/readme.md (disposition ledger, §6.2).');
     }
     // ignore: avoid_print
     print('⏱️  $name done in '
@@ -147,10 +153,20 @@ abstract final class E2E {
   /// relying on the test above it to have left one behind.
   static Future<void> boot(WidgetTester tester) async {
     installKnownFlutterIssueFilters();
+    final binding = tester.binding;
+    if (binding is LiveTestWidgetsFlutterBinding) {
+      binding.framePolicy = LiveTestWidgetsFlutterBindingFramePolicy.onlyPumps;
+    }
     // …and again on the way out: the fluent error below is reported while the
     // test's own tree is being finalized, which is after the body has ended but
     // still inside this test's scope.
-    addTearDown(installKnownFlutterIssueFilters);
+    addTearDown(() async {
+      FocusManager.instance.primaryFocus?.unfocus();
+      await settle(tester, frames: 5);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await settle(tester, frames: 5);
+      installKnownFlutterIssueFilters();
+    });
     tester.view.devicePixelRatio = 1.0;
     tester.view.physicalSize = _window;
 
@@ -179,6 +195,13 @@ abstract final class E2E {
         }
       }, timeout: const Duration(seconds: 60));
     }
+
+    await stage('load startup metadata', () async {
+      await tester.runAsync(() async {
+        await version.loadCurrentVersion();
+        await changelog.load();
+      });
+    });
 
     // Panels are app state, not widget state: a test that failed with one open
     // would leave it in the global list, and the next test would then boot into
@@ -250,6 +273,7 @@ abstract final class E2E {
   static Future<void> signIn(WidgetTester tester) async {
     await boot(tester);
     if (launch.open() == Open.staff) {
+      await dismissStartupDialogs(tester, waitForAppTimer: false);
       await waitForDatabase(tester);
       return;
     }
@@ -280,7 +304,7 @@ abstract final class E2E {
     try {
       await waitFor(
         tester,
-        find.byKey(WK.globalActions),
+        find.byKey(const Key('dashboard_screen_button')),
         timeout: const Duration(minutes: 5),
         description: 'the staff shell',
       );
@@ -297,6 +321,7 @@ abstract final class E2E {
     // is part of the login. Anything that reads a store has to wait for it: with
     // none open, a read throws "The database is not open yet: AppDatabase.open()
     // runs at login" instead of returning rows.
+    await dismissStartupDialogs(tester, waitForAppTimer: false);
     await waitForDatabase(tester);
   }
 
@@ -370,6 +395,64 @@ abstract final class E2E {
     }
     fail(
         'Timed out after ${timeout.inSeconds}s waiting for $what to disappear');
+  }
+
+  /// The visible text [finder] is currently showing.
+  ///
+  /// A helper that reads through common wrappers (`Text`, `RichText`,
+  /// `EditableText`) rather than assuming the finder names the leaf widget
+  /// directly.
+  static String readText(WidgetTester tester, Finder finder) {
+    if (finder.evaluate().isEmpty) {
+      fail('Cannot read text from a finder that matches nothing.');
+    }
+
+    final richText = find.descendant(
+      of: finder,
+      matching: find.byWidgetPredicate(
+        (widget) =>
+            widget is Text || widget is RichText || widget is EditableText,
+      ),
+      matchRoot: true,
+    );
+    final target =
+        richText.evaluate().isNotEmpty ? richText.first : finder.first;
+    return _widgetText(tester.widget(target));
+  }
+
+  /// Waits until [finder]'s current text matches [matcher], then returns it.
+  static Future<String> expectEventually(
+    WidgetTester tester,
+    Finder finder,
+    Object? matcher, {
+    Duration timeout = const Duration(seconds: 10),
+    String? description,
+  }) async {
+    final wrapped = wrapMatcher(matcher);
+    final what = description ?? finder.describeMatch(Plurality.many);
+    final deadline = DateTime.now().add(timeout);
+    String? lastValue;
+    Map<dynamic, dynamic>? lastState;
+
+    while (DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 200));
+      if (finder.evaluate().isEmpty) continue;
+      final value = readText(tester, finder);
+      final state = <dynamic, dynamic>{};
+      if (wrapped.matches(value, state)) return value;
+      lastValue = value;
+      lastState = state;
+    }
+
+    final mismatch = StringDescription();
+    if (lastValue == null) {
+      mismatch.add('the finder never appeared');
+    } else {
+      wrapped.describeMismatch(lastValue, mismatch, lastState ?? {}, false);
+    }
+    fail('Timed out after ${timeout.inSeconds}s waiting for $what to match '
+        '$wrapped — last value: "${lastValue ?? '<absent>'}" '
+        '(${mismatch.toString()}).');
   }
 
   /// Pumps a few frames — enough for a tap or a keystroke to be handled.
@@ -477,6 +560,93 @@ abstract final class E2E {
     }
   }
 
+  /// Persists a device locale change without driving the full settings screen.
+  static Future<void> setLocale(
+    WidgetTester tester,
+    int index,
+  ) async {
+    localSettings.selectedLocale = index;
+    localSettings.notifyAndPersist();
+    await settle(tester, frames: 10);
+  }
+
+  /// Persists a device theme change without relying on a specific screen path.
+  static Future<void> setTheme(
+    WidgetTester tester,
+    ThemeMode theme,
+  ) async {
+    localSettings.selectedTheme = theme;
+    localSettings.notifyAndPersist();
+    await settle(tester, frames: 10);
+  }
+
+  /// Accepts the panel's unsaved-changes flyout, closing the panel.
+  static Future<void> acceptUnsavedChanges(WidgetTester tester) async {
+    final prompt = find.byType(FlyoutContent);
+    await waitFor(tester, prompt, description: 'the unsaved-changes prompt');
+    final confirm = find.descendant(
+      of: prompt,
+      matching: find.byType(FilledButton),
+    );
+    await tapFirst(
+      tester,
+      confirm,
+      description: 'the unsaved-changes confirm button',
+    );
+    await waitForGone(tester, prompt,
+        description: 'the unsaved-changes prompt');
+    await waitForGone(tester, find.byKey(WK.panelSave),
+        description: 'the panel');
+  }
+
+  /// Closes the current panel, discarding any draft if the prompt appears.
+  static Future<void> discardDraft(WidgetTester tester) async {
+    await tap(tester, find.byKey(WK.panelClose),
+        description: 'the panel close button');
+    final deadline = DateTime.now().add(const Duration(seconds: 1));
+    while (find.byType(FlyoutContent).evaluate().isEmpty &&
+        find.byKey(WK.panelSave).evaluate().isNotEmpty &&
+        DateTime.now().isBefore(deadline)) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    if (find.byType(FlyoutContent).evaluate().isNotEmpty) {
+      await acceptUnsavedChanges(tester);
+      return;
+    }
+    await waitForGone(tester, find.byKey(WK.panelSave),
+        description: 'the panel');
+  }
+
+  /// Captures a screenshot when the current target supports it.
+  ///
+  /// Desktop `integration_test` runs do not, so those log and move on.
+  static Future<bool> screenshot(String name) async {
+    final binding = WidgetsBinding.instance;
+    if (binding is! IntegrationTestWidgetsFlutterBinding) {
+      // ignore: avoid_print
+      print('📸 skipped screenshot "$name": not running under '
+          'IntegrationTestWidgetsFlutterBinding');
+      return false;
+    }
+    if (!(kIsWeb || defaultTargetPlatform == TargetPlatform.android)) {
+      // ignore: avoid_print
+      print('📸 skipped screenshot "$name": unsupported on this platform');
+      return false;
+    }
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        await binding.convertFlutterSurfaceToImage();
+        await binding.pump();
+      }
+      await binding.takeScreenshot(name);
+      return true;
+    } catch (e) {
+      // ignore: avoid_print
+      print('📸 screenshot "$name" failed: $e');
+      return false;
+    }
+  }
+
   // ------------------------------------------------------ login screen
 
   /// Types the three credentials into the login tab.
@@ -489,6 +659,8 @@ abstract final class E2E {
     required String email,
     required String password,
   }) async {
+    loginCtrl.selectedTab(0);
+    await settle(tester, frames: 5);
     await tester.enterText(find.byKey(WK.serverField), server);
     await tester.enterText(find.byKey(WK.emailField), email);
     await tester.enterText(find.byKey(WK.passwordField), password);
@@ -498,5 +670,18 @@ abstract final class E2E {
   /// Presses the login button (the login tab is the default one).
   static Future<void> tapLogin(WidgetTester tester) async {
     await tap(tester, find.byKey(WK.btnLogin), description: 'the login button');
+  }
+
+  static String _widgetText(Widget widget) {
+    if (widget is Text) {
+      return widget.data ?? widget.textSpan?.toPlainText() ?? '';
+    }
+    if (widget is RichText) {
+      return widget.text.toPlainText();
+    }
+    if (widget is EditableText) {
+      return widget.controller.text;
+    }
+    throw StateError('Cannot read text from ${widget.runtimeType}.');
   }
 }

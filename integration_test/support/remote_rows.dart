@@ -54,13 +54,13 @@ abstract final class RemoteRows {
           .collection('data')
           .getFullList(filter: 'store = "$store"');
 
-  /// The remote rows of [store] whose `name` is [name] — how a test asks "did
+  /// The remote rows of [store] whose title is [name] — how a test asks "did
   /// the app push this patient yet?" without having to know its id.
   static Future<List<RecordModel>> named(String store, String name) async {
     final rows = await inStore(store);
     return rows.where((row) {
       final data = row.data['data'];
-      return data is Map && data['name'] == name;
+      return data is Map && data['title'] == name;
     }).toList();
   }
 

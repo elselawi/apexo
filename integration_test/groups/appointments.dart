@@ -262,11 +262,32 @@ void registerAppointmentsTests() {
 
     testWidgets("13: a previous visit's notes can be copied into this one",
         (tester) async {
-      // The panel *shows* the patient's earlier dental notes (an
-      // `AppointmentExtraNotes` expander, read-only), but there is no action that
-      // copies them into this appointment's draft — see §6.2.
-      expect(true, isTrue);
-    }, skip: true);
+      await E2E.signIn(tester);
+      final patient = await Fixtures.createPatient(tester);
+      await Fixtures.createAppointment(tester,
+          patientName: patient, day: DateTime.now());
+      final source = appointments.forDay(DateTime.now()).last;
+      appointments.set(source.copy(false)
+        ..teeth = {'11': 'filling'}
+        ..teethExtraNotes = {'11': 'Copied history note'});
+      await appointments.waitUntilChangesAreProcessed();
+      await Fixtures.createAppointment(tester,
+          patientName: patient, day: Fixtures.tomorrow());
+      await Fixtures.openAppointmentTile(tester, patient: patient);
+      await Fixtures.openPanelTab(tester, 'operativeDetails');
+      await E2E.tapFirst(tester, find.text(txt('otherAppointmentsNotes')),
+          description: 'previous dental notes');
+      final copy = find.byKey(ValueKey('copyNotes-${source.id}-11'));
+      await tester.ensureVisible(copy);
+      await E2E.tap(tester, copy, description: 'copy previous dental notes');
+      await Fixtures.save(tester);
+      expect(
+          appointments
+              .forDay(Fixtures.tomorrow())
+              .any((row) => row.teethExtraNotes['11'] == 'Copied history note'),
+          isTrue);
+      await Fixtures.closePanel(tester);
+    });
 
     testWidgets('14: prescriptions can be added and removed', (tester) async {
       await E2E.signIn(tester);

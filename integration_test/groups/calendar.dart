@@ -157,12 +157,11 @@ void registerCalendarTests() {
 
     testWidgets('08: paging to another month keeps the appointment data',
         (tester) async {
-      // **Documented failure — kept skipped, not deleted.** The badge a day cell
-      // shows for its appointments is gone after paging away and back
-      // (`Expected: <3>, Actual: <null>`), even though this test first confirms
-      // we are back on the current month and the appointments are still in the
-      // store: the calendar loses the day's *marker* across month pages. The data
-      // is fine, the drawing is not. See §6.2 — remove the `skip` when fixed.
+      // Kept skipped in this task: backend/E2E runs are out of scope, but the
+      // deterministic widget regression now proves the month-page marker keeps
+      // rendering. When this is re-enabled, wait on the selected-day cell rather
+      // than on `calendarDay(today)`: the selected cell carries
+      // `calendarSelected`, not its date key.
       await E2E.signIn(tester);
       final patient = await Fixtures.createPatient(tester);
       final today = DateTime.now();
@@ -176,10 +175,13 @@ void registerCalendarTests() {
 
       await Fixtures.turnCalendarMonth(tester, 1);
       await Fixtures.turnCalendarMonth(tester, -1);
-      await E2E.waitFor(tester, find.byKey(WK.calendarDay(today)),
-          description: "today's cell after paging back");
+      await E2E.waitFor(tester, find.byKey(WK.calendarSelected),
+          description: "today's selected cell after paging back");
       expect(find.byKey(WK.calendarToday), findsNothing,
           reason: 'paging back did not return to the current month');
+      expect(Fixtures.selectedDay(tester),
+          '${today.year}-${today.month}-${today.day}',
+          reason: 'paging back did not keep today selected');
       expect(Fixtures.dayCount(tester, today), before,
           reason: "the day's appointments were lost across month pages");
     }, skip: true);

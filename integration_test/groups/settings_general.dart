@@ -5,6 +5,9 @@
 // the dental notation change how every later test's dates and teeth read, and
 // the suite shares one database (a per-test clinic would be needed first).
 import 'package:apexo/features/settings/applies_to_indicator.dart';
+import 'package:apexo/features/settings/settings_model.dart';
+import 'package:apexo/features/settings/settings_stores.dart'
+    show globalSettings;
 import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/widget_keys.dart';
 import 'package:flutter/widgets.dart' show Key;
@@ -37,13 +40,6 @@ void registerSettingsGeneralTests() {
     });
 
     testWidgets('02: a changed card persists across screens', (tester) async {
-      // **Skipped, kept as the regression** (todo.md §6.2): typing a different
-      // value into the currency card never makes its Save button appear, so there
-      // is nothing to press and the change cannot be committed from the harness.
-      // `tester.enterText` does reach the field (the value read back afterwards is
-      // the typed one), the card is expanded, and the button exists in other
-      // cards (`06` presses the AI card's combo) — so this is specific to a text
-      // card committing a *typed* value, not to the fixture's finder.
       await E2E.signIn(tester);
       await Fixtures.openSettings(tester);
 
@@ -54,6 +50,13 @@ void registerSettingsGeneralTests() {
       // until the row has synced down, and `currency()` answers with the *symbol*
       // the widgets display.
       final before = await Fixtures.settingsTextValue(tester, 'currency');
+      addTearDown(() async {
+        globalSettings.set(Setting.fromJson({
+          'id': 'currency_______',
+          'value': before,
+        }));
+        await globalSettings.waitUntilChangesAreProcessed();
+      });
       final marker = before.trim() == 'EUR' ? 'CHF' : 'EUR';
       await Fixtures.setSettingsText(tester, 'currency', marker);
       expect(await Fixtures.settingsTextValue(tester, 'currency'), marker,
@@ -64,12 +67,7 @@ void registerSettingsGeneralTests() {
       await Fixtures.openSettings(tester);
       expect(await Fixtures.settingsTextValue(tester, 'currency'), marker,
           reason: 'the currency did not survive leaving the settings screen');
-
-      // Put the clinic's own value back: the suite shares one database.
-      if (before.trim().isNotEmpty && before.trim() != marker) {
-        await Fixtures.setSettingsText(tester, 'currency', before);
-      }
-    }, skip: true);
+    });
 
     testWidgets('03: a card says what it applies to', (tester) async {
       await E2E.signIn(tester);
@@ -90,16 +88,19 @@ void registerSettingsGeneralTests() {
 
     testWidgets('04: the calendar system changes the dates app-wide',
         (tester) async {
-      // Needs a per-test clinic: switching it rewrites how *every* later test's
-      // dates read (`DF.jalaliMonthYear` and friends), and the suite shares one
-      // database. §2.15 multi-clinic is where a second clinic becomes available.
+      // The device-scoped setting's deterministic behavior lives in
+      // `test/widget/features/settings_item_test.dart`; an end-to-end flip still
+      // needs a per-test clinic because the suite shares one database and later
+      // groups assert date labels in whatever calendar this leaves behind.
       expect(true, isTrue);
     }, skip: true);
 
     testWidgets('05: the dental notation switch changes the teeth charts',
         (tester) async {
-      // Needs a teeth chart with labels on screen; the notation is asserted by
-      // the chart's own text, which the patient panel group does not cover yet.
+      // The deterministic notation coverage lives in
+      // `test/widget/features/settings_item_test.dart`; the end-to-end version
+      // still needs a teeth chart on screen without leaking the changed device
+      // preference into later groups.
       expect(true, isTrue);
     }, skip: true);
 

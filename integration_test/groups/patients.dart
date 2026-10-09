@@ -100,38 +100,31 @@ void registerPatientsTests() {
           reason: 'search did not filter the second patient out');
     });
 
-    // A *new* tag cannot be added by clicking: the non-strict box mirrors only
-    // the clinic's existing tags into its suggestions (tag_input.dart
-    // `_updateSuggestions` + `_filteredSuggestions` drops empty labels), so a
-    // brand-new tag has nothing to pick. Enter is the documented path — and a
-    // synthetic Enter from the harness did not reach the field's focus node
-    // (`_commitTypedText`), while the same keystroke works in the running app.
-    // Two skipped tests, one open question: see todo.md §6.
-    testWidgets('07: a new tag can be added from the tag input',
+    testWidgets('07: an existing tag can be picked from the tag input',
         (tester) async {
       await E2E.signIn(tester);
+      final tag = Fixtures.stamp('e2e tag');
+      final seedName = await Fixtures.createPatient(tester);
+      final seed =
+          patients.docs.values.singleWhere((row) => row.title == seedName);
+      patients.set(seed.copy(false)..tags = [tag]);
+      await patients.waitUntilChangesAreProcessed();
       await Fixtures.openPatients(tester);
       await Fixtures.openNewPatientPanel(tester);
       final name = Fixtures.stamp('e2e tag patient');
-      final tag = Fixtures.stamp('e2e tag');
       await tester.enterText(find.byKey(WK.fieldPatientName), name);
       await E2E.settle(tester);
 
       await Fixtures.pickTag(tester, WK.fieldPatientTags, tag);
 
-      // The chip is what proves the tag was committed, not just typed.
-      expect(find.text(tag), findsWidgets,
-          reason: 'picking the suggestion did not commit the tag');
       await Fixtures.save(tester);
       await Fixtures.closePanel(tester);
       expect(find.text(name), findsWidgets);
-    }, skip: true);
+      expect(patients.docs.values.singleWhere((row) => row.title == name).tags,
+          contains(tag));
+    });
 
-    // The manual says "type and press Enter to add". The app handles Enter on
-    // the field's own focus node (`_commitTypedText`); a synthetic Enter from the
-    // harness never reached it and the tag was not committed. Kept (skipped)
-    // rather than deleted, because that is either a real regression or a
-    // limitation of synthetic key events, and nobody has told the two apart yet.
+    // Synthetic Enter needs the input focused, just like a physical keystroke.
     testWidgets('08: a tag is committed with Enter', (tester) async {
       await E2E.signIn(tester);
       await Fixtures.openPatients(tester);
@@ -145,14 +138,22 @@ void registerPatientsTests() {
         of: find.byKey(WK.fieldPatientTags),
         matching: find.byType(AutoSuggestBox<String>),
       );
+      await E2E.tap(tester, box, description: 'the tag input');
       await tester.enterText(box, tag);
       await E2E.settle(tester, frames: 8);
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await E2E.settle(tester, frames: 8);
 
-      expect(find.text(tag), findsWidgets,
-          reason: 'Enter did not commit the tag');
-    }, skip: true);
+      await Fixtures.save(tester);
+      await Fixtures.closePanel(tester);
+      await Fixtures.openPatient(tester, name);
+      expect(
+          patients.docs.values
+              .singleWhere((patient) => patient.title == name)
+              .tags,
+          contains(tag));
+      await Fixtures.closePanel(tester);
+    });
 
     testWidgets('09: archiving takes a patient out of the list',
         (tester) async {
@@ -337,6 +338,35 @@ void registerPatientsTests() {
       // patient's name for the tile, is the separate finding in §6.2.)
       expect(appointments.forDay(day).length, rows.length,
           reason: 'archiving the patient took its appointments with it');
+    });
+
+    testWidgets('16: invalid email cannot be saved', (tester) async {
+      await E2E.signIn(tester);
+      await Fixtures.openPatients(tester);
+      await Fixtures.openNewPatientPanel(tester);
+      final name = Fixtures.stamp('e2e invalid email');
+      await tester.enterText(find.byKey(WK.fieldPatientName), name);
+      await tester.enterText(find.byKey(WK.fieldPatientEmail), 'not-an-email');
+      await E2E.settle(tester);
+      await E2E.tap(tester, find.byKey(WK.panelSave),
+          description: 'save invalid email');
+      expect(patients.docs.values.where((row) => row.title == name), isEmpty);
+      await E2E.dismissStartupDialogs(tester, waitForAppTimer: false);
+      await E2E.discardDraft(tester);
+    });
+
+    testWidgets('17: list and grid views show the same patients',
+        (tester) async {
+      await E2E.signIn(tester);
+      final name = await Fixtures.createPatient(tester);
+      await E2E.tap(tester, find.byKey(WK.dataTableListView),
+          description: 'grid view');
+      expect(find.byKey(const Key('patientsGrid')), findsOneWidget);
+      expect(find.text(name), findsWidgets);
+      await E2E.tap(tester, find.byKey(WK.dataTableListView),
+          description: 'list view');
+      expect(find.byKey(const Key('patientsGrid')), findsNothing);
+      expect(find.text(name), findsWidgets);
     });
   });
 }

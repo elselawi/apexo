@@ -1,0 +1,18 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Validate integration backlog completion",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-Command",
+				"New-Item -ItemType Directory -Force .\\tmp | Out-Null; & .\\tools\\run_e2e.ps1 *> .\\tmp\\backlog_completion_e2e.log; exit $LASTEXITCODE"
+			],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

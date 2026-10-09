@@ -5,7 +5,12 @@ import 'package:apexo/common_widgets/audio_recorder.dart'
     show AudioRecorderButton;
 import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/widget_keys.dart';
-import 'package:flutter/widgets.dart' show Column, Size;
+import 'package:flutter/widgets.dart' show Column, Key;
+import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/constants.dart' show publicCollectionName;
+import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../support/e2e.dart';
 import '../support/fixtures.dart';
@@ -195,11 +200,41 @@ void registerPatientPanelTests() {
       await Fixtures.closePanel(tester);
     });
 
+    testWidgets('08: revoking patient-page access takes the link down',
+        (tester) async {
+      await E2E.signIn(tester);
+      final name = await Fixtures.createPatient(tester);
+      await Fixtures.createAppointment(tester,
+          patientName: name, day: DateTime.now());
+      final patient =
+          patients.docs.values.singleWhere((row) => row.title == name);
+      await appointments.waitUntilChangesAreProcessed();
+      final anonymous = PocketBase(login.url);
+      Future<int> portalCount() async =>
+          (await anonymous.collection(publicCollectionName).getList(
+                  query: {'pid': patient.id}, filter: 'pid="${patient.id}"'))
+              .totalItems;
+      expect(await portalCount(), greaterThan(0));
+      await Fixtures.openPatients(tester);
+      await Fixtures.openPatient(tester, name);
+      await Fixtures.openPanelTab(tester, 'patientPage');
+      await E2E.tap(tester, find.byKey(const Key('patientPortalAccess')),
+          description: 'the patient-page access switch');
+      await patients.waitUntilChangesAreProcessed();
+      expect(patients.get(patient.id)!.portalAccessRevoked, isTrue);
+      expect(await portalCount(), 0);
+      await E2E.tap(tester, find.byKey(const Key('patientPortalAccess')),
+          description: 'restore patient-page access');
+      await patients.waitUntilChangesAreProcessed();
+      expect(await portalCount(), greaterThan(0));
+      await Fixtures.closePanel(tester);
+    });
+
     // Voice autofill is the AI path: the microphone appears in the tab's footer
     // only while the AI services are switched on (`globalSettings
     // .aiServicesEnabled`) and there is a connection, and the harness has no
     // audio input at all. It is `ai_services` work (todo.md §3.1).
-    testWidgets('08: voice autofill fills the dental notes', (tester) async {
+    testWidgets('09: voice autofill fills the dental notes', (tester) async {
       await E2E.signIn(tester);
       final patient = await Fixtures.createPatient(tester);
       await Fixtures.openPatient(tester, patient);
@@ -211,27 +246,36 @@ void registerPatientPanelTests() {
       await Fixtures.closePanel(tester);
     }, skip: true);
 
-    // The minimise button only exists in a compact layout (`PanelScreen` renders
-    // it for `layoutWidth < 710`), and the pane's header overflows at that width
-    // — a real bug the tests otherwise avoid (todo.md §6.2). Writing this test
-    // means fixing that one first.
-    testWidgets('09: the panel can be minimised and restored', (tester) async {
+    testWidgets('10: the panel can be minimised and restored', (tester) async {
       await E2E.signIn(tester);
+      addTearDown(() async {
+        PanelsManager.minimize(false);
+        await Fixtures.fullSize(tester);
+      });
       final patient = await Fixtures.createPatient(tester);
       await Fixtures.openPatient(tester, patient);
 
-      tester.view.physicalSize = const Size(680, 900);
-      await E2E.settle(tester, frames: 10);
+      await Fixtures.sizeTo(tester, width: 680, height: 900);
+      final panel = find.byType(PanelScreen);
+      final expandedHeight = tester.getSize(panel).height;
+      expect(find.byKey(WK.panelMinimize), findsOneWidget,
+          reason: 'the compact panel has no minimise button');
 
       await E2E.tap(tester, find.byKey(WK.panelMinimize),
           description: 'the minimise button');
+      await E2E.settle(tester, frames: 10);
       expect(PanelsManager.minimize(), isTrue,
           reason: 'minimising the panel did not register');
+      expect(tester.getSize(panel).height, lessThan(expandedHeight / 2),
+          reason: 'minimising did not collapse the panel');
 
       await E2E.tap(tester, find.byKey(WK.panelMinimize),
           description: 'the restore button');
+      await E2E.settle(tester, frames: 10);
       expect(PanelsManager.minimize(), isFalse);
+      expect(tester.getSize(panel).height, greaterThan(expandedHeight / 2),
+          reason: 'restoring did not expand the panel again');
       await Fixtures.closePanel(tester);
-    }, skip: true);
+    });
   });
 }

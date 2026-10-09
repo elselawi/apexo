@@ -56,7 +56,7 @@ void registerLabworksTests() {
           reason: 'the table has no search field');
       expect(find.text(txt('showDone')), findsWidgets,
           reason: 'the table has no "show done" toggle');
-    }, skip: true);
+    });
 
     // Skipped: the appointment panel's save cannot be landed from the harness once
     // lab work was added to the visit. `Fixtures.attachLabwork` types into the
@@ -89,7 +89,7 @@ void registerLabworksTests() {
       expect(Fixtures.labworkStatus(tester, patient), 'waitingForLab',
           reason:
               'lab work that has not come back yet is not "waiting for lab"');
-    }, skip: true);
+    });
 
     // Skipped for the same fluent_ui teardown defect as `01` (it is timing
     // dependent — this test passed in four earlier runs and failed in the fifth):
@@ -112,7 +112,7 @@ void registerLabworksTests() {
           description: 'the new labwork row');
       expect(find.text('e2e lab beta'), findsWidgets,
           reason: 'the labwork saved from the panel is not in the table');
-    }, skip: true);
+    });
 
     testWidgets('04: the lab name autocompletes from earlier labworks',
         (tester) async {
@@ -135,7 +135,7 @@ void registerLabworksTests() {
           description: 'the second labwork row');
       expect(find.text(lab), findsWidgets,
           reason: 'picking the suggested lab name saved nothing');
-    }, skip: true);
+    });
 
     testWidgets('05: marking a labwork received moves it out of the due view',
         (tester) async {
@@ -167,7 +167,7 @@ void registerLabworksTests() {
       await Fixtures.showDoneLabworks(tester);
       expect(Fixtures.labworkStatus(tester, patient), 'receivedAndDelivered',
           reason: "the received labwork's status is wrong in the done view");
-    }, skip: true);
+    });
 
     testWidgets('06: the search filters the table by lab name', (tester) async {
       await E2E.signIn(tester);
@@ -196,7 +196,7 @@ void registerLabworksTests() {
           reason: 'the searched labwork is not listed');
       expect(Fixtures.labworkRow(patientB), findsNothing,
           reason: 'a labwork from another lab survived the search');
-    }, skip: true);
+    });
 
     // Skipped for the same panel-save limitation as `02`: this one additionally
     // ticks the visit's "done" checkbox first, which is only reachable in the
@@ -229,7 +229,7 @@ void registerLabworksTests() {
       expect(Fixtures.labworkStatus(tester, patient), 'undelivered',
           reason: 'lab work that came back and is not with the patient yet '
               'does not read as undelivered');
-    }, skip: true);
+    });
 
     testWidgets('08: deleting the lab work takes it off the screen',
         (tester) async {
@@ -258,6 +258,6 @@ void registerLabworksTests() {
       await Fixtures.showDoneLabworks(tester);
       expect(Fixtures.labworkRow(patient), findsNothing,
           reason: 'the deleted labwork is still in the done view');
-    }, skip: true);
+    });
   });
 }

@@ -335,5 +335,26 @@ void registerSyncOfflineTests() {
       await _comeOnline(tester);
       await _handBack(tester, await Fixtures.patientIdOf(name));
     });
+
+    testWidgets(
+        '08: queued local changes survive an offline persistence session',
+        (tester) async {
+      await E2E.signIn(tester);
+      final name = Fixtures.stamp('e2e deferred offline');
+      final remote = patients.remote!;
+      final originalStatus = remote.isOnline;
+      remote.timer?.cancel();
+      remote.isOnline = false;
+      addTearDown(() => remote.isOnline = originalStatus);
+      await Fixtures.createPatient(tester, name: name);
+      final id = await Fixtures.patientIdOf(name);
+      await patients.waitUntilChangesAreProcessed();
+      expect(await RemoteRows.named('patients', name), isEmpty);
+      expect((await patients.local!.getDeferred()).containsKey(id), isTrue);
+      remote.isOnline = true;
+      await patients.synchronize();
+      await _waitForRemoteRow(tester, name);
+      await _handBack(tester, id);
+    });
   });
 }

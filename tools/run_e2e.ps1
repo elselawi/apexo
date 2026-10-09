@@ -6,7 +6,7 @@
 #   pwsh -File tools/run_e2e.ps1 -Group "04:"      # any other string = a test-name filter
 #   pwsh -File tools/run_e2e.ps1 -Device macos     # any device `flutter test` accepts
 #   pwsh -File tools/run_e2e.ps1 -Target web -Headless
-#   pwsh -File tools/run_e2e.ps1 -Entry integration_test/web_open_test.dart -Target web -WebHeaders
+#   pwsh -File tools/run_e2e.ps1 -Entry integration_test/e2e_test.dart -Target web -WebHeaders
 #
 # A *group name* is selected through the `E2E_GROUP` define, which registers only
 # that group — the mechanism a web run uses. Anything else is Flutter's own
@@ -19,8 +19,8 @@ param(
     [string]$Target = 'native',
 
     # The integration test file to run. Defaults to the full e2e suite; a
-    # single-purpose file (e.g. integration_test/web_open_test.dart) runs much
-    # faster on web, where `flutter drive` cannot filter tests.
+    # narrower integration_test entry can run much faster on web, where
+    # `flutter drive` cannot filter individual tests inside one file.
     [string]$Entry = 'integration_test/e2e_test.dart',
 
     [string]$Group = '',
@@ -39,6 +39,11 @@ $ErrorActionPreference = 'Stop'
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $entryPoint = $Entry
+$entryPath = Join-Path $repoRoot $entryPoint
+
+if (-not (Test-Path -LiteralPath $entryPath)) {
+    throw "Entry '$Entry' does not exist. Use a path under integration_test\\."
+}
 
 # The group names `e2e_test.dart` registers.
 #
@@ -51,24 +56,16 @@ $entryPoint = $Entry
 # before it left behind, so a group has to be run in isolation or as part of the
 # whole suite, never as a name filter.
 #
-# The whole `e2e_test.dart` registers, as of 2026-09-28 (25 groups). **Three names
-# here have no group file** — `attachments`, `notifications` and `multi_clinic` were
-# removed by `ef3a3fd` with the migration they tested — and they are kept in the list
-# only so that `-Group attachments` is an error rather than a silent `--plain-name`
-# filter that matches no test:
+# The whole `e2e_test.dart` registers, as of 2026-10-09 (29 groups).
 $groupNames = @(
     'login', 'patients', 'calendar', 'appointments', 'patient_panel',
-    'tooth_chart', 'patient_portal', 'accessibility', 'upgrade',
-    'labworks', 'expenses', 'dashboard', 'notes', 'attachments',
+    'tooth_chart', 'patient_portal', 'accessibility', 'upgrade', 'labworks',
+    'expenses', 'dashboard', 'notes', 'attachments',
     'insights', 'deleted_items', 'accounts', 'settings_general',
-    'settings_services', 'sync_offline', 'backups', 'lifecycle_platform',
-    'localization_rtl', 'notifications', 'errors_and_recovery', 'perf_budgets',
-    'dicom', 'multi_clinic'
+    'settings_services', 'ai_services', 'sync_offline', 'backups',
+    'notifications', 'multi_clinic', 'lifecycle_platform', 'localization_rtl',
+    'errors_and_recovery', 'perf_budgets', 'dicom'
 )
-
-if ($Group -in @('attachments', 'notifications', 'multi_clinic')) {
-    throw "E2E group '$Group' was removed and cannot be run."
-}
 if ($Target -eq 'web' -and $Group -and $groupNames -notcontains $Group) {
     throw "Web runs require an E2E group name; test-name filters are not supported."
 }
@@ -83,6 +80,10 @@ if ($Group) {
         # A test-name filter (e.g. "04:"), which `flutter test` does support.
         $filterArgs = @('--plain-name', $Group)
     }
+}
+
+if ($Group -eq 'login 12:') {
+    $groupDefine += '--dart-define=E2E_ISOLATED_FIRST_LAUNCH=true'
 }
 
 $exitCode = 1
@@ -146,7 +147,7 @@ try {
         # `appointments 08` before it was killed, with nothing to go on. This turns
         # that into a normal failure with a stack trace. It has to stay above the
         # 5-minute wait `E2E.signIn` allows for a cold first login.
-        $arguments += @('--timeout', '6m')
+        $arguments += @('--timeout', '6m', '--fail-fast')
         $arguments += $filterArgs
         $arguments += $groupDefine
         $arguments += $credentialDefines

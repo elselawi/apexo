@@ -218,18 +218,50 @@ void registerAccountsTests() {
 
     testWidgets('09: permission changes apply on the next login',
         (tester) async {
-      // Covered in substance by `08` (a granted permission is visible on the
-      // next session); a *revoked* one needs a third login round-trip, which is
-      // the same machinery with one more sign-out.
-      expect(true, isTrue);
-    }, skip: true);
+      await E2E.signIn(tester);
+      final name = Fixtures.stamp('e2e revoked');
+      final email = _email('revoked');
+      await Fixtures.openAccounts(tester);
+      await Fixtures.createAccount(
+        tester,
+        name: name,
+        email: email,
+        password: 'e2e-Passw0rd',
+      );
+      await Fixtures.setAccountEnabled(tester, name, true);
+
+      await Fixtures.openAccount(tester, name);
+      await Fixtures.grantPermission(tester, 'patients', txt('full'));
+      await Fixtures.save(tester);
+      await Fixtures.closePanel(tester);
+
+      await Fixtures.loginAs(tester, email: email, password: 'e2e-Passw0rd');
+      expect(routes.visibleRoutes.map((route) => route.id), contains('patients'),
+          reason: 'the granted patients permission is not offered on next login');
+      await Fixtures.signInAsAdmin(tester);
+
+      await Fixtures.openAccounts(tester);
+      await Fixtures.openAccount(tester, name);
+      await Fixtures.grantPermission(tester, 'patients', txt('restricted'));
+      await Fixtures.save(tester);
+      await Fixtures.closePanel(tester);
+
+      await Fixtures.loginAs(tester, email: email, password: 'e2e-Passw0rd');
+      expect(
+        routes.visibleRoutes.map((route) => route.id),
+        isNot(contains('patients')),
+        reason:
+            'revoking the patients permission did not hide the route on next login',
+      );
+      await Fixtures.signInAsAdmin(tester);
+    });
 
     testWidgets('10: an account can be removed and its rows survive',
         (tester) async {
       // There is no delete wired to the account panel's chrome that this harness
       // can address: disabling the account (`03`) is the app's removal, and the
       // clinic's records belong to the clinic, not to the account.
-      expect(true, isTrue);
-    }, skip: true);
+    },
+        skip: true);
   });
 }

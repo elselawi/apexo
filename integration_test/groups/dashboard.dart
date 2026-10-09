@@ -106,15 +106,28 @@ void registerDashboardTests() {
           description: 'the labworks screen');
     });
 
-    // Skipped: changing the currency means writing the settings store through
-    // the settings screen, which is §2.9's surface (this group is about the
-    // squares). The square already renders `MoneyDisplay` with the currency the
-    // screen read once.
     testWidgets('06: money totals use the clinic currency', (tester) async {
       await E2E.signIn(tester);
+      await Fixtures.openSettings(tester);
+      final original = await Fixtures.settingsTextValue(tester, 'currency');
+      final changed = original == 'E2ECOIN' ? 'E2E-TOKEN' : 'E2ECOIN';
+      addTearDown(() async {
+        await Fixtures.openSettings(tester);
+        if (await Fixtures.settingsTextValue(tester, 'currency') != original) {
+          await Fixtures.setSettingsText(tester, 'currency', original);
+        }
+        await Fixtures.openDashboard(tester);
+      });
+
+      await Fixtures.setSettingsText(tester, 'currency', changed);
       await Fixtures.openDashboard(tester);
-      expect(Fixtures.squareText(tester, 'paymentsToday'), isNotNull);
-    }, skip: true);
+      final paymentsToday = Fixtures.squareText(tester, 'paymentsToday');
+      expect(paymentsToday, isNotNull,
+          reason: 'the payments square is not visible on the dashboard');
+      expect(paymentsToday, contains(changed),
+          reason:
+              'the payments square did not redraw with clinic currency "$changed"');
+    });
 
     // Skipped: an empty clinic needs a *fresh* database, and the run resets its
     // state once, on the first boot (todo.md §4.3) — every test after that one

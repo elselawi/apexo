@@ -143,9 +143,10 @@ void main() {
         widget.properties.button == true &&
         widget.properties.label == txt('other')));
     await tester.pumpAndSettle();
-    // The custom editor is the same field as the notes one — no save/cancel.
+    // The custom editor is the same field as the notes one, and it commits as
+    // it is typed: nothing has to be pressed to keep the label, and there is
+    // no cancel to throw it away.
     expect(find.byType(LiveTranscribingTextField), findsOneWidget);
-    expect(find.text(txt('save')), findsNothing);
     expect(find.text(txt('cancel')), findsNothing);
     final field = tester.widget<LiveTranscribingTextField>(
         find.byType(LiveTranscribingTextField));
@@ -201,6 +202,31 @@ void main() {
     await tester.pumpAndSettle();
     expect(values, [null]);
     expect(note, '');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('saving closes the wheel and keeps the note', (tester) async {
+    final values = <String?>[];
+    final notes = <String>[];
+    var closed = false;
+    await pumpApexoApp(
+        tester,
+        Center(
+            child: ToothStateWheel(
+                initialValue: 'filling',
+                iso: '11',
+                toothName: 'Tooth 11',
+                oldNote: null,
+                type: StateType.treatment,
+                extraNote: 'Keep this',
+                onTapClose: () => closed = true,
+                onSet: values.add,
+                onExtraNote: notes.add)));
+    await tester.tap(find.byKey(const ValueKey('wheel-save')));
+    await tester.pumpAndSettle();
+    expect(closed, isTrue, reason: 'save closes the wheel');
+    expect(values, isEmpty, reason: 'the choice is left as it is');
+    expect(notes, isEmpty, reason: 'and the note is not touched');
     expect(tester.takeException(), isNull);
   });
 
@@ -267,17 +293,26 @@ void main() {
         find.byType(LiveTranscribingTextField));
     expect(field.decoration, isNotNull);
     expect(field.decoration!.color, isNull);
-    final notes =
-        tester.getSize(find.byKey(const ValueKey('extra-notes-circle')));
-    expect(notes.width, greaterThan(300));
-    expect(notes.height, greaterThan(240));
-    // The chosen option rides at the top of the surface...
+    final notesRect =
+        tester.getRect(find.byKey(const ValueKey('extra-notes-circle')));
+    expect(notesRect.width, greaterThan(300));
+    expect(notesRect.height, greaterThan(200));
+    // The chosen option rides at the leading edge of the surface, the size of
+    // the field below it, and dictation takes the trailing edge...
     final chip = tester.getCenter(find.byWidgetPredicate((widget) =>
         widget is Semantics &&
         widget.properties.button == true &&
         widget.properties.label == txt('filling')));
     expect(chip.dy, lessThan(wheel.top + 70));
-    expect(chip.dx, closeTo(wheel.center.dx, 1));
+    expect(chip.dx - wheel.left, closeTo(51, 2));
+    expect(chip.dx, lessThan(wheel.center.dx));
+    // ...while the save and clear pair waits along the bottom, under the field.
+    final save = tester.getRect(find.byKey(const ValueKey('wheel-save')));
+    expect(save.top, greaterThanOrEqualTo(notesRect.bottom));
+    expect(find.text(txt('save')), findsWidgets);
+    expect(tester.getRect(find.byKey(const ValueKey('wheel-clear'))).left,
+        greaterThan(save.right),
+        reason: 'clear sits beside save, towards the trailing edge');
     // ...and the unchosen ones have left the wheel.
     final crownOpacity = tester.widget<AnimatedOpacity>(find
         .descendant(
@@ -404,8 +439,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'marked tooth opens with selection and its earlier records',
+  testWidgets('marked tooth opens with selection and its earlier records',
       (tester) async {
     await pumpApexoApp(
         tester,

@@ -58,13 +58,17 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   static const _chip = _optionSize;
   static const _chipTop = 12.0;
 
-  /// Where the folded notes surface starts, clear of the grown option above it.
-  static const _notesTop = 82.0;
+  /// The folded view hangs its controls on the surface's edges: the chosen
+  /// option on the leading edge and dictation on the trailing one, with the
+  /// notes field between them and the save/clear pair along the bottom.
+  static const _edgeMargin = 14.0;
+  static const _notesTop = 80.0;
+  static const _rowHeight = 34.0;
+  static const _rowGap = 10.0;
+  static const _bottomMargin = 12.0;
 
-  /// Distance from the chosen option to each of the controls beside it, and
-  /// the width reserved for them.
-  static const _flankGap = 8.0;
-  static const _flankRow = 72.0;
+  /// Width reserved for the dictation button, which grows as it records.
+  static const _dictationRow = 72.0;
 
   /// How far the chosen option reaches past its own box once it has grown.
   static const _chipGrow = _chip * (_chosenScale - 1) / 2;
@@ -314,10 +318,10 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
               alignment: Alignment.center,
               children: [
                 _notesSurface(context, collapsed: collapsed, box: box),
-                _clearButton(collapsed: collapsed, box: box),
                 _dictationButton(collapsed: collapsed, box: box),
                 for (var index = 0; index < options.length; index++)
                   _optionButton(index, collapsed: collapsed, box: box),
+                _foldedActions(collapsed: collapsed, box: box),
               ],
             );
           },
@@ -336,7 +340,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   ///
   /// Recording a choice folds the ring away: every option but the chosen one
   /// shrinks out of sight and stops taking taps, while the chosen one rides to
-  /// the top of the notes surface and stays there for good.
+  /// the leading edge of the surface and stays there for good.
   Widget _optionButton(int index,
       {required bool collapsed, required double box}) {
     const ringRadius = 147.0;
@@ -346,12 +350,15 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     final hidden = collapsed && !isSelected;
     final angle = index * 2 * math.pi / options.length - math.pi / 2;
     final atTop = isSelected && collapsed;
+    // Kept clear of the edge by its grown size, so its painted edge lines up
+    // with the notes field below rather than its box.
+    const lead = _edgeMargin + _chipGrow;
 
     return AnimatedPositioned(
       duration: _morph,
       curve: Curves.easeInOutCubic,
       left: atTop
-          ? (box - _chip) / 2
+          ? (locale.isRtl ? box - lead - _chip : lead)
           : box / 2 + ringRadius * math.cos(angle) - _chip / 2,
       top:
           atTop ? _chipTop : box / 2 + ringRadius * math.sin(angle) - _chip / 2,
@@ -436,10 +443,12 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     return AnimatedPositioned(
       duration: _morph,
       curve: Curves.easeInOutCubic,
-      left: collapsed ? 14 : (box - circle) / 2,
+      left: collapsed ? _edgeMargin : (box - circle) / 2,
       top: collapsed ? _notesTop : (box - circle) / 2,
-      width: collapsed ? box - 28 : circle,
-      height: collapsed ? box - _notesTop - 14 : circle,
+      width: collapsed ? box - 2 * _edgeMargin : circle,
+      height: collapsed
+          ? box - _notesTop - _rowGap - _rowHeight - _bottomMargin
+          : circle,
       child: AnimatedContainer(
         key: const ValueKey('extra-notes-circle'),
         duration: _morph,
@@ -488,36 +497,56 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// Clears the tooth: the choice, the note, and the custom label with them,
-  /// which returns the ring to the surface.
+  /// The folded view's actions, along the bottom of the surface.
   ///
-  /// It sits at the right hand of the chosen option, and the option itself is
-  /// left to say which treatment is being cleared.
-  Widget _clearButton({required bool collapsed, required double box}) {
+  /// Saving keeps the note — it was stored as it was typed — and closes the
+  /// wheel; clearing takes the choice, the note and the custom label with it
+  /// and puts the ring back. Save comes first, so in left-to-right it sits at
+  /// the left of the pair and in right-to-left the whole row mirrors with it.
+  Widget _foldedActions({required bool collapsed, required double box}) {
     final color = _accentColor;
     final visible = collapsed && _hasChoice;
+    final top = box - _bottomMargin - _rowHeight;
+    final save = FilledButton(
+      key: const ValueKey('wheel-save'),
+      style: filledButtonStyle(color),
+      onPressed: widget.onTapClose,
+      child: ButtonContent(WindowsIcons.check_mark, txt('save'), size: 14),
+    );
+    final clear = Button(
+      key: const ValueKey('wheel-clear'),
+      onPressed: _clear,
+      child: ButtonContent(WindowsIcons.chrome_close, txt('clear'), size: 14),
+    );
 
     return AnimatedPositioned(
       duration: _morph,
       curve: Curves.easeInOutCubic,
-      left: (box - _chip) / 2 + _chip + _chipGrow + _flankGap,
-      top: _chipTop,
-      child: _flank(
-        visible: visible,
-        alignment: Alignment.centerLeft,
-        child: Tooltip(
-          message: txt('clear'),
-          child: IconButton(
-            key: const ValueKey('wheel-clear'),
-            onPressed: _clear,
-            icon: Icon(WindowsIcons.chrome_close, size: 15, color: color),
+      left: 0,
+      right: 0,
+      // Rises into place as the ring folds away, instead of simply appearing.
+      top: collapsed ? top : top + 14,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: ExcludeSemantics(
+          excluding: !visible,
+          child: AnimatedOpacity(
+            opacity: visible ? 1.0 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            child: Center(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 8,
+                children: locale.isRtl ? [clear, save] : [save, clear],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
 
-  /// Dictation, at the left hand of the chosen option.
+  /// Dictation, at the trailing edge of the surface.
   ///
   /// It feeds whichever field is on the surface — the notes field, or the
   /// custom "other" editor — so folding the ring never takes the microphone
@@ -525,23 +554,27 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   Widget _dictationButton({required bool collapsed, required double box}) {
     final available = transcriptionAvailable;
     final color = _accentColor;
+    final rtl = locale.isRtl;
 
     return AnimatedPositioned(
       duration: _morph,
       curve: Curves.easeInOutCubic,
-      left: (box - _chip) / 2 - _chipGrow - _flankGap - _flankRow,
+      left: rtl ? _edgeMargin : box - _edgeMargin - _dictationRow,
       top: _chipTop,
       // Built only when dictation is actually on offer: the button owns a
       // recorder, and there is no reason to hold one while it is unavailable.
       child: available
           ? _flank(
               visible: collapsed && _hasChoice,
-              alignment: Alignment.centerRight,
-              // Wears the chosen option's colour, like the clear control on
-              // the other side. The key follows the field it dictates into:
-              // the button binds its controller once, when it is built, so
-              // switching between the notes field and the custom "other"
-              // editor has to give it a new one to bind.
+              // Hugs the trailing edge, so the slot's spare width — the room
+              // the button needs while it counts down — stays inwards, where
+              // it cannot push the option around.
+              alignment: rtl ? Alignment.centerLeft : Alignment.centerRight,
+              // Wears the chosen option's colour, like the Save control below.
+              // The key follows the field it dictates into: the button binds
+              // its controller once, when it is built, so switching between
+              // the notes field and the custom "other" editor has to give it
+              // a new one to bind.
               child: LiveTranscriptionButton(
                 key: ValueKey(
                     'wheel-dictation-${_isOtherMode ? 'other' : 'notes'}'),
@@ -555,11 +588,11 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// A slot at one side of the chosen option, faded in with the folded view.
+  /// A slot at the trailing edge of the surface, faded in with the folded view.
   ///
-  /// The slot is wider than any of the controls it holds so a growing
-  /// dictation button — the one that counts down while recording — keeps its
-  /// distance from the option instead of pushing it around.
+  /// The slot is wider than the control it holds so the growing dictation
+  /// button — the one that counts down while recording — keeps its place
+  /// instead of pushing anything around.
   Widget _flank({
     required bool visible,
     required Alignment alignment,
@@ -573,7 +606,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
           opacity: visible ? 1.0 : 0.0,
           duration: const Duration(milliseconds: 250),
           child: SizedBox(
-            width: _flankRow,
+            width: _dictationRow,
             height: _chip,
             child: Align(alignment: alignment, child: child),
           ),

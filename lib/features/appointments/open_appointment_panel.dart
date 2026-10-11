@@ -546,6 +546,7 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 children: [
                   TeethSelector(
                     type: StateType.treatment,
+                    historyTitle: 'toothHistory',
                     history: [
                       ToothHistory(label: txt('toothPatientHistory'), teeth: Map.of(patient!.teeth), notes: Map.of(patient.teethExtraNotes)),
                       for (final previous in patient.allAppointments)

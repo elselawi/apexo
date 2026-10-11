@@ -117,6 +117,7 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
                       padding: const EdgeInsets.all(4),
                       child: TeethSelector(
                         type: StateType.state,
+                        historyTitle: 'toothAppointmentNotes',
                         history: [for (final appointment in editingCopy.allAppointments)
                           ToothHistory(label: DF.allNumbers(appointment.date), date: appointment.date,
                             teeth: Map.of(appointment.teeth), notes: Map.of(appointment.teethExtraNotes))],

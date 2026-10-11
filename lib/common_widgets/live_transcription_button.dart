@@ -9,9 +9,14 @@ class LiveTranscriptionButton extends StatefulWidget {
     super.key,
     required this.textController,
     required this.onDone,
+    this.iconColor,
   });
   final TextEditingController textController;
   final void Function(String) onDone;
+
+  /// Tints the idle microphone, so a caller can dress it to match the controls
+  /// around it. Recording and connecting keep their own signals.
+  final Color? iconColor;
 
   @override
   State<LiveTranscriptionButton> createState() =>
@@ -49,12 +54,13 @@ class _LiveTranscriptionButtonState extends State<LiveTranscriptionButton> {
             final state = session.state;
             final elapsed = session.elapsedSeconds;
 
-            // ── Idle / Error / Stopping: grey mic ────────────────
+            // ── Idle / Error / Stopping: the plain microphone ────
             if (state == TranscriptionState.idle ||
                 state == TranscriptionState.error ||
                 state == TranscriptionState.stopping) {
               return IconButton(
-                icon: const Icon(WindowsIcons.microphone, size: 16),
+                icon: Icon(WindowsIcons.microphone,
+                    size: 16, color: widget.iconColor),
                 onPressed: () => liveTranscriptionService.startTranscription(),
               );
             }

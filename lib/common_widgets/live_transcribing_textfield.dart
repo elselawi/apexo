@@ -15,6 +15,11 @@ enum MicPlacement {
   none,
 }
 
+/// Whether dictation is available right now: the microphone is only offered
+/// when the app is online and AI services are switched on.
+bool get transcriptionAvailable =>
+    network.isOnline() && globalSettings.aiServicesEnabled;
+
 /// A [CupertinoTextField] with a built-in live-transcription mic button.
 ///
 /// The mic is positioned at the bottom-end of the text field (RTL-aware).
@@ -38,6 +43,7 @@ class LiveTranscribingTextField extends StatefulWidget {
     this.prefix,
     this.onSubmitted,
     this.micPlacement = MicPlacement.end,
+    this.decoration,
   });
 
   final TextEditingController? controller;
@@ -52,6 +58,11 @@ class LiveTranscribingTextField extends StatefulWidget {
   final Widget? prefix;
   final ValueChanged<String>? onSubmitted;
   final MicPlacement micPlacement;
+
+  /// Painted behind the text. Left null the platform's own grey field box is
+  /// used; pass a [BoxDecoration] to paint the field the caller's way — for
+  /// instance none at all, on a surface that already carries the colour.
+  final BoxDecoration? decoration;
 
   @override
   State<LiveTranscribingTextField> createState() =>
@@ -70,11 +81,63 @@ class _LiveTranscribingTextFieldState extends State<LiveTranscribingTextField> {
     super.dispose();
   }
 
+  /// The text field itself.
+  ///
+  /// [CupertinoTextField] only applies its own box decoration when the
+  /// `decoration` argument is left off, so a field whose caller brought a
+  /// decoration — including `const BoxDecoration()`, which paints nothing — is
+  /// built without it, and every other field keeps the platform's own box.
+  Widget _field({required bool showMic}) {
+    final decoration = widget.decoration;
+    return decoration == null
+        ? CupertinoTextField(
+            style: widget.style,
+            expands: widget.expands,
+            maxLines: widget.maxLines,
+            controller: _effectiveController,
+            autofocus: widget.autofocus ?? false,
+            padding: _padding(showMic: showMic),
+            onChanged: widget.onChanged,
+            placeholder: widget.placeholder,
+            prefix: widget.prefix,
+            onSubmitted: widget.onSubmitted,
+          )
+        : CupertinoTextField(
+            style: widget.style,
+            expands: widget.expands,
+            maxLines: widget.maxLines,
+            controller: _effectiveController,
+            autofocus: widget.autofocus ?? false,
+            padding: _padding(showMic: showMic),
+            decoration: decoration,
+            onChanged: widget.onChanged,
+            placeholder: widget.placeholder,
+            prefix: widget.prefix,
+            onSubmitted: widget.onSubmitted,
+          );
+  }
+
+  EdgeInsetsGeometry _padding({required bool showMic}) {
+    return widget.padding ??
+        (widget.micPlacement == MicPlacement.bottomCenter
+            ? EdgeInsetsDirectional.only(
+                start: 7,
+                top: 7,
+                bottom: showMic ? 40 : 7,
+                end: 7,
+              )
+            : EdgeInsetsDirectional.only(
+                start: 7,
+                top: 7,
+                bottom: 7,
+                end: showMic ? 44 : 7,
+              ));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final showMic = widget.micPlacement != MicPlacement.none &&
-        network.isOnline() &&
-        globalSettings.aiServicesEnabled;
+    final showMic =
+        widget.micPlacement != MicPlacement.none && transcriptionAvailable;
     final mic = LiveTranscriptionButton(
       textController: _effectiveController,
       onDone: (text) {
@@ -85,31 +148,7 @@ class _LiveTranscribingTextFieldState extends State<LiveTranscribingTextField> {
     );
     return Stack(
       children: [
-        CupertinoTextField(
-          style: widget.style,
-          expands: widget.expands,
-          maxLines: widget.maxLines,
-          controller: _effectiveController,
-          autofocus: widget.autofocus ?? false,
-          padding: widget.padding ??
-              (widget.micPlacement == MicPlacement.bottomCenter
-                  ? EdgeInsetsDirectional.only(
-                      start: 7,
-                      top: 7,
-                      bottom: showMic ? 40 : 7,
-                      end: 7,
-                    )
-                  : EdgeInsetsDirectional.only(
-                      start: 7,
-                      top: 7,
-                      bottom: 7,
-                      end: showMic ? 44 : 7,
-                    )),
-          onChanged: widget.onChanged,
-          placeholder: widget.placeholder,
-          prefix: widget.prefix,
-          onSubmitted: widget.onSubmitted,
-        ),
+        _field(showMic: showMic),
         if (showMic)
           widget.micPlacement == MicPlacement.bottomCenter
               ? Positioned(

@@ -25,6 +25,7 @@ class TeethSelector extends StatefulWidget {
     this.tooltipTextStyle,
     this.showPrimary = false,
     this.history = const [],
+    this.historyTitle = 'toothHistory',
     required this.notation,
     required this.onNote,
     this.onExtraNote,
@@ -42,6 +43,7 @@ class TeethSelector extends StatefulWidget {
   final TextStyle? tooltipTextStyle;
   final bool showPrimary;
   final List<ToothHistory> history;
+  final String historyTitle;
   final StateType type;
 
   @override
@@ -164,6 +166,7 @@ class _TeethSelectorState extends State<TeethSelector> {
                       child: _SingleToothDraw(
                         type: widget.type,
                         history: widget.history,
+                        historyTitle: widget.historyTitle,
                         extraNote: _extraNotes[tKey] ?? '',
                         onExtraNote: (text) {
                           setState(() => _extraNotes[tKey] = text);
@@ -243,11 +246,13 @@ class _SingleToothDraw extends StatefulWidget {
     required this.extraNote,
     required this.onExtraNote,
     required this.history,
+    required this.historyTitle,
   });
 
   final String extraNote;
   final ValueChanged<String> onExtraNote;
   final List<ToothHistory> history;
+  final String historyTitle;
   final String Function(String isoString) notation;
   final MapEntry<String, String?> toothNote;
   final _Tooth tooth;
@@ -403,6 +408,7 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
         extraNote: widget.extraNote,
         onExtraNote: widget.onExtraNote,
         history: widget.history,
+        historyTitle: widget.historyTitle,
         onSet: (note) {
           widget.onNote(tKey, note);
         });

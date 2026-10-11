@@ -1,3 +1,5 @@
+import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/live_transcription_button.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -20,6 +22,7 @@ class ToothStateWheel extends StatefulWidget {
     this.extraNote = '',
     this.onExtraNote,
     this.history = const [],
+    this.historyTitle = 'toothHistory',
   });
   final String toothName;
   final String iso;
@@ -32,14 +35,48 @@ class ToothStateWheel extends StatefulWidget {
   final ValueChanged<String>? onExtraNote;
   final List<ToothHistory> history;
 
+  /// Localization key naming what [history] holds — the patient's baseline and
+  /// earlier appointments for the treatment being recorded, or the notes
+  /// earlier appointments left on this tooth when it is browsed from the
+  /// patient's own records.
+  final String historyTitle;
+
   @override
   State<ToothStateWheel> createState() => _ToothStateWheelState();
 }
 
 class _ToothStateWheelState extends State<ToothStateWheel> {
+  /// Shared geometry of the wheel and its folded view, and the length of the
+  /// animation that travels between them.
+  static const _morph = Duration(milliseconds: 350);
+
+  /// The folded corners of the surface; while the ring is open the same box is
+  /// rounded by half its width, which is what draws the circle.
+  static const _cornerRadius = 16.0;
+
+  /// The chosen option's box, matching the option circles on the ring.
+  static const _chip = _optionSize;
+  static const _chipTop = 12.0;
+
+  /// Where the folded notes surface starts, clear of the grown option above it.
+  static const _notesTop = 82.0;
+
+  /// Distance from the chosen option to each of the controls beside it, and
+  /// the width reserved for them.
+  static const _flankGap = 8.0;
+  static const _flankRow = 72.0;
+
+  /// How far the chosen option reaches past its own box once it has grown.
+  static const _chipGrow = _chip * (_chosenScale - 1) / 2;
+
   String? _selectedLabel;
   bool _isOtherMode = false;
   bool _hasNote = false;
+
+  /// Whether the ring of options is open. Recording a choice folds it away so
+  /// the chosen option can ride on top of the notes field; clearing the tooth
+  /// is what brings the ring back.
+  late bool _optionsExpanded;
   late final TextEditingController _notesController;
   final TextEditingController _otherController = TextEditingController();
 
@@ -54,12 +91,14 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   void initState() {
     super.initState();
     _selectedLabel = widget.initialValue;
+    _optionsExpanded = _selectedLabel == null || _selectedLabel!.isEmpty;
     _hasNote = widget.extraNote.isNotEmpty;
     _notesController = TextEditingController(text: widget.extraNote);
 
     if (txOptions.where((x) => x.label == _selectedLabel).isEmpty &&
         _selectedLabel != null &&
         _selectedLabel != "") {
+      _isOtherMode = true;
       _otherController.text = _selectedLabel ?? "";
     }
   }
@@ -76,6 +115,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     setState(() {
       _selectedLabel = label;
       _isOtherMode = false;
+      // Clearing the tooth leaves the ring open; choosing folds it away.
+      _optionsExpanded = label == null || label.isEmpty;
     });
     widget.onSet(label);
   }
@@ -123,18 +164,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                   final historySurface = hasHistory
                       ? _historySurface(context, records: records)
                       : null;
-
-                  if (hasHistory && availableWidth >= 680) {
-                    return Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        FittedBox(fit: BoxFit.scaleDown, child: wheel),
-                        const SizedBox(width: 16),
-                        historySurface!,
-                      ],
-                    );
-                  }
 
                   if (hasHistory) {
                     return Column(
@@ -200,20 +229,13 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
               ),
             ),
             const SizedBox(width: 12),
-            Button(
-              onPressed: widget.onTapClose,
-              style: ButtonStyle(
-                padding: WidgetStateProperty.all(
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(WindowsIcons.chrome_close, size: 10),
-                  const SizedBox(width: 4),
-                  Txt(txt('close')),
-                ],
+            Tooltip(
+              message: txt('close'),
+              child: IconButton(
+                key: const ValueKey('wheel-close'),
+                onPressed: widget.onTapClose,
+                style: filledButtonStyle(Colors.red),
+                icon: const Icon(WindowsIcons.chrome_close, size: 10),
               ),
             ),
           ],
@@ -226,71 +248,123 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     final theme = FluentTheme.of(context);
     final darkMode = theme.brightness == Brightness.dark;
     const size = 350.0;
-    final hasSelection = _selectedLabel != null && _selectedLabel!.isNotEmpty;
-    final selectedColor = labelToColor(_selectedLabel ?? '');
+    final collapsed = !_optionsExpanded;
+    final accent = _accentColor;
+    final hasChoice = _hasChoice;
 
-    // Only the circle itself is a surface: the transparent square corners
-    // around it let a tap through to the popup's own dismiss handler.
-    return GestureDetector(
-      onTap: () {},
-      behavior: HitTestBehavior.deferToChild,
-      excludeFromSemantics: true,
-      child: Container(
-        key: const ValueKey('choice-wheel'),
-        height: size,
-        width: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: theme.menuColor,
-          border: Border.all(
-            color: hasSelection
-                ? selectedColor.withValues(alpha: darkMode ? 0.6 : 0.4)
-                : theme.inactiveColor.withAlpha(darkMode ? 60 : 40),
-            width: hasSelection ? 2.0 : 1.0,
-          ),
-          boxShadow: [
-            if (hasSelection)
-              BoxShadow(
-                color: selectedColor.withValues(alpha: darkMode ? 0.20 : 0.10),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
-              ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: darkMode ? 0.35 : 0.10),
-              blurRadius: 18,
-              offset: const Offset(0, 6),
-            ),
-          ],
+    // The surface's shape is the wheel's own: the gaps around it belong to the
+    // popup, whose dismiss handler is waiting behind them.
+    return AnimatedContainer(
+      key: const ValueKey('choice-wheel'),
+      duration: _morph,
+      curve: Curves.easeInOutCubic,
+      height: size,
+      width: size,
+      decoration: BoxDecoration(
+        color: theme.menuColor,
+        // The round wheel and the notes rectangle are the same square box:
+        // only the corner radius travels between them, so the morph keeps
+        // the overall width the ring was built around.
+        borderRadius:
+            BorderRadius.circular(collapsed ? _cornerRadius : size / 2),
+        border: Border.all(
+          color: hasChoice
+              ? accent.withValues(alpha: darkMode ? 0.6 : 0.4)
+              : theme.inactiveColor.withAlpha(darkMode ? 60 : 40),
+          width: hasChoice ? 2.0 : 1.0,
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Center hub: Extra notes and the clear control
-            _centerHub(context),
+        boxShadow: [
+          if (hasChoice)
+            BoxShadow(
+              color: accent.withValues(alpha: darkMode ? 0.20 : 0.10),
+              blurRadius: 20,
+              offset: const Offset(0, 4),
+            ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: darkMode ? 0.35 : 0.10),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      // The clip keeps hit testing on the paint: the surface takes every tap
+      // that lands on it — the gaps between the ring's options included —
+      // while the corners of the box it is drawn in stay the dismiss
+      // handler's, so the popup still closes when they are tapped.
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(
+            begin: size / 2, end: collapsed ? _cornerRadius : size / 2),
+        duration: _morph,
+        curve: Curves.easeInOutCubic,
+        builder: (context, radius, child) => ClipRRect(
+          clipper: _SurfaceClipper(radius),
+          child: GestureDetector(
+            onTap: () {},
+            behavior: HitTestBehavior.opaque,
+            excludeFromSemantics: true,
+            child: child,
+          ),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // The surface's own border insets this box, so the ring and the
+            // notes surface are laid out against the box they actually get.
+            final box = constraints.maxWidth;
+            return Stack(
+              alignment: Alignment.center,
+              children: [
+                _notesSurface(context, collapsed: collapsed, box: box),
+                _clearButton(collapsed: collapsed, box: box),
+                _dictationButton(collapsed: collapsed, box: box),
+                for (var index = 0; index < options.length; index++)
+                  _optionButton(index, collapsed: collapsed, box: box),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
 
-            // 18 radial buttons
-            for (var index = 0; index < options.length; index++)
-              Transform.translate(
-                offset: Offset(
-                  147 *
-                      math.cos(
-                          index * 2 * math.pi / options.length - math.pi / 2),
-                  147 *
-                      math.sin(
-                          index * 2 * math.pi / options.length - math.pi / 2),
-                ),
-                child: _RadialButton(
-                  state: options[index],
-                  isSelected: _isOtherMode
-                      ? options[index].label == 'other'
-                      : _selectedLabel == options[index].label,
-                  isDimmed: _isOtherMode
-                      ? options[index].label != 'other'
-                      : hasSelection && _selectedLabel != options[index].label,
-                  onTap: () => _choose(options[index].label),
-                ),
-              ),
-          ],
+  bool get _hasChoice =>
+      _isOtherMode || (_selectedLabel != null && _selectedLabel!.isNotEmpty);
+
+  Color get _accentColor =>
+      _isOtherMode ? Colors.teal : labelToColor(_selectedLabel ?? '');
+
+  /// One option on the ring.
+  ///
+  /// Recording a choice folds the ring away: every option but the chosen one
+  /// shrinks out of sight and stops taking taps, while the chosen one rides to
+  /// the top of the notes surface and stays there for good.
+  Widget _optionButton(int index,
+      {required bool collapsed, required double box}) {
+    const ringRadius = 147.0;
+    final option = options[index];
+    final isSelected =
+        _isOtherMode ? option.label == 'other' : _selectedLabel == option.label;
+    final hidden = collapsed && !isSelected;
+    final angle = index * 2 * math.pi / options.length - math.pi / 2;
+    final atTop = isSelected && collapsed;
+
+    return AnimatedPositioned(
+      duration: _morph,
+      curve: Curves.easeInOutCubic,
+      left: atTop
+          ? (box - _chip) / 2
+          : box / 2 + ringRadius * math.cos(angle) - _chip / 2,
+      top:
+          atTop ? _chipTop : box / 2 + ringRadius * math.sin(angle) - _chip / 2,
+      child: IgnorePointer(
+        ignoring: hidden,
+        child: ExcludeSemantics(
+          excluding: hidden,
+          child: _RadialButton(
+            state: option,
+            isSelected: isSelected,
+            isHidden: hidden,
+            onTap: () => _choose(option.label),
+          ),
         ),
       ),
     );
@@ -300,22 +374,13 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   ///
   /// A second tap on the same option within [doubleTapWindow] confirms the
   /// choice by closing the popup — "set it and get out", without waiting for
-  /// extra notes to be typed.
+  /// extra notes to be typed. Once a choice is recorded the ring stays folded;
+  /// the clear control is the way back to it.
   static const doubleTapWindow = Duration(milliseconds: 350);
   Timer? _doubleTapTimer;
   String? _pendingTapLabel;
 
   void _choose(String label) {
-    if (label == 'other') {
-      setState(() {
-        _isOtherMode = true;
-        _otherController.text = txOptions.any((o) => o.label == _selectedLabel)
-            ? ''
-            : _selectedLabel ?? '';
-      });
-      return;
-    }
-
     if (_pendingTapLabel == label) {
       // Second tap on the same option: the choice is already recorded, so
       // there is nothing left to edit — close the whole popup.
@@ -330,75 +395,199 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     _doubleTapTimer = Timer(doubleTapWindow, () {
       _pendingTapLabel = null;
     });
+
+    if (label == 'other') {
+      if (_isOtherMode) return;
+      setState(() {
+        _isOtherMode = true;
+        _optionsExpanded = false;
+        _otherController.text = txOptions.any((o) => o.label == _selectedLabel)
+            ? ''
+            : _selectedLabel ?? '';
+      });
+      return;
+    }
+
+    if (!_isOtherMode && label == _selectedLabel) {
+      // Already recorded: a recorded treatment keeps this folded view, and
+      // clearing it is the way back to the ring.
+      return;
+    }
+
     _select(label);
   }
 
-  Widget _centerHub(BuildContext context) {
+  /// The notes surface at the heart of the wheel.
+  ///
+  /// While the ring is open it is the familiar circle; recording a choice
+  /// widens it into a rounded rectangle tucked under the chosen option so a
+  /// full note fits comfortably. It carries the option's own colour rather
+  /// than a grey field box, and stays out of the way until there is something
+  /// to attach a note to — a chosen option, the custom "other" editor, or
+  /// notes carried in from a saved record.
+  Widget _notesSurface(BuildContext context,
+      {required bool collapsed, required double box}) {
     final theme = FluentTheme.of(context);
     final darkMode = theme.brightness == Brightness.dark;
-    final hasSelection = _selectedLabel != null && _selectedLabel!.isNotEmpty;
-    final selectedColor = labelToColor(_selectedLabel ?? '');
-    // The notes field only earns its place once there is something to attach
-    // it to — a chosen option, the custom "other" editor, or notes carried in
-    // from a saved record.
-    final showField = hasSelection || _isOtherMode || _hasNote;
+    const circle = 196.0;
+    final showField = _hasChoice || _hasNote;
+    final accent = _accentColor;
 
-    return AnimatedContainer(
-      key: const ValueKey('extra-notes-circle'),
-      duration: const Duration(milliseconds: 250),
-      width: 196,
-      height: 196,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: theme.inactiveBackgroundColor
-            .withValues(alpha: darkMode ? 0.30 : 0.40),
-        border: Border.all(
-          color: hasSelection
-              ? selectedColor.withValues(alpha: darkMode ? 0.55 : 0.35)
-              : theme.inactiveColor.withAlpha(darkMode ? 45 : 30),
-          width: hasSelection ? 1.5 : 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: darkMode ? 0.25 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 1),
+    return AnimatedPositioned(
+      duration: _morph,
+      curve: Curves.easeInOutCubic,
+      left: collapsed ? 14 : (box - circle) / 2,
+      top: collapsed ? _notesTop : (box - circle) / 2,
+      width: collapsed ? box - 28 : circle,
+      height: collapsed ? box - _notesTop - 14 : circle,
+      child: AnimatedContainer(
+        key: const ValueKey('extra-notes-circle'),
+        duration: _morph,
+        curve: Curves.easeInOutCubic,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(collapsed ? 14 : circle / 2),
+          color: showField
+              ? accent.withValues(alpha: darkMode ? 0.16 : 0.09)
+              : Colors.transparent,
+          border: Border.all(
+            color: showField
+                ? accent.withValues(alpha: darkMode ? 0.45 : 0.30)
+                : theme.inactiveColor.withAlpha(darkMode ? 45 : 30),
+            width: collapsed ? 1.5 : 1.0,
           ),
-        ],
-      ),
-      child: ClipOval(
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 220),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                child: showField
-                    ? _CircleTextField(
-                        key: ValueKey(_isOtherMode ? 'other-field' : 'notes'),
-                        controller:
-                            _isOtherMode ? _otherController : _notesController,
-                        placeholder: txt(
-                            _isOtherMode ? 'other' : 'extraInfoPlaceholder'),
-                        autofocus: _isOtherMode,
-                        onChanged:
-                            _isOtherMode ? _onOtherChanged : _onNotesChanged,
-                      )
-                    : _hubHint(context),
-              ),
-            ),
-            if (hasSelection || _isOtherMode)
-              Positioned(
-                top: 12,
-                left: 0,
-                right: 0,
-                child: Center(child: _selectionPill(context)),
+          boxShadow: [
+            if (showField)
+              BoxShadow(
+                color: Colors.black.withValues(alpha: darkMode ? 0.25 : 0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 1),
               ),
           ],
         ),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 220),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child: showField
+              ? _WheelTextField(
+                  key: ValueKey(_isOtherMode ? 'other-field' : 'notes'),
+                  controller:
+                      _isOtherMode ? _otherController : _notesController,
+                  placeholder:
+                      txt(_isOtherMode ? 'other' : 'extraInfoPlaceholder'),
+                  autofocus: _isOtherMode,
+                  // Folded, dictation lives beside the chosen option; while
+                  // the ring is open it stays on the field, as before.
+                  micPlacement:
+                      collapsed ? MicPlacement.none : MicPlacement.bottomCenter,
+                  onChanged: _isOtherMode ? _onOtherChanged : _onNotesChanged,
+                )
+              : _hubHint(context),
+        ),
       ),
     );
+  }
+
+  /// Clears the tooth: the choice, the note, and the custom label with them,
+  /// which returns the ring to the surface.
+  ///
+  /// It sits at the right hand of the chosen option, and the option itself is
+  /// left to say which treatment is being cleared.
+  Widget _clearButton({required bool collapsed, required double box}) {
+    final color = _accentColor;
+    final visible = collapsed && _hasChoice;
+
+    return AnimatedPositioned(
+      duration: _morph,
+      curve: Curves.easeInOutCubic,
+      left: (box - _chip) / 2 + _chip + _chipGrow + _flankGap,
+      top: _chipTop,
+      child: _flank(
+        visible: visible,
+        alignment: Alignment.centerLeft,
+        child: Tooltip(
+          message: txt('clear'),
+          child: IconButton(
+            key: const ValueKey('wheel-clear'),
+            onPressed: _clear,
+            icon: Icon(WindowsIcons.chrome_close, size: 15, color: color),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Dictation, at the left hand of the chosen option.
+  ///
+  /// It feeds whichever field is on the surface — the notes field, or the
+  /// custom "other" editor — so folding the ring never takes the microphone
+  /// away from what is being written.
+  Widget _dictationButton({required bool collapsed, required double box}) {
+    final available = transcriptionAvailable;
+    final color = _accentColor;
+
+    return AnimatedPositioned(
+      duration: _morph,
+      curve: Curves.easeInOutCubic,
+      left: (box - _chip) / 2 - _chipGrow - _flankGap - _flankRow,
+      top: _chipTop,
+      // Built only when dictation is actually on offer: the button owns a
+      // recorder, and there is no reason to hold one while it is unavailable.
+      child: available
+          ? _flank(
+              visible: collapsed && _hasChoice,
+              alignment: Alignment.centerRight,
+              // Wears the chosen option's colour, like the clear control on
+              // the other side. The key follows the field it dictates into:
+              // the button binds its controller once, when it is built, so
+              // switching between the notes field and the custom "other"
+              // editor has to give it a new one to bind.
+              child: LiveTranscriptionButton(
+                key: ValueKey(
+                    'wheel-dictation-${_isOtherMode ? 'other' : 'notes'}'),
+                iconColor: color,
+                textController:
+                    _isOtherMode ? _otherController : _notesController,
+                onDone: _isOtherMode ? _onOtherChanged : _onNotesChanged,
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+
+  /// A slot at one side of the chosen option, faded in with the folded view.
+  ///
+  /// The slot is wider than any of the controls it holds so a growing
+  /// dictation button — the one that counts down while recording — keeps its
+  /// distance from the option instead of pushing it around.
+  Widget _flank({
+    required bool visible,
+    required Alignment alignment,
+    required Widget child,
+  }) {
+    return IgnorePointer(
+      ignoring: !visible,
+      child: ExcludeSemantics(
+        excluding: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 250),
+          child: SizedBox(
+            width: _flankRow,
+            height: _chip,
+            child: Align(alignment: alignment, child: child),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _clear() {
+    _notesController.clear();
+    _hasNote = false;
+    _otherController.clear();
+    widget.onExtraNote?.call('');
+    _select(null);
   }
 
   void _onNotesChanged(String text) {
@@ -438,67 +627,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
             textAlign: TextAlign.center,
           ),
         ],
-      ),
-    );
-  }
-
-  /// The only control floating above the notes field: clearing the tooth.
-  ///
-  /// The chosen treatment itself is already unmistakable — its button on the
-  /// wheel carries the highlight and the check badge — so naming it here only
-  /// crowded the clear action into a corner. Dropping the label lets the
-  /// control sit centred, comfortably tappable, in the same accent colour as
-  /// the choice it removes.
-  Widget _selectionPill(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    final darkMode = theme.brightness == Brightness.dark;
-    final isOther = _isOtherMode;
-    final color = isOther ? Colors.teal : labelToColor(_selectedLabel ?? '');
-    return Tooltip(
-      message: txt('delete'),
-      excludeFromSemantics: true,
-      child: GestureDetector(
-        onTap: () {
-          _notesController.clear();
-          _hasNote = false;
-          _otherController.clear();
-          widget.onExtraNote?.call('');
-          _select(null);
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: theme.menuColor,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: color.withValues(alpha: 0.45), width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: darkMode ? 0.35 : 0.08),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(WindowsIcons.delete, size: 15, color: color),
-              const SizedBox(width: 5),
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 52),
-                child: Text(
-                  txt('delete'),
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 11.5,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -543,7 +671,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Txt(
-                    txt('toothRecordHistory'),
+                    txt(widget.historyTitle),
                     style: theme.typography.bodyStrong?.copyWith(fontSize: 13),
                   ),
                 ),
@@ -681,16 +809,25 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   }
 }
 
+/// Size of an option's circle on the ring, and of the box the chosen one
+/// rides in afterwards.
+const _optionSize = 54.0;
+
+// How much the chosen option grows once it is the only one left on the
+// surface: with the ring folded away there is nothing to be highlighted
+// against, so the option simply takes more of the space for itself.
+const _chosenScale = 1.3;
+
 class _RadialButton extends StatelessWidget {
   const _RadialButton({
     required this.state,
     required this.isSelected,
-    required this.isDimmed,
+    required this.isHidden,
     required this.onTap,
   });
   final TxOption state;
   final bool isSelected;
-  final bool isDimmed;
+  final bool isHidden;
   final VoidCallback onTap;
 
   @override
@@ -705,91 +842,50 @@ class _RadialButton extends StatelessWidget {
         child: GestureDetector(
           onTap: onTap,
           child: AnimatedScale(
-            scale: isSelected ? 1.15 : (isDimmed ? 0.94 : 1.0),
+            scale: isHidden ? 0.3 : (isSelected ? _chosenScale : 1.0),
             duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutBack,
+            curve: isHidden ? Curves.easeInCubic : Curves.easeOutBack,
             child: AnimatedOpacity(
-              opacity: isDimmed ? 0.38 : 1.0,
-              duration: const Duration(milliseconds: 200),
+              opacity: isHidden ? 0.0 : 1.0,
+              duration: const Duration(milliseconds: 250),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
-                height: 54,
-                width: 54,
+                height: _optionSize,
+                width: _optionSize,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: state.color,
                   border: Border.all(
-                    color: isSelected
-                        ? Colors.white
-                        : state.color.withValues(alpha: 0.5),
-                    width: isSelected ? 2.5 : 1,
+                    color: state.color.withValues(alpha: 0.5),
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: state.color.withValues(alpha: 0.75),
-                            blurRadius: 10,
-                            spreadRadius: 3,
-                          ),
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: isDimmed
-                                ? Colors.black.withValues(alpha: 0.08)
-                                : state.color.withValues(alpha: 0.35),
-                            blurRadius: isDimmed ? 4 : 6,
-                            spreadRadius: isDimmed ? 0 : 1,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                  boxShadow: [
+                    BoxShadow(
+                      color: state.color.withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      spreadRadius: 1,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(state.icon, size: 24, color: Colors.white),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 3),
-                            child: Txt(
-                              overflow: TextOverflow.ellipsis,
-                              softWrap: false,
-                              txt(state.label),
-                              style: const TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (isSelected)
-                        Positioned(
-                          top: 2,
-                          right: 2,
-                          child: Container(
-                            width: 12,
-                            height: 12,
-                            decoration: const BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: Colors.white,
-                            ),
-                            child: Icon(
-                              WindowsIcons.check_mark,
-                              size: 8,
-                              color: state.color,
-                            ),
+                      Icon(state.icon, size: 24, color: Colors.white),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 3),
+                        child: Txt(
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                          txt(state.label),
+                          style: const TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white,
                           ),
                         ),
+                      ),
                     ],
                   ),
                 ),
@@ -802,22 +898,24 @@ class _RadialButton extends StatelessWidget {
   }
 }
 
-/// The circular, in-wheel text surface shared by the extra-notes field and the
-/// custom "other" option editor — one look, one behaviour, including the
-/// dictation button centred along the bottom edge and padding that keeps text
-/// clear of the circle's curvature and of any selection pill above it.
-class _CircleTextField extends StatelessWidget {
-  const _CircleTextField({
+/// The in-wheel text surface shared by the extra-notes field and the custom
+/// "other" option editor — one look, one behaviour. It paints nothing of its
+/// own: the tinted, morphing surface behind it carries the colour, so the
+/// platform's default grey field box never shows through.
+class _WheelTextField extends StatelessWidget {
+  const _WheelTextField({
     super.key,
     required this.controller,
     required this.placeholder,
     required this.onChanged,
     this.autofocus = false,
+    this.micPlacement = MicPlacement.none,
   });
   final TextEditingController controller;
   final String placeholder;
   final ValueChanged<String> onChanged;
   final bool autofocus;
+  final MicPlacement micPlacement;
 
   @override
   Widget build(BuildContext context) {
@@ -828,11 +926,30 @@ class _CircleTextField extends StatelessWidget {
       expands: true,
       maxLines: null,
       autofocus: autofocus,
-      micPlacement: MicPlacement.bottomCenter,
+      micPlacement: micPlacement,
+      decoration: const BoxDecoration(),
       style: theme.typography.body?.copyWith(fontSize: 12.5, height: 1.25),
-      padding: const EdgeInsetsDirectional.fromSTEB(30, 46, 30, 40),
+      padding: const EdgeInsetsDirectional.fromSTEB(30, 30, 30, 40),
       onChanged: onChanged,
       onTranscriptionDone: onChanged,
     );
   }
+}
+
+/// Clips the wheel to the shape it is painted as.
+///
+/// A [CustomClipper] rather than the plain radius of a [ClipRRect], because
+/// only a clipper makes the clip take part in hit testing — and that is what
+/// lets the surface absorb taps inside its circle or its folded rectangle
+/// while the corners of the box around them fall through to the popup.
+class _SurfaceClipper extends CustomClipper<RRect> {
+  const _SurfaceClipper(this.radius);
+  final double radius;
+
+  @override
+  RRect getClip(Size size) =>
+      RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+
+  @override
+  bool shouldReclip(_SurfaceClipper oldClipper) => oldClipper.radius != radius;
 }

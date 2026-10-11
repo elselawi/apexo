@@ -195,6 +195,8 @@ class En {
     "telegram": "Telegram",
     "printQR": "Print QR Code",
     "dentalNotes": "Dental Notes",
+    "toothRecordHistory": "Other appointments",
+    "toothPatientHistory": "Patient dental history",
     "showPrimary": "Show Primary",
     "showPermanent": "Show Permanent",
     "primary": "Primary",

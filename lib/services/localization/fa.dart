@@ -193,6 +193,8 @@ class Fa implements En {
     "telegram": "تلگرام",
     "printQR": "چاپ کد QR",
     "dentalNotes": "یادداشت‌های دندانپزشکی",
+    "toothRecordHistory": "قرارهای ملاقات دیگر",
+    "toothPatientHistory": "تاریخچه دندان بیمار",
     "showPrimary": "نمایش دندان شیری",
     "showPermanent": "نمایش دندان دائمی",
     "primary": "دندان شیری",

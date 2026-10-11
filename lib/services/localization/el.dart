@@ -197,6 +197,8 @@ class El implements En {
     "telegram": "Telegram",
     "printQR": "Εκτύπωση κωδικού QR",
     "dentalNotes": "Οδοντιατρικές σημειώσεις",
+    "toothRecordHistory": "Άλλα ραντεβού",
+    "toothPatientHistory": "Οδοντιατρικό ιστορικό ασθενούς",
     "showPrimary": "Εμφάνιση νεογιλών",
     "showPermanent": "Εμφάνιση μόνιμων",
     "primary": "Νεογιλά",

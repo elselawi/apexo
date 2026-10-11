@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:apexo/app/panels/panel_tab.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
 import 'package:apexo/app/panels/row_panel.dart';
@@ -10,6 +9,7 @@ import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
+import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
@@ -545,11 +545,14 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 spacing: 10,
                 children: [
                   TeethSelector(
-                    key: ValueKey(jsonEncode({
-                      ...widget.appointment.teeth,
-                      ...widget.appointment.teethExtraNotes
-                    })),
                     type: StateType.treatment,
+                    history: [
+                      ToothHistory(label: txt('toothPatientHistory'), teeth: Map.of(patient!.teeth), notes: Map.of(patient.teethExtraNotes)),
+                      for (final previous in patient.allAppointments)
+                        if (previous.id != widget.appointment.id && previous.date.isBefore(widget.appointment.date))
+                          ToothHistory(label: DF.allNumbers(previous.date), date: previous.date,
+                            teeth: Map.of(previous.teeth), notes: Map.of(previous.teethExtraNotes)),
+                    ],
                     onNote: (x, y) {
                       if (y != null) {
                         widget.appointment.teeth[x] = y;

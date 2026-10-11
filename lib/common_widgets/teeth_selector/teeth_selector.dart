@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/svg.dart';
+import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -24,6 +24,7 @@ class TeethSelector extends StatefulWidget {
     this.textStyle,
     this.tooltipTextStyle,
     this.showPrimary = false,
+    this.history = const [],
     required this.notation,
     required this.onNote,
     this.onExtraNote,
@@ -40,6 +41,7 @@ class TeethSelector extends StatefulWidget {
   final TextStyle? textStyle;
   final TextStyle? tooltipTextStyle;
   final bool showPrimary;
+  final List<ToothHistory> history;
   final StateType type;
 
   @override
@@ -76,6 +78,14 @@ class _TeethSelectorState extends State<TeethSelector> {
             iso.startsWith("7") ||
             iso.startsWith("8"));
     super.initState();
+  }
+
+  @override
+  void didUpdateWidget(covariant TeethSelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _extraNotes
+      ..clear()
+      ..addAll(widget.extraNotes);
   }
 
   @override
@@ -153,7 +163,13 @@ class _TeethSelectorState extends State<TeethSelector> {
                       rect: tooth.rect,
                       child: _SingleToothDraw(
                         type: widget.type,
-                        key: Key(widget.currentNotes.toString()),
+                        history: widget.history,
+                        extraNote: _extraNotes[tKey] ?? '',
+                        onExtraNote: (text) {
+                          setState(() => _extraNotes[tKey] = text);
+                          widget.onExtraNote?.call(tKey, text);
+                        },
+                        key: ValueKey(tKey),
                         toothNote: MapEntry<String, String?>(
                             tKey, widget.currentNotes[tKey]),
                         tooth: tooth,
@@ -161,6 +177,7 @@ class _TeethSelectorState extends State<TeethSelector> {
                         onNote: (iso, tooth) {
                           setState(() {
                             widget.onNote(iso, tooth);
+                            if (tooth == null) _extraNotes.remove(iso);
                           });
                         },
                         currentNote: widget.currentNotes[tKey],
@@ -183,26 +200,6 @@ class _TeethSelectorState extends State<TeethSelector> {
             ),
           ],
         ),
-        if (widget.currentNotes.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _ExtraNotesSection(
-            currentNotes: widget.currentNotes,
-            extraNotes: _extraNotes,
-            notation: widget.notation,
-            onExtraNote: widget.onExtraNote != null
-                ? (iso, text) {
-                    setState(() {
-                      _extraNotes[iso] = text;
-                      widget.onExtraNote!(iso, text);
-                    });
-                  }
-                : (iso, text) {
-                    setState(() {
-                      _extraNotes[iso] = text;
-                    });
-                  },
-          ),
-        ],
       ],
     );
   }
@@ -243,8 +240,14 @@ class _SingleToothDraw extends StatefulWidget {
     required this.notation,
     required this.onNote,
     required this.type,
+    required this.extraNote,
+    required this.onExtraNote,
+    required this.history,
   });
 
+  final String extraNote;
+  final ValueChanged<String> onExtraNote;
+  final List<ToothHistory> history;
   final String Function(String isoString) notation;
   final MapEntry<String, String?> toothNote;
   final _Tooth tooth;
@@ -269,7 +272,7 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
   @override
   Widget build(BuildContext context) {
     final bool darkMode = FluentTheme.of(context).brightness == Brightness.dark;
-    final String? note = widget.oldNote ?? widget.currentNote;
+    final String? note = widget.currentNote ?? widget.oldNote;
     final tKey = widget.toothNote.key;
     final tColor = widget.currentNote != null
         ? labelToColor(widget.currentNote!)
@@ -361,20 +364,30 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
   /// a dialog otherwise. Shared by the pointer gesture and the semantics
   /// action so both routes do exactly the same thing.
   Future<void> _open(BuildContext context, String tKey) async {
-    if (MediaQuery.of(context).size.width > 900) {
-      await flyoutFocusFix(context);
-      unawaited(wheelController.showFlyout<void>(
-        builder: (context) => _showStateWheel(context, tKey),
-        barrierDismissible: true,
-        dismissWithEsc: true,
-      ));
-      return;
+    try {
+      if (MediaQuery.of(context).size.width > 900) {
+        await flyoutFocusFix(context);
+        unawaited(wheelController.showFlyout<void>(
+          builder: (context) => _showStateWheel(context, tKey),
+          barrierDismissible: true,
+          dismissWithEsc: true,
+          barrierColor: Colors.black.withValues(alpha: 0.18),
+        ));
+        return;
+      }
+      unawaited(showDialog(
+          barrierDismissible: true,
+          dismissWithEsc: true,
+          barrierColor: Colors.black.withValues(alpha: 0.35),
+          context: context,
+          builder: (context) => Center(
+                  child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: _showStateWheel(context, tKey),
+              ))));
+    } catch (e, s) {
+      debugPrint('Error in _open: $e\n$s');
     }
-    unawaited(showDialog(
-        barrierDismissible: true,
-        dismissWithEsc: true,
-        context: context,
-        builder: (context) => _showStateWheel(context, tKey)));
   }
 
   Widget _showStateWheel(BuildContext context, String tKey) {
@@ -387,8 +400,10 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
         toothName: widget.notation(tKey),
         initialValue: widget.toothNote.value,
         oldNote: widget.oldNote,
+        extraNote: widget.extraNote,
+        onExtraNote: widget.onExtraNote,
+        history: widget.history,
         onSet: (note) {
-          Navigator.pop(context);
           widget.onNote(tKey, note);
         });
   }
@@ -455,137 +470,4 @@ class _ToothBorder extends ShapeBorder {
 
   @override
   ShapeBorder scale(double t) => this;
-}
-
-class _ExtraNotesSection extends StatefulWidget {
-  const _ExtraNotesSection({
-    required this.currentNotes,
-    required this.extraNotes,
-    required this.notation,
-    required this.onExtraNote,
-  });
-
-  final Map<String, String> currentNotes;
-  final Map<String, String> extraNotes;
-  final String Function(String isoString) notation;
-  final void Function(String iso, String text) onExtraNote;
-
-  @override
-  State<_ExtraNotesSection> createState() => _ExtraNotesSectionState();
-}
-
-class _ExtraNotesSectionState extends State<_ExtraNotesSection> {
-  final Map<String, TextEditingController> _controllers = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _syncControllers();
-  }
-
-  @override
-  void didUpdateWidget(covariant _ExtraNotesSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    _syncControllers();
-  }
-
-  void _syncControllers() {
-    final currentKeys = widget.currentNotes.keys.toSet();
-    final controllerKeys = _controllers.keys.toSet();
-
-    // Remove controllers for teeth that are no longer selected
-    for (final key in controllerKeys.difference(currentKeys)) {
-      _controllers[key]!.dispose();
-      _controllers.remove(key);
-    }
-
-    // Add controllers for newly selected teeth
-    for (final key in currentKeys.difference(controllerKeys)) {
-      final ctrl = TextEditingController(text: widget.extraNotes[key] ?? '');
-      ctrl.addListener(() => _onControllerChanged(key, ctrl));
-      _controllers[key] = ctrl;
-    }
-
-    // Update controllers for teeth whose extra notes changed externally
-    for (final key in currentKeys.intersection(controllerKeys)) {
-      final ctrl = _controllers[key]!;
-      final externalText = widget.extraNotes[key] ?? '';
-      if (ctrl.text != externalText) {
-        ctrl.text = externalText;
-      }
-    }
-  }
-
-  void _onControllerChanged(String iso, TextEditingController ctrl) {
-    widget.onExtraNote(iso, ctrl.text);
-  }
-
-  @override
-  void dispose() {
-    for (final ctrl in _controllers.values) {
-      ctrl.dispose();
-    }
-    _controllers.clear();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final sortedEntries = widget.currentNotes.entries.toList()
-      ..sort((a, b) => int.parse(a.key).compareTo(int.parse(b.key)));
-
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: sortedEntries.map((entry) {
-        final iso = entry.key;
-        final note = entry.value;
-        final isOther = txOptions.where((x) => x.label == note).isEmpty;
-        final color = labelToColor(note);
-        final icon = labelToIcon(note);
-        final ctrl = _controllers[iso];
-
-        return SizedBox(
-          width: 280,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                children: [
-                  DentalNotation(
-                    iso: iso,
-                    color: color,
-                    withTooltip: false,
-                  ),
-                  const SizedBox(width: 6),
-                  Icon(icon, size: 16, color: color),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Txt(
-                      txt(isOther ? "other" : note),
-                      overflow: TextOverflow.ellipsis,
-                      style: FluentTheme.of(context)
-                          .typography
-                          .caption!
-                          .copyWith(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              SizedBox(
-                child: LiveTranscribingTextField(
-                  controller: ctrl,
-                  placeholder: txt("extraInfoPlaceholder"),
-                  maxLines: null,
-                  style: FluentTheme.of(context).typography.caption,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
 }

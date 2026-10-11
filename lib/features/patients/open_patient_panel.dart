@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:apexo/app/panels/panel_tab.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
@@ -12,6 +11,7 @@ import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
+import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
@@ -116,11 +116,10 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
                               Border.all(color: Colors.grey.withAlpha(100))),
                       padding: const EdgeInsets.all(4),
                       child: TeethSelector(
-                        key: ValueKey(jsonEncode({
-                          ...editingCopy.teeth,
-                          ...editingCopy.teethExtraNotes
-                        })),
                         type: StateType.state,
+                        history: [for (final appointment in editingCopy.allAppointments)
+                          ToothHistory(label: DF.allNumbers(appointment.date), date: appointment.date,
+                            teeth: Map.of(appointment.teeth), notes: Map.of(appointment.teethExtraNotes))],
                         onNote: (x, y) {
                           if (y != null) {
                             editingCopy.teeth[x] = y;

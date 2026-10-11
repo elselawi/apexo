@@ -198,6 +198,8 @@ class Es implements En {
     "web": "Web",
     "telegram": "Telegram",
     "dentalNotes": "Notas dentales",
+    "toothRecordHistory": "Otras citas",
+    "toothPatientHistory": "Historia dental del paciente",
     "showPrimary": "Mostrar principal",
     "showPermanent": "Mostrar permanente",
     "primary": "Principal",

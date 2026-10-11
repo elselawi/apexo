@@ -191,6 +191,8 @@ class Ar implements En {
     "telegram": "التيليجرام",
     "printQR": "طباعة الرمز",
     "dentalNotes": "الملاحظات السنية",
+    "toothRecordHistory": "مواعيد أخرى",
+    "toothPatientHistory": "التاريخ السني للمريض",
     "showPrimary": "إظهار اللبني",
     "showPermanent": "إظهار الدائم",
     "primary": "سن لبني",

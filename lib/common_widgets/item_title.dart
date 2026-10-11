@@ -163,8 +163,9 @@ class TreatmentLabels extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 40,
-      height: showPalmer ? labels.length * 35 : 25,
+      height: showPalmer ? null : 25,
       child: ListView(
+        shrinkWrap: showPalmer,
         scrollDirection: showPalmer ? Axis.vertical : Axis.horizontal,
         physics: showPalmer ? const NeverScrollableScrollPhysics() : null,
         children: List.generate(
@@ -240,8 +241,11 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
                     color: color.withAlpha(70),
                   )
                 ]),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
+                Row(children: [
                 Icon(widget.label.icon, size: 18),
                 if (widget.showPalmer) ...[
                   const SizedBox(width: 5),
@@ -255,6 +259,12 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
                     ),
                   )
                 ]
+                ]),
+                if (widget.showPalmer && widget.label.extraNote?.isNotEmpty == true)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(widget.label.extraNote!, style: FluentTheme.of(context).typography.caption),
+                  ),
               ],
             )),
       ),

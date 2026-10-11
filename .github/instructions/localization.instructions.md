@@ -57,19 +57,16 @@ Add the same key to **every** locale file (`ar.dart`, `es.dart`, `el.dart`):
 
 ### Step 3: Use in code
 
-Use the `txt()` function for inline strings:
+Resolve the key with `txt()`, then render the result:
 
 ```dart
-Text(txt("myNewKey"))
+Text(txt("myNewKey"))   // resolved once; does not follow a language switch
+Txt(txt("myNewKey"))    // rebuilds when the user switches language
 ```
 
-Or use the `Txt` widget (which auto-rebuilds on locale change):
+**Prefer `Txt` over `Text`** — `Txt` is a `StreamBuilder` on the locale stream, so it retranslates while the screen is open.
 
-```dart
-const Txt("myNewKey")
-```
-
-**Prefer `Txt` over `Text(txt(...))`** — `Txt` is a `StreamBuilder` that automatically rebuilds when the user switches language.
+> ⚠️ `Txt` renders its argument **verbatim** — it does not look the key up itself. It is `Text` plus the locale stream. `Txt("myNewKey")` displays the literal text `myNewKey`; always hand it the `txt(...)` result.
 
 ### Step 4: Run the audit tool
 
@@ -139,6 +136,7 @@ For unit tests, you can directly set `localSettings.selectedLocale(index)` and v
 | Mistake | Consequence |
 |---------|-------------|
 | Adding a key to `en.dart` but missing other locales | Raw English key shown for those locales |
-| Using `Text(txt("key"))` instead of `Txt("key")` | Text won't update when user switches language at runtime |
+| Using `Text(txt("key"))` instead of `Txt(txt("key"))` | Text won't update when user switches language at runtime |
+| Passing a raw key to `Txt`, e.g. `Txt("myNewKey")` | `Txt` renders verbatim — the key itself is displayed; pass `Txt(txt("myNewKey"))` |
 | Forgetting to run `verify.dart` after changes | Drift between locale files goes undetected |
 | Using dynamic keys with `txt(someVariable)` | Can't be statically audited by `verify.dart` |

@@ -37,7 +37,7 @@ void _showImportComplete(int batches) {
   unawaited(displayInfoBar(
     bContext,
     builder: (context, close) => InfoBar(
-      title: const Txt("dicomImportComplete"),
+      title: Txt(txt("dicomImportComplete")),
       content: Text('$batches \u00d7 ${txt("dicomFiles")}'),
       severity: InfoBarSeverity.success,
       onClose: close,

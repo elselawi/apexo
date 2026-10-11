@@ -138,5 +138,6 @@ final dashboardCtrl = DashboardController();
 | Mutating `item` directly instead of the editing copy | Always use `Model.fromJson(item.toJson() ?? {})` for the panel's editing copy |
 | Forgetting to call `.init()` on a new store | Add to `initializeStores()` in `lib/app/data/initialize_stores.dart` |
 | Not registering `login.activators` | Store won't have local/remote set up after login |
-| Using `Text(txt("key"))` in feature screens | Use `Txt("key")` so text updates on language switch |
+| Using `Text(txt("key"))` in feature screens | Use `Txt(txt("key"))` so text updates on language switch |
+| Passing a raw key to `Txt`, e.g. `Txt("myKey")` | `Txt` renders its argument verbatim — the key itself would show; pass `Txt(txt("myKey"))` |
 | Not adding localization keys | Run `dart run lib/services/localization/verify.dart` to catch missing keys |

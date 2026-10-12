@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:apexo/services/dicom/dicom_helpers.dart' as dcm_helpers;
 import 'package:apexo/utils/constants.dart';
+import 'package:apexo/utils/strip_id_from_file.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
@@ -507,9 +508,16 @@ class SaveRemote {
       final lower = imageName.toLowerCase();
       var candidates =
           fullNames.where((e) => e.toLowerCase() == lower).toList();
-      // Fuzzy matching is unsafe for DICOM originals/previews: if one side
-      // is missing, it can resolve to the other side and return the wrong
-      // payload type. Keep the legacy fallback for ordinary attachments.
+      // PocketBase adds another suffix when the derived PNG is uploaded.
+      // Match only previews with the same full extension chain, never a raw
+      // original or an ambiguous pair of collision-suffixed previews.
+      if (candidates.isEmpty && dcm_helpers.isDcmPreviewName(imageName)) {
+        final previews = fullNames.where((name) =>
+            dcm_helpers.isDcmPreviewName(name) &&
+            sameStoredFileName(name.toLowerCase(), lower)).toList();
+        if (previews.length == 1) candidates = previews;
+      }
+      // Keep the legacy fuzzy fallback for ordinary attachments only.
       if (candidates.isEmpty && !_isDcmOrDcmPreview(imageName)) {
         candidates = fullNames
             .where((e) => e.toLowerCase().contains(lower.split(".").first))
@@ -519,7 +527,7 @@ class SaveRemote {
         // Never fall back from a DICOM original to a similarly-named preview
         // (or vice versa). The viewer needs the raw original and a PNG is
         // not a valid DICOM payload.
-        if (!_isDcmOrDcmPreview(imageName) && useCache && usedCache) {
+        if (useCache && usedCache) {
           return await getImageLink(rowID, imageName, false);
         }
         return null;

@@ -364,6 +364,63 @@ void main() {
       expect(await remote.getImageLink('row-1', 'scan.dcm.png', false), isNull);
     });
 
+    test('getImageLink resolves PocketBase-suffixed DICOM previews', () async {
+      for (final extension in ['dcm', 'dicom']) {
+        final original = 'dcm_scan_18hy0rnie6.$extension';
+        final storedPreview = 'dcm_scan_18hy0rnie6_0cizfojiej.$extension.png';
+        api.files = [original, storedPreview];
+
+        expect(
+          await remote.getImageLink('row-1', '$original.png', false),
+          'http://fake-pocketbase/api/files/data/row-1/$storedPreview',
+        );
+        expect(
+          await remote.getImageLink('row-1', original, false),
+          'http://fake-pocketbase/api/files/data/row-1/$original',
+        );
+      }
+    });
+
+    test('getImageLink prefers an exact preview over suffixed alternatives',
+        () async {
+      api.files = ['scan_ab12cd34.dcm.png', 'scan.dcm.png'];
+
+      expect(
+        await remote.getImageLink('row-1', 'scan.dcm.png', false),
+        'http://fake-pocketbase/api/files/data/row-1/scan.dcm.png',
+      );
+    });
+
+    test('getImageLink rejects ambiguous or unrelated DICOM previews', () async {
+      api.files = ['scan_ab12cd34.dcm.png', 'scan_ef56gh78.dcm.png'];
+      expect(await remote.getImageLink('row-1', 'scan.dcm.png', false), isNull);
+
+      api.files = ['scanner_ab12cd34.dcm.png', 'scan_ab12cd34.dicom.png'];
+      expect(await remote.getImageLink('row-1', 'scan.dcm.png', false), isNull);
+    });
+
+    test('getImageLink refreshes a stale DICOM preview cache miss', () async {
+      api.files = ['scan.dcm', 'scan_ab12cd34.dcm.png'];
+      remote.fullNamesCache['row-1'] = ['scan.dcm'];
+
+      expect(
+        await remote.getImageLink('row-1', 'scan.dcm.png'),
+        'http://fake-pocketbase/api/files/data/row-1/scan_ab12cd34.dcm.png',
+      );
+      expect(api.getOneCountByRow['row-1'], 1);
+    });
+
+    test('getImageLink refreshes a stale DICOM original cache miss', () async {
+      api.files = ['scan.dcm', 'scan.dcm.png'];
+      remote.fullNamesCache['row-1'] = ['scan.dcm.png'];
+
+      expect(
+        await remote.getImageLink('row-1', 'scan.dcm'),
+        'http://fake-pocketbase/api/files/data/row-1/scan.dcm',
+      );
+      expect(api.getOneCountByRow['row-1'], 1);
+    });
+
     test('getImageLink retains ordinary attachment fallback behavior',
         () async {
       api.files = ['photo_hash.jpg'];

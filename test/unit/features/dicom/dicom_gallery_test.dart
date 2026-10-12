@@ -1,12 +1,90 @@
 import 'dart:async';
+import 'dart:typed_data';
 
+import 'package:apexo/common_widgets/grid_gallery.dart';
+import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/core/reactive/observable.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:pocketbase/pocketbase.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('DICOM preview loading state', () {
+    Future<void> pumpGallery(WidgetTester tester, String name) async {
+      await tester.pumpWidget(FluentApp(
+        home: ScaffoldPage(
+          content: GridGallery(
+            rowId: 'preview-row',
+            imgs: const [],
+            dcmImgs: [name],
+            canDelete: false,
+            onPressDelete: (_) async {},
+          ),
+        ),
+      ));
+      await tester.pump(const Duration(seconds: 1));
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+    }
+
+    testWidgets('missing preview stops spinning',
+        (tester) async {
+      const name = 'gallery_missing_preview.dcm';
+      final previousRemote = appointments.remote;
+      final client = MockClient((request) async {
+        if (request.url.path.endsWith('/api/health')) {
+          return http.Response('{}', 200);
+        }
+        return http.Response('{}', 200);
+      });
+      final remote = SaveRemote(
+        storeName: 'appointments',
+        pbInstance: PocketBase('http://fake-pocketbase',
+            httpClientFactory: () => client),
+      );
+      appointments.remote = remote;
+      imgMemoryCache.remove('$name.png');
+      addTearDown(() {
+        appointments.remote = previousRemote;
+        remote.timer?.cancel();
+        client.close();
+        imgMemoryCache.remove('$name.png');
+      });
+
+      await pumpGallery(tester, name);
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ProgressRing), findsNothing);
+      expect(find.byType(Image), findsNothing);
+
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets('invalid preview shows a file placeholder, not a spinner',
+        (tester) async {
+      const name = 'gallery_invalid_preview.dcm';
+      imgMemoryCache['$name.png'] = MemoryImage(Uint8List.fromList([1, 2, 3]));
+      addTearDown(() => imgMemoryCache.remove('$name.png'));
+
+      await pumpGallery(tester, name);
+      await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byType(ProgressRing), findsNothing);
+      expect(find.byIcon(WindowsIcons.document), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
 
   group('dicomPngReady stream', () {
     test('emits the bumped value to subscribers', () async {

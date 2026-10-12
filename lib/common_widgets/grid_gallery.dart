@@ -898,10 +898,7 @@ class _ImageTileState extends State<_ImageTile> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (!_hasLoaded)
-                  widget.isDcm
-                      ? _buildDcmPlaceholder()
-                      : const _ShimmerPlaceholder(),
+                if (!_hasLoaded && !widget.isDcm) const _ShimmerPlaceholder(),
                 _buildImageContent(theme),
                 if (widget.isDcm) const _DcmBadge(),
                 if (widget.downloadingFiles.contains(widget.img))
@@ -996,16 +993,12 @@ class _ImageTileState extends State<_ImageTile> {
             return Image(
               image: snapshot.data!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => widget.isDcm
-                  ? _buildDcmPlaceholder()
-                  : _buildFilePlaceholder(theme),
+              errorBuilder: (_, __, ___) => _buildFilePlaceholder(theme),
             );
           }
-          // No preview yet: DCM shows the generating spinner; other files
-          // show the file-type icon placeholder.
-          return widget.isDcm
-              ? _buildDcmPlaceholder()
-              : _buildFilePlaceholder(theme);
+          // A completed lookup without an image is not an active load.
+          // DCM tiles remain tappable and retry when dicomPngReady emits.
+          return _buildFilePlaceholder(theme);
         }
         // Loading: DCM shows the spinner; photos leave the shimmer visible.
         return widget.isDcm ? _buildDcmPlaceholder() : const SizedBox.expand();
@@ -1013,9 +1006,7 @@ class _ImageTileState extends State<_ImageTile> {
     );
   }
 
-  /// Placeholder shown while a DCM's PNG preview is still being generated
-  /// (or has failed to generate). A spinner conveys "in progress"; the
-  /// tooltip explains what's happening.
+  /// Loading placeholder while the DCM preview lookup is pending.
   Widget _buildDcmPlaceholder() {
     return Tooltip(
       message: txt("generatingPreview"),

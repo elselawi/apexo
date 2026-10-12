@@ -15,6 +15,87 @@ ButtonStyle darkIconButtonStyle(BuildContext context, [Color? color]) {
   );
 }
 
+/// Prefixes [num] with the clinic's country calling code when it is missing.
+String fullPhoneNumber(String num) {
+  if (num.startsWith("+")) {
+    return num.trim();
+  }
+  return "${globalSettings.get("country_code___").value}${num.trim()}";
+}
+
+/// The ways to reach [num]: call, text, WhatsApp and Telegram.
+List<MenuFlyoutItem> communicationActions(String num) {
+  return [
+    MenuFlyoutItem(
+      text: Txt(txt("call")),
+      leading: const Icon(FluentIcons.phone),
+      onPressed: () {
+        unawaited(launchUrl(Uri.parse("tel:${fullPhoneNumber(num)}")));
+      },
+      closeAfterClick: true,
+    ),
+    MenuFlyoutItem(
+      text: Txt(txt("text")),
+      leading: const Icon(FluentIcons.message),
+      onPressed: () {
+        unawaited(launchUrl(Uri.parse("sms:${fullPhoneNumber(num)}")));
+      },
+      closeAfterClick: true,
+    ),
+    MenuFlyoutItem(
+      text: Txt(txt("whatsapp")),
+      leading: const Icon(WindowsIcons.message),
+      onPressed: () {
+        unawaited(
+            launchUrl(Uri.parse("https://wa.me/${fullPhoneNumber(num)}")));
+      },
+      closeAfterClick: true,
+    ),
+    MenuFlyoutItem(
+      text: Txt(txt("telegram")),
+      leading: const Icon(FluentIcons.send),
+      onPressed: () {
+        unawaited(launchUrl(Uri.parse("https://t.me/${fullPhoneNumber(num)}")));
+      },
+      closeAfterClick: true,
+    ),
+  ];
+}
+
+/// Menu items to reach a patient: one submenu per phone number, plus email.
+///
+/// Leads with a separator, so it can be appended to a menu that already has
+/// items — only call it when there is something to reach.
+///
+/// Shared by the screens that open context menus on patient rows.
+List<MenuFlyoutItemBase> contactMenuItems({
+  required List<ParsedPhoneNumber> phones,
+  required String email,
+}) {
+  return [
+    const MenuFlyoutSeparator(),
+    for (final number in phones)
+      MenuFlyoutSubItem(
+        // Submenus only unfold on hover, which a finger cannot do.
+        showBehavior: SubItemShowAction.press,
+        leading: const Icon(WindowsIcons.phone),
+        text: Text(
+          number.toInternationalFormat(),
+          textDirection: TextDirection.ltr,
+        ),
+        items: (context) => communicationActions(number.e164),
+      ),
+    if (email.isNotEmpty)
+      MenuFlyoutItem(
+        text: Txt(txt("sendEmail")),
+        leading: const Icon(WindowsIcons.mail),
+        onPressed: () {
+          unawaited(launchUrl(Uri.parse("mailto:$email")));
+        },
+      ),
+  ];
+}
+
 class EmailButton extends StatelessWidget {
   const EmailButton({
     super.key,
@@ -57,13 +138,6 @@ class PhoneNumberButton extends StatefulWidget {
 
 class PhoneNumberButtonState extends State<PhoneNumberButton> {
   final flyoutCtrl = FlyoutController();
-
-  String fullPhoneNumber(String num) {
-    if (num.startsWith("+")) {
-      return num.trim();
-    }
-    return "${globalSettings.get("country_code___").value}${num.trim()}";
-  }
 
   bool get singlePhoneNumber {
     return widget.phoneNumbers.length == 1;
@@ -146,42 +220,5 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
                               communicationActions(singleNumber.e164)))
                       .toList());
         }));
-  }
-
-  List<MenuFlyoutItem> communicationActions(String num) {
-    return [
-      MenuFlyoutItem(
-        text: Txt(txt("call")),
-        leading: const Icon(FluentIcons.phone),
-        onPressed: () {
-          unawaited(launchUrl(Uri.parse("tel:${fullPhoneNumber(num)}")));
-        },
-        closeAfterClick: true,
-      ),
-      MenuFlyoutItem(
-        text: Txt(txt("text")),
-        leading: const Icon(FluentIcons.message),
-        onPressed: () {
-          unawaited(launchUrl(Uri.parse("sms:${fullPhoneNumber(num)}")));
-        },
-        closeAfterClick: true,
-      ),
-      MenuFlyoutItem(
-        text: Txt(txt("whatsapp")),
-        leading: const Icon(WindowsIcons.message),
-        onPressed: () {
-          unawaited(launchUrl(Uri.parse("https://wa.me/${fullPhoneNumber(num)}")));
-        },
-        closeAfterClick: true,
-      ),
-      MenuFlyoutItem(
-        text: Txt(txt("telegram")),
-        leading: const Icon(FluentIcons.send),
-        onPressed: () {
-          unawaited(launchUrl(Uri.parse("https://t.me/${fullPhoneNumber(num)}")));
-        },
-        closeAfterClick: true,
-      ),
-    ];
   }
 }

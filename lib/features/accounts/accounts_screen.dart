@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/widget_keys.dart';
+import 'package:apexo/common_widgets/context_menu_region.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/transitions/rotate.dart';
@@ -9,6 +11,8 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/accounts/open_account_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -104,53 +108,99 @@ class _AccountsScreenState extends State<AccountsScreen> {
                           itemCount: filteredList.length,
                           itemBuilder: (context, index) {
                             final account = filteredList[index];
-                            return ListTile(
-                              contentPadding: const EdgeInsets.all(10),
-                              margin: EdgeInsets.zero,
-                              shape: listDividerBorder(context),
-                              tileColor: WidgetStatePropertyAll(
-                                FluentTheme.of(context)
-                                    .resources
-                                    .solidBackgroundFillColorBase,
-                              ),
-                              leading: Icon(
-                                  account.getStringValue("type") == "admin"
-                                      ? FluentIcons.contact_lock
-                                      : FluentIcons.contact),
-                              trailing: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 5, horizontal: 10),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(10),
-                                  color:
-                                      account.getStringValue("type") == "admin"
-                                          ? Colors.red.withValues(alpha: 0.3)
-                                          : Colors.teal.withValues(alpha: 0.3),
+                            final isAdmin =
+                                account.getStringValue("type") == "admin";
+                            final name = account.getStringValue("name");
+                            final email = account.getStringValue("email");
+                            void open() {
+                              unawaited(
+                                  openAccount(accountFromJson(account.toJson()
+                                    ..addAll({
+                                      "name": name,
+                                      "email": email,
+                                      "permissions":
+                                          account.getStringValue("permissions"),
+                                      "operate": account.getIntValue("operate"),
+                                      "type": account.getStringValue("type"),
+                                      "id": account.id,
+                                    }))));
+                            }
+
+                            return ContextMenuRegion(
+                              items: (context, controller) => [
+                                MenuFlyoutItem(
+                                  text: Txt(txt("open")),
+                                  leading: const Icon(
+                                      WindowsIcons.open_in_new_window),
+                                  onPressed: open,
                                 ),
-                                child:
-                                    (account.getStringValue("type") == "admin")
-                                        ? Txt(txt("admin"))
-                                        : Txt(txt("user")),
+                                // Deleting yourself would sign you out mid-air.
+                                if (login.currentAccountID != account.id)
+                                  MenuFlyoutItem(
+                                    text: Txt(txt("delete")),
+                                    leading: const Icon(WindowsIcons.delete),
+                                    onPressed: () {
+                                      controller.close<void>();
+                                      WidgetsBinding.instance
+                                          .addPostFrameCallback((_) async {
+                                        await flyoutFocusFix(context);
+                                        unawaited(controller.showFlyout(
+                                            builder: (ctx) =>
+                                                ConfirmDeleteFlyout(
+                                                  restorable: false,
+                                                  controller: controller,
+                                                  actionIcon:
+                                                      WindowsIcons.delete,
+                                                  actionText: txt("delete"),
+                                                  preview: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    spacing: 5,
+                                                    children: [
+                                                      const Icon(
+                                                          FluentIcons.people),
+                                                      Txt(name)
+                                                    ],
+                                                  ),
+                                                  onConfirm: () {
+                                                    unawaited(accounts.delete(
+                                                        isAdmin: isAdmin,
+                                                        id: account.id));
+                                                  },
+                                                )));
+                                      });
+                                    },
+                                  ),
+                              ],
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.all(10),
+                                margin: EdgeInsets.zero,
+                                shape: listDividerBorder(context),
+                                tileColor: WidgetStatePropertyAll(
+                                  FluentTheme.of(context)
+                                      .resources
+                                      .solidBackgroundFillColorBase,
+                                ),
+                                leading: Icon(isAdmin
+                                    ? FluentIcons.contact_lock
+                                    : FluentIcons.contact),
+                                trailing: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      vertical: 5, horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: isAdmin
+                                        ? Colors.red.withValues(alpha: 0.3)
+                                        : Colors.teal.withValues(alpha: 0.3),
+                                  ),
+                                  child: isAdmin
+                                      ? Txt(txt("admin"))
+                                      : Txt(txt("user")),
+                                ),
+                                title: Txt(name),
+                                subtitle: Txt(email),
+                                onPressed: open,
                               ),
-                              title: Txt(
-                                  filteredList[index].getStringValue("name")),
-                              subtitle: Txt(
-                                  filteredList[index].getStringValue("email")),
-                              onPressed: () {
-                                unawaited(
-                                    openAccount(accountFromJson(account.toJson()
-                                      ..addAll({
-                                        "name": account.getStringValue("name"),
-                                        "email":
-                                            account.getStringValue("email"),
-                                        "permissions": account
-                                            .getStringValue("permissions"),
-                                        "operate":
-                                            account.getIntValue("operate"),
-                                        "type": account.getStringValue("type"),
-                                        "id": account.id,
-                                      }))));
-                              },
                             );
                           },
                         )),

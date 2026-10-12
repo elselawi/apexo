@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/widget_keys.dart';
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_with_text_box.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -208,11 +209,13 @@ class _SuppliersListState extends State<SuppliersList> {
         final supplier = suppliers[index];
         return SupplierListTile(
             supplier: supplier,
-            onPressed: () {
+            onOpen: (tabIndex) {
               unawaited(openExpenses(
                 expenses.ordersPerSupplier[supplier.id]!,
                 supplier.supplierName,
                 supplier.id,
+                null,
+                tabIndex,
               ));
             });
       },
@@ -255,11 +258,14 @@ class SupplierListTile extends StatefulWidget {
   const SupplierListTile({
     super.key,
     required this.supplier,
-    required this.onPressed,
+    required this.onOpen,
   });
 
   final Expense supplier;
-  final VoidCallback onPressed;
+
+  /// Opens the supplier's orders on a specific tab — see [ExpenseTab]; the tab
+  /// index comes from [expenseTabs], the same list the panel builds from.
+  final void Function(int tabIndex) onOpen;
 
   @override
   State<SupplierListTile> createState() => _SupplierListTileState();
@@ -287,16 +293,20 @@ class _SupplierListTileState extends State<SupplierListTile> {
     final orders = expenses.ordersPerSupplier[widget.supplier.id] ?? [];
     final captionStyle = FluentTheme.of(context).typography.caption;
 
-    return ListTile(
-      margin: EdgeInsets.zero,
-      contentPadding: const EdgeInsetsGeometry.all(8),
-      shape: listDividerBorder(context),
-      tileColor: WidgetStatePropertyAll(
-          FluentTheme.of(context).resources.solidBackgroundFillColorBase),
-      leading: _buildContextMenuButton(context),
-      trailing: _DuePaymentAmount(due: due),
-      title: _buildSupplierName(orders, captionStyle),
-      onPressed: widget.onPressed,
+    return ContextMenuRegion(
+      items: (ctx, controller) =>
+          _menuItems(context, () => controller.close<void>()),
+      child: ListTile(
+        margin: EdgeInsets.zero,
+        contentPadding: const EdgeInsetsGeometry.all(8),
+        shape: listDividerBorder(context),
+        tileColor: WidgetStatePropertyAll(
+            FluentTheme.of(context).resources.solidBackgroundFillColorBase),
+        leading: _buildContextMenuButton(context),
+        trailing: _DuePaymentAmount(due: due),
+        title: _buildSupplierName(orders, captionStyle),
+        onPressed: () => widget.onOpen(0),
+      ),
     );
   }
 
@@ -334,56 +344,66 @@ class _SupplierListTileState extends State<SupplierListTile> {
             await flyoutFocusFix(context);
             unawaited(menuController.showFlyout(builder: (context) {
               return MenuFlyout(
-                items: [
-                  MenuFlyoutItem(
-                    text: Txt(txt("open")),
-                    leading: const Icon(WindowsIcons.open_in_new_window),
-                    onPressed: widget.onPressed,
-                  ),
-                  if (canEdit)
-                    MenuFlyoutItem(
-                      text: Txt(txt("rename")),
-                      leading: const Icon(WindowsIcons.edit),
-                      onPressed: () {
-                        menuController.close<void>();
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          _showRenameSupplierDialog(context, widget.supplier);
-                        });
-                      },
-                    ),
-                  if (canEdit)
-                    MenuFlyoutItem(
-                      text: Txt(txt("delete")),
-                      leading: const Icon(WindowsIcons.delete),
-                      onPressed: () {
-                        menuController.close<void>();
-                        WidgetsBinding.instance.addPostFrameCallback((_) async {
-                          await flyoutFocusFix(context);
-                          unawaited(archiveConfirmationController.showFlyout(
-                              builder: (ctx) => ConfirmDeleteFlyout(
-                                  restorable: true,
-                                  controller: archiveConfirmationController,
-                                  actionIcon: WindowsIcons.delete,
-                                  actionText: txt("delete"),
-                                  preview: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    spacing: 5,
-                                    children: [
-                                      const Icon(WindowsIcons.folder),
-                                      Txt("${txt("supplier")}: ${widget.supplier.supplierName}")
-                                    ],
-                                  ),
-                                  onConfirm: () {
-                                    expenses.archive(widget.supplier.id);
-                                  })));
-                        });
-                      },
-                    ),
-                ],
+                items: _menuItems(context, () => menuController.close<void>()),
               );
             }));
           }),
     );
+  }
+
+  /// The supplier's actions, shared by the "more" button and by long press /
+  /// right click on the whole row: one item per tab of the orders panel, then
+  /// the editing actions.
+  List<MenuFlyoutItemBase> _menuItems(
+      BuildContext context, VoidCallback close) {
+    return [
+      for (final tab in expenseTabs())
+        MenuFlyoutItem(
+          text: Txt(txt(tab.titleKey)),
+          leading: Icon(tab.icon),
+          onPressed: () => widget.onOpen(expenseTabIndex(tab)),
+        ),
+      if (canEdit) const MenuFlyoutSeparator(),
+      if (canEdit)
+        MenuFlyoutItem(
+          text: Txt(txt("rename")),
+          leading: const Icon(WindowsIcons.edit),
+          onPressed: () {
+            close();
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _showRenameSupplierDialog(context, widget.supplier);
+            });
+          },
+        ),
+      if (canEdit)
+        MenuFlyoutItem(
+          text: Txt(txt("delete")),
+          leading: const Icon(WindowsIcons.delete),
+          onPressed: () {
+            close();
+            WidgetsBinding.instance.addPostFrameCallback((_) async {
+              await flyoutFocusFix(context);
+              unawaited(archiveConfirmationController.showFlyout(
+                  builder: (ctx) => ConfirmDeleteFlyout(
+                      restorable: true,
+                      controller: archiveConfirmationController,
+                      actionIcon: WindowsIcons.delete,
+                      actionText: txt("delete"),
+                      preview: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        spacing: 5,
+                        children: [
+                          const Icon(WindowsIcons.folder),
+                          Txt("${txt("supplier")}: ${widget.supplier.supplierName}")
+                        ],
+                      ),
+                      onConfirm: () {
+                        expenses.archive(widget.supplier.id);
+                      })));
+            });
+          },
+        ),
+    ];
   }
 }
 

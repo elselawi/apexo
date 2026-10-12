@@ -41,6 +41,33 @@ import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
 final transcriptionEditCounter = ObservableState(0);
 
+/// The patient panel's tabs, in the order the panel shows them.
+///
+/// The panel builds its strip from [patientTabs] and the row context menu
+/// offers one item per entry, so neither can drift from the other.
+enum PatientTab {
+  details("patientDetails", FluentIcons.medication_admin),
+  dentalNotes("dentalNotes", FluentIcons.teeth),
+  appointments("appointments", WindowsIcons.calendar),
+  page("patientPage", FluentIcons.q_r_code);
+
+  const PatientTab(this.titleKey, this.icon);
+
+  final String titleKey;
+  final IconData icon;
+}
+
+/// The patient panel's tabs for the current user, in panel order.
+List<PatientTab> patientTabs() => [
+      PatientTab.details,
+      PatientTab.dentalNotes,
+      if (login.perm(Perm.appointments).some) PatientTab.appointments,
+      PatientTab.page,
+    ];
+
+/// Where [tab] sits in the panel as built for the current user.
+int patientTabIndex(PatientTab tab) => patientTabs().indexOf(tab);
+
 Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
   late final RowPanel<Patient> panel;
@@ -59,118 +86,133 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
     // gets their own name from readTitle() below instead.
     title: "newPatient",
     tabs: [
-      PanelTab(
-        title: txt("patientDetails"),
-        icon: FluentIcons.medication_admin,
-        body: _PatientDetails(editingCopy),
-      ),
-      PanelTab(
-        title: txt("dentalNotes"),
-        icon: FluentIcons.teeth,
-        footer: (network.isOnline() && globalSettings.aiServicesEnabled)
-            ? Builder(
-                builder: (context) => AudioRecorderButton(
-                  hint: txt("dentalHistoryVoiceAutoFillHint"),
-                  label: txt("voiceAutoFill"),
-                  onRecordingComplete: (bytes, mimeType) async {
-                    try {
-                      final result = await DentalHistory.processAudioBytes(
-                        bytes,
-                        mimeType,
-                      );
-                      if (result.teeth.isNotEmpty) {
-                        editingCopy.teeth.addAll(result.teeth);
-                      }
-                      if (result.teethExtraNotes.isNotEmpty) {
-                        editingCopy.teethExtraNotes
-                            .addAll(result.teethExtraNotes);
-                      }
-                      transcriptionEditCounter(transcriptionEditCounter() + 1);
-                    } catch (e, s) {
-                      showErrorMessage(e, "processingDentalHistory");
-                      logger("Error processing dental history audio: $e", s);
-                    }
-                  },
-                ),
-              )
-            : null,
-        body: MStreamBuilder(
-            streams: [
-              patients.observableMap.stream,
-              appointments.observableMap.stream,
-              transcriptionEditCounter.stream
-            ],
-            builder: (context, asyncSnapshot) {
-              return InfoLabel(
-                label: "${txt("dentalNotes")}:",
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      decoration: BoxDecoration(
-                          color: FluentTheme.of(context)
-                              .resources
-                              .solidBackgroundFillColorBase,
-                          borderRadius: BorderRadius.circular(5),
-                          border:
-                              Border.all(color: Colors.grey.withAlpha(100))),
-                      padding: const EdgeInsets.all(4),
-                      child: TeethSelector(
-                        type: StateType.state,
-                        historyTitle: 'toothAppointmentNotes',
-                        history: [for (final appointment in editingCopy.allAppointments)
-                          ToothHistory(label: DF.allNumbers(appointment.date), date: appointment.date, appointmentId: appointment.id,
-                            teeth: Map.of(appointment.teeth), notes: Map.of(appointment.teethExtraNotes))],
-                        onOpenAppointment: (id) {
-                          final appointment = appointments.get(id);
-                          if (appointment != null) openAppointment(appointment);
-                        },
-                        onNote: (x, y) {
-                          if (y != null) {
-                            editingCopy.teeth[x] = y;
-                          } else {
-                            editingCopy.teeth.remove(x);
-                            editingCopy.teethExtraNotes.remove(x);
+      for (final tab in patientTabs())
+        switch (tab) {
+          PatientTab.details => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
+              body: _PatientDetails(editingCopy),
+            ),
+          PatientTab.dentalNotes => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
+              footer: (network.isOnline() && globalSettings.aiServicesEnabled)
+                  ? Builder(
+                      builder: (context) => AudioRecorderButton(
+                        hint: txt("dentalHistoryVoiceAutoFillHint"),
+                        label: txt("voiceAutoFill"),
+                        onRecordingComplete: (bytes, mimeType) async {
+                          try {
+                            final result =
+                                await DentalHistory.processAudioBytes(
+                              bytes,
+                              mimeType,
+                            );
+                            if (result.teeth.isNotEmpty) {
+                              editingCopy.teeth.addAll(result.teeth);
+                            }
+                            if (result.teethExtraNotes.isNotEmpty) {
+                              editingCopy.teethExtraNotes
+                                  .addAll(result.teethExtraNotes);
+                            }
+                            transcriptionEditCounter(
+                                transcriptionEditCounter() + 1);
+                          } catch (e, s) {
+                            showErrorMessage(e, "processingDentalHistory");
+                            logger(
+                                "Error processing dental history audio: $e", s);
                           }
                         },
-                        onExtraNote: (x, extra) {
-                          editingCopy.teethExtraNotes[x] = extra;
-                        },
-                        extraNotes: editingCopy.teethExtraNotes,
-                        notation: (isoString) =>
-                            isoToTextualNotation(isoString),
-                        rightString: txt("right"),
-                        leftString: txt("left"),
-                        currentNotes: editingCopy.teeth,
-                        oldNotes: editingCopy.allAppointmentsDentalNotes
-                          ..removeWhere(
-                              (k, v) => editingCopy.teeth.containsKey(k)),
-                        showPrimary: editingCopy.age < 14,
                       ),
-                    ),
+                    )
+                  : null,
+              body: MStreamBuilder(
+                  streams: [
+                    patients.observableMap.stream,
+                    appointments.observableMap.stream,
+                    transcriptionEditCounter.stream
                   ],
-                ),
-              );
-            }),
-      ),
-      if (login.perm(Perm.appointments).some)
-        PanelTab(
-          title: txt("appointments"),
-          icon: WindowsIcons.calendar,
-          body: PatientAppointments(editingCopy),
-          footer: AppointmentsListFooter(forPatientID: editingCopy.id),
-          onlyIfSaved: true,
-          padding: 0,
-        ),
-      PanelTab(
-        title: txt("patientPage"),
-        icon: FluentIcons.q_r_code,
-        body: _PatientQrPage(
-          editingCopy: editingCopy,
-          onFieldsSaved: (fields) => panel.markFieldsSaved(fields),
-        ),
-        onlyIfSaved: true,
-      ),
+                  builder: (context, asyncSnapshot) {
+                    return InfoLabel(
+                      label: "${txt("dentalNotes")}:",
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                                color: FluentTheme.of(context)
+                                    .resources
+                                    .solidBackgroundFillColorBase,
+                                borderRadius: BorderRadius.circular(5),
+                                border: Border.all(
+                                    color: Colors.grey.withAlpha(100))),
+                            padding: const EdgeInsets.all(4),
+                            child: TeethSelector(
+                              type: StateType.state,
+                              historyTitle: 'toothAppointmentNotes',
+                              history: [
+                                for (final appointment
+                                    in editingCopy.allAppointments)
+                                  ToothHistory(
+                                      label: DF.allNumbers(appointment.date),
+                                      date: appointment.date,
+                                      appointmentId: appointment.id,
+                                      teeth: Map.of(appointment.teeth),
+                                      notes:
+                                          Map.of(appointment.teethExtraNotes))
+                              ],
+                              onOpenAppointment: (id) {
+                                final appointment = appointments.get(id);
+                                if (appointment != null) {
+                                  openAppointment(appointment);
+                                }
+                              },
+                              onNote: (x, y) {
+                                if (y != null) {
+                                  editingCopy.teeth[x] = y;
+                                } else {
+                                  editingCopy.teeth.remove(x);
+                                  editingCopy.teethExtraNotes.remove(x);
+                                }
+                              },
+                              onExtraNote: (x, extra) {
+                                editingCopy.teethExtraNotes[x] = extra;
+                              },
+                              extraNotes: editingCopy.teethExtraNotes,
+                              notation: (isoString) =>
+                                  isoToTextualNotation(isoString),
+                              rightString: txt("right"),
+                              leftString: txt("left"),
+                              currentNotes: editingCopy.teeth,
+                              oldNotes: editingCopy.allAppointmentsDentalNotes
+                                ..removeWhere(
+                                    (k, v) => editingCopy.teeth.containsKey(k)),
+                              showPrimary: editingCopy.age < 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+            ),
+          PatientTab.appointments => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
+              body: PatientAppointments(editingCopy),
+              footer: AppointmentsListFooter(forPatientID: editingCopy.id),
+              onlyIfSaved: true,
+              padding: 0,
+            ),
+          PatientTab.page => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
+              body: _PatientQrPage(
+                editingCopy: editingCopy,
+                onFieldsSaved: (fields) => panel.markFieldsSaved(fields),
+              ),
+              onlyIfSaved: true,
+            ),
+        },
     ],
   );
   await panel.readTitle();

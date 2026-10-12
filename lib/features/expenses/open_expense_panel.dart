@@ -20,6 +20,31 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 
+/// The orders panel's tabs, in the order the panel shows them.
+///
+/// The panel builds its strip from [expenseTabs] and a supplier row's context
+/// menu offers one item per entry, so neither can drift from the other.
+enum ExpenseTab {
+  order("order", FluentIcons.receipt_processing),
+  due("due", WindowsIcons.warning),
+  paid("paid", WindowsIcons.check_mark);
+
+  const ExpenseTab(this.titleKey, this.icon);
+
+  final String titleKey;
+  final IconData icon;
+}
+
+/// The tabs this panel shows: a single archived order has one, a supplier's
+/// live orders have due and paid.
+List<ExpenseTab> expenseTabs({bool? singleArchived}) => singleArchived == true
+    ? [ExpenseTab.order]
+    : [ExpenseTab.due, ExpenseTab.paid];
+
+/// Where [tab] sits in the panel as built for the same arguments.
+int expenseTabIndex(ExpenseTab tab, {bool? singleArchived}) =>
+    expenseTabs(singleArchived: singleArchived).indexOf(tab);
+
 // NOTE: Unlike the row panels (patient, appointment) which track unsaved
 // changes on a single item, this panel manages multiple orders. It is a
 // [DelegatedPanel]: its [checkUnsavedChanges] and [onSave] callbacks make the
@@ -28,7 +53,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 // away. Archive/restore is handled per-order via the more menu in [OrderRow].
 Future<String?> openExpenses(
     List<Expense> orders, String supplierName, String? supplierId,
-    [bool? singleArchived]) async {
+    [bool? singleArchived, int? selectedTabIndex]) async {
   // Snapshot of each order's JSON at panel-open time.
   // Updated after each save so we only re-save what changed.
   final Map<String, String> savedSnapshots = {
@@ -44,7 +69,7 @@ Future<String?> openExpenses(
     inherentlyScrollable: true,
     singularName: "orders",
     unicodeSymbol: "📁",
-    selectedTabIndex: 0,
+    selectedTabIndex: selectedTabIndex,
     icon: WindowsIcons.folder,
     // The header keeps the supplier's name.
     recordTitle: () async => supplierName,
@@ -82,11 +107,12 @@ Future<String?> openExpenses(
       // only one that can report them.
       return saved;
     },
-    tabs: singleArchived == true
-        ? [
-            PanelTab(
-              title: txt("order"),
-              icon: FluentIcons.receipt_processing,
+    tabs: [
+      for (final tab in expenseTabs(singleArchived: singleArchived))
+        switch (tab) {
+          ExpenseTab.order => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
               body: _SupplierDetails(
                 allOrders: orders,
                 supplierId: supplierId,
@@ -94,26 +120,25 @@ Future<String?> openExpenses(
                 singleArchived: true,
               ),
               padding: 0,
-            )
-          ]
-        : [
-            PanelTab(
-              title: txt("due"),
-              icon: WindowsIcons.warning,
+            ),
+          ExpenseTab.due => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
               body: _SupplierDetails(
                   allOrders: orders, supplierId: supplierId, processed: false),
               padding: 0,
               footer: _SupplierOrdersFooter(orders: orders),
             ),
-            PanelTab(
-              title: txt("paid"),
-              icon: WindowsIcons.check_mark,
+          ExpenseTab.paid => PanelTab(
+              title: tab.titleKey,
+              icon: tab.icon,
               body: _SupplierDetails(
                   allOrders: orders, supplierId: supplierId, processed: true),
               padding: 0,
               footer: _SupplierOrdersFooter(orders: orders),
             ),
-          ],
+        },
+    ],
   );
   await panel.readTitle();
   final shown = PanelsManager.open(panel);
@@ -234,10 +259,10 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                                                 leading: const Icon(
                                                     WindowsIcons.folder),
                                                 onPressed: () {
-                                                    unawaited(
-                                                        addOrderForSupplier(e.id));
-                                                  },
-                                                ))
+                                                  unawaited(addOrderForSupplier(
+                                                      e.id));
+                                                },
+                                              ))
                                           .toList(),
                                     );
                                   }));

@@ -283,6 +283,8 @@ class Es implements En {
     "monthAbbr": "M",
     "min": "min",
     "minutes": "minutos",
+    "markAsDone": "Marcar como completado",
+    "markAsPending": "Marcar como pendiente",
     "duration": "Duración",
     "today": "Hoy",
     "switchToTimelineView": "Cambiar a vista de línea de tiempo",

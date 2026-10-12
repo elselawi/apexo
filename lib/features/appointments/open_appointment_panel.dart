@@ -56,17 +56,45 @@ void closeAppointmentsPanels() {
 
 final transcriptionEditCounter = ObservableState(0);
 
+/// Whether the post-op tab can be read for [appointment].
+bool canViewPostOp(Appointment? appointment) =>
+    login.perm(Perm.postOp).exact(2) ||
+    (login.perm(Perm.postOp).exact(1) &&
+        appointment?.operatorsIDs.contains(login.currentAccountID) == true);
+
+/// The appointment panel's tabs, in the order the panel shows them.
+///
+/// The panel builds its strip from [appointmentTabs] and the row context menu
+/// offers one item per entry, so neither can drift from the other.
+enum AppointmentTab {
+  details("appointment", WindowsIcons.calendar),
+  operative("operativeDetails", FluentIcons.medical_care),
+  gallery("gallery", FluentIcons.camera);
+
+  const AppointmentTab(this.titleKey, this.icon);
+
+  final String titleKey;
+  final IconData icon;
+}
+
+/// The appointment panel's tabs for [appointment], in panel order.
+List<AppointmentTab> appointmentTabs(Appointment? appointment) => [
+      AppointmentTab.details,
+      if (canViewPostOp(appointment)) AppointmentTab.operative,
+      AppointmentTab.gallery,
+    ];
+
+/// Where [tab] sits in the panel as built for [appointment].
+int appointmentTabIndex(Appointment? appointment, AppointmentTab tab) =>
+    appointmentTabs(appointment).indexOf(tab);
+
 void openAppointment([Appointment? appointment, int? selectedTabIndex]) async {
   closeLabworksPanels();
-
-  final canViewPostOp = login.perm(Perm.postOp).exact(2) ||
-      (login.perm(Perm.postOp).exact(1) &&
-          appointment?.operatorsIDs.contains(login.currentAccountID) == true);
 
   if (appointment != null &&
       appointment.isDone &&
       selectedTabIndex == 0 &&
-      canViewPostOp) {
+      canViewPostOp(appointment)) {
     selectedTabIndex = 1;
   }
 
@@ -86,77 +114,80 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) async {
     tabs: [],
   );
   final tabs = [
-    PanelTab(
-      title: txt("appointment"),
-      icon: WindowsIcons.calendar,
-      body: _AppointmentDetails(editingCopy),
-    ),
-    if (canViewPostOp)
-      PanelTab(
-        title: txt("operativeDetails"),
-        icon: FluentIcons.medical_care,
-        body: _OperativeDetails(editingCopy),
-        footer: (network.isOnline() && globalSettings.aiServicesEnabled)
-            ? AudioRecorderButton(
-                hint: txt("postOperativeVoiceAutoFillHint"),
-                label: txt("voiceAutoFill"),
-                onRecordingComplete: (bytes, mimeType) async {
-                  try {
-                    final existing = PostOpData(
-                      postOpNotes: editingCopy.postOpNotes,
-                      prescriptions: editingCopy.prescriptions,
-                      price: editingCopy.price,
-                      paid: editingCopy.paid,
-                      teeth: editingCopy.teeth,
-                      teethExtraNotes: editingCopy.teethExtraNotes,
-                      hasLabwork: editingCopy.hasLabwork,
-                      labName: editingCopy.labName,
-                      labworkNotes: editingCopy.labworkNotes,
-                    );
-                    final result = await PostOpNotes.processAudioBytes(
-                      bytes,
-                      mimeType,
-                      existingFields: existing,
-                    );
-                    if (result.postOpNotes.isNotEmpty) {
-                      editingCopy.postOpNotes = result.postOpNotes;
-                    }
-                    if (result.prescriptions.isNotEmpty) {
-                      editingCopy.prescriptions = result.prescriptions;
-                    }
-                    if (result.price != 0) editingCopy.price = result.price;
-                    if (result.paid != 0) editingCopy.paid = result.paid;
-                    if (result.teeth.isNotEmpty) {
-                      editingCopy.teeth.addAll(result.teeth);
-                    }
-                    if (result.teethExtraNotes.isNotEmpty) {
-                      editingCopy.teethExtraNotes
-                          .addAll(result.teethExtraNotes);
-                    }
-                    editingCopy.hasLabwork = result.hasLabwork;
-                    if (result.labName.isNotEmpty) {
-                      editingCopy.labName = result.labName;
-                    }
-                    if (result.labworkNotes.isNotEmpty) {
-                      editingCopy.labworkNotes = result.labworkNotes;
-                    }
+    for (final tab in appointmentTabs(appointment))
+      switch (tab) {
+        AppointmentTab.details => PanelTab(
+            title: tab.titleKey,
+            icon: tab.icon,
+            body: _AppointmentDetails(editingCopy),
+          ),
+        AppointmentTab.operative => PanelTab(
+            title: tab.titleKey,
+            icon: tab.icon,
+            body: _OperativeDetails(editingCopy),
+            footer: (network.isOnline() && globalSettings.aiServicesEnabled)
+                ? AudioRecorderButton(
+                    hint: txt("postOperativeVoiceAutoFillHint"),
+                    label: txt("voiceAutoFill"),
+                    onRecordingComplete: (bytes, mimeType) async {
+                      try {
+                        final existing = PostOpData(
+                          postOpNotes: editingCopy.postOpNotes,
+                          prescriptions: editingCopy.prescriptions,
+                          price: editingCopy.price,
+                          paid: editingCopy.paid,
+                          teeth: editingCopy.teeth,
+                          teethExtraNotes: editingCopy.teethExtraNotes,
+                          hasLabwork: editingCopy.hasLabwork,
+                          labName: editingCopy.labName,
+                          labworkNotes: editingCopy.labworkNotes,
+                        );
+                        final result = await PostOpNotes.processAudioBytes(
+                          bytes,
+                          mimeType,
+                          existingFields: existing,
+                        );
+                        if (result.postOpNotes.isNotEmpty) {
+                          editingCopy.postOpNotes = result.postOpNotes;
+                        }
+                        if (result.prescriptions.isNotEmpty) {
+                          editingCopy.prescriptions = result.prescriptions;
+                        }
+                        if (result.price != 0) editingCopy.price = result.price;
+                        if (result.paid != 0) editingCopy.paid = result.paid;
+                        if (result.teeth.isNotEmpty) {
+                          editingCopy.teeth.addAll(result.teeth);
+                        }
+                        if (result.teethExtraNotes.isNotEmpty) {
+                          editingCopy.teethExtraNotes
+                              .addAll(result.teethExtraNotes);
+                        }
+                        editingCopy.hasLabwork = result.hasLabwork;
+                        if (result.labName.isNotEmpty) {
+                          editingCopy.labName = result.labName;
+                        }
+                        if (result.labworkNotes.isNotEmpty) {
+                          editingCopy.labworkNotes = result.labworkNotes;
+                        }
 
-                    transcriptionEditCounter(transcriptionEditCounter() + 1);
-                  } catch (e, s) {
-                    showErrorMessage(e, "processingPostOpNotes");
-                    logger("Error processing post-op notes audio: $e", s);
-                  }
-                },
-              )
-            : null,
-      ),
-    PanelTab(
-      title: txt("gallery"),
-      icon: FluentIcons.camera,
-      body: _AppointmentGallery(panel),
-      onlyIfSaved: true,
-      padding: 0,
-    ),
+                        transcriptionEditCounter(
+                            transcriptionEditCounter() + 1);
+                      } catch (e, s) {
+                        showErrorMessage(e, "processingPostOpNotes");
+                        logger("Error processing post-op notes audio: $e", s);
+                      }
+                    },
+                  )
+                : null,
+          ),
+        AppointmentTab.gallery => PanelTab(
+            title: tab.titleKey,
+            icon: tab.icon,
+            body: _AppointmentGallery(panel),
+            onlyIfSaved: true,
+            padding: 0,
+          ),
+      },
   ];
   panel.tabs.addAll(tabs);
   await panel.readTitle();

@@ -1,12 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -203,62 +205,98 @@ class _LabworksTableState extends State<LabworksTable> {
         itemCount: truncated.length,
         itemBuilder: (context, index) {
           final apt = truncated[index];
-          return HoverButton(
-            onPressed: () {
-              if (canEditLabwork(apt) == false) return;
-              unawaited(openLabworkPanel(apt));
-              return;
-            },
-            builder: (context, states) {
-              return Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 7, vertical: 12),
-                decoration: BoxDecoration(
-                  color: states.isHovered
-                      ? FluentTheme.of(context)
-                          .resources
-                          .subtleFillColorSecondary
-                      : FluentTheme.of(context)
-                          .resources
-                          .solidBackgroundFillColorBase,
-                  border: listDividerBorder(context),
-                ),
-                child: Row(
-                  children: [
-                    Checkbox(
-                        style: CheckboxThemeData(
-                          icon: apt.labworkReceived
-                              ? WindowsIcons.completed
-                              : FluentIcons.hour_glass,
-                          uncheckedIconColor: WidgetStatePropertyAll(
-                              FluentTheme.of(context).inactiveColor),
-                        ),
-                        checked: apt.labworkReceived,
-                        onChanged: (checked) {
-                          if (!canEdit(apt.operatorsIDs)) return;
-                          apt.labworkReceived = checked == true;
-                          appointments.set(apt);
-                        }),
-                    const SizedBox(width: 5),
-                    _buildDataCell(apt.patient?.title ?? "",
-                        cross: apt.labworkStatus == "done"),
-                    _buildDataCell("📅 ${DF.allNumbers(apt.date)}"),
-                    _buildDataCell(apt.operatorsNames),
-                    _buildDataCell(apt.labName),
-                    _buildDataCell(apt.labworkNotes, tooltip: apt.labworkNotes),
-                    _buildDataCell(
-                        "${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0, 1).toUpperCase()}${apt.labworkStatus.substring(1)}",
-                        tooltip:
-                            apt.labworkStatus.substring(0, 1).toUpperCase() +
-                                apt.labworkStatus.substring(1)),
-                  ],
-                ),
-              );
-            },
+          return ContextMenuRegion(
+            items: (context, controller) => _labworkMenuItems(apt),
+            child: HoverButton(
+              onPressed: () {
+                if (canEditLabwork(apt) == false) return;
+                unawaited(openLabworkPanel(apt));
+                return;
+              },
+              builder: (context, states) {
+                return Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: states.isHovered
+                        ? FluentTheme.of(context)
+                            .resources
+                            .subtleFillColorSecondary
+                        : FluentTheme.of(context)
+                            .resources
+                            .solidBackgroundFillColorBase,
+                    border: listDividerBorder(context),
+                  ),
+                  child: Row(
+                    children: [
+                      Checkbox(
+                          style: CheckboxThemeData(
+                            icon: apt.labworkReceived
+                                ? WindowsIcons.completed
+                                : FluentIcons.hour_glass,
+                            uncheckedIconColor: WidgetStatePropertyAll(
+                                FluentTheme.of(context).inactiveColor),
+                          ),
+                          checked: apt.labworkReceived,
+                          onChanged: (checked) {
+                            if (!canEdit(apt.operatorsIDs)) return;
+                            apt.labworkReceived = checked == true;
+                            appointments.set(apt);
+                          }),
+                      const SizedBox(width: 5),
+                      _buildDataCell(apt.patient?.title ?? "",
+                          cross: apt.labworkStatus == "done"),
+                      _buildDataCell("📅 ${DF.allNumbers(apt.date)}"),
+                      _buildDataCell(apt.operatorsNames),
+                      _buildDataCell(apt.labName),
+                      _buildDataCell(apt.labworkNotes,
+                          tooltip: apt.labworkNotes),
+                      _buildDataCell(
+                          "${apt.labworkStatus == txt("receivedAndDelivered") ? "✅" : apt.labworkStatus == txt("undelivered") ? "📌" : "⏳"} ${apt.labworkStatus.substring(0, 1).toUpperCase()}${apt.labworkStatus.substring(1)}",
+                          tooltip:
+                              apt.labworkStatus.substring(0, 1).toUpperCase() +
+                                  apt.labworkStatus.substring(1)),
+                    ],
+                  ),
+                );
+              },
+            ),
           );
         },
       ),
     );
+  }
+
+  /// Long press (touch) or right click (mouse) on a labwork row.
+  List<MenuFlyoutItemBase> _labworkMenuItems(Appointment apt) {
+    return [
+      if (canEditLabwork(apt))
+        MenuFlyoutItem(
+          text: Txt(txt("open")),
+          leading: const Icon(WindowsIcons.open_in_new_window),
+          onPressed: () {
+            unawaited(openLabworkPanel(apt));
+          },
+        ),
+      MenuFlyoutItem(
+        text: Txt(txt("appointment")),
+        leading: const Icon(WindowsIcons.calendar),
+        onPressed: () {
+          openAppointment(apt);
+        },
+      ),
+      if (canEdit(apt.operatorsIDs)) ...[
+        const MenuFlyoutSeparator(),
+        ToggleMenuFlyoutItem(
+          text: Txt(txt("received")),
+          value: apt.labworkReceived,
+          onChanged: (received) {
+            apt.labworkReceived = received;
+            appointments.set(apt);
+          },
+        ),
+      ],
+    ];
   }
 
   Container _buildTableHeader(BuildContext context) {

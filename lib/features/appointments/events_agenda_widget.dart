@@ -1,4 +1,5 @@
 import 'package:apexo/common_widgets/contact_buttons.dart';
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -30,7 +31,9 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
   });
   final List<Item> items;
   final bool showPayments;
-  final void Function(Item item) onSelect;
+
+  /// Opens [item], optionally on a specific panel tab — see [AppointmentTab].
+  final void Function(Item item, int? tabIndex) onSelect;
   final void Function(Item item) onSetTime;
 
   @override
@@ -85,157 +88,190 @@ class AppointmentCalendarTile<Item extends Appointment>
   });
   final Item item;
   final void Function(Item item) onSetTime;
-  final void Function(Item item) onSelect;
+
+  /// Opens [item], optionally on a specific panel tab — see [AppointmentTab].
+  final void Function(Item item, int? tabIndex) onSelect;
   final bool showPayments;
 
   final BuildContext context;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
-      ),
-      child: ListTile(
-        key: ValueKey(item.id),
-        margin: EdgeInsets.zero,
-        shape: listDividerBorder(context),
-        tileColor: WidgetStateColor.resolveWith((states) {
-          if (item.isDone) {
-            return Colors.blue.withAlpha(10);
-          } else if (states.contains(WidgetState.hovered)) {
+    return ContextMenuRegion(
+      items: (context, controller) => [
+        // One item per tab of the appointment panel, then the row's actions.
+        for (final tab in appointmentTabs(item))
+          MenuFlyoutItem(
+            text: Txt(txt(tab.titleKey)),
+            leading: Icon(tab.icon),
+            onPressed: () => onSelect(item, appointmentTabIndex(item, tab)),
+          ),
+        const MenuFlyoutSeparator(),
+        // The checkbox lives in the tile, but a finger reaching for the row
+        // should be able to finish the appointment from here too.
+        MenuFlyoutItem(
+          text: Txt(txt(item.isDone ? "markAsPending" : "markAsDone")),
+          leading: Icon(
+              item.isDone ? FluentIcons.hour_glass : WindowsIcons.completed),
+          onPressed: () {
+            item.isDone = !item.isDone;
+            appointments.set(item);
+          },
+        ),
+        if ((item.patient?.phone ?? []).isNotEmpty ||
+            (item.patient?.email ?? '').isNotEmpty)
+          ...contactMenuItems(
+            phones: item.patient?.phone ?? const [],
+            email: item.patient?.email ?? '',
+          ),
+      ],
+      child: Container(
+        decoration: BoxDecoration(
+          color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
+        ),
+        child: ListTile(
+          key: ValueKey(item.id),
+          margin: EdgeInsets.zero,
+          shape: listDividerBorder(context),
+          tileColor: WidgetStateColor.resolveWith((states) {
+            if (item.isDone) {
+              return Colors.blue.withAlpha(10);
+            } else if (states.contains(WidgetState.hovered)) {
+              return FluentTheme.of(context)
+                  .resources
+                  .controlAltFillColorTertiary;
+            }
             return FluentTheme.of(context)
                 .resources
-                .controlAltFillColorTertiary;
-          }
-          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
-        }),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              children: [
-                SizedBox(width: 165, child: ItemTitle(item: item)),
-              ],
-            ),
-            Column(
-              children: [
-                if (item.hasLabwork) ...[
-                  const Icon(FluentIcons.manufacturing, size: 17),
-                  const SizedBox(height: 5),
+                .solidBackgroundFillColorBase;
+          }),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                children: [
+                  SizedBox(width: 165, child: ItemTitle(item: item)),
                 ],
-                TreatmentLabels(
-                    labels: item.teeth.entries
-                        .toSet()
-                        .map((e) => TreatmentLabel(
-                            string: e.value,
-                            color: labelToColor(e.value),
-                            icon: labelToIcon(e.value),
-                            iso: e.key,
-                            extraNote: item.teethExtraNotes[e.key]))
-                        .toList()),
-              ],
-            )
-          ],
-        ),
-        subtitle: item.subtitleLine1.isNotEmpty
-            ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
-            : null,
-        leading: Row(children: [
-          PanelsManager.active().where((p) => p.itemId == item.id).isNotEmpty
-              ? IconButton(
-                  icon: const Icon(FluentIcons.open_in_new_tab),
-                  onPressed: () {
-                    final index = PanelsManager.active()
-                        .indexWhere((p) => p.itemId == item.id);
-                    if (index == -1) return;
-                    PanelsManager.bringToFront(index);
-                  })
-              : Transform.scale(
-                  scale: 1.25,
-                  child: Checkbox(
-                      style: CheckboxThemeData(
-                        icon: WindowsIcons.completed,
-                        uncheckedIconColor: WidgetStatePropertyAll(
-                            FluentTheme.of(context).inactiveColor),
-                      ),
-                      checked: item.isDone,
-                      onChanged: (checked) {
-                        item.isDone = checked == true;
-                        appointments.set(item as Appointment);
-                      }),
-                ),
-          const SizedBox(width: 8),
-          const Divider(direction: Axis.vertical, size: 40),
-        ]),
-        onPressed: () => onSelect(item),
-        trailing: Row(
-          children: [
-            const Divider(direction: Axis.vertical, size: 40),
-            const SizedBox(width: 5),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  spacing: 2,
-                  children: [
-                    if ((item.patient?.phonesString ?? '').isNotEmpty)
-                      PhoneNumberButton(phoneNumbers: item.patient!.phone),
-                    if ((item.patient?.email ?? '').isNotEmpty)
-                      EmailButton(email: item.patient!.email),
-                    if ((item.patient?.allAppointments ?? []).length > 1)
-                      AppointmentsHistoryFlyout(
-                        patient: item.patient!,
-                        exclude: item,
-                      ),
+              ),
+              Column(
+                children: [
+                  if (item.hasLabwork) ...[
+                    const Icon(FluentIcons.manufacturing, size: 17),
+                    const SizedBox(height: 5),
                   ],
-                ),
-                IconButton(
-                  onPressed: () async {
-                    final index = PanelsManager.active()
-                        .indexWhere((p) => p.itemId == item.id);
-                    if (index > -1) return PanelsManager.bringToFront(index);
-                    final TimeOfDay? res = await showTimePicker(
-                        context: context,
-                        initialTime: TimeOfDay(
-                            hour: item.date.hour, minute: item.date.minute));
-                    if (res != null) {
-                      item.date = DateTime(item.date.year, item.date.month,
-                          item.date.day, res.hour, res.minute);
-                      onSetTime(item);
-                    }
-                  },
-                  icon: Row(
+                  TreatmentLabels(
+                      labels: item.teeth.entries
+                          .toSet()
+                          .map((e) => TreatmentLabel(
+                              string: e.value,
+                              color: labelToColor(e.value),
+                              icon: labelToIcon(e.value),
+                              iso: e.key,
+                              extraNote: item.teethExtraNotes[e.key]))
+                          .toList()),
+                ],
+              )
+            ],
+          ),
+          subtitle: item.subtitleLine1.isNotEmpty
+              ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
+              : null,
+          leading: Row(children: [
+            PanelsManager.active().where((p) => p.itemId == item.id).isNotEmpty
+                ? IconButton(
+                    icon: const Icon(FluentIcons.open_in_new_tab),
+                    onPressed: () {
+                      final index = PanelsManager.active()
+                          .indexWhere((p) => p.itemId == item.id);
+                      if (index == -1) return;
+                      PanelsManager.bringToFront(index);
+                    })
+                : Transform.scale(
+                    scale: 1.25,
+                    child: Checkbox(
+                        style: CheckboxThemeData(
+                          icon: WindowsIcons.completed,
+                          uncheckedIconColor: WidgetStatePropertyAll(
+                              FluentTheme.of(context).inactiveColor),
+                        ),
+                        checked: item.isDone,
+                        onChanged: (checked) {
+                          item.isDone = checked == true;
+                          appointments.set(item as Appointment);
+                        }),
+                  ),
+            const SizedBox(width: 8),
+            const Divider(direction: Axis.vertical, size: 40),
+          ]),
+          onPressed: () => onSelect(item, null),
+          trailing: Row(
+            children: [
+              const Divider(direction: Axis.vertical, size: 40),
+              const SizedBox(width: 5),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    spacing: 2,
                     children: [
-                      PanelsManager.active()
-                              .where((p) => p.itemId == item.id)
-                              .isEmpty
-                          ? const Icon(FluentIcons.clock)
-                          : const Icon(FluentIcons.open_in_new_tab),
-                      const SizedBox(width: 5),
-                      Txt(intl.DateFormat('hh:mm a', locale.s.$code)
-                          .format(item.date)),
+                      if ((item.patient?.phonesString ?? '').isNotEmpty)
+                        PhoneNumberButton(phoneNumbers: item.patient!.phone),
+                      if ((item.patient?.email ?? '').isNotEmpty)
+                        EmailButton(email: item.patient!.email),
+                      if ((item.patient?.allAppointments ?? []).length > 1)
+                        AppointmentsHistoryFlyout(
+                          patient: item.patient!,
+                          exclude: item,
+                        ),
                     ],
                   ),
-                ),
-                if (item.subtitleLine2.isNotEmpty)
-                  SizedBox(
-                      width: 75,
-                      child: Txt(
-                        item.subtitleLine2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      )),
-                if (item.paid > 0 &&
-                    login.perm(Perm.revenue).read &&
-                    showPayments)
-                  MoneyDisplay(
-                    "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
-                    style: const TextStyle(fontSize: 12),
-                  )
-              ],
-            ),
-          ],
+                  IconButton(
+                    onPressed: () async {
+                      final index = PanelsManager.active()
+                          .indexWhere((p) => p.itemId == item.id);
+                      if (index > -1) return PanelsManager.bringToFront(index);
+                      final TimeOfDay? res = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay(
+                              hour: item.date.hour, minute: item.date.minute));
+                      if (res != null) {
+                        item.date = DateTime(item.date.year, item.date.month,
+                            item.date.day, res.hour, res.minute);
+                        onSetTime(item);
+                      }
+                    },
+                    icon: Row(
+                      children: [
+                        PanelsManager.active()
+                                .where((p) => p.itemId == item.id)
+                                .isEmpty
+                            ? const Icon(FluentIcons.clock)
+                            : const Icon(FluentIcons.open_in_new_tab),
+                        const SizedBox(width: 5),
+                        Txt(intl.DateFormat('hh:mm a', locale.s.$code)
+                            .format(item.date)),
+                      ],
+                    ),
+                  ),
+                  if (item.subtitleLine2.isNotEmpty)
+                    SizedBox(
+                        width: 75,
+                        child: Txt(
+                          item.subtitleLine2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        )),
+                  if (item.paid > 0 &&
+                      login.perm(Perm.revenue).read &&
+                      showPayments)
+                    MoneyDisplay(
+                      "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
+                      style: const TextStyle(fontSize: 12),
+                    )
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

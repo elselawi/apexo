@@ -30,7 +30,7 @@ void main() {
           initiallySelectedDay: selectedDay.millisecondsSinceEpoch,
           onAddNew: (_) {},
           onSetTime: (_) {},
-          onSelect: (_) {},
+          onSelect: (_, __) {},
         ),
       ),
     );

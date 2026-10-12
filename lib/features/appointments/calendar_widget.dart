@@ -48,7 +48,9 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   final int initiallySelectedDay;
   final void Function(DateTime date) onAddNew;
   final void Function(Item item) onSetTime;
-  final void Function(Item item) onSelect;
+
+  /// Opens [item], optionally on a specific panel tab — see [AppointmentTab].
+  final void Function(Item item, int? tabIndex) onSelect;
 
   @override
   WeekAgendaCalendarState<Item> createState() =>
@@ -123,7 +125,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                         showPayments: showPayments,
                         selectedDate: selectedDate,
                         onSelect: (appointment) =>
-                            widget.onSelect(appointment as Item),
+                            widget.onSelect(appointment as Item, null),
                         onSetTime: (appointment) =>
                             widget.onSetTime(appointment as Item),
                         onAddNew: widget.onAddNew,

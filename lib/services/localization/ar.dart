@@ -270,6 +270,8 @@ class Ar implements En {
     "monthAbbr": "شهر",
     "min": "د",
     "minutes": "دقائق",
+    "markAsDone": "تأشير كـ مكتمل",
+    "markAsPending": "تأشير كـ غير مكتمل",
     "duration": "المدة",
     "today": "اليوم",
     "switchToTimelineView": "التبديل إلى عرض المخطط الزمني",

@@ -118,6 +118,49 @@ class PatientsScreen extends StatelessWidget {
 }
 ```
 
+### Row actions
+
+A row that has actions also opens them on long press (touch) and right click
+(mouse, pen). Wrap the row in `ContextMenuRegion` from
+`lib/common_widgets/context_menu_region.dart` and build the same items the row's
+"more" button already shows — never a new permission-free shortcut:
+
+```dart
+ContextMenuRegion(
+  items: (context, controller) => [
+    MenuFlyoutItem(
+      text: Txt(txt("open")),
+      leading: const Icon(WindowsIcons.open_in_new_window),
+      onPressed: open,
+    ),
+  ],
+  child: ListTile(...),
+)
+```
+
+The region plays the platform feedback for the long press, anchors the menu at
+the pointer, and flips it in RTL. Reuse `controller` for a follow-up flyout
+(a delete confirmation); the menu closes by itself when an item is clicked.
+
+When the row opens a panel, offer **one item per panel tab** instead of a single
+"open". Declare the tabs once as an enum in the panel's own file (`PatientTab`,
+`AppointmentTab`, `ExpenseTab`), expose the reachable ones (`patientTabs()`,
+`appointmentTabs(appointment)`, `expenseTabs(...)`) plus the matching index
+helper, and let both the panel and the menu read that list — then a menu item
+cannot land on the wrong tab:
+
+```dart
+for (final tab in patientTabs())
+  MenuFlyoutItem(
+    text: Txt(txt(tab.titleKey)),
+    leading: Icon(tab.icon),
+    onPressed: () => openPatient(patient, patientTabIndex(tab)),
+  ),
+```
+
+Keep `PanelTab.title` a localization **key**: the host runs it through `txt()`,
+so an open panel relabels on a language switch.
+
 ## Controller Pattern (for non-Store features)
 
 Controllers are plain Dart classes that hold `ObservableState` values and business logic. They're simpler than Stores — no persistence, no sync:

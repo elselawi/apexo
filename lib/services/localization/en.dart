@@ -274,6 +274,8 @@ class En {
     "monthAbbr": "M",
     "min": "min",
     "minutes": "minutes",
+    "markAsDone": "Mark as done",
+    "markAsPending": "Mark as pending",
     "duration": "Duration",
     "today": "Today",
     "switchToTimelineView": "Switch to timeline view",

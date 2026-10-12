@@ -272,6 +272,8 @@ class Fa implements En {
     "monthAbbr": "ماه",
     "min": "دقیقه",
     "minutes": "دقیقه",
+    "markAsDone": "علامت‌گذاری به عنوان انجام شده",
+    "markAsPending": "علامت‌گذاری به عنوان در انتظار",
     "duration": "مدت",
     "today": "امروز",
     "switchToTimelineView": "تغییر به نمای زمانی",

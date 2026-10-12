@@ -6,6 +6,7 @@
     - Patient details now warn about invalid email addresses and prevent saving them until corrected. Leaving the email blank is still allowed.
     - A new patient-page access switch lets clinics hide a patient's appointments from the patient portal. Existing clinics receive the server update on administrator sign-in; access changes take effect after synchronization.
     - Tooth treatments and notes from earlier appointments can be copied into the appointment being edited.
+    - Rows in patients, appointments, labworks, expenses and accounts open a context menu on a long press (touch) or a right click (mouse, trackpad or pen): the actions that row already offers, anchored where you pressed, with the platform's touch feedback on the long press and following the reading direction in Arabic and Persian. On the web, where the browser keeps right click for itself, the long press opens the menu. A row that opens a panel now lists one item per tab, so a patient's dental notes, an appointment's operative details or a supplier's paid orders sit one press away, and reaching a patient is part of the same menu: call, text, WhatsApp, Telegram and email.
 
 - Reliability & Bug Fixes
     - Improved saving and synchronization so overlapping operations do not lose later edits, pending offline changes survive reconnects, and outdated login sessions cannot overwrite current data.
@@ -22,6 +23,8 @@
     - Attachment matching no longer confuses filename prefixes with file identities. File metadata work runs off the UI thread, and CSV imports handle final empty fields while rejecting incomplete quoted values.
     - Improved notification change detection, callback error handling and connection retries. AI tokens stay tied to the correct clinic and are cleared on logout; failed backups no longer leave the app stuck in a busy state.
     - Removed diagnostic logs containing transcription text, device tokens and notification payloads.
+    - The DICOM import confirmation reads as a sentence again: it was showing a raw translation key instead of its title.
+    - Open panels relabel their tabs when the language is switched, instead of keeping the labels they were opened with.
 
 - Testing & Developer Experience
     - Expanded end-to-end coverage across the main clinic workflows, including attachments, AI services, notifications, clinic switching, offline synchronization and recovery.
@@ -30,6 +33,7 @@
     - Updated the end-to-end runners and VS Code tasks, consolidated the testing instructions, and removed the superseded test checklist.
     - Added the missing UI test keys and corrected duplicate keys so tests can reliably locate screens and controls. The key audit reports no missing handles.
     - Navigation uses typed routes instead of string identifiers, avoiding silent navigation failures and keeping the selected screen stable when permissions change.
+    - Added the shared context-menu widget behind the new row menus, and a contract test asserting that each panel's tab strip and the context menu that opens it cannot drift apart, alongside a check that every tab title is a real translation key.
 
 ### ____0.15.0____
 

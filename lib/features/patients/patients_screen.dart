@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -267,7 +268,7 @@ class _PatientsPageState extends State<_PatientsPage> {
     );
   }
 
-  ListTile _buildRow(
+  Widget _buildRow(
     Patient patient,
     BuildContext context,
     BoxConstraints constraints,
@@ -275,38 +276,60 @@ class _PatientsPageState extends State<_PatientsPage> {
     double calculatedWidth,
     String searchStringLowerCased,
   ) {
-    return ListTile.selectable(
-      key: ValueKey(patient.id),
-      selected: selected.contains(patient.id),
-      selectionMode: ListTileSelectionMode.multiple,
-      onSelectionChange: (isSelected) {
-        if (isSelected) {
-          selected.add(patient.id);
-        } else {
-          selected.remove(patient.id);
-        }
-        setState(() {});
-      },
-      margin: const EdgeInsets.only(bottom: 0),
-      shape: listDividerBorder(context),
-      tileColor: WidgetStateColor.resolveWith((states) {
-        if (selected.contains(patient.id)) {
-          return Colors.blue.withAlpha(20);
-        } else if (states.contains(WidgetState.hovered)) {
-          return FluentTheme.of(context).resources.controlAltFillColorTertiary;
-        }
-        return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
-      }),
-      title: buildSinglePatientTile(
-        patient,
-        constraints,
-        calculatedSpacing,
-        calculatedWidth,
-        searchStringLowerCased,
+    return ContextMenuRegion(
+      items: (context, controller) => _patientMenuItems(patient),
+      child: ListTile.selectable(
+        key: ValueKey(patient.id),
+        selected: selected.contains(patient.id),
+        selectionMode: ListTileSelectionMode.multiple,
+        onSelectionChange: (isSelected) {
+          if (isSelected) {
+            selected.add(patient.id);
+          } else {
+            selected.remove(patient.id);
+          }
+          setState(() {});
+        },
+        margin: const EdgeInsets.only(bottom: 0),
+        shape: listDividerBorder(context),
+        tileColor: WidgetStateColor.resolveWith((states) {
+          if (selected.contains(patient.id)) {
+            return Colors.blue.withAlpha(20);
+          } else if (states.contains(WidgetState.hovered)) {
+            return FluentTheme.of(context)
+                .resources
+                .controlAltFillColorTertiary;
+          }
+          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
+        }),
+        title: buildSinglePatientTile(
+          patient,
+          constraints,
+          calculatedSpacing,
+          calculatedWidth,
+          searchStringLowerCased,
+        ),
+        contentPadding: const EdgeInsetsDirectional.only(
+            top: 0, bottom: 5, start: 5, end: 0),
       ),
-      contentPadding:
-          const EdgeInsetsDirectional.only(top: 0, bottom: 5, start: 5, end: 0),
     );
+  }
+
+  /// Long press (touch) or right click (mouse) on a row: one item per tab of
+  /// the patient panel, then the ways to reach the patient.
+  List<MenuFlyoutItemBase> _patientMenuItems(Patient patient) {
+    return [
+      for (final tab in patientTabs())
+        MenuFlyoutItem(
+          text: Txt(txt(tab.titleKey)),
+          leading: Icon(tab.icon),
+          onPressed: () {
+            unawaited(openPatient(patient, patientTabIndex(tab)));
+          },
+        ),
+      if (patient.phone.isNotEmpty || patient.email.isNotEmpty)
+        ...contactMenuItems(phones: patient.phone, email: patient.email),
+    ];
   }
 
   Widget buildSinglePatientTile(

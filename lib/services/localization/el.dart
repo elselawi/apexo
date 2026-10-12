@@ -276,6 +276,8 @@ class El implements En {
     "monthAbbr": "Μ",
     "min": "λ",
     "minutes": "λεπτά",
+    "markAsDone": "Σήμανση ως ολοκληρωμένο",
+    "markAsPending": "Σήμανση ως εκκρεμές",
     "duration": "Διάρκεια",
     "today": "Σήμερα",
     "switchToTimelineView": "Μετάβαση σε προβολή χρονοδιαγράμματος",

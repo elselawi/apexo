@@ -426,7 +426,8 @@ on this tree.
 - **§1.4 / `14: a month with many events` and the operator filter** — **partly covered**:
   deterministic calendar coverage verifies 37 events on a day; live operator filtering remains open.
 - **§1.5 / `07: previous notes can be copied into this appointment`** — **implemented**: each
-  historical tooth note offers a copy action into the current draft; persistence still requires Save.
+  historical tooth record offers a copy action, treatment and note together, from inside the tooth's
+  own editor; persistence still requires Save.
 - **§1.5 / `08`/`09`: gallery upload and delete flows** — **covered** by the restored
   `integration_test/groups/attachments.dart` (upload, render, delete, malformed-image resilience).
 - **§1.6 / `02: a change made offline lands on the server after a reconnect`** —

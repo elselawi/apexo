@@ -275,8 +275,11 @@ void registerAppointmentsTests() {
           patientName: patient, day: Fixtures.tomorrow());
       await Fixtures.openAppointmentTile(tester, patient: patient);
       await Fixtures.openPanelTab(tester, 'operativeDetails');
-      await E2E.tapFirst(tester, find.text(txt('otherAppointmentsNotes')),
-          description: 'previous dental notes');
+      // The earlier visit is listed in the tooth's own editor now, where its
+      // treatment and note can be brought straight into this draft.
+      await E2E.tap(tester, find.byKey(WK.tooth('11', selected: false)),
+          description: 'tooth 11');
+      await E2E.settle(tester, frames: 8);
       final copy = find.byKey(ValueKey('copyNotes-${source.id}-11'));
       await tester.ensureVisible(copy);
       await E2E.tap(tester, copy, description: 'copy previous dental notes');

@@ -8,7 +8,6 @@ import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
-import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
@@ -16,6 +15,7 @@ import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/ai_services/dental_history.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
@@ -119,8 +119,12 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
                         type: StateType.state,
                         historyTitle: 'toothAppointmentNotes',
                         history: [for (final appointment in editingCopy.allAppointments)
-                          ToothHistory(label: DF.allNumbers(appointment.date), date: appointment.date,
+                          ToothHistory(label: DF.allNumbers(appointment.date), date: appointment.date, appointmentId: appointment.id,
                             teeth: Map.of(appointment.teeth), notes: Map.of(appointment.teethExtraNotes))],
+                        onOpenAppointment: (id) {
+                          final appointment = appointments.get(id);
+                          if (appointment != null) openAppointment(appointment);
+                        },
                         onNote: (x, y) {
                           if (y != null) {
                             editingCopy.teeth[x] = y;
@@ -144,17 +148,6 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
                         showPrimary: editingCopy.age < 14,
                       ),
                     ),
-                    if (editingCopy.allAppointmentsDentalNotes.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      const Divider(),
-                      const SizedBox(height: 12),
-                      AppointmentExtraNotes(
-                        patient: editingCopy,
-                        initiallyExpanded: true,
-                        bottomMargin: true,
-                        title: txt("extraNotesFromAppointments"),
-                      ),
-                    ]
                   ],
                 ),
               );

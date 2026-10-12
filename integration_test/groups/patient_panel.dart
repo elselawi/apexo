@@ -169,8 +169,10 @@ void registerPatientPanelTests() {
       await Fixtures.openPatient(tester, patient);
       await Fixtures.openPanelTab(tester, 'dentalNotes');
 
-      expect(find.text(txt('extraNotesFromAppointments')), findsWidgets,
-          reason: 'the chart does not show what the appointment recorded');
+      // The appointment's work rides along as the chart's "old" note, which is
+      // what keeps the tooth out of the patient's own condition below. The note
+      // itself is spelled out inside the tooth's editor, where the earlier
+      // records are listed (see `tooth_state_wheel_test.dart`).
       expect(find.byKey(WK.tooth('36', selected: false)), findsOneWidget,
           reason: 'the tooth is drawn as the patient\'s own condition instead '
               'of as history');

@@ -439,6 +439,91 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a tooth recorded only outside its records still reads as one',
+      (tester) async {
+    // The tooth's only trace is the old note the panels pass alongside the
+    // records — a chart entry, or an appointment this editor does not list.
+    // It used to come out as a bare treatment name, with no icon and no note.
+    await pumpApexoApp(
+        tester,
+        Center(
+            child: ToothStateWheel(
+                initialValue: 'filling',
+                iso: '36',
+                toothName: 'Tooth 36',
+                oldNote: 'crown',
+                type: StateType.treatment,
+                onTapClose: () {},
+                onSet: (_) {})));
+    expect(find.text(txt('dentalNotes')), findsWidgets, reason: 'named source');
+    expect(find.byIcon(labelToIcon('crown')), findsWidgets,
+        reason: 'the record shows the treatment it stands for');
+    expect(find.text(txt('crown')), findsWidgets);
+  });
+
+  testWidgets('a record from an appointment can be opened from the card',
+      (tester) async {
+    final opened = <String>[];
+    var closed = false;
+    await pumpApexoApp(
+        tester,
+        Center(
+            child: ToothStateWheel(
+                initialValue: 'crown',
+                iso: '36',
+                toothName: 'Tooth 36',
+                oldNote: null,
+                type: StateType.treatment,
+                onTapClose: () => closed = true,
+                onSet: (_) {},
+                onOpenAppointment: opened.add,
+                history: [
+              ToothHistory(
+                  label: '12 June 2026',
+                  date: DateTime(2026, 6, 12),
+                  appointmentId: 'apt-1',
+                  teeth: {'36': 'filling'},
+                  notes: {'36': 'Full historical note'})
+            ])));
+    await tester.tap(find.byKey(const ValueKey('open-appointment-apt-1')));
+    await tester.pumpAndSettle();
+    expect(opened, ['apt-1']);
+    expect(closed, isTrue, reason: 'the wheel steps aside for the appointment');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("a visit's record can be brought into the draft", (tester) async {
+    final chosen = <String?>[];
+    final notes = <String>[];
+    await pumpApexoApp(
+        tester,
+        Center(
+            child: ToothStateWheel(
+                initialValue: null,
+                iso: '36',
+                toothName: 'Tooth 36',
+                oldNote: null,
+                type: StateType.treatment,
+                onTapClose: () {},
+                onSet: chosen.add,
+                onExtraNote: notes.add,
+                history: [
+              ToothHistory(
+                  label: '12 June 2026',
+                  date: DateTime(2026, 6, 12),
+                  appointmentId: 'apt-1',
+                  teeth: {'36': 'filling'},
+                  notes: {'36': 'Full historical note'})
+            ])));
+    await tester.tap(find.byKey(const ValueKey('copyNotes-apt-1-36')));
+    await tester.pumpAndSettle();
+    expect(chosen, ['filling'], reason: 'the treatment comes along');
+    expect(notes, ['Full historical note'], reason: 'so does the note');
+    expect(find.text('Full historical note'), findsWidgets,
+        reason: 'the copy lands in the open editor as well');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('marked tooth opens with selection and its earlier records',
       (tester) async {
     await pumpApexoApp(

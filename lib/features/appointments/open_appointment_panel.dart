@@ -6,7 +6,6 @@ import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
-import 'package:apexo/common_widgets/extra_notes_expander.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
@@ -551,9 +550,13 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                       ToothHistory(label: txt('toothPatientHistory'), teeth: Map.of(patient!.teeth), notes: Map.of(patient.teethExtraNotes)),
                       for (final previous in patient.allAppointments)
                         if (previous.id != widget.appointment.id && previous.date.isBefore(widget.appointment.date))
-                          ToothHistory(label: DF.allNumbers(previous.date), date: previous.date,
+                          ToothHistory(label: DF.allNumbers(previous.date), date: previous.date, appointmentId: previous.id,
                             teeth: Map.of(previous.teeth), notes: Map.of(previous.teethExtraNotes)),
                     ],
+                    onOpenAppointment: (id) {
+                      final previous = appointments.get(id);
+                      if (previous != null) openAppointment(previous);
+                    },
                     onNote: (x, y) {
                       if (y != null) {
                         widget.appointment.teeth[x] = y;
@@ -577,28 +580,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                           widget.appointment.teeth.containsKey(key)),
                     showPrimary: (widget.appointment.patient?.age ?? 18) < 14,
                   ),
-                  if (widget.appointment.patient?.allAppointmentsDentalNotes
-                          .isNotEmpty ==
-                      true) ...[
-                    AppointmentExtraNotes(
-                      patient: widget.appointment.patient!,
-                      initiallyExpanded: false,
-                      excludedAppointment: widget.appointment,
-                      title: txt("otherAppointmentsNotes"),
-                      onCopy: (source, tooth) {
-                        setState(() {
-                          final treatment = source.teeth[tooth];
-                          final note = source.teethExtraNotes[tooth];
-                          if (treatment != null) {
-                            widget.appointment.teeth[tooth] = treatment;
-                          }
-                          if (note != null) {
-                            widget.appointment.teethExtraNotes[tooth] = note;
-                          }
-                        });
-                      },
-                    ),
-                  ],
                 ],
               ),
             ),

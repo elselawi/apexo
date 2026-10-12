@@ -23,6 +23,7 @@ class ToothStateWheel extends StatefulWidget {
     this.onExtraNote,
     this.history = const [],
     this.historyTitle = 'toothHistory',
+    this.onOpenAppointment,
   });
   final String toothName;
   final String iso;
@@ -40,6 +41,11 @@ class ToothStateWheel extends StatefulWidget {
   /// earlier appointments left on this tooth when it is browsed from the
   /// patient's own records.
   final String historyTitle;
+
+  /// Called with the id of a record's appointment when the patient's history
+  /// offers to open it. The wheel closes itself first, so the caller only has
+  /// to bring the appointment up.
+  final ValueChanged<String>? onOpenAppointment;
 
   @override
   State<ToothStateWheel> createState() => _ToothStateWheelState();
@@ -128,13 +134,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   @override
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
-    final records = widget.history
-        .where((record) =>
-            record.teeth.containsKey(widget.iso) ||
-            record.notes[widget.iso]?.isNotEmpty == true)
-        .toList()
-      ..sort((a, b) =>
-          (b.date ?? DateTime(9999)).compareTo(a.date ?? DateTime(9999)));
+    final records = _records();
 
     // Tapping anywhere that is not one of the floating surfaces (the wheel,
     // the notes field, the header or the history card) dismisses the whole
@@ -623,6 +623,23 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     _select(null);
   }
 
+  /// Brings an earlier record's treatment and note for this tooth into the
+  /// record being edited, which is what the history card's copy action is for.
+  ///
+  /// The wheel is the editor for that same tooth, so it takes the copy on
+  /// itself too: the treatment replaces the chosen one (a programmatic change
+  /// raises no tap), and the note would not reach the caller on its own, as
+  /// the field only reports what the user types.
+  void _copyRecord(ToothHistory record) {
+    final treatment = record.teeth[widget.iso];
+    if (treatment != null) _select(treatment);
+    final note = record.notes[widget.iso];
+    if (note != null && note.isNotEmpty) {
+      _notesController.text = note;
+      _onNotesChanged(note);
+    }
+  }
+
   void _onNotesChanged(String text) {
     final hasNote = text.isNotEmpty;
     if (hasNote != _hasNote) {
@@ -662,6 +679,32 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
         ],
       ),
     );
+  }
+
+  /// The records this tooth has to show.
+  ///
+  /// A tooth can carry a treatment recorded outside the records the wheel was
+  /// handed — in the patient's chart, or in an appointment this editor does
+  /// not list. Those arrive as [ToothStateWheel.oldNote] alone, so they are
+  /// dressed as a record of the patient's dental notes: without that the card
+  /// showed a bare treatment name, with no icon and no note to place it.
+  List<ToothHistory> _records() {
+    final records = widget.history
+        .where((record) =>
+            record.teeth.containsKey(widget.iso) ||
+            record.notes[widget.iso]?.isNotEmpty == true)
+        .toList();
+    final oldNote = widget.oldNote;
+    if (records.isEmpty && oldNote != null) {
+      records.add(ToothHistory(
+        label: txt('dentalNotes'),
+        teeth: {widget.iso: oldNote},
+        notes: const {},
+      ));
+    }
+    return records
+      ..sort((a, b) =>
+          (b.date ?? DateTime(9999)).compareTo(a.date ?? DateTime(9999)));
   }
 
   Widget _historySurface(BuildContext context,
@@ -819,18 +862,41 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                 ],
                               ),
                             ),
+                            if (record.appointmentId != null) ...[
+                              Tooltip(
+                                message: txt('copyIntoThisRecord'),
+                                child: IconButton(
+                                  key: ValueKey(
+                                      'copyNotes-${record.appointmentId}-${widget.iso}'),
+                                  iconButtonMode: IconButtonMode.small,
+                                  icon: const Icon(WindowsIcons.copy, size: 12),
+                                  onPressed: () => _copyRecord(record),
+                                ),
+                              ),
+                              if (widget.onOpenAppointment != null)
+                                Tooltip(
+                                  message: txt('open'),
+                                  child: IconButton(
+                                    key: ValueKey(
+                                        'open-appointment-${record.appointmentId}'),
+                                    iconButtonMode: IconButtonMode.small,
+                                    icon: const Icon(
+                                        WindowsIcons.open_in_new_window,
+                                        size: 12),
+                                    onPressed: () {
+                                      // The wheel steps aside so the appointment
+                                      // comes up on the clinic floor behind it.
+                                      widget.onTapClose();
+                                      widget.onOpenAppointment!(
+                                          record.appointmentId!);
+                                    },
+                                  ),
+                                ),
+                            ],
                           ],
                         ),
                       ),
                     ],
-                    if (records.isEmpty && widget.oldNote != null)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          txt(widget.oldNote!),
-                          style: theme.typography.caption,
-                        ),
-                      ),
                   ],
                 ),
               ),

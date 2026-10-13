@@ -111,48 +111,65 @@ class SaveRemote {
     return "${DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(DateTime.fromMillisecondsSinceEpoch(input, isUtc: true))}Z";
   }
 
+  /// Uses an (updated, id) keyset within each pull; persisted cursors remain
+  /// timestamps, with the same strict newer-than boundary.
   Future<VersionedResult> getSince({int version = 0}) async {
-    final List<Row> result = [];
-
+    final result = <String, Row>{};
     final date = formatForPocketBase(version);
-    bool nextPageExists = true;
-    int currentPage = 1;
 
-    do {
-      try {
+    try {
+      // Bound the pull so ongoing writes cannot keep extending it. Writes
+      // beyond this timestamp stay eligible for the next timestamp-cursor pull.
+      final newest = await remoteRows.getList(
+        filter: 'updated>"$date"&&store="$storeName"',
+        sort: "-updated",
+        perPage: 1,
+        skipTotal: true,
+        fields: "updated",
+      );
+      if (newest.items.isEmpty) return VersionedResult(0, []);
+      final upperDate = newest.items.first.get<String>("updated");
+      var afterDate = date;
+      String? afterId;
+
+      while (true) {
+        final after = afterId == null
+            ? 'updated>"$afterDate"'
+            : '(updated>"$afterDate"||(updated="$afterDate"&&id>"$afterId"))';
         final pageResult = await remoteRows.getList(
-          filter: 'updated>"$date"&&store="$storeName"',
-          sort: "updated",
+          filter: 'store="$storeName"&&updated<="$upperDate"&&$after',
+          sort: "updated,id",
           perPage: 900,
-          page: currentPage,
+          page: 1,
+          skipTotal: true,
           fields: "data,id,updated,imgs",
         );
+        if (pageResult.items.isEmpty) break;
 
-        for (var item in pageResult.items) {
+        for (final item in pageResult.items) {
           final ts = DateTime.parse(item.get<String>("updated"))
               .millisecondsSinceEpoch;
-          result.add(
-              Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts));
-          fullNamesCache.addAll({
-            item.id: List<String>.from(
-                item.data["imgs"] as List<dynamic>? ?? const <String>[]),
-          });
+          // A fetched row can move forward within the window. Keep only its
+          // latest revision, in keyset order, rather than a stale duplicate.
+          result.remove(item.id);
+          result[item.id] =
+              Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts);
+          fullNamesCache[item.id] = List<String>.from(
+              item.data["imgs"] as List<dynamic>? ?? const <String>[]);
         }
 
-        // handle pagination
-        if (pageResult.totalPages > currentPage) {
-          currentPage++;
-        } else {
-          nextPageExists = false;
-        }
-      } catch (e) {
-        await checkOnline();
-        rethrow;
+        final last = pageResult.items.last;
+        afterDate = last.get<String>("updated");
+        afterId = last.id;
       }
-    } while (nextPageExists);
+    } catch (e) {
+      await checkOnline();
+      rethrow;
+    }
 
+    final rows = result.values.toList();
     return VersionedResult(
-        result.isNotEmpty ? result.map((r) => r.ts).reduce(max) : 0, result);
+        rows.isNotEmpty ? rows.map((r) => r.ts).reduce(max) : 0, rows);
   }
 
   Future<int> getVersion() async {
@@ -449,21 +466,44 @@ class SaveRemote {
     }
   }
 
+  /// Matches complete ordinary basenames followed only by upload suffixes.
+  /// Extensionless legacy references may also omit the generated hash.
+  static bool _sameOrdinaryDeletionIdentity(String requested, String existing) {
+    final requestedExtension = p.extension(requested).toLowerCase();
+    if (requestedExtension.isNotEmpty &&
+        requestedExtension != p.extension(existing).toLowerCase()) {
+      return false;
+    }
+    final requestedBase = p.basenameWithoutExtension(requested).toLowerCase();
+    final existingBase = p.basenameWithoutExtension(existing).toLowerCase();
+    if (requestedBase.isEmpty) return false;
+    if (requestedBase == existingBase) return true;
+    if (!existingBase.startsWith('${requestedBase}_')) return false;
+
+    final suffix = existingBase.substring(requestedBase.length + 1);
+    final suffixPattern = requestedExtension.isEmpty
+        ? RegExp(r'^[a-z0-9]+(?:_\d+)*(?:_[a-z0-9]{6,})?(?:_\d+)*$')
+        : RegExp(r'^(?:\d+_)*(?:[a-z0-9]{6,}|\d+)(?:_\d+)*$');
+    return suffixPattern.hasMatch(suffix);
+  }
+
   Future<bool> deleteImage(String rowID, String imgName) async {
     try {
-      final nameWithoutExt = p.basenameWithoutExtension(imgName);
       final allFullNames = await getFileNames(rowID);
       // Prefer exact match first — avoids ambiguity between e.g.
       // "x.dcm" and "x.dcm.png" (the DCM original and its PNG preview).
       var fullNameToDelete = allFullNames
           .where((e) => e.toLowerCase() == imgName.toLowerCase())
           .firstOrNull;
-      // Fuzzy matching is unsafe for DICOM originals/previews: if the
-      // original is missing, it could delete the preview instead.  Keep the
-      // legacy fallback only for ordinary image attachments.
+      // Only ordinary attachments allow legacy names, and an ambiguous
+      // fallback must never choose a destructive match by list order.
       if (fullNameToDelete == null && !_isDcmOrDcmPreview(imgName)) {
-        fullNameToDelete =
-            allFullNames.where((e) => e.contains(nameWithoutExt)).firstOrNull;
+        final matches = allFullNames
+            .where((name) =>
+                !_isDcmOrDcmPreview(name) &&
+                _sameOrdinaryDeletionIdentity(imgName, name))
+            .toList();
+        if (matches.length == 1) fullNameToDelete = matches.single;
       }
       if (fullNameToDelete == null) {
         return false;
@@ -512,9 +552,11 @@ class SaveRemote {
       // Match only previews with the same full extension chain, never a raw
       // original or an ambiguous pair of collision-suffixed previews.
       if (candidates.isEmpty && dcm_helpers.isDcmPreviewName(imageName)) {
-        final previews = fullNames.where((name) =>
-            dcm_helpers.isDcmPreviewName(name) &&
-            sameStoredFileName(name.toLowerCase(), lower)).toList();
+        final previews = fullNames
+            .where((name) =>
+                dcm_helpers.isDcmPreviewName(name) &&
+                sameStoredFileName(name.toLowerCase(), lower))
+            .toList();
         if (previews.length == 1) candidates = previews;
       }
       // Keep the legacy fuzzy fallback for ordinary attachments only.

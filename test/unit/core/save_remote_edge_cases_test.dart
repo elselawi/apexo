@@ -1,6 +1,8 @@
 import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/services/dicom/dicom_orphans_cleaner.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 /// Unit-level tests for SaveRemote DTOs, filename hashing pattern,
@@ -9,16 +11,22 @@ import 'package:pocketbase/pocketbase.dart';
 /// For integration-level upload/download/delete tests against a live
 /// PocketBase instance, see `test/live_backend/core/save_remote_test.dart`.
 void main() {
+  final client = MockClient((_) async => http.Response(
+        '{"code":200,"message":"ok"}',
+        200,
+        headers: const {'content-type': 'application/json'},
+      ));
   final remote = SaveRemote(
     storeName: 'unit-test',
-    // The DTO and timestamp tests below must not require credentials or a
-    // reachable server. SaveRemote starts its health check in the
-    // constructor, so cancel its retry timer when this file finishes.
-    pbInstance: PocketBase('http://127.0.0.1:65535'),
+    pbInstance: PocketBase(
+      'http://fake-pocketbase',
+      httpClientFactory: () => client,
+    ),
   );
 
   tearDownAll(() {
-    remote.timer?.cancel();
+    remote.dispose();
+    client.close();
   });
 
   // ---------------------------------------------------------------------------

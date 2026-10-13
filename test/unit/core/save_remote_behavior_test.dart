@@ -677,7 +677,8 @@ void main() {
       expect(api.files, ['scan.dcm.png']);
     });
 
-    test('ordinary attachment still supports legacy fuzzy deletion', () async {
+    test('ordinary attachment still supports legacy basename deletion',
+        () async {
       api.files = ['photo_hash.jpg'];
       api.rowData = {
         'imgs': ['photo_hash.jpg']
@@ -687,6 +688,151 @@ void main() {
 
       expect(deleted, isTrue);
       expect(api.updateCount, 1);
+    });
+
+    test('ordinary deletion rejects a longer generated hash', () async {
+      api.files = ['photo_hash123.jpg'];
+
+      final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+      expect(deleted, isFalse);
+      expect(api.updateCount, 0);
+      expect(api.files, ['photo_hash123.jpg']);
+      expect(remote.fullNamesCache['row-1'], ['photo_hash123.jpg']);
+    });
+
+    test('ordinary deletion skips collisions before a valid legacy match',
+        () async {
+      api.files = ['photo_hash123.jpg', 'photo_hash12_ab12cd34ef.jpg'];
+
+      final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+      expect(deleted, isTrue);
+      expect(api.updateCount, 1);
+      expect(jsonDecode(api.requestBodies.single), {
+        'imgs-': ['photo_hash12_ab12cd34ef.jpg'],
+      });
+      expect(api.files, ['photo_hash123.jpg']);
+      expect(remote.fullNamesCache['row-1'], ['photo_hash123.jpg']);
+    });
+
+    test('ordinary deletion matches PocketBase suffixes case-insensitively',
+        () async {
+      api.files = ['PHOTO_HASH12_AB12CD34EF.JPG'];
+
+      final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+      expect(deleted, isTrue);
+      expect(api.files, isEmpty);
+      expect(remote.fullNamesCache['row-1'], isEmpty);
+      expect(jsonDecode(api.requestBodies.single), {
+        'imgs-': ['PHOTO_HASH12_AB12CD34EF.JPG'],
+      });
+    });
+
+    for (final filename in [
+      'photo_hash12_1_2.jpg',
+      'photo_hash12_1_2_ab12cd34ef.jpg',
+    ]) {
+      test('ordinary deletion accepts upload collision suffixes $filename',
+          () async {
+        api.files = [filename];
+
+        final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+        expect(deleted, isTrue);
+        expect(api.files, isEmpty);
+        expect(remote.fullNamesCache['row-1'], isEmpty);
+        expect(jsonDecode(api.requestBodies.single), {
+          'imgs-': [filename],
+        });
+      });
+    }
+
+    test('legacy basename deletion accepts generated hashes and stored suffixes',
+        () async {
+      api.files = ['photo_h0123456789abcdef_ab12cd34ef.jpg'];
+
+      final deleted = await remote.deleteImage('row-1', 'photo');
+
+      expect(deleted, isTrue);
+      expect(api.updateCount, 1);
+      expect(api.files, isEmpty);
+      expect(remote.fullNamesCache['row-1'], isEmpty);
+    });
+
+    for (final filename in [
+      'other_photo_hash12.jpg',
+      'photo_hash12.png',
+      'photo_hash12_extra_part.jpg',
+    ]) {
+      test('ordinary deletion rejects unrelated attachment $filename',
+          () async {
+        api.files = [filename];
+
+        final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+        expect(deleted, isFalse);
+        expect(api.updateCount, 0);
+        expect(api.files, [filename]);
+      });
+    }
+
+    test('ordinary deletion preserves ambiguous legacy matches', () async {
+      api.files = [
+        'photo_hash12_ab12cd34ef.jpg',
+        'photo_hash12_zz98yy76xx.jpg',
+      ];
+      final original = List<String>.from(api.files);
+
+      final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+      expect(deleted, isFalse);
+      expect(api.updateCount, 0);
+      expect(api.files, original);
+      expect(remote.fullNamesCache['row-1'], original);
+    });
+
+    test('exact ordinary deletion wins over legacy candidates', () async {
+      api.files = [
+        'photo_hash12_ab12cd34ef.jpg',
+        'photo_hash12.jpg',
+        'photo_hash123.jpg',
+      ];
+
+      final deleted = await remote.deleteImage('row-1', 'photo_hash12.jpg');
+
+      expect(deleted, isTrue);
+      expect(api.files, [
+        'photo_hash12_ab12cd34ef.jpg',
+        'photo_hash123.jpg',
+      ]);
+      expect(remote.fullNamesCache['row-1'], api.files);
+      expect(jsonDecode(api.requestBodies.single), {
+        'imgs-': ['photo_hash12.jpg'],
+      });
+    });
+
+    test('ordinary extensionless deletion requires a basename boundary',
+        () async {
+      api.files = ['photo2_hash.jpg'];
+
+      final deleted = await remote.deleteImage('row-1', 'photo');
+
+      expect(deleted, isFalse);
+      expect(api.updateCount, 0);
+      expect(api.files, ['photo2_hash.jpg']);
+    });
+
+    test('ordinary deletion never falls back to a DICOM attachment',
+        () async {
+      api.files = ['photo_hash12.dcm.png'];
+
+      final deleted = await remote.deleteImage('row-1', 'photo_hash12');
+
+      expect(deleted, isFalse);
+      expect(api.updateCount, 0);
+      expect(api.files, ['photo_hash12.dcm.png']);
     });
 
     test('near-colliding ordinary filename is uploaded rather than reused',

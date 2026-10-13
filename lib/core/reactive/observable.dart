@@ -9,6 +9,20 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   final Map<String, Map<String, dynamic>> _jsonCopies = {};
   final Map<String, G> _dictionary = {};
 
+  int _revision = 0;
+  int get revision => _revision;
+
+  /// Store-owned synchronous bookkeeping; public observers remain asynchronous.
+  void Function(List<DictEvent>)? onMutation;
+
+  @override
+  void notifyObservers(List<DictEvent> event) {
+    // Persistence captures mutations before asynchronous views or logout run.
+    _revision++;
+    if (!isSilent) onMutation?.call(event);
+    super.notifyObservers(event);
+  }
+
   G? get(String id) {
     return _dictionary[id];
   }
@@ -86,8 +100,8 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
     );
 
     _dictionary.addAll(items);
-    _jsonCopies.addAll(jsonMaps.map(
-        (id, json) => MapEntry(id, _copyJsonMap(json))));
+    _jsonCopies
+        .addAll(jsonMaps.map((id, json) => MapEntry(id, _copyJsonMap(json))));
 
     notifyObservers(items.entries
         .map((item) => DictEvent.add(item.key, document: item.value))

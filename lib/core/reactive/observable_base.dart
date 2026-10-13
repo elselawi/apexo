@@ -50,6 +50,7 @@ class ObservableBase<S> {
   /// it swapped its stream on every rebuild — and re-subscribe every time.
   late final Stream<S> stream = _controller.stream;
   double _silent = 0;
+  bool get isSilent => _silent != 0;
 
   void notifyObservers(S event) {
     if (_silent != 0) return;

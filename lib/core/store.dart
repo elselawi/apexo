@@ -48,8 +48,8 @@ class Store<G extends Model> {
     this.manualSyncOnly,
     this.effects = const StoreEffects(),
     DocumentLoader<G>? loadDocuments,
-  }) : loadDocuments = loadDocuments ?? loadStoreDocuments<G>,
-       observableMap = ObservableDict() {
+  })  : loadDocuments = loadDocuments ?? loadStoreDocuments<G>,
+        observableMap = ObservableDict() {
     // loading from local
     loaded = deleteMemoryAndLoadFromPersistence();
   }
@@ -83,6 +83,35 @@ class Store<G extends Model> {
   final SerialOperationQueue _persistence = SerialOperationQueue();
   Future<List<SyncResult>>? _syncTask;
   bool _initialized = false;
+  Future<void>? _sessionSave;
+
+  void _preserveSessionChanges() {
+    final target = local;
+    if (target == null || changes.isEmpty) return;
+    final snapshot = <String, String>{};
+    for (final event in changes) {
+      final document = observableMap.get(event.id);
+      if (document != null) snapshot[event.id] = _serialize(document);
+    }
+    if (snapshot.isEmpty) return;
+    final needsRemoteSync = remote != null;
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final saving = _persistence.run(() async {
+      await target.put(snapshot);
+      if (needsRemoteSync) {
+        final deferred = await target.getDeferred();
+        await target.putDeferred({
+          ...deferred,
+          for (final id in snapshot.keys) id: timestamp,
+        });
+      }
+    });
+    _sessionSave = saving;
+    unawaited(saving.catchError((Object error, StackTrace stack) {
+      effects.log(
+          'Could not preserve edits while ending session: $error', stack);
+    }));
+  }
 
   @mustCallSuper
   void init() {
@@ -90,7 +119,7 @@ class Store<G extends Model> {
     _initialized = true;
 
     // setting up observers
-    observableMap.observe((events) {
+    observableMap.onMutation = (events) {
       if (events.isEmpty) return;
       if (events[0].type == DictEventType.modify &&
           events[0].id == "__ignore_view__") {
@@ -99,10 +128,18 @@ class Store<G extends Model> {
       }
 
       for (final element in events) {
-        final doc = element.document;
+        if (element.type == DictEventType.remove) {
+          if (element.id == '__removed_all__') {
+            archived.clear();
+          } else {
+            archived.remove(element.id);
+          }
+          continue;
+        }
+        final doc = observableMap.get(element.id);
         if (doc == null) continue;
         if (doc.archived == true) {
-          archived[doc.id] = doc as G;
+          archived[doc.id] = doc;
         } else {
           archived.remove(doc.id);
         }
@@ -110,7 +147,7 @@ class Store<G extends Model> {
 
       changes.addAll(events.where((c) => c.id != "__ignore_view__"));
       _processChanges();
-    });
+    };
   }
 
   /// reloads the store from the local database
@@ -153,9 +190,13 @@ class Store<G extends Model> {
     final session = _persistenceSession;
     final sessionLocal = local;
     final sessionRemote = remote;
-    unawaited(_persistence.run(() => _processChangesForSession(
-      session, sessionLocal, sessionRemote,
-    )).catchError((Object e, StackTrace s) {
+    unawaited(_persistence
+        .run(() => _processChangesForSession(
+              session,
+              sessionLocal,
+              sessionRemote,
+            ))
+        .catchError((Object e, StackTrace s) {
       effects.log('Error while persisting store changes: $e', s);
     }));
   }
@@ -426,8 +467,10 @@ class Store<G extends Model> {
           // FILE||row||filename. Ignore malformed entries rather than
           // allowing one corrupt queue key to abort the entire sync pass.
           if (!isValidDeferredFileKey(entry.key, entry.value)) {
-            effects.log('Deferred file: discarding malformed key "${entry.key}"',
-                null, 1);
+            effects.log(
+                'Deferred file: discarding malformed key "${entry.key}"',
+                null,
+                1);
             succeededFileKeys.add(entry.key);
             continue;
           }
@@ -652,8 +695,26 @@ class Store<G extends Model> {
         }
       }
 
-      if (session == _persistenceSession && changes.isEmpty) {
-        await deleteMemoryAndLoadFromPersistence();
+      if (session == _persistenceSession && toLocalWrite.isNotEmpty) {
+        final pendingIds = changes.map((event) => event.id).toSet();
+        final visibleUpdates = <String, G>{};
+        final visibleJson = <String, Map<String, dynamic>>{};
+        for (final entry in toLocalWrite.entries) {
+          if (pendingIds.contains(entry.key)) continue;
+          final json = jsonDecode(entry.value) as Map<String, dynamic>;
+          final document = modeling(json);
+          visibleUpdates[entry.key] = document;
+          visibleJson[entry.key] = json;
+          if (document.archived == true) {
+            archived[entry.key] = document;
+          } else {
+            archived.remove(entry.key);
+          }
+        }
+        observableMap.silently(() {
+          observableMap.setAllWithJson(visibleUpdates, visibleJson);
+        });
+        if (visibleUpdates.isNotEmpty) notify();
       }
 
       return SyncResult(
@@ -677,9 +738,10 @@ class Store<G extends Model> {
   /// Stops session-scoped persistence safely before its local/remote targets
   /// are replaced (for example when a user signs into another clinic).
   ///
-  /// Work that was already awaiting I/O is invalidated first, then allowed to
-  /// finish before its Hive boxes can be closed by the caller.
+  /// Pending edits are captured for the old local adapter before session-bound
+  /// network work is invalidated. Drain that save before closing its Hive boxes.
   Future<void> deactivatePersistenceSession() async {
+    _preserveSessionChanges();
     _persistenceSession++;
     final syncing = _syncTask;
     changes.clear();
@@ -689,13 +751,16 @@ class Store<G extends Model> {
     if (syncing != null) await syncing;
 
     await _persistence.drain();
+    await _sessionSave;
     await _realtime.drain();
   }
 
   /// Ends session-bound listeners and queued persistence work on logout.
   /// Unlike [deactivatePersistenceSession], this retains local storage so a
   /// later login to the same clinic can load its offline data normally.
+  /// The latest edits are queued to that adapter without further network I/O.
   void endSession() {
+    _preserveSessionChanges();
     _persistenceSession++;
     changes.clear();
     deferredPresent = false;
@@ -738,13 +803,13 @@ class Store<G extends Model> {
     final sessionRemote = remote;
     if (sessionRemote != null && manualSyncOnly != true) {
       _realtime.start(() => sessionRemote.pbInstance
-          .collection(dataCollectionName)
-          .subscribe('*', (msg) {
-        if (session == _persistenceSession &&
-            msg.record?.data['store'] == sessionRemote.storeName) {
-          unawaited(synchronize());
-        }
-      }));
+              .collection(dataCollectionName)
+              .subscribe('*', (msg) {
+            if (session == _persistenceSession &&
+                msg.record?.data['store'] == sessionRemote.storeName) {
+              unawaited(synchronize());
+            }
+          }));
     }
 
     lastProcessChanges = DateTime.now().millisecondsSinceEpoch;
@@ -865,7 +930,8 @@ class Store<G extends Model> {
         } catch (e, s) {
           effects.reportError(e, "deletingFile");
           effects.authenticationFailed(e);
-          effects.log("Error during deleting the file (Will defer upload): $e", s);
+          effects.log(
+              "Error during deleting the file (Will defer upload): $e", s);
         }
       }
 
@@ -902,7 +968,8 @@ class Store<G extends Model> {
     try {
       await deleteImg(rowID, '$dcmName.png');
     } catch (e, s) {
-      effects.log("deleteDcmImg: PNG preview not deleted (may not exist): $e", s);
+      effects.log(
+          "deleteDcmImg: PNG preview not deleted (may not exist): $e", s);
     }
   }
 
@@ -975,6 +1042,7 @@ class Store<G extends Model> {
   Future<void> waitUntilChangesAreProcessed() async {
     await Future<void>.delayed(Duration.zero);
     await _persistence.drain();
+    await _sessionSave;
     if (local != null && changes.isNotEmpty) {
       throw StateError('Store changes could not be persisted');
     }
@@ -1088,12 +1156,14 @@ class Store<G extends Model> {
 
   @visibleForTesting
   Future<SyncResult> debugSyncTry() => _syncTry(_persistenceSession);
-
 }
 
 class _ConflictInfo {
-  _ConflictInfo({required this.dfID, required this.remoteConflictIndex,
-    required this.localWins, required this.remoteData});
+  _ConflictInfo(
+      {required this.dfID,
+      required this.remoteConflictIndex,
+      required this.localWins,
+      required this.remoteData});
   final String dfID;
   final int remoteConflictIndex;
   final bool localWins;

@@ -227,12 +227,21 @@ class Patient extends Model {
 
   String? _searchString;
   List<PatientTableLabel>? _labels;
+  int _appointmentsRevision = -1;
+
+  void _ensureAppointmentsRevision() {
+    if (_appointmentsRevision == appointments.observableMap.revision) return;
+    nullifyLabels();
+    _appointmentsRevision = appointments.observableMap.revision;
+  }
+
   void nullifyLabels() {
     _labels = null;
     _searchString = null;
   }
 
   String get searchString {
+    _ensureAppointmentsRevision();
     return _searchString ??=
         (title + tableLabels.map((x) => x.searchableString).join(" "))
             .toLowerCase()
@@ -240,6 +249,7 @@ class Patient extends Model {
   }
 
   List<PatientTableLabel> get tableLabels {
+    _ensureAppointmentsRevision();
     if (_labels != null) return _labels!;
     final List<PatientTableLabel> _ = [];
 

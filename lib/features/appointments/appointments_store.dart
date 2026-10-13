@@ -25,8 +25,17 @@ class Appointments extends Store<Appointment> {
           },
         );
 
+  int _cacheRevision = -1;
+
+  void _ensureCacheRevision() {
+    if (_cacheRevision == observableMap.revision) return;
+    nullifyAppointmentsCache(null);
+    _cacheRevision = observableMap.revision;
+  }
+
   void _rebuildCache() {
-    labs.clear();
+    _ensureCacheRevision();
+    _labs.clear();
     final newByPatientCache = <String, Map<String, List<Appointment>>>{};
 
     _todayAppointments = [];
@@ -43,7 +52,7 @@ class Appointments extends Store<Appointment> {
       final isPast = appointment.date.isBefore(now);
 
       if (appointment.hasLabwork && appointment.labName.isNotEmpty) {
-        labs.add(appointment.labName);
+        _labs.add(appointment.labName);
       }
 
       if (appointment.date.year == today.year &&
@@ -83,6 +92,7 @@ class Appointments extends Store<Appointment> {
 
   List<Appointment>? _thisMonthAppointments;
   List<Appointment> get thisMonthAppointments {
+    _ensureCacheRevision();
     if (_thisMonthAppointments != null) {
       return _thisMonthAppointments!;
     }
@@ -92,6 +102,7 @@ class Appointments extends Store<Appointment> {
 
   List<Appointment>? _todayAppointments;
   List<Appointment> get todayAppointments {
+    _ensureCacheRevision();
     if (_todayAppointments != null) {
       return _todayAppointments!;
     }
@@ -101,6 +112,7 @@ class Appointments extends Store<Appointment> {
 
   Map<String, Map<String, List<Appointment>>>? _byPatientCache;
   Map<String, Map<String, List<Appointment>>> get byPatient {
+    _ensureCacheRevision();
     if (_byPatientCache != null) {
       return _byPatientCache!;
     }
@@ -108,26 +120,19 @@ class Appointments extends Store<Appointment> {
     return _byPatientCache!;
   }
 
-  Set<String> labs = {};
+  final Set<String> _labs = {};
+  Set<String> get labs {
+    _ensureCacheRevision();
+    if (_byPatientCache == null) _rebuildCache();
+    return _labs;
+  }
 
   void nullifyAppointmentsCache(_) {
     _byPatientCache = null;
     _todayAppointments = null;
     _thisMonthAppointments = null;
     _allPrescriptions = null;
-    labs.clear();
-  }
-
-  @override
-  void set(Appointment item) {
-    super.set(item);
-    nullifyAppointmentsCache(null);
-  }
-
-  @override
-  void setAll(List<Appointment> items) {
-    super.setAll(items);
-    nullifyAppointmentsCache(null);
+    _labs.clear();
   }
 
   late final _session = StoreSessionBinding<Appointment>(
@@ -140,7 +145,6 @@ class Appointments extends Store<Appointment> {
   void init() {
     super.init();
     _session.install();
-    observableMap.observe(nullifyAppointmentsCache);
 
   }
 
@@ -154,6 +158,7 @@ class Appointments extends Store<Appointment> {
 
   List<String>? _allPrescriptions;
   List<String> get allPrescriptions {
+    _ensureCacheRevision();
     return _allPrescriptions ??=
         Set<String>.from(present.values.expand((doc) => doc.prescriptions))
             .toList();

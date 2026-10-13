@@ -38,14 +38,13 @@ class PatientsScreen extends StatelessWidget {
         ],
         builder: (context, snapshot) {
           // ignore: prefer_const_constructors
-          return _PatientsPage(DateTime.now().millisecondsSinceEpoch);
+          return _PatientsPage();
         });
   }
 }
 
 class _PatientsPage extends StatefulWidget {
-  const _PatientsPage(this.tick);
-  final int tick;
+  const _PatientsPage();
   @override
   State<_PatientsPage> createState() => _PatientsPageState();
 }
@@ -70,10 +69,7 @@ class _PatientsPageState extends State<_PatientsPage> {
   @override
   void didUpdateWidget(covariant _PatientsPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // If parent streams emit a modification, recalculate the visible records
-    if (oldWidget.tick != widget.tick) {
-      _updateItems();
-    }
+    _updateItems();
   }
 
   @override

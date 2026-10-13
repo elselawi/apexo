@@ -152,6 +152,38 @@ void main() {
           {'drug-a', 'drug-b', 'drug-c'});
     });
 
+    test('direct dictionary changes invalidate caches before notification', () {
+      appointments.set(testAppointment(
+        id: 'edited',
+        patientID: 'patient',
+        date: DateTime.now().subtract(const Duration(days: 1)),
+        isDone: true,
+        paid: 10,
+        prescriptions: ['old'],
+      ));
+      expect(appointments.byPatient['patient']!['done']!.single.paid, 10);
+      expect(appointments.allPrescriptions, ['old']);
+
+      appointments.observableMap.set(testAppointment(
+        id: 'edited',
+        patientID: 'other-patient',
+        date: DateTime.now().subtract(const Duration(days: 1)),
+        isDone: true,
+        paid: 75,
+        prescriptions: ['new'],
+      ));
+
+      expect(appointments.byPatient.containsKey('patient'), isFalse);
+      expect(appointments.byPatient['other-patient']!['done']!.single.paid, 75);
+      expect(appointments.allPrescriptions, ['new']);
+
+      appointments.observableMap.clear();
+      expect(appointments.byPatient, isEmpty);
+      expect(appointments.todayAppointments, isEmpty);
+      expect(appointments.thisMonthAppointments, isEmpty);
+      expect(appointments.allPrescriptions, isEmpty);
+    });
+
     test('cache invalidation includes prescriptions and labs', () {
       appointments.set(testAppointment(id: 'first', prescriptions: ['old']));
       expect(appointments.allPrescriptions, ['old']);
@@ -165,9 +197,34 @@ void main() {
       ));
 
       expect(appointments.allPrescriptions.toSet(), {'old', 'new'});
-      // `labs` is populated while the appointment cache is rebuilt.
-      appointments.todayAppointments;
       expect(appointments.labs, {'New Lab'});
+    });
+
+    test('labs refresh independently after direct and silent mutations', () {
+      final appointment = testAppointment(
+        id: 'lab-appointment',
+        hasLabwork: true,
+        labName: 'First Lab',
+      );
+      appointments.observableMap.set(appointment);
+      expect(appointments.labs, {'First Lab'});
+
+      appointments.observableMap.set(appointment.copy(false)..labName = 'New Lab');
+      expect(appointments.labs, {'New Lab'});
+
+      final reloaded = appointment.copy(false)..labName = 'Reloaded Lab';
+      appointments.observableMap.silently(() {
+        appointments.observableMap.setAllWithJson(
+          {reloaded.id: reloaded},
+          {reloaded.id: reloaded.toJson()},
+        );
+      });
+      expect(appointments.labs, {'Reloaded Lab'});
+
+      appointments.observableMap.set(reloaded.copy(false)..archived = true);
+      expect(appointments.labs, isEmpty);
+      appointments.observableMap.clear();
+      expect(appointments.labs, isEmpty);
     });
   });
 }

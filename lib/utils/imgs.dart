@@ -461,8 +461,9 @@ bool isADcmName(String name) {
 /// via [saveFileUtility].
 ///
 /// If [name] is already a URL (starts with `http`), it is downloaded directly.
-/// Otherwise the local cache is checked first, then [rowId] + [name] are used
-/// to resolve a remote URL via [getImageLink].
+/// Otherwise the local cache is checked first on native platforms, then
+/// [rowId] + [name] are used to resolve a remote URL via [getImageLink].
+/// Web downloads always use the remote file, without accessing the filesystem.
 Future<void> downloadFile(String? rowId, String name) async {
   final saveAs = displayNameForFile(name);
   Uint8List bytes;
@@ -471,7 +472,7 @@ Future<void> downloadFile(String? rowId, String name) async {
     final response = await http.get(Uri.parse(name));
     if (response.statusCode != 200) throw Exception('Download failed');
     bytes = response.bodyBytes;
-  } else if (await checkIfFileExists(name)) {
+  } else if (!kIsWeb && await checkIfFileExists(name)) {
     final file = await getOrCreateFile(name);
     bytes = await file.readAsBytes();
   } else if (rowId != null) {

@@ -4,14 +4,15 @@
 /// authoritative source of which files exist.
 const _imageFields = ['imgs', 'dcmImgs'];
 
-/// Map fields (tooth notes, drawings) that are merged per-key with
-/// last-writer-wins for same-key conflicts.  This lets two devices edit
-/// *different* keys (e.g. different teeth) without losing either edit.
+/// Deletion-capable map fields whose winning snapshot is authoritative.
 const _mapFields = ['teeth', 'teethExtraNotes', 'drawings'];
 
 /// List fields that are merged by union with dedup.  Only fields whose
 /// semantics are additive (multi-assignment) belong here.
 const _unionListFields = ['operatorsIDs'];
+
+/// Deletion-capable lists, including defaults omitted by model serialization.
+const _lwwListFields = ['tags', 'prescriptions'];
 
 /// Merges two JSON representations of the same record after a sync
 /// conflict, instead of discarding one entire version.
@@ -24,16 +25,22 @@ const _unionListFields = ['operatorsIDs'];
 ///   `imgs` column), which is the authoritative source of which files
 ///   exist.  Filenames in [pendingUploads] are kept even if not yet on
 ///   the server (deferred uploads).
-/// - **Map fields** (`teeth`, `teethExtraNotes`, `drawings`): per-key
-///   LWW — different keys survive from both sides; same-key conflict
-///   resolved by [localWins].
+/// - **Map fields** (`teeth`, `teethExtraNotes`, `drawings`): whole-field
+///   LWW — only the winner's entries survive; an omitted map is empty.
 /// - **`operatorsIDs`**: union with dedup (additive semantics).
-/// - **`tags`/`prescriptions`**: whole-field LWW (no merge).
+/// - **`tags`/`prescriptions`**: whole-field LWW; an omitted list is empty.
+///
+/// No common ancestor or per-key deletion history is available. A loser-only
+/// entry could be an addition or an entry deleted by the winner; these cannot
+/// be distinguished from two snapshots. Deletion-capable collections therefore
+/// use the winner's entire snapshot, intentionally discarding losing additions
+/// rather than risking resurrection. Omitting a default collection must not
+/// fall back to the losing value.
 ///
 /// [localJson]/[remoteJson] are the full `toJson()` output for each
-/// side.  [localWins] selects the winner for same-field/same-key
-/// conflicts.  [serverFiles] is the list of filenames PB actually has
-/// for this record (may be empty).  [pendingUploads] is the set of
+/// side, not patches. [localWins] selects the authoritative collection snapshot
+/// and resolves same-field scalar conflicts. [serverFiles] lists filenames PB
+/// actually has for this record (may be empty). [pendingUploads] contains
 /// filenames queued for deferred upload to this record.
 ///
 /// Returns the merged JSON map.
@@ -73,32 +80,16 @@ Map<String, dynamic> mergeConflict({
       continue;
     }
 
-    // ── Map fields: per-key LWW ──
+    // ── Deletion-capable maps: authoritative winner snapshot ──
     if (_mapFields.contains(key)) {
-      final localMap = _toStringMap(localVal);
-      final remoteMap = _toStringMap(remoteVal);
-      // Winner's keys win for same-key conflicts; loser's distinct
-      // keys survive.  This preserves deletions on the winning side
-      // (a deleted key is simply absent from the winner's map).
-      final mapKeys = <String>{...localMap.keys, ...remoteMap.keys};
-      final mergedMap = <String, String>{};
-      for (final mk in mapKeys) {
-        if (winner.containsKey(key) && winner[key] is Map) {
-          // Winner takes precedence for keys it has.
-          final wMap = _toStringMap(winner[key]);
-          if (wMap.containsKey(mk)) {
-            mergedMap[mk] = wMap[mk]!;
-            continue;
-          }
-        }
-        // Otherwise take from whichever side has it.
-        if (localMap.containsKey(mk)) {
-          mergedMap[mk] = localMap[mk]!;
-        } else if (remoteMap.containsKey(mk)) {
-          mergedMap[mk] = remoteMap[mk]!;
-        }
-      }
-      if (mergedMap.isNotEmpty) merged[key] = mergedMap;
+      final winnerMap = _toStringMap(winner[key]);
+      if (winnerMap.isNotEmpty) merged[key] = winnerMap;
+      continue;
+    }
+
+    // ── Whole-list LWW: omitted defaults must stay omitted ──
+    if (_lwwListFields.contains(key)) {
+      if (winner.containsKey(key)) merged[key] = winner[key];
       continue;
     }
 
@@ -114,10 +105,9 @@ Map<String, dynamic> mergeConflict({
       continue;
     }
 
-    // ── LWW list fields (tags, prescriptions) & all other scalars ──
-    // Whole-field LWW: take the winner's value if present, else the
-    // loser's.  This also covers `date` (always present → winner wins)
-    // and scalar fields like `name`/`phone`/`age`.
+    // ── Other fields: winner when present, otherwise loser ──
+    // This covers `date` (always present → winner wins) and preserves
+    // existing default-absent scalar behavior for `name`/`phone`/`age`.
     if (winner.containsKey(key)) {
       merged[key] = winner[key];
     } else if (loser.containsKey(key)) {

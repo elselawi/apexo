@@ -9,7 +9,12 @@
     - Rows in patients, appointments, labworks, expenses and accounts open a context menu on a long press (touch) or a right click (mouse, trackpad or pen): the actions that row already offers, anchored where you pressed, with the platform's touch feedback on the long press and following the reading direction in Arabic and Persian. On the web, where the browser keeps right click for itself, the long press opens the menu. A row that opens a panel now lists one item per tab, so a patient's dental notes, an appointment's operative details or a supplier's paid orders sit one press away, and reaching a patient is part of the same menu: call, text, WhatsApp, Telegram and email.
 
 - Reliability & Bug Fixes
+    - Patient tables and appointment payment summaries now refresh consistently after appointment edits, reassignment, archiving and synchronization, including in already-open patient panels.
+    - Fixed image and X-ray downloads on the web and enabled saving user-selected files in sandboxed macOS builds.
     - Improved saving and synchronization so overlapping operations do not lose later edits, pending offline changes survive reconnects, and outdated login sessions cannot overwrite current data.
+    - Queued saves are preserved locally when logging out or switching clinics. Incoming updates become visible even while another record is being edited, and bulk imports keep the archive index consistent.
+    - Conflict resolution keeps the winning edit's prescriptions, tags, tooth annotations and drawings, including intentional deletions, rather than restoring removed entries from the losing edit.
+    - Remote synchronization uses bounded keyset pagination so concurrent updates do not skip records. Attachment deletion rejects ambiguous names and filename-prefix collisions instead of deleting a different file.
     - Editing panels keep unsaved changes separate from stored records. Deleting or restoring from a panel saves its current edits and clears unnecessary save prompts; failed saves keep the draft available for correction.
     - Patient link generation and access changes no longer leave a false unsaved-changes warning or mark unrelated edits as saved. Failed link generation leaves the existing link unchanged.
     - Settings fields no longer reset the cursor while typing. Cancel restores the latest saved value, and incoming settings updates do not overwrite unfinished edits.

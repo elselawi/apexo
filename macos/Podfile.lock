@@ -1,25 +1,19 @@
 PODS:
-  - dicom_toolkit (0.0.1):
-    - FlutterMacOS
   - FlutterMacOS (1.0.0)
   - printing (1.0.0):
     - FlutterMacOS
 
 DEPENDENCIES:
-  - dicom_toolkit (from `Flutter/ephemeral/.symlinks/plugins/dicom_toolkit/macos`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - printing (from `Flutter/ephemeral/.symlinks/plugins/printing/macos`)
 
 EXTERNAL SOURCES:
-  dicom_toolkit:
-    :path: Flutter/ephemeral/.symlinks/plugins/dicom_toolkit/macos
   FlutterMacOS:
     :path: Flutter/ephemeral
   printing:
     :path: Flutter/ephemeral/.symlinks/plugins/printing/macos
 
 SPEC CHECKSUMS:
-  dicom_toolkit: de58df8721960d0937cfd99efd7775d330438f28
   FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
   printing: 1dd6a1fce2209ec240698e2439a4adbb9b427637
 

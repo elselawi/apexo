@@ -104,8 +104,8 @@ Live-backend tests are separate and must be explicitly requested/configured. The
 
 - For MacOS
    - build with: `shorebird release --platforms macos -- --release`
-   - then run: `cd macos && pod install`
-   - then `open with xcode` this should open `Runner.xcworkspace` not `Runner.xcodeproj`
+   - then run: `cd macos && pod install` ("2 dependencies from the Podfile" and the "CocoaPods did not set the base configuration" warnings are expected: `printing` is the only plugin left on CocoaPods, everything else resolves through Swift Package Manager, and the Pods xcconfig is already included through `Flutter/Flutter-Debug.xcconfig` and `Flutter/Flutter-Release.xcconfig`, so nothing needs to be changed)
+   - then open the macOS workspace from the repo root: `open macos/Runner.xcworkspace` (never `Runner.xcodeproj`, and never the workspace under `ios/`)
    - then go to product -> archive
    - after build finishes it will open a new window -> Distribute -> direct distribute (for notarization)
    - wait for the notification
@@ -117,6 +117,11 @@ Live-backend tests are separate and must be explicitly requested/configured. The
    - staple dmg: `xcrun stapler staple apexo-installer.dmg`
    - Upload it: `wrangler r2 object put apexo-releases/releases/0.10.6/Apexo-Installer.dmg --file=Apexo-Installer.dmg --remote`
    - Update the `metadata.json` and upload it: `wrangler r2 object put apexo-releases/metadata.json --file=metadata.json --remote`
+   - troubleshooting:
+      - `error: The sandbox is not in sync with the Podfile.lock` with `diff: .../Pods/Manifest.lock: No such file or directory`: look at the directory the error prints. A path under `ios/` (and a `Release-iphoneos` intermediate) means the **iOS** workspace was archived - close it and archive `macos/Runner.xcworkspace` instead.
+      - `Multiple commands produce .../Sentry.framework` or `Target 'Runner' has copy command from ...`: the leftover `macos/Pods` was generated before the Swift Package Manager migration, so the old pods and Swift Package Manager both embed the same framework. Fix it with `rm -rf macos/Pods` (keep `Podfile.lock`) and re-run `flutter pub get`, `pod install` and the build.
+      - `xcodebuild: error: Could not resolve package dependencies`: a dropped GitHub clone leaves a half-cloned repository in `build/macos/SourcePackages`. Re-run the build (repositories are cached in `~/Library/Caches/org.swift.swiftpm`), and if the big clones keep failing, set `git config --global http.version HTTP/1.1`.
+      - after moving/renaming the project folder, Xcode keeps state pointing at the old location: delete the project's stale `~/Library/Developer/Xcode/DerivedData/Runner-*` folders and reopen the workspace (a build folder clean from Xcode is enough for the app products).
 
 - For windows: (On a windows machine)
    - build with `shorebird release --platforms windows`

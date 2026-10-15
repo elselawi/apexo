@@ -578,11 +578,20 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                     type: StateType.treatment,
                     historyTitle: 'toothHistory',
                     history: [
-                      ToothHistory(label: txt('toothPatientHistory'), teeth: Map.of(patient!.teeth), notes: Map.of(patient.teethExtraNotes)),
+                      ToothHistory(
+                        label: txt('toothPatientHistory'),
+                        teeth: Map.of(patient!.teeth),
+                        notes: Map.of(patient.teethExtraNotes),
+                      ),
                       for (final previous in patient.allAppointments)
-                        if (previous.id != widget.appointment.id && previous.date.isBefore(widget.appointment.date))
-                          ToothHistory(label: DF.allNumbers(previous.date), date: previous.date, appointmentId: previous.id,
-                            teeth: Map.of(previous.teeth), notes: Map.of(previous.teethExtraNotes)),
+                        if (previous.id != widget.appointment.id)
+                          ToothHistory(
+                            label: DF.allNumbers(previous.date),
+                            date: previous.date,
+                            appointmentId: previous.id,
+                            teeth: Map.of(previous.teeth),
+                            notes: Map.of(previous.teethExtraNotes),
+                          ),
                     ],
                     onOpenAppointment: (id) {
                       final previous = appointments.get(id);

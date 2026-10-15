@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/notation.dart';
+import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
 import 'package:apexo/common_widgets/teeth_selector/svg.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
@@ -94,6 +95,38 @@ class _TeethSelectorState extends State<TeethSelector> {
 
   @override
   Widget build(BuildContext context) {
+    if (MediaQuery.sizeOf(context).width >= kOpgViewportMinWidth) {
+      return OpgDentalChart(
+        currentNotes: widget.currentNotes,
+        oldNotes: widget.oldNotes,
+        extraNotes: _extraNotes,
+        leftString: widget.leftString,
+        rightString: widget.rightString,
+        textStyle: widget.textStyle,
+        showPermanent: showPermanent,
+        showPrimary: showPrimary,
+        onShowPermanentChanged: (checked) =>
+            setState(() => showPermanent = checked),
+        onShowPrimaryChanged: (checked) =>
+            setState(() => showPrimary = checked),
+        history: widget.history,
+        historyTitle: widget.historyTitle,
+        onOpenAppointment: widget.onOpenAppointment,
+        notation: widget.notation,
+        type: widget.type,
+        onNote: (iso, tooth) {
+          setState(() {
+            widget.onNote(iso, tooth);
+            if (tooth == null) _extraNotes.remove(iso);
+          });
+        },
+        onExtraNote: (iso, text) {
+          setState(() => _extraNotes[iso] = text);
+          widget.onExtraNote?.call(iso, text);
+        },
+      );
+    }
+
     if (data.size == Size.zero) return const UnconstrainedBox();
     final allNotes = <String>{
       ...[
@@ -279,6 +312,44 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
     super.dispose();
   }
 
+  String _tooltipMessage(String tKey) {
+    final blocks = <String>[];
+    final current = widget.currentNote?.trim() ?? '';
+    final extra = widget.extraNote.trim();
+    if (current.isNotEmpty || extra.isNotEmpty) {
+      blocks.add([
+        if (current.isNotEmpty) txt(current),
+        if (extra.isNotEmpty) extra,
+      ].join('\n'));
+    }
+
+    final matchedHistory = widget.history
+        .where((record) =>
+            record.teeth.containsKey(tKey) ||
+            record.notes[tKey]?.isNotEmpty == true)
+        .toList()
+      ..sort((a, b) =>
+          (b.date ?? DateTime(9999)).compareTo(a.date ?? DateTime(9999)));
+
+    for (final record in matchedHistory) {
+      final cond = record.teeth[tKey]?.trim() ?? '';
+      final note = record.notes[tKey]?.trim() ?? '';
+      final lines = <String>[
+        if (record.label.isNotEmpty) record.label,
+        if (cond.isNotEmpty) txt(cond),
+        if (note.isNotEmpty) note,
+      ];
+      if (lines.isNotEmpty) blocks.add(lines.join('\n'));
+    }
+
+    final old = widget.oldNote?.trim() ?? '';
+    if (matchedHistory.isEmpty && old.isNotEmpty && old != current) {
+      blocks.add(txt(old));
+    }
+
+    return blocks.isNotEmpty ? blocks.join('\n\n') : widget.notation(tKey);
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool darkMode = FluentTheme.of(context).brightness == Brightness.dark;
@@ -324,7 +395,7 @@ class _SingleToothDrawState extends State<_SingleToothDraw> {
             key: WK.tooth(tKey, selected: widget.currentNote != null),
             onTap: () => unawaited(_open(context, tKey)),
             child: Tooltip(
-              message: widget.notation(tKey),
+              message: _tooltipMessage(tKey),
               excludeFromSemantics: true,
               child: Stack(
                 children: [

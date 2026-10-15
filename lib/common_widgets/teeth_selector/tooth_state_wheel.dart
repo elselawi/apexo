@@ -854,8 +854,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                     Text(
                                       record.notes[widget.iso]!,
                                       style: theme.typography.caption?.copyWith(
-                                        fontSize: 11.5,
-                                        height: 1.3,
+                                        fontSize: 13.0,
+                                        height: 1.35,
                                       ),
                                     ),
                                   ],
@@ -1027,7 +1027,7 @@ class _WheelTextField extends StatelessWidget {
       autofocus: autofocus,
       micPlacement: micPlacement,
       decoration: const BoxDecoration(),
-      style: theme.typography.body?.copyWith(fontSize: 12.5, height: 1.25),
+      style: theme.typography.body?.copyWith(fontSize: 14.0, height: 1.3),
       padding: const EdgeInsetsDirectional.fromSTEB(30, 30, 30, 40),
       onChanged: onChanged,
       onTranscriptionDone: onChanged,

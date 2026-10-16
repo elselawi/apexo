@@ -76,7 +76,7 @@ void main() {
         expect(formatter.parse(typeInto(formatter, '${separator}5')), 0.5);
         expect(
           typeInto(formatter, '${separator}5'),
-          '${formatter.formatDouble(0)}${separator}${formatter.formatDouble(5)}',
+          '${formatter.formatDouble(0)}$separator${formatter.formatDouble(5)}',
         );
       });
 
@@ -134,7 +134,8 @@ void main() {
     expect(moneyInputFormatter.parse('۲٬۶۵۰'), 2650);
   });
 
-  testWidgets('MoneyDisplay splits integer and decimal parts using locale separator',
+  testWidgets(
+      'MoneyDisplay splits integer and decimal parts using locale separator',
       (tester) async {
     final originalLocale = localSettings.selectedLocale;
     addTearDown(() => localSettings.selectedLocale = originalLocale);
@@ -146,10 +147,8 @@ void main() {
       child: MoneyDisplay('2650.5 USD'),
     ));
 
-    final texts = tester
-        .widgetList<Text>(find.byType(Text))
-        .map((t) => t.data)
-        .toList();
+    final texts =
+        tester.widgetList<Text>(find.byType(Text)).map((t) => t.data).toList();
     expect(texts, ['2.650', ',', '50 USD']);
   });
 }

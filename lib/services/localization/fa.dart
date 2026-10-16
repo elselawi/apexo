@@ -261,7 +261,7 @@ class Fa implements En {
     "rprimary": "شیری باقی‌مانده",
     "malposition": "جایگاه نامناسب",
     "impacted": "نهفته",
-    "abutment": "دعامة",
+    "abutment": "اباتمنت",
     "pontic": "پونتیک",
 
     // calendar (appointments)
@@ -476,8 +476,8 @@ class Fa implements En {
     "createdDate": "تاریخ ایجاد",
     "changeDueDate": "تغییر تاریخ سررسید",
     "createdBy": "ایجاد شده توسط",
-    "switchAssignee": "تغییر اختصاص‌دهنده",
-    "noAssignee": "بدون اختصاص‌دهنده",
+    "switchAssignee": "تغییر مسئول",
+    "noAssignee": "بدون مسئول",
     "sort": "مرتب‌سازی",
     "ascending": "صعودی",
     "descending": "نزولی",
@@ -562,7 +562,7 @@ class Fa implements En {
     "restoreBackupWarning1":
         "بازیابی این پشتیبان تمام داده‌های موجود در برنامه را بازنویسی می‌کند. هرگونه تغییری که پس از تاریخ این پشتیبان انجام داده‌اید",
     "restoreBackupWarning2":
-        "از بین خواهد رفت.\\n\\nآیا مطمئن هستید که می‌خواهید این پشتیبان را بازیابی کنید؟",
+        "از بین خواهد رفت.\n\nآیا مطمئن هستید که می‌خواهید این پشتیبان را بازیابی کنید؟",
     "sureDeleteBackup": "آیا مطمئن هستید که می‌خواهید این پشتیبان را حذف کنید",
     "backupDate": "تاریخ پشتیبان‌گیری",
     "useTheFollowingLinkToDownloadTheBackup":
@@ -662,7 +662,7 @@ class Fa implements En {
     "s3_info_desc":
         "تنظیمات ذخیره‌سازی سازگار با S3 خود را برای آپلود فایل‌ها و پشتیبان‌گیری پیکربندی کنید.",
     "s3_endpoint": "آدرس نقطه پایانی",
-    "s3_bucket": "نام سطل",
+    "s3_bucket": "نام باکت",
     "s3_region": "منطقه",
     "s3_accessKey": "کلید دسترسی",
     "s3_secretKey": "کلید محرمانه",
@@ -673,8 +673,8 @@ class Fa implements En {
     "s3_forcePathStyle_hint":
         "استفاده از آدرس‌دهی سبک مسیر به جای زیردامنه (مورد نیاز برای Cloudflare R2)",
     "s3_endpoint_hint": "آدرس نقطه پایانی ارائه‌دهنده S3 شما",
-    "s3_bucket_hint": "نام سطل S3 شما",
-    "s3_region_hint": "منطقه سطل، یا 'auto' برای Cloudflare R2",
+    "s3_bucket_hint": "نام باکت S3 شما",
+    "s3_region_hint": "منطقه باکت، یا 'auto' برای Cloudflare R2",
     "s3_accessKey_hint": "شناسه کلید دسترسی S3 شما",
     "s3_test_success": "پیکربندی S3 به درستی کار می‌کند",
     "s3_test_fail": "آزمون پیکربندی S3 ناموفق بود",
@@ -696,7 +696,7 @@ class Fa implements En {
     "smtp_tls": "استفاده از TLS",
     "smtp_tls_auto": "خودکار (STARTTLS)",
     "smtp_tls_always": "همیشه",
-    "smtp_tls_hint": "خودکار = STARTTLS (پورت 587)\\n همیشه = SSL (پورت 465)",
+    "smtp_tls_hint": "خودکار = STARTTLS (پورت 587)\n همیشه = SSL (پورت 465)",
     "smtp_presets": "پیش‌تنظیمات",
     "smtp_port_blocked_warning":
         "برخی از میزبان‌های ابری (مانند DigitalOcean، Hetzner، Google Cloud) به طور پیش‌فرض پورت‌های SMTP خروجی را مسدود می‌کنند. مطمئن شوید که 587 یا 465 مجاز است، یا از پورت دیگری استفاده کنید.",

@@ -247,7 +247,7 @@ class Ar implements En {
     "overlay": "أوفرلاي",
     "temporary": "مؤقت",
     "tap the treatment you have performed to register it to the tooth":
-        "إضغط على العلاج الذي تم اجراءه لتسجيله على السن",
+        "إضغط على العلاج الذي تم إجراؤه لتسجيله على السن",
     "tap the condition or history of the tooth to register it":
         "إضغط على الحالة او التاريخ المرضي للسن لتسجيله",
     "missing": "مفقود",
@@ -255,12 +255,12 @@ class Ar implements En {
     "fractured": "كسر",
     "mobility": "حركة",
     "recession": "إنحسار",
-    "rroot": "جذر متبفي",
+    "rroot": "جذر متبقي",
     "rprimary": "لبني متبقي",
     "malposition": "سوء تموضع",
     "impacted": "مغمور",
     "abutment": "دعامة",
-    "pontic": "طائف",
+    "pontic": "دمية",
 
     // calendar (appointments)
     "allDoctors": "جميع الأطباء",

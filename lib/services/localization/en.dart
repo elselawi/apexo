@@ -190,7 +190,7 @@ class En {
         "No appointments found for this patient, use the button below to add new appointment.",
     "patientPage": "Patient Web Page",
     "patientCanUseTheFollowing":
-        "Patient can use the following link to access his appointments, payments and photos.",
+        "Patient can use the following link to access their appointments, payments and photos.",
     "web": "Web",
     "telegram": "Telegram",
     "printQR": "Print QR Code",
@@ -299,7 +299,7 @@ class En {
     "upload": "Upload",
     "camera": "Camera",
     "emptyGallery": "Empty gallery",
-    "noPhotos": "No photos has been uploaded yet.",
+    "noPhotos": "No photos have been uploaded yet.",
     "otherPhotos": "Photos from other appointments",
     "dcm": "DCM",
     "generatingPreview": "Generating preview…",
@@ -704,7 +704,7 @@ class En {
     "smtp_port_blocked_warning":
         "Some cloud hosts (e.g. DigitalOcean, Hetzner, Google Cloud) block outgoing SMTP ports by default. Make sure 587 or 465 is allowed, or use a different port.",
     "smtp_host_hint": "Your email provider's SMTP server address",
-    "smtp_port_hint": "578 or 465",
+    "smtp_port_hint": "587 or 465",
     "smtp_username_hint": "Usually your full email address",
     "smtp_password_hint":
         "Leave empty to keep unchanged. Use an app-specific password if 2FA is enabled",

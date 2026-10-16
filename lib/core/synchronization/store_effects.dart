@@ -14,5 +14,6 @@ class StoreEffects {
   Future<void> sendPushes(List<PushData> pushes) async {}
   Future<PushData?> pendingPush(String id) async => null;
   Future<void> clearPushes(String store) async {}
+  Future<void> clearPushesByIDs(Iterable<String> ids) async {}
   Future<void> notify(PushData push) async {}
 }

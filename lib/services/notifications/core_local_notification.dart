@@ -76,6 +76,9 @@ class LocalNotificationsService {
     String? body,
     String? payload,
   ) async {
+    if (!_isFlutterLocalNotificationInitialized) {
+      await init();
+    }
     // Android-specific notification details
     final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(

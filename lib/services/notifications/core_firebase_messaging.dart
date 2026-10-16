@@ -16,7 +16,8 @@ class FirebaseMessagingService {
   Future<bool> init() async {
     // 1. Request permission
     await _requestPermission();
-    if (authStatus != AuthorizationStatus.authorized) {
+    if (authStatus != AuthorizationStatus.authorized &&
+        authStatus != AuthorizationStatus.provisional) {
       return false;
     }
     // 2. Generate (and upload) token

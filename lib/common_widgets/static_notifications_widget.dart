@@ -30,21 +30,20 @@ Future<void> showStaticNotifications() async {
     barrierDismissible: true,
     dismissWithEsc: true,
     builder: (ctx) {
+      final list = staticNotifications.notifications;
       return FlyoutContent(
         useAcrylic: false,
         constraints: const BoxConstraints(maxWidth: 300, maxHeight: 360),
-        child: staticNotifications.notifications.isEmpty
+        child: list.isEmpty
             ? const NoItemsFound()
             : ListView(
-                children: staticNotifications.notifications
+                children: list
                     .map((notification) {
                       return Container(
                         decoration: BoxDecoration(
                           border: Border(
                             bottom: BorderSide(
-                              color: staticNotifications
-                                          .notifications.last.title ==
-                                      notification.title
+                              color: identical(list.last, notification)
                                   ? Colors.transparent
                                   : FluentTheme.of(ctx)
                                       .inactiveColor

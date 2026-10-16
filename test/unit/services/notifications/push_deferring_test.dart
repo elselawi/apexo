@@ -187,5 +187,37 @@ void main() {
       // Expenses should still be there
       expect(await deferredPush.getByID('exp-1'), isNotNull);
     });
+
+    test('clearByIDs removes only the specified entries', () async {
+      await deferredPush.putBulk([
+        PushData(
+          store: 'appointments',
+          id: 'keep-me',
+          readableIdentifier: 'Keep',
+          isCreation: true,
+          isUpdate: false,
+          updatedFields: [],
+          oldVals: [],
+          newVals: [],
+          targetIDs: [],
+        ),
+        PushData(
+          store: 'appointments',
+          id: 'drop-me',
+          readableIdentifier: 'Drop',
+          isCreation: true,
+          isUpdate: false,
+          updatedFields: [],
+          oldVals: [],
+          newVals: [],
+          targetIDs: [],
+        ),
+      ]);
+
+      await deferredPush.clearByIDs(['drop-me']);
+
+      expect(await deferredPush.getByID('drop-me'), isNull);
+      expect(await deferredPush.getByID('keep-me'), isNotNull);
+    });
   });
 }

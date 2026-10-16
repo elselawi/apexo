@@ -3,6 +3,8 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getMessaging, onMessage, getToken } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
 import { PushData } from "./push_data.js";
 
+const RTL_LANGS = new Set(["ar", "fa", "ku", "ur"]);
+
 class FCMManager {
     constructor() {
         this.config = {
@@ -15,6 +17,7 @@ class FCMManager {
         this.app = initializeApp(firebaseConfig);
         this.messaging = getMessaging(this.app);
         this.registration = null;
+        this._isListening = false;
 
         this.translations = {
             en: {
@@ -23,23 +26,87 @@ class FCMManager {
                 enable: "Enable",
                 later: "Not Now"
             },
+            ar: {
+                title: "تفعيل الإشعارات",
+                subtitle: "لا تفوت أي تحديث مهم. يرجى السماح بإشعارات Apexo.",
+                enable: "تفعيل",
+                later: "ليس الآن"
+            },
             es: {
                 title: "Activar notificaciones",
                 subtitle: "Nunca te pierdas una actualización importante. Por favor, permite las notificaciones de Apexo.",
                 enable: "Activar",
                 later: "Ahora no"
             },
-            ar: {
-                title: "تفعيل الإشعارات",
-                subtitle: "لا تفوت أي تحديث مهم. يرجى السماح بإشعارات Apexo.",
-                enable: "تفعيل",
-                later: "ليس الآن"
+            el: {
+                title: "Ενεργοποίηση ειδοποιήσεων",
+                subtitle: "Μην χάσετε καμία σημαντική ενημέρωση. Επιτρέψτε τις ειδοποιήσεις για το Apexo.",
+                enable: "Ενεργοποίηση",
+                later: "Όχι τώρα"
+            },
+            fa: {
+                title: "فعال کردن اعلان‌ها",
+                subtitle: "هیچ به‌روزرسانی مهمی را از دست ندهید. لطفاً اعلان‌های Apexo را مجاز کنید.",
+                enable: "فعال کردن",
+                later: "فعلاً نه"
+            },
+            ku: {
+                title: "چالاککردنی ئاگادارکردنەوەکان",
+                subtitle: "هیچ نوێکارییەکی گرنگ لەدەست مەدە. تکایە ڕێگە بە ئاگادارکردنەوەکانی Apexo بدە.",
+                enable: "چالاککردن",
+                later: "ئێستا نا"
+            },
+            fr: {
+                title: "Activer les notifications",
+                subtitle: "Ne manquez aucune mise à jour importante. Veuillez autoriser les notifications pour Apexo.",
+                enable: "Activer",
+                later: "Pas maintenant"
+            },
+            tr: {
+                title: "Bildirimleri Etkinleştir",
+                subtitle: "Önemli hiçbir güncellemeyi kaçırmayın. Lütfen Apexo için bildirimlere izin verin.",
+                enable: "Etkinleştir",
+                later: "Şimdi Değil"
+            },
+            it: {
+                title: "Abilita le notifiche",
+                subtitle: "Non perdere nessun aggiornamento importante. Consenti le notifiche per Apexo.",
+                enable: "Abilita",
+                later: "Non ora"
+            },
+            ur: {
+                title: "اطلاعات فعال کریں",
+                subtitle: "کوئی بھی اہم اپ ڈیٹ مس نہ کریں۔ براہ کرم Apexo کے لیے اطلاعات کی اجازت دیں۔",
+                enable: "فعال کریں",
+                later: "ابھی نہیں"
             }
         };
 
         this.registerServiceWorker();
         this.setupGlobalsForDart();
         this.bindEvents();
+    }
+
+    postToServiceWorker(message) {
+        const sw = this.registration?.active || this.registration?.waiting || this.registration?.installing || navigator.serviceWorker?.controller;
+        if (sw) {
+            try {
+                sw.postMessage(message);
+            } catch (e) {
+                console.warn("Could not postMessage to service worker:", e);
+            }
+        }
+    }
+
+    syncStateToServiceWorker() {
+        this.postToServiceWorker({
+            type: "LANG_CHANGED",
+            lang: this.config.lang || "en",
+        });
+        this.postToServiceWorker({
+            type: "SAVE_CURRENT_ACCOUNT_ID",
+            currentAccountID: this.config.accountId || "",
+        });
     }
 
     setupGlobalsForDart() {
@@ -53,13 +120,30 @@ class FCMManager {
         Object.defineProperty(window, 'lang', {
             get: () => this.config.lang,
             set: (value) => {
-                this.config.lang = value;
-                if (this.registration) {
-                    this.registration.active.postMessage({
-                        type: "LANG_CHANGED",
-                        lang: value,
-                    });
+                this.config.lang = value || "en";
+                self.lang = this.config.lang;
+                this.postToServiceWorker({
+                    type: "LANG_CHANGED",
+                    lang: this.config.lang,
+                });
+                const el = document.getElementById('fcm-custom-container');
+                if (el && el.style.display === 'block') {
+                    this.localize();
                 }
+            }
+        });
+
+        // intercept changes to accountId so logout or login immediately updates both window and SW
+        Object.defineProperty(window, 'accountId', {
+            get: () => this.config.accountId,
+            set: (value) => {
+                this.config.accountId = value || "";
+                window.currentAccountID = this.config.accountId;
+                self.currentAccountID = this.config.accountId;
+                this.postToServiceWorker({
+                    type: "SAVE_CURRENT_ACCOUNT_ID",
+                    currentAccountID: this.config.accountId,
+                });
             }
         });
 
@@ -79,14 +163,12 @@ class FCMManager {
                     this.config.lang = window.lang;
 
                     // set current account id (push_data access from window)
-                    window.currentAccountID = window.accountId;
+                    window.currentAccountID = this.config.accountId;
+                    self.currentAccountID = this.config.accountId;
+                    self.lang = this.config.lang;
 
-                    // send current account id to service worker (push_data access from sw)
-                    this.registration.active.postMessage({
-                        type: "SAVE_CURRENT_ACCOUNT_ID",
-                        currentAccountID: window.accountId,
-                    });
-
+                    // send current account id & lang to service worker
+                    this.syncStateToServiceWorker();
 
                     try {
                         const supported = "Notification" in window && typeof window.Notification !== "undefined";
@@ -129,11 +211,23 @@ class FCMManager {
 
     async registerServiceWorker() {
         try {
+            if (!("serviceWorker" in navigator)) return;
             this.registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
                 type: "module",
                 scope: "/firebase-cloud-messaging-push-scope",
             });
             console.log("Service Worker registered");
+            this.syncStateToServiceWorker();
+            if (!this.registration.active) {
+                const pending = this.registration.installing || this.registration.waiting;
+                if (pending) {
+                    pending.addEventListener('statechange', () => {
+                        if (this.registration?.active) {
+                            this.syncStateToServiceWorker();
+                        }
+                    });
+                }
+            }
         } catch (err) {
             console.error("Service Worker registration failed:", err);
         }
@@ -147,6 +241,7 @@ class FCMManager {
     localize() {
         const lang = this.config.lang || 'en';
         const texts = this.translations[lang] || this.translations['en'];
+        const isRtl = RTL_LANGS.has(lang);
 
         const titleEl = document.getElementById('fcm-lbl-title');
         const subtitleEl = document.getElementById('fcm-lbl-subtitle');
@@ -159,14 +254,14 @@ class FCMManager {
         if (btnGrant) btnGrant.innerText = texts.enable;
         if (btnLater) btnLater.innerText = texts.later;
 
-        // Ensure correct layout direction for Arabic
+        // Ensure correct layout direction for all RTL languages (ar, fa, ku, ur)
         if (dialogBox) {
-            dialogBox.style.direction = lang === 'ar' ? 'rtl' : 'ltr';
-            dialogBox.style.textAlign = lang === 'ar' ? 'right' : 'left';
+            dialogBox.style.direction = isRtl ? 'rtl' : 'ltr';
+            dialogBox.style.textAlign = isRtl ? 'right' : 'left';
 
             const buttonsContainer = dialogBox.querySelector('.fcm-buttons');
             if (buttonsContainer) {
-                buttonsContainer.style.justifyContent = lang === 'ar' ? 'flex-start' : 'flex-end';
+                buttonsContainer.style.justifyContent = isRtl ? 'flex-start' : 'flex-end';
             }
         }
     }
@@ -273,13 +368,17 @@ class FCMManager {
     }
 
     listenForMessages() {
+        if (this._isListening) return;
+        this._isListening = true;
         onMessage(this.messaging, async (payload) => {
             if (!this.config.accountId) return;
             try {
-                const pushData = PushData.fromJson(JSON.parse(payload.data.payload));
+                const rawPayload = payload?.data?.payload;
+                if (typeof rawPayload !== "string" || !rawPayload) return;
+                const pushData = PushData.fromJson(JSON.parse(rawPayload));
                 const displayTuple = pushData.displayTuple();
 
-                if (!this.registration) {
+                if (!this.registration && "serviceWorker" in navigator) {
                     this.registration = await navigator.serviceWorker.ready;
                 }
 

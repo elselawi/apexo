@@ -52,7 +52,8 @@ class Messaging {
       // this is for android and ios
       // this identifies this device to the relay server
       if (firebase != null &&
-          firebase!.authStatus == AuthorizationStatus.authorized) {
+          (firebase!.authStatus == AuthorizationStatus.authorized ||
+              firebase!.authStatus == AuthorizationStatus.provisional)) {
         await PushRelay.putDevice(isPatient: isPatient);
       }
     }

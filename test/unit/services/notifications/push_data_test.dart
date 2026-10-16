@@ -137,5 +137,18 @@ void main() {
       expect(push.oldVals, isEmpty);
       expect(push.newVals, isEmpty);
     });
+    test('fromJson tolerates missing or null fields gracefully', () {
+      final push = PushData.fromJson({});
+
+      expect(push.store, '');
+      expect(push.id, '');
+      expect(push.readableIdentifier, '');
+      expect(push.isCreation, isFalse);
+      expect(push.isUpdate, isFalse);
+      expect(push.updatedFields, isEmpty);
+      expect(push.oldVals, isEmpty);
+      expect(push.newVals, isEmpty);
+      expect(push.targetIDs, isEmpty);
+    });
   });
 }

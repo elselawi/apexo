@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:apexo/app/app.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/labwork/labworks_ctrl.dart';
@@ -46,34 +47,49 @@ class StaticNotification {
 }
 
 class _NotificationsService {
+  final ObservableState<int> state = ObservableState(0);
+
   List<Appointment> get todayAppointmentsForYou {
+    if (login.currentAccountID.isEmpty) return const [];
     return dashboardCtrl.todayAppointments
         .where((a) => a.operatorsIDs.contains(login.currentAccountID))
         .toList();
   }
 
   List<Appointment> get dueLabworks {
+    if (login.currentAccountID.isEmpty) return const [];
     return labworks.due
         .where((a) => a.operatorsIDs.contains(login.currentAccountID))
         .toList();
   }
 
   List<Patient> get notDeliveredLabworks {
+    if (login.currentAccountID.isEmpty) return const [];
     return labworks.notDeliveredPatients
-        .where((p) => p.allAppointments.last.operatorsIDs
-            .contains(login.currentAccountID))
+        .where((p) =>
+            p.allAppointments.isNotEmpty &&
+            p.allAppointments.last.operatorsIDs
+                .contains(login.currentAccountID))
         .toList();
   }
 
   List<Note> get incomingPendingNotes {
+    if (login.currentAccountID.isEmpty) return const [];
     return notes.present.values
-        .where((n) => n.assignedTo == login.currentAccountID && n.done == false)
+        .where((n) =>
+            n.isNote &&
+            n.assignedTo == login.currentAccountID &&
+            n.done == false)
         .toList();
   }
 
   List<Note> get outgoingPendingNotes {
+    if (login.currentAccountID.isEmpty) return const [];
     return notes.present.values
-        .where((n) => n.createdBy == login.currentAccountID && n.done == false)
+        .where((n) =>
+            n.isNote &&
+            n.createdBy == login.currentAccountID &&
+            n.done == false)
         .toList();
   }
 
@@ -81,19 +97,27 @@ class _NotificationsService {
 
   void addNotification(StaticNotification notification) {
     _notifications.add(notification);
+    state(state() + 1);
+  }
+
+  void clear() {
+    if (_notifications.isEmpty) return;
+    _notifications.clear();
+    state(state() + 1);
   }
 
   Future<void> dingANotification({
     required String title,
     required String body,
     required IconData icon,
+    List<NotificationAction> actions = const [],
   }) async {
     addNotification(
       StaticNotification(
         icon: icon,
         title: title,
         body: body,
-        actions: [],
+        actions: actions,
       ),
     );
 
@@ -105,6 +129,12 @@ class _NotificationsService {
     }
 
     triggerSound();
+
+    try {
+      if (!bContext.mounted) return;
+    } catch (_) {
+      return;
+    }
 
     toastification.show(
       context: bContext,

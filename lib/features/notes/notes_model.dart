@@ -181,7 +181,7 @@ class Note extends Model {
       "attachments": attachments,
       "assignedTo": assignedTo,
       "dueDate": (dueDate.millisecondsSinceEpoch / (60 * 60 * 1000)).round(),
-      "archived": archived,
+      "archived": archived ?? false,
     };
   }
 
@@ -190,11 +190,13 @@ class Note extends Model {
       ["comments", "done", "attachments", "assignedTo", "dueDate", "archived"];
 
   @override
-  bool get pushOnCreation => true;
+  bool get pushOnCreation => !isColumn;
 
   @override
-  List<String> get targetsToPushTo => [
-        if (assignedTo.isNotEmpty) assignedTo,
-        if (createdBy.isNotEmpty) createdBy,
-      ];
+  List<String> get targetsToPushTo => isColumn
+      ? const []
+      : {
+          if (assignedTo.isNotEmpty) assignedTo,
+          if (createdBy.isNotEmpty) createdBy,
+        }.toList();
 }

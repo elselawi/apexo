@@ -7,8 +7,6 @@
 ///
 /// * `push_interpretation.dart` — what a payload *means*, and how it reads in
 ///   each language;
-/// * `notifiable_fields.dart` — which fields moved, the rule both producers of a
-///   notice must reach the same answer for;
 /// * `push_relay.dart` — how it leaves the device.
 ///
 /// ---------------------------------------------------------------------------
@@ -38,15 +36,25 @@ class PushData {
 
   factory PushData.fromJson(Map<String, dynamic> json) {
     return PushData(
-      store: json["store"] as String,
-      id: json["id"] as String,
-      readableIdentifier: json["readableIdentifier"] as String,
-      isCreation: json["isCreation"] as bool,
-      isUpdate: json["isUpdate"] as bool,
-      updatedFields: List<String>.from(json["updatedFields"] as List<dynamic>),
-      oldVals: List<dynamic>.from(json["oldVals"] as List<dynamic>),
-      newVals: List<dynamic>.from(json["newVals"] as List<dynamic>),
-      targetIDs: List<String>.from(json["targetIDs"] as List<dynamic>),
+      store: (json["store"] as String?) ?? "",
+      id: (json["id"] as String?) ?? "",
+      readableIdentifier: (json["readableIdentifier"] as String?) ?? "",
+      isCreation: (json["isCreation"] as bool?) ?? false,
+      isUpdate: (json["isUpdate"] as bool?) ?? false,
+      updatedFields: List<String>.from(
+        (json["updatedFields"] as List<dynamic>? ?? const <dynamic>[])
+            .map((e) => e.toString()),
+      ),
+      oldVals: List<dynamic>.from(
+        json["oldVals"] as List<dynamic>? ?? const <dynamic>[],
+      ),
+      newVals: List<dynamic>.from(
+        json["newVals"] as List<dynamic>? ?? const <dynamic>[],
+      ),
+      targetIDs: List<String>.from(
+        (json["targetIDs"] as List<dynamic>? ?? const <dynamic>[])
+            .map((e) => e.toString()),
+      ),
     );
   }
 

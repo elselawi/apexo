@@ -54,14 +54,24 @@ class PushRelay {
   /// The server would add the token only if it doesn't exist
   static Future<void> putDevice({bool isPatient = false}) async {
     final relayKey = isPatient ? patientSide.relayKey : await _getRelayKey();
+    final server = isPatient ? patientSide.server : login.url;
+    final accountId = isPatient ? patientSide.patientID : login.currentAccountID;
+    final token = login.pushNotificationsToken;
+    if (relayKey == null ||
+        relayKey.isEmpty ||
+        server.isEmpty ||
+        accountId.isEmpty ||
+        token.isEmpty) {
+      return;
+    }
 
     final res = await client.post(
       Uri.parse('$relayServer/put-device'),
       body: jsonEncode({
-        "clinicServer": isPatient ? patientSide.server : login.url,
+        "clinicServer": server,
         "clinicKey": relayKey,
-        "deviceToken": login.pushNotificationsToken,
-        "accountId": isPatient ? patientSide.patientID : login.currentAccountID
+        "deviceToken": token,
+        "accountId": accountId,
       }),
     );
     if (res.body == "ok") {
@@ -72,12 +82,20 @@ class PushRelay {
   /// This function replaces an old token with a new one
   /// when FCM refreshes the token
   static Future<void> replaceToken(String oldToken, String newToken) async {
-    final relayKey = await _getRelayKey();
+    if (newToken.isEmpty || oldToken == newToken) return;
+    final isPatient = login.url.isEmpty && patientSide.server.isNotEmpty;
+    final relayKey = isPatient ? patientSide.relayKey : await _getRelayKey();
+    final server = isPatient ? patientSide.server : login.url;
+    if (relayKey == null || relayKey.isEmpty || server.isEmpty) return;
+    if (oldToken.isEmpty) {
+      await putDevice(isPatient: isPatient);
+      return;
+    }
 
     await client.post(
       Uri.parse('$relayServer/replace-token'),
       body: jsonEncode({
-        "clinicServer": login.url,
+        "clinicServer": server,
         "clinicKey": relayKey,
         "oldToken": oldToken,
         "newToken": newToken,

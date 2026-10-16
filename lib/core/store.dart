@@ -247,20 +247,40 @@ class Store<G extends Model> {
         if (e.type == DictEventType.add && doc.pushOnCreation == false) {
           continue;
         }
-        if (e.type == DictEventType.modify &&
-            !e.modifiedKeys.any((k) => doc.pushIfChanged.contains(k))) {
-          continue;
+        final List<String> updatedFields;
+        final List<dynamic> oldVals;
+        final List<dynamic> newVals;
+        if (e.type == DictEventType.modify) {
+          final filteredIndices = <int>[
+            for (var i = 0; i < e.modifiedKeys.length; i++)
+              if (doc.pushIfChanged.contains(e.modifiedKeys[i])) i,
+          ];
+          if (filteredIndices.isEmpty) continue;
+          updatedFields = [for (final i in filteredIndices) e.modifiedKeys[i]];
+          oldVals = [
+            for (final i in filteredIndices)
+              i < e.oldVals.length ? e.oldVals[i] : null,
+          ];
+          newVals = [
+            for (final i in filteredIndices)
+              i < e.newVals.length ? e.newVals[i] : null,
+          ];
+        } else {
+          updatedFields = const [];
+          oldVals = const [];
+          newVals = const [];
         }
         final pushTargets = doc.targetsToPushTo;
+        if (pushTargets.isEmpty) continue;
         toPush.add(PushData(
           store: sessionRemote.storeName,
           id: e.id,
           readableIdentifier: doc.title,
           isCreation: e.type == DictEventType.add,
           isUpdate: e.type == DictEventType.modify,
-          updatedFields: e.modifiedKeys,
-          oldVals: e.oldVals,
-          newVals: e.newVals,
+          updatedFields: updatedFields,
+          oldVals: oldVals,
+          newVals: newVals,
           targetIDs: pushTargets,
         ));
       }
@@ -287,13 +307,22 @@ class Store<G extends Model> {
               .map((e) => RowToWriteRemotely(id: e.key, data: e.value))
               .toList());
           if (session != _persistenceSession) return;
-          await effects.sendPushes(toPush);
-          if (session != _persistenceSession) return;
           final remaining = await sessionLocal.getDeferred();
           remaining.removeWhere((key, value) => toDefer[key] == value);
           await sessionLocal.putDeferred(remaining);
           deferredPresent = remaining.isNotEmpty;
           changes.removeAll(changesToProcess);
+          try {
+            await effects.sendPushes(toPush);
+            if (session != _persistenceSession) return;
+            if (toPush.isNotEmpty) {
+              await effects.clearPushesByIDs(toPush.map((p) => p.id));
+            }
+          } catch (pushErr, pushStack) {
+            effects.log(
+                "Error sending push notifications (kept in deferred queue): $pushErr",
+                pushStack);
+          }
           // while we have the connection lets synchronize
           // don't put "await" before synchronize() since we don't want catch the error
           // if it gets caught it means the same file will be placed in deferred
@@ -593,11 +622,17 @@ class Store<G extends Model> {
             .cast<PushData>()
             .toList();
 
-        await effects.sendPushes(winningPushes);
-        if (session != _persistenceSession) {
-          return SyncResult(exception: 'persistence session ended');
+        try {
+          await effects.sendPushes(winningPushes);
+          if (session != _persistenceSession) {
+            return SyncResult(exception: 'persistence session ended');
+          }
+          await effects.clearPushes(remote.storeName);
+        } catch (pushErr, pushStack) {
+          effects.log(
+              "Error sending deferred pushes during sync (kept in deferred queue): $pushErr",
+              pushStack);
         }
-        await effects.clearPushes(remote.storeName);
       }
 
       // When all JSON-related updates are done, handle files serially. Each
@@ -653,7 +688,7 @@ class Store<G extends Model> {
             continue;
           }
 
-          if (modeling({}).pushOnCreation && !docs.containsKey(id)) {
+          if (document.pushOnCreation && !docs.containsKey(id)) {
             final readableIdentifier = document.title;
 
             final push = PushData(
@@ -665,15 +700,22 @@ class Store<G extends Model> {
               updatedFields: [],
               oldVals: [],
               newVals: [],
-              targetIDs: [],
+              targetIDs: document.targetsToPushTo,
             );
 
             await effects.notify(push);
           } else if (document.pushIfChanged.isNotEmpty &&
               docs.containsKey(id)) {
-            final oldJson = docs[id]!.toJson();
-            final newJson = document.toJson();
-            final diff = diffJson(oldJson, newJson).toList();
+            final existing = docs[id]!;
+            final oldPushCopy = existing.jsonCopyForPush;
+            final newPushCopy = document.jsonCopyForPush;
+            final oldJson =
+                oldPushCopy.isNotEmpty ? oldPushCopy : existing.toJson();
+            final newJson =
+                newPushCopy.isNotEmpty ? newPushCopy : document.toJson();
+            final diff = diffJson(oldJson, newJson)
+                .where((k) => document.pushIfChanged.contains(k))
+                .toList();
             if (diff.isEmpty) {
               continue;
             }
@@ -687,7 +729,7 @@ class Store<G extends Model> {
               updatedFields: diff,
               oldVals: diff.map((key) => oldJson[key]).toList(),
               newVals: diff.map((key) => newJson[key]).toList(),
-              targetIDs: [],
+              targetIDs: document.targetsToPushTo,
             );
 
             await effects.notify(push);

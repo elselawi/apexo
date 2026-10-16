@@ -39,6 +39,7 @@ class _DeferredPush {
 
   // Put notifications into the box
   Future<void> putBulk(List<PushData> toPush) async {
+    if (toPush.isEmpty) return;
     if (!_initialized) init(login.url);
     try {
       final box = await hiveBox;
@@ -66,18 +67,36 @@ class _DeferredPush {
     }
   }
 
+  Future<void> clearByIDs(Iterable<String> ids) async {
+    if (ids.isEmpty) return;
+    if (!_initialized) init(login.url);
+    try {
+      final box = await hiveBox;
+      await box.deleteAll(ids);
+    } catch (e, s) {
+      throw StorageException('Failed to clear entries by ID: $e', s);
+    }
+  }
+
   Future<void> clearByStore(String store) async {
     if (!_initialized) init(login.url);
     try {
       final box = await hiveBox;
-      final List<String> keysToDelete = [];
-      for (var encoded in box.values) {
-        final decoded = jsonDecode(encoded) as Map<String, dynamic>;
-        if (decoded['store'] == store) {
-          keysToDelete.add(decoded['id'] as String);
+      final List<dynamic> keysToDelete = [];
+      for (final entry in box.toMap().entries) {
+        try {
+          final decoded = jsonDecode(entry.value) as Map<String, dynamic>;
+          if (decoded['store'] == store) {
+            keysToDelete.add(entry.key);
+          }
+        } catch (_) {
+          // Discard corrupted JSON entries so they cannot permanently wedge the queue.
+          keysToDelete.add(entry.key);
         }
       }
-      await box.deleteAll(keysToDelete);
+      if (keysToDelete.isNotEmpty) {
+        await box.deleteAll(keysToDelete);
+      }
     } catch (e, s) {
       throw StorageException('Failed to clear storage: $e', s);
     }

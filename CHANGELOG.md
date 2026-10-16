@@ -2,11 +2,23 @@
 - New feature & Improvements
     - New and redesigned dental charting experience
     - Hijri (Islamic) Calendar Support: Added support for the Hijri calendar system alongside Gregorian and Persian (Jalali), with app-wide date formatting and calendar-aware statistics and distributions.
+    - Notifications now speak every language the app does: appointment and note notices are translated into Greek, Persian, Sorani Kurdish, French, Turkish, Italian and Urdu alongside English, Spanish and Arabic, and the browser's notification prompt is translated and reads right-to-left for the languages written that way.
 
 - Reliability & Bug Fixes
     - Amounts of four digits and more are stored as the amount that was typed. In the languages that group thousands with a dot — Greek and Spanish — entering 2650 in a price, payment, due or paid field kept 2.65 instead, and a saved amount with cents could come back multiplied. Grouping, typing and reading back now use the separators of the clinic's language, Persian digits included.
+    - A change announced by both synchronization and the notification relay now arrives as a single notice instead of the same notification appearing twice.
+    - A notification that could not be delivered no longer interrupts the save or shows an error: the record is stored and synchronized as usual, and the notice stays queued to be sent with the record's next change.
+    - Notices now reach the people the record concerns and carry only the changes worth telling them about. Columns on the notes board no longer announce changes, and a notice no longer reports a time as moved later when nothing moved.
+    - Records loaded from storage no longer report fields that never changed on their first edit, and notices produced while receiving updates from the server now carry their intended recipients instead of none.
+    - A malformed or incomplete notification message is ignored instead of interrupting the app, and a notice names the record it is about even when that record has no title.
+    - Signing in to the patient portal now brings the same notices staff receive, and signing in, signing out or switching clinics updates the browser's notification worker and the in-app list immediately.
+    - Notifications allowed provisionally on iOS now work, and a notice arriving before notification setup has finished is no longer dropped.
+    - Fixed the queue of undelivered notices: an unreadable entry can no longer block the notices behind it, and clearing a store's queued notices removes exactly the entries that belong to it.
+    - The in-app notification list refreshes the moment a notice arrives or the list is emptied, keeps its separators straight when the same notice repeats, and is cleared on sign-out.
 
-
+- Testing & Developer Experience
+    - Added coverage for notification wording in all ten languages, duplicate-notice suppression, malformed messages, the undelivered-notice queue and notification failures, including a check that the app's and the browser's notification translations cannot drift apart.
+    - The localization audit runs on Windows, where path separators previously hid files from it, and now skips generated tool output.
 
 ### ____0.15.1____
 

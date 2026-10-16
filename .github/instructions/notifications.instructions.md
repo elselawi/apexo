@@ -22,15 +22,16 @@ Apexo has a **multi-layered push notification system** that works across Android
 
 | Layer | File | Role |
 |-------|------|------|
-| **Push Data** | `lib/core/synchronization/push_data.dart` | Core-owned wire payload, with no delivery/UI imports — shared with `fcm/push_data.js` for web |
-| **Push Generation** | `Store._processChanges()` in `core/store.dart` | Generates `PushData` from store changes based on `targetsToPushTo`, `pushIfChanged`, `pushOnCreation` |
-| **Relay Client** | `push_relay.dart` | Sends push payloads to the Cloudflare Worker relay at `apexo-notifications-relay.alisaleem.workers.dev` |
-| **Deferred Queue** | `push_deferring.dart` | Hive-persisted queue for pushes that couldn't be sent while offline |
-| **FCM Service** | `core_firebase_messaging.dart` | Firebase Cloud Messaging — token management, permission requests, foreground/background listeners |
-| **Local Notifications** | `core_local_notification.dart` | `flutter_local_notifications` — displays OS-level notifications on Android/iOS |
-| **Static Notifications** | `static_notifications.dart` | In-app notification list — today's appointments, due labworks, pending notes |
-| **Initializer** | `core_notifications_initializer.dart` | Orchestrates setup — calls Firebase init, FCM init, local notification init, device identification |
-| **Listeners** | `listeners.dart` | Handles foreground/background/tap events — syncs stores, navigates to items |
+| **Push Data** | `lib/core/synchronization/push_data.dart` | Core-owned wire payload, with no delivery/UI imports — shared with `web/fcm/push_data.js` for web |
+| **Push Interpretation** | `lib/services/notifications/push_interpretation.dart` | Interprets `PushData` into localized title/body pairs across all 10 supported locales — mirrored in `web/fcm/push_data.js` |
+| **Push Generation** | `Store._processChangesForSession()` in `lib/core/store.dart` | Generates `PushData` from store changes based on `targetsToPushTo`, `pushIfChanged`, `pushOnCreation` |
+| **Relay Client** | `lib/services/notifications/push_relay.dart` | Sends push payloads to the Cloudflare Worker relay at `apexo-notifications-relay.alisaleem.workers.dev` |
+| **Deferred Queue** | `lib/services/notifications/push_deferring.dart` | Hive-persisted queue for pushes that couldn't be sent while offline |
+| **FCM Service** | `lib/services/notifications/core_firebase_messaging.dart` | Firebase Cloud Messaging — token management, permission requests, foreground/background listeners |
+| **Local Notifications** | `lib/services/notifications/core_local_notification.dart` | `flutter_local_notifications` — displays OS-level notifications on Android/iOS |
+| **Static Notifications** | `lib/services/notifications/static_notifications.dart` | In-app notification list — today's appointments, due labworks, pending notes, and received push notifications |
+| **Initializer** | `lib/services/notifications/core_notifications_initializer.dart` | Orchestrates setup — calls Firebase init, FCM init, local notification init, device identification |
+| **Listeners & Dispatch** | `lib/services/notifications/listeners.dart` | Handles foreground/background/tap events, deduplicates notices across FCM and sync, syncs stores, navigates to items |
 
 ## Initialization Flow
 
@@ -129,5 +130,5 @@ On web, instead of using the Flutter FCM plugin directly, notifications go throu
 |---------|-----|
 | Forgetting to call `Messaging.initializeReceiving()` | Must be called before `runApp()` in `main.dart` |
 | Not calling `Messaging.identifyDevice()` after login | Device won't be registered with the relay server |
-| Editing `lib/core/synchronization/push_data.dart` without syncing `fcm/push_data.js` | Web push display will break — the JS file mirrors this Dart model |
+| Editing `lib/core/synchronization/push_data.dart` or `lib/services/notifications/push_interpretation.dart` without syncing `web/fcm/push_data.js` | Web push display will break — the JS file mirrors the Dart wire model, interpretations, and all 10 locale translations |
 | Assuming notifications work on desktop | Only static in-app notifications work on Windows/macOS |

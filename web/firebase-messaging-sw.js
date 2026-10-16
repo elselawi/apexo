@@ -11,12 +11,13 @@ self.lang = "en";
 
 // intercept messages from the main thread to update the language
 self.addEventListener('message', (event) => {
+    if (!event.data) return;
     if (event.data.type === "LANG_CHANGED") {
-        self.lang = event.data.lang;
+        self.lang = event.data.lang || "en";
     }
 
     if (event.data.type === "SAVE_CURRENT_ACCOUNT_ID") {
-        self.currentAccountID = event.data.currentAccountID;
+        self.currentAccountID = event.data.currentAccountID || "";
     }
 });
 
@@ -24,7 +25,9 @@ self.addEventListener('message', (event) => {
 onBackgroundMessage(messaging, (payload) => {
     if (!self.currentAccountID) return;
     try {
-        const pushData = PushData.fromJson(JSON.parse(payload.data.payload));
+        const rawPayload = payload?.data?.payload;
+        if (typeof rawPayload !== "string" || !rawPayload) return;
+        const pushData = PushData.fromJson(JSON.parse(rawPayload));
         const displayTuple = pushData.displayTuple();
         if (self.registration) {
             self.registration.showNotification(displayTuple[0], {

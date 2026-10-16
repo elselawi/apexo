@@ -270,10 +270,12 @@ List<_TxtCall> _scanCodebaseForTxtCalls(Directory root) {
   for (final entity in root.listSync(recursive: true)) {
     if (entity is! File || !entity.path.endsWith('.dart')) continue;
     // Skip build artifacts, tests, the verify script itself, and locale.dart (txt definition)
-    if (entity.path.contains('/build/') ||
-        entity.path.contains('/.dart_tool/') ||
-        entity.path.contains('/generated/') ||
-        entity.path.contains('/test/') ||
+    final path = entity.path.replaceAll('\\', '/');
+    if (path.contains('/build/') ||
+        path.contains('/.dart_tool/') ||
+        path.contains('/generated/') ||
+        path.contains('/test/') ||
+        path.contains('/tools/') ||
         _basename(entity.path) == 'verify.dart' ||
         _basename(entity.path) == 'locale.dart') {
       continue;
@@ -330,11 +332,13 @@ List<File> _collectCodeFiles(Directory root) {
   final files = <File>[];
   for (final entity in root.listSync(recursive: true)) {
     if (entity is! File || !entity.path.endsWith('.dart')) continue;
-    if (entity.path.contains('/build/') ||
-        entity.path.contains('/.dart_tool/') ||
-        entity.path.contains('/generated/') ||
-        entity.path.contains('/test/') ||
-        entity.path.contains('/localization/') ||
+    final path = entity.path.replaceAll('\\', '/');
+    if (path.contains('/build/') ||
+        path.contains('/.dart_tool/') ||
+        path.contains('/generated/') ||
+        path.contains('/test/') ||
+        path.contains('/localization/') ||
+        path.contains('/tools/') ||
         _basename(entity.path) == 'verify.dart') {
       continue;
     }

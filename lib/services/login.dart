@@ -15,7 +15,9 @@ import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/encode.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
+import 'package:apexo/services/notifications/listeners.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
+import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
@@ -179,6 +181,8 @@ class _LoginService extends ObservablePersistingObject {
     // Deferred push is keyed by server URL — reset so the next login
     // opens the correct Hive box for the new server.
     deferredPush.reset();
+    staticNotifications.clear();
+    resetStaticNotificationDedupe();
     notifyAndPersist();
     // Settles each panel's `result`, so any opener still awaiting one is
     // released instead of hanging on a panel that is gone.

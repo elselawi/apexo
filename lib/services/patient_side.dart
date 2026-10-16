@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
+import 'package:apexo/services/notifications/listeners.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
+import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/href/href_service.dart';
 import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:apexo/utils/logger.dart';
@@ -143,6 +145,9 @@ class PatientSide extends ObservablePersistingObject {
       JSBridge.setGlobalVariable("accountId", "");
       JSBridge.setGlobalVariable("shouldShowPrompt", "no");
     }
+    deferredPush.reset();
+    staticNotifications.clear();
+    resetStaticNotificationDedupe();
     notifyAndPersist();
     loginCtrl.finishedLoginProcess();
   }

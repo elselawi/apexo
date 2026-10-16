@@ -224,7 +224,7 @@ class Appointment extends Model {
     return {
       "date": (date.millisecondsSinceEpoch / 60000).round(),
       "isDone": isDone,
-      "archived": archived,
+      "archived": archived ?? false,
       "operatorsIDs": operatorsIDs,
     };
   }

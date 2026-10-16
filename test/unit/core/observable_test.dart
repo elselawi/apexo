@@ -528,6 +528,43 @@ void main() {
         ['before', 'after']
       ]);
     });
+    test('setAllWithJson initializes push snapshots so first edit does not produce false diffs',
+        () async {
+      final dict = ObservableDict<Note>();
+      final loadedNote = Note.fromJson({
+        'id': 'loaded-note',
+        'title': 'Check lab',
+        'createdBy': 'creator',
+        'assignedTo': 'assignee',
+        'done': false,
+      });
+      // Raw JSON on disk omits default fields like `done: false` and `archived: false`
+      dict.silently(() {
+        dict.setAllWithJson(
+          {'loaded-note': loadedNote},
+          {
+            'loaded-note': {
+              'id': 'loaded-note',
+              'title': 'Check lab',
+              'createdBy': 'creator',
+              'assignedTo': 'assignee',
+            },
+          },
+        );
+      });
+
+      List<DictEvent>? events;
+      dict.observe((e) => events = e);
+
+      final edited = loadedNote.copy(false)..done = true;
+      dict.set(edited);
+      await flushNotifications();
+
+      expect(events, isNotNull);
+      expect(events!.single.modifiedKeys, ['done']);
+      expect(events!.single.oldVals, [false]);
+      expect(events!.single.newVals, [true]);
+    });
   });
 
   // ---------------------------------------------------------------------------

@@ -36,12 +36,14 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
       // be done when the item is meant to be pushed
       // otherwise it's just a waste of time and resources
       final newJson = _copyJsonMap(item.jsonCopyForPush);
-      final oldJson = (item.copy(true)..fromJson(_jsonCopies[item.id] ?? {}))
-          .jsonCopyForPush;
+      final oldJson = _jsonCopies[item.id] ??
+          _copyJsonMap(item.copy(true).jsonCopyForPush);
 
       final List<String> diff;
       if (!isNew && item.pushIfChanged.isNotEmpty) {
-        diff = diffJson(oldJson, newJson).toList();
+        diff = diffJson(oldJson, newJson)
+            .where((k) => item.pushIfChanged.contains(k))
+            .toList();
       } else {
         diff = [];
       }
@@ -100,8 +102,15 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
     );
 
     _dictionary.addAll(items);
-    _jsonCopies
-        .addAll(jsonMaps.map((id, json) => MapEntry(id, _copyJsonMap(json))));
+    for (final entry in items.entries) {
+      if (entry.value.targetsToPushTo.isNotEmpty ||
+          entry.value.pushIfChanged.isNotEmpty) {
+        _jsonCopies[entry.key] = _copyJsonMap(entry.value.jsonCopyForPush);
+      } else {
+        final raw = jsonMaps[entry.key];
+        if (raw != null) _jsonCopies[entry.key] = _copyJsonMap(raw);
+      }
+    }
 
     notifyObservers(items.entries
         .map((item) => DictEvent.add(item.key, document: item.value))

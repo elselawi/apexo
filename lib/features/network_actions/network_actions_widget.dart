@@ -1,12 +1,16 @@
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/network_actions/errors_list_widget.dart';
 import 'package:apexo/common_widgets/transitions/pulse.dart';
 import 'package:apexo/common_widgets/transitions/rotate.dart';
+import 'package:apexo/features/notes/notes_store.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -25,6 +29,10 @@ class NetworkActions extends StatelessWidget {
             launch.open.stream,
             networkActions.hasErrors.stream,
             networkActions.errorPulse.stream,
+            staticNotifications.state.stream,
+            appointments.observableMap.stream,
+            notes.observableMap.stream,
+            patients.observableMap.stream,
           ],
           builder: (context, _) {
             return Row(

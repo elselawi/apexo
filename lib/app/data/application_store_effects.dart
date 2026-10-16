@@ -5,10 +5,9 @@ import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/core/synchronization/store_effects.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/notifications/listeners.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
-import 'package:apexo/services/notifications/push_interpretation.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
-import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -39,11 +38,14 @@ class ApplicationStoreEffects extends StoreEffects {
   @override
   Future<void> clearPushes(String store) => deferredPush.clearByStore(store);
   @override
+  Future<void> clearPushesByIDs(Iterable<String> ids) =>
+      deferredPush.clearByIDs(ids);
+  @override
   Future<void> notify(PushData push) async {
-    final display = push.displayTuple();
-    await staticNotifications.dingANotification(
-      title: display[0], body: display[1],
+    await dispatchStaticNotification(
+      push,
       icon: push.isCreation ? WindowsIcons.add : FluentIcons.edit,
+      ding: true,
     );
   }
 }

@@ -144,8 +144,9 @@ void main() {
                 !exclude.contains(f.path.split(Platform.pathSeparator).last))
             .toList();
 
-        expect(files.length, 5,
-            reason: 'Expected 5 locale files (ar, el, en, es, fa)');
+        expect(files.length, 10,
+            reason:
+                'Expected 10 locale files (ar, el, en, es, fa, fr, it, ku, tr, ur)');
 
         // Extract dictionaries from source via regex (same as verify.dart)
         final Map<String, Map<String, String>> dicts = {};

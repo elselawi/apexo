@@ -117,4 +117,37 @@ void main() {
     expect(isolated.docs, isEmpty);
     isolated.observableMap.dispose();
   });
+
+  test('push relay failure does not re-queue remote row write', () async {
+    var remoteWrites = 0;
+    remote.onPut = () async => remoteWrites++;
+    final failingPushEffects = _FailingPushEffects();
+    final pushStore = Store<_Notifiable>(
+      modeling: _Notifiable.fromJson,
+      local: local,
+      remote: remote,
+      effects: failingPushEffects,
+      manualSyncOnly: true,
+    );
+    await pushStore.loaded;
+    pushStore.init();
+
+    pushStore.set(_Notifiable.fromJson({'id': 'row-push', 'title': 'record'}));
+    await pushStore.waitUntilChangesAreProcessed();
+
+    expect(remoteWrites, 1);
+    expect(await local.getDeferred(), isEmpty,
+        reason: 'Remote row write succeeded; only push stays deferred');
+    expect(failingPushEffects.errors, isEmpty,
+        reason: 'Push relay failure must not show row sync error dialog');
+    await pushStore.deactivatePersistenceSession();
+    pushStore.observableMap.dispose();
+  });
+}
+
+class _FailingPushEffects extends _Effects {
+  @override
+  Future<void> sendPushes(List<PushData> pushes) async {
+    throw StateError('relay down');
+  }
 }

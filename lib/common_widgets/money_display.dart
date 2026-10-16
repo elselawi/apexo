@@ -33,10 +33,11 @@ class MoneyDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final amountFinal = formatMoneyInText(string);
+    final separator = NumberFormat('#,##0.00', locale.s.$code).symbols.DECIMAL_SEP;
 
-    final integerPart = amountFinal.split('.')[0];
+    final integerPart = amountFinal.split(separator)[0];
     final decimalPart =
-        amountFinal.contains(".") ? amountFinal.split('.')[1] : "";
+        amountFinal.contains(separator) ? amountFinal.split(separator)[1] : "";
 
     final fStyle = (style ?? const TextStyle());
     final fontSize = fStyle.fontSize ?? 14;
@@ -63,7 +64,7 @@ class MoneyDisplay extends StatelessWidget {
         ),
         if (decimalPart.isNotEmpty)
           Text(
-            ".",
+            separator,
             style: decimalStyle,
             textDirection: TextDirection.ltr,
           ),

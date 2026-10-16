@@ -2,8 +2,9 @@ import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The formatter class is private, so these tests exercise it through the
-/// public [moneyInputFormatter] singleton's [TextInputFormatter.formatEditUpdate].
+/// These tests exercise the app's [moneyInputFormatter] in the default English
+/// locale through its [TextInputFormatter.formatEditUpdate]. The other locales
+/// the app ships are covered in `money_input_formatter_locale_test.dart`.
 void main() {
   TextEditingValue fmt(String input, [String oldInput = '']) {
     return moneyInputFormatter.formatEditUpdate(

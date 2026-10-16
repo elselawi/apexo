@@ -1,3 +1,4 @@
+import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class MoneyEditingController extends TextEditingController {
@@ -16,7 +17,8 @@ class MoneyEditingController extends TextEditingController {
       );
     }
 
-    final parts = text.split('.');
+    final separator = moneyInputFormatter.decimalSeparator;
+    final parts = text.split(separator);
     final List<TextSpan> children = [];
 
     // Integer part
@@ -31,7 +33,7 @@ class MoneyEditingController extends TextEditingController {
     // Fractional part (if exists)
     if (parts.length > 1) {
       children.add(TextSpan(
-        text: '.${parts[1]}',
+        text: '$separator${parts[1]}',
         style: style?.copyWith(
           fontSize: (style.fontSize ?? 14) * 0.9,
           color: style.color?.withValues(alpha: 0.8),

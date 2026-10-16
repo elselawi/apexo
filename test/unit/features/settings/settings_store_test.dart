@@ -7,6 +7,7 @@ import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 /// `settings_store_test.dart` covers what is left in `settings_stores.dart`:
 /// the device-scoped [LocalSettings]. The app-scoped settings moved to the
@@ -160,6 +161,33 @@ void main() {
             DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch,
       });
       expect(localSettings.hasValidAiToken, isFalse);
+    });
+
+    test('DF formats dates according to calendarSystem (gregorian, persian, hijri)', () async {
+      await initializeDateFormatting('en', null);
+      final dt = DateTime(2024, 7, 7, 14, 30);
+
+      localSettings.calendarSystem = 'persian';
+      expect(DF.isPersianCalendar, isTrue);
+      expect(DF.isHijriCalendar, isFalse);
+      expect(DF.allNumbers(dt), '1403/04/17');
+      expect(DF.jalaliDate(dt), '1403/04/17');
+      expect(DF.jalaliDay(dt), '17');
+      expect(DF.jalaliMonthYear(dt), 'تیر 1403');
+      expect(DF.commonDate(dt), contains('1403/04/17'));
+      expect(DF.full(dt), contains('1403/04/17'));
+      expect(DF.fullCompact(dt), contains('1403/04/17'));
+
+      localSettings.calendarSystem = 'hijri';
+      expect(DF.isHijriCalendar, isTrue);
+      expect(DF.isPersianCalendar, isFalse);
+      expect(DF.allNumbers(dt), '1446/01/01');
+      expect(DF.jalaliDate(dt), '1446/01/01');
+      expect(DF.jalaliDay(dt), '1');
+      expect(DF.jalaliMonthYear(dt), 'محرم 1446');
+      expect(DF.commonDate(dt), contains('1446/01/01'));
+      expect(DF.full(dt), contains('1446/01/01'));
+      expect(DF.fullCompact(dt), contains('1446/01/01'));
     });
   });
 }

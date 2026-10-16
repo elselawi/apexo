@@ -75,6 +75,7 @@ SettingsItem _calendarSystemItem() {
     options: [
       ComboBoxItem(value: 'gregorian', child: Txt(txt('gregorian'))),
       ComboBoxItem(value: 'persian', child: Txt(txt('persian'))),
+      ComboBoxItem(value: 'hijri', child: Txt(txt('hijri'))),
     ],
     initValue: localSettings.calendarSystem,
     apply: (newVal) => localSettings.calendarSystem = newVal,
@@ -217,6 +218,15 @@ void main() {
 
       expect(localSettings.calendarSystem, 'persian');
       expect(DF.isPersianCalendar, isTrue);
+      expect(DF.isHijriCalendar, isFalse);
+
+      await _selectOption(tester, 'calendarSystem', txt('hijri'));
+      await tester.tap(_button('calendarSystem', txt('save')));
+      await tester.pumpAndSettle();
+
+      expect(localSettings.calendarSystem, 'hijri');
+      expect(DF.isHijriCalendar, isTrue);
+      expect(DF.isPersianCalendar, isFalse);
     });
 
     testWidgets('dental notation save changes rendered notation',

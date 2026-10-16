@@ -11,6 +11,7 @@ import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+import 'package:apexo/utils/hijri_utils.dart';
 import 'package:apexo/utils/jalali_utils.dart';
 import '../network_actions/network_actions_controller.dart';
 import 'settings_model.dart';
@@ -244,7 +245,22 @@ class LocalSettings extends ObservablePersistingObject {
 }
 
 abstract class DF {
+  static bool get isPersianCalendar =>
+      localSettings.calendarSystem == "persian";
+
+  static bool get isHijriCalendar => localSettings.calendarSystem == "hijri";
+
   static String commonDate(DateTime date) {
+    if (isPersianCalendar) {
+      final jDate = JalaliUtils.formatJalaliDMY(date);
+      final dayName = JalaliUtils.dayOfWeekAbbr(date.weekday);
+      return "📅 $dayName $jDate";
+    }
+    if (isHijriCalendar) {
+      final hDate = HijriUtils.formatHijriDMY(date);
+      final dayName = HijriUtils.dayOfWeekAbbr(date.weekday);
+      return "📅 $dayName $hDate";
+    }
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "📅 EE dd / MM / yyyy"
         : "📅 EE MM / dd / yyyy";
@@ -252,6 +268,9 @@ abstract class DF {
   }
 
   static String full(DateTime date) {
+    if (isPersianCalendar || isHijriCalendar) {
+      return "${commonDate(date)} ${time(date)}";
+    }
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "📅 EE dd / MM / yyyy 🕒 hh:mm a"
         : "📅 EE MM / dd / yyyy 🕒 hh:mm a";
@@ -259,6 +278,9 @@ abstract class DF {
   }
 
   static String fullCompact(DateTime date) {
+    if (isPersianCalendar || isHijriCalendar) {
+      return "📅 ${allNumbers(date)} ${time(date)}";
+    }
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "📅 dd / MM / yyyy 🕒 hh:mm a"
         : "📅 MM / dd / yyyy 🕒 hh:mm a";
@@ -266,6 +288,12 @@ abstract class DF {
   }
 
   static String allNumbers(DateTime date) {
+    if (isPersianCalendar) {
+      return JalaliUtils.formatJalaliDMY(date);
+    }
+    if (isHijriCalendar) {
+      return HijriUtils.formatHijriDMY(date);
+    }
     final df = localSettings.dateFormat.startsWith("d") == true
         ? "dd / MM / yyyy"
         : "MM / dd / yyyy";
@@ -273,26 +301,21 @@ abstract class DF {
   }
 
   static String dayOfWeek(DateTime date) {
-    return DateFormat("EE", locale.s.$code).format(date);
+    return jalaliDayOfWeekAbbr(date);
   }
 
   static String time(DateTime date) {
     return DateFormat("🕒 hh:mm a", locale.s.$code).format(date);
   }
 
-  static bool get isPersianCalendar =>
-      localSettings.calendarSystem == "persian";
-
-  static String jalaliDate(DateTime date) {
-    if (isPersianCalendar) {
-      return JalaliUtils.formatJalaliDMY(date);
-    }
-    return allNumbers(date);
-  }
+  static String jalaliDate(DateTime date) => allNumbers(date);
 
   static String jalaliDay(DateTime date) {
     if (isPersianCalendar) {
       return JalaliUtils.formatDay(date);
+    }
+    if (isHijriCalendar) {
+      return HijriUtils.formatDay(date);
     }
     return DateFormat("d", locale.s.$code).format(date);
   }
@@ -301,6 +324,9 @@ abstract class DF {
     if (isPersianCalendar) {
       return JalaliUtils.formatMonthYear(date);
     }
+    if (isHijriCalendar) {
+      return HijriUtils.formatMonthYear(date);
+    }
     return DateFormat('MMMM yyyy', locale.s.$code).format(date);
   }
 
@@ -308,17 +334,13 @@ abstract class DF {
     if (isPersianCalendar) {
       return JalaliUtils.dayOfWeekAbbr(date.weekday);
     }
+    if (isHijriCalendar) {
+      return HijriUtils.dayOfWeekAbbr(date.weekday);
+    }
     return DateFormat("EE", locale.s.$code).format(date);
   }
 
-  static String jalaliCommonDate(DateTime date) {
-    if (isPersianCalendar) {
-      final jDate = JalaliUtils.formatJalaliDMY(date);
-      final dayName = JalaliUtils.dayOfWeekAbbr(date.weekday);
-      return "📅 $dayName $jDate";
-    }
-    return commonDate(date);
-  }
+  static String jalaliCommonDate(DateTime date) => commonDate(date);
 }
 
 final globalSettings = GlobalSettings();

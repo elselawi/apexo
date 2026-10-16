@@ -1,6 +1,7 @@
 ### ____0.15.2____
 - New feature & Improvements
     - New and redesigned dental charting experience
+    - Hijri (Islamic) Calendar Support: Added support for the Hijri calendar system alongside Gregorian and Persian (Jalali), with app-wide date formatting and calendar-aware statistics and distributions.
 
 - Reliability & Bug Fixes
     - Amounts of four digits and more are stored as the amount that was typed. In the languages that group thousands with a dot — Greek and Spanish — entering 2650 in a price, payment, due or paid field kept 2.65 instead, and a saved amount with cents could come back multiplied. Grouping, typing and reading back now use the separators of the clinic's language, Persian digits included.

@@ -839,6 +839,7 @@ class En {
         "Choose the calendar system for displaying dates in the calendar view",
     "gregorian": "Gregorian",
     "persian": "Persian (Jalali / Shamsi)",
+    "hijri": "Hijri (Islamic)",
 
     // Jalali month names
     "farvardin": "Farvardin",
@@ -853,5 +854,19 @@ class En {
     "dey": "Dey",
     "bahman": "Bahman",
     "esfand": "Esfand",
+
+    // Hijri month names
+    "muharram": "Muharram",
+    "safar": "Safar",
+    "rabiAlAwwal": "Rabi' al-Awwal",
+    "rabiAlThani": "Rabi' al-Thani",
+    "jumadaAlUla": "Jumada al-Ula",
+    "jumadaAlAkhirah": "Jumada al-Akhirah",
+    "rajab": "Rajab",
+    "shaban": "Sha'ban",
+    "ramadan": "Ramadan",
+    "shawwal": "Shawwal",
+    "dhuAlQidah": "Dhu al-Qi'dah",
+    "dhuAlHijjah": "Dhu al-Hijjah",
   };
 }

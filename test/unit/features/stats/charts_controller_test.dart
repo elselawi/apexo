@@ -6,6 +6,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/features/stats/charts_controller.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
@@ -568,6 +569,43 @@ void main() {
       expect(chartsCtrl.filterByOperatorID(), 'temp');
       chartsCtrl.filterByOperator(null);
       expect(chartsCtrl.filterByOperatorID(), isEmpty);
+    });
+
+    test('periods and distributions respect persian and hijri calendar systems', () async {
+      final savedSystem = localSettings.calendarSystem;
+      addTearDown(() => localSettings.calendarSystem = savedSystem);
+
+      // 2024-07-07 is 1446/01/01 in Hijri and 1403/04/17 in Persian
+      final targetDate = DateTime(2024, 7, 7, 10);
+      final appt = testAppointment(
+        id: 'charts-cal-system-appt',
+        date: targetDate,
+      );
+      appointments.set(appt);
+      injectedApptIds.add(appt.id);
+
+      chartsCtrl.start(DateTime(2024, 7, 7));
+      chartsCtrl.end(DateTime(2024, 7, 7, 23, 59, 59));
+      await flushObservers();
+
+      localSettings.calendarSystem = 'hijri';
+      chartsCtrl.interval(StatsInterval.days);
+      expect(chartsCtrl.periods.first.label, '1446/01/01');
+      expect(chartsCtrl.dayOfMonthDistribution[0], 1.0);
+      expect(chartsCtrl.monthOfYearDistribution[0], 1.0);
+
+      chartsCtrl.start(DateTime(2024, 8, 1));
+      chartsCtrl.end(DateTime(2024, 8, 31, 23, 59, 59));
+      chartsCtrl.interval(StatsInterval.months);
+      expect(chartsCtrl.periods.first.label, contains('محرم'));
+
+      chartsCtrl.start(DateTime(2024, 7, 7));
+      chartsCtrl.end(DateTime(2024, 7, 7, 23, 59, 59));
+      localSettings.calendarSystem = 'persian';
+      chartsCtrl.interval(StatsInterval.days);
+      expect(chartsCtrl.periods.first.label, '1403/04/17');
+      expect(chartsCtrl.dayOfMonthDistribution[16], 1.0);
+      expect(chartsCtrl.monthOfYearDistribution[3], 1.0);
     });
   });
 }

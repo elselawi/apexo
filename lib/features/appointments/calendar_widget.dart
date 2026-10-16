@@ -295,9 +295,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Txt(
-                  localSettings.calendarSystem == "persian"
-                      ? " ${DF.jalaliCommonDate(selectedDate)}"
-                      : " ${DF.commonDate(selectedDate)}",
+                  " ${DF.commonDate(selectedDate)}",
                   style: const TextStyle(fontWeight: FontWeight.w500),
                 ),
                 Tooltip(

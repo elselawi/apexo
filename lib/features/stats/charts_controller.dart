@@ -5,6 +5,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/utils/hijri_utils.dart';
 import 'package:apexo/utils/jalali_utils.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
@@ -166,7 +167,11 @@ class _ChartsController {
   List<double> get dayOfMonthDistribution {
     final List<double> res = List.generate(31, (index) => 0.0);
     for (var appointment in filteredAppointments) {
-      final int day = appointment.date.day;
+      final int day = DF.isPersianCalendar
+          ? JalaliUtils.fromGregorian(appointment.date).day
+          : DF.isHijriCalendar
+              ? HijriUtils.fromGregorian(appointment.date).day
+              : appointment.date.day;
       res[day - 1]++;
     }
     return res;
@@ -184,7 +189,11 @@ class _ChartsController {
   List<double> get monthOfYearDistribution {
     final List<double> res = List.generate(12, (index) => 0.0);
     for (var appointment in filteredAppointments) {
-      final int month = appointment.date.month;
+      final int month = DF.isPersianCalendar
+          ? JalaliUtils.fromGregorian(appointment.date).month
+          : DF.isHijriCalendar
+              ? HijriUtils.fromGregorian(appointment.date).month
+              : appointment.date.month;
       res[month - 1]++;
     }
     return res;
@@ -294,11 +303,19 @@ class _ChartsController {
           final j = JalaliUtils.fromGregorian(start);
           return "W${j.day} ${JalaliUtils.monthName(j.month)}/${j.year.toString().substring(2)}";
         }
+        if (DF.isHijriCalendar) {
+          final h = HijriUtils.fromGregorian(start);
+          return "W${h.day} ${HijriUtils.monthName(h.month)}/${h.year.toString().substring(2)}";
+        }
         return "W${DateFormat("${_weekOfMonth(start)} MM/yy", locale.s.$code).format(start)}";
       case StatsInterval.months:
         if (DF.isPersianCalendar) {
           final j = JalaliUtils.fromGregorian(start);
           return "${JalaliUtils.monthName(j.month)}/${j.year.toString().substring(2)}";
+        }
+        if (DF.isHijriCalendar) {
+          final h = HijriUtils.fromGregorian(start);
+          return "${HijriUtils.monthName(h.month)}/${h.year.toString().substring(2)}";
         }
         return DateFormat("MMM/yy", locale.s.$code).format(start);
       case StatsInterval.quarters:
@@ -307,11 +324,20 @@ class _ChartsController {
           final int q = ((j.month - 1) ~/ 3) + 1;
           return "Q$q ${j.year}";
         }
+        if (DF.isHijriCalendar) {
+          final h = HijriUtils.fromGregorian(start);
+          final int q = ((h.month - 1) ~/ 3) + 1;
+          return "Q$q ${h.year}";
+        }
         return "Q${DateFormat("Q yyyy", locale.s.$code).format(start)}";
       default:
         if (DF.isPersianCalendar) {
           final j = JalaliUtils.fromGregorian(start);
           return j.year.toString();
+        }
+        if (DF.isHijriCalendar) {
+          final h = HijriUtils.fromGregorian(start);
+          return h.year.toString();
         }
         return DateFormat("yyyy", locale.s.$code).format(start);
     }

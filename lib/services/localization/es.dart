@@ -857,6 +857,7 @@ class Es implements En {
         "Elija el sistema de calendario para mostrar las fechas",
     "gregorian": "Gregoriano",
     "persian": "Persa (Jalali / Shamsi)",
+    "hijri": "Hégira (Islámico)",
 
     // Jalali month names
     "farvardin": "Farvardin",
@@ -871,5 +872,19 @@ class Es implements En {
     "dey": "Dey",
     "bahman": "Bahman",
     "esfand": "Esfand",
+
+    // Hijri month names
+    "muharram": "Muharram",
+    "safar": "Safar",
+    "rabiAlAwwal": "Rabi' al-Awwal",
+    "rabiAlThani": "Rabi' al-Thani",
+    "jumadaAlUla": "Jumada al-Ula",
+    "jumadaAlAkhirah": "Jumada al-Akhirah",
+    "rajab": "Rajab",
+    "shaban": "Sha'ban",
+    "ramadan": "Ramadán",
+    "shawwal": "Shawwal",
+    "dhuAlQidah": "Dhu al-Qi'dah",
+    "dhuAlHijjah": "Dhu al-Hijjah",
   };
 }

@@ -830,6 +830,7 @@ class Ar implements En {
     "calendarSystem_desc": "اختر نظام التقويم لعرض التواريخ في عرض التقويم",
     "gregorian": "ميلادي",
     "persian": "فارسي (جلالي / شمسي)",
+    "hijri": "هجري (إسلامي)",
 
     // Jalali month names
     "farvardin": "فروردين",
@@ -844,5 +845,19 @@ class Ar implements En {
     "dey": "دي",
     "bahman": "بهمن",
     "esfand": "اسفند",
+
+    // Hijri month names
+    "muharram": "محرم",
+    "safar": "صفر",
+    "rabiAlAwwal": "ربيع الأول",
+    "rabiAlThani": "ربيع الثاني",
+    "jumadaAlUla": "جمادى الأولى",
+    "jumadaAlAkhirah": "جمادى الآخرة",
+    "rajab": "رجب",
+    "shaban": "شعبان",
+    "ramadan": "رمضان",
+    "shawwal": "شوال",
+    "dhuAlQidah": "ذو القعدة",
+    "dhuAlHijjah": "ذو الحجة",
   };
 }

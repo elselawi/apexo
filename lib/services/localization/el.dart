@@ -857,6 +857,7 @@ class El implements En {
         "Επιλέξτε το σύστημα ημερολογίου για την προβολή ημερομηνιών",
     "gregorian": "Γρηγοριανό",
     "persian": "Περσικό (Jalali / Shamsi)",
+    "hijri": "Εγίρας (Ισλαμικό)",
 
     // Jalali month names
     "farvardin": "Farvardin",
@@ -871,5 +872,19 @@ class El implements En {
     "dey": "Dey",
     "bahman": "Bahman",
     "esfand": "Esfand",
+
+    // Hijri month names
+    "muharram": "Muharram",
+    "safar": "Safar",
+    "rabiAlAwwal": "Rabi' al-Awwal",
+    "rabiAlThani": "Rabi' al-Thani",
+    "jumadaAlUla": "Jumada al-Ula",
+    "jumadaAlAkhirah": "Jumada al-Akhirah",
+    "rajab": "Rajab",
+    "shaban": "Sha'ban",
+    "ramadan": "Ραμαζάνι",
+    "shawwal": "Shawwal",
+    "dhuAlQidah": "Dhu al-Qi'dah",
+    "dhuAlHijjah": "Dhu al-Hijjah",
   };
 }

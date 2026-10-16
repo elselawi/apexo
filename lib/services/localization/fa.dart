@@ -837,6 +837,7 @@ class Fa implements En {
         "سیستم تقویم مورد نظر برای نمایش تاریخ‌ها در نمای تقویم را انتخاب کنید",
     "gregorian": "میلادی",
     "persian": "شمسی (جلالی)",
+    "hijri": "قمری (هجری)",
 
     // Jalali month names
     "farvardin": "فروردین",
@@ -851,5 +852,19 @@ class Fa implements En {
     "dey": "دی",
     "bahman": "بهمن",
     "esfand": "اسفند",
+
+    // Hijri month names
+    "muharram": "محرم",
+    "safar": "صفر",
+    "rabiAlAwwal": "ربیع‌الاول",
+    "rabiAlThani": "ربیع‌الثانی",
+    "jumadaAlUla": "جمادی‌الاول",
+    "jumadaAlAkhirah": "جمادی‌الثانی",
+    "rajab": "رجب",
+    "shaban": "شعبان",
+    "ramadan": "رمضان",
+    "shawwal": "شوال",
+    "dhuAlQidah": "ذی‌القعده",
+    "dhuAlHijjah": "ذی‌الحجه",
   };
 }

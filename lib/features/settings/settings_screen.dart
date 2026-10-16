@@ -178,6 +178,10 @@ class SettingsScreen extends StatelessWidget {
                 value: "persian",
                 child: Txt(txt("persian")),
               ),
+              ComboBoxItem(
+                value: "hijri",
+                child: Txt(txt("hijri")),
+              ),
             ],
             initValue: localSettings.calendarSystem,
             apply: (newVal) {

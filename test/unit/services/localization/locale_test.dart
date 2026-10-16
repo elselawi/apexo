@@ -49,8 +49,8 @@ void main() {
       expect(txt("this doesn't exist"), "this doesn't exist");
     });
 
-    test('list has 5 locales', () {
-      expect(locale.list.length, 5);
+    test('list has 10 locales', () {
+      expect(locale.list.length, 10);
     });
 
     test('all terms begin with lowercase key', () {

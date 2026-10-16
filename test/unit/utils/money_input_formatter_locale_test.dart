@@ -1,5 +1,9 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -10,6 +14,7 @@ import 'package:intl/intl.dart' hide TextDirection;
 /// Greek and Spanish group thousands with a dot, Persian writes the digits in
 /// its own script, and English and Arabic group with a comma.
 void main() {
+  ensureCustomIntlLocalesInitialized();
   MoneyInputFormatter formatterFor(String localeCode) =>
       MoneyInputFormatter(NumberFormat.decimalPattern(localeCode));
 
@@ -21,7 +26,18 @@ void main() {
         .text;
   }
 
-  for (final localeCode in ['en', 'ar', 'el', 'es', 'fa']) {
+  for (final localeCode in [
+    'en',
+    'ar',
+    'el',
+    'es',
+    'fa',
+    'ku',
+    'fr',
+    'tr',
+    'it',
+    'ur',
+  ]) {
     group('money field in "$localeCode"', () {
       final formatter = formatterFor(localeCode);
 

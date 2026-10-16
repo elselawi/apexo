@@ -1,4 +1,5 @@
 import 'package:apexo/core/reactive/observable_base.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/app/app.dart';
@@ -21,9 +22,8 @@ void main() async {
     login.askForLoginAgain(error);
     logger(error, stack);
   };
-  await initializeDateFormatting('en', null);
-  await initializeDateFormatting('ar', null);
-  await initializeDateFormatting('es', null);
+  await initializeDateFormatting();
+  ensureCustomIntlLocalesInitialized();
   Logger.root.onRecord.listen((record) {
     // ignore: avoid_print
     print('>>> ${record.level.name}: ${record.time}: ${record.message}');

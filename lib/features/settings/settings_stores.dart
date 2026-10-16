@@ -203,7 +203,7 @@ class LocalSettings extends ObservablePersistingObject {
     calendarSystem = json["calendarSystem"] as String? ?? calendarSystem;
     transcriptionLocaleNonFinal =
         json["transcriptionLocale"] as String? ?? transcriptionLocaleNonFinal;
-    const legacyLanguageCodes = ['en', 'ar', 'es', 'el', 'fa'];
+    final legacyLanguageCodes = locale.list.map((l) => l.$code).toList();
     final legacyIndex = int.tryParse(transcriptionLocaleNonFinal);
     if (legacyIndex != null &&
         legacyIndex >= 0 &&

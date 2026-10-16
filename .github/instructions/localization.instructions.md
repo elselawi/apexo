@@ -17,12 +17,18 @@ Apexo uses a **custom dictionary-based localization system** (not Flutter's `flu
 | `lib/services/localization/ar.dart` | Arabic (RTL) — `implements En` |
 | `lib/services/localization/es.dart` | Spanish (LTR) — `implements En` |
 | `lib/services/localization/el.dart` | Greek (LTR) — `implements En` |
+| `lib/services/localization/fa.dart` | Persian (RTL) — `implements En` |
+| `lib/services/localization/ku.dart` | Sorani Kurdish (RTL) — `implements En` |
+| `lib/services/localization/fr.dart` | French (LTR) — `implements En` |
+| `lib/services/localization/tr.dart` | Turkish (LTR) — `implements En` |
+| `lib/services/localization/it.dart` | Italian (LTR) — `implements En` |
+| `lib/services/localization/ur.dart` | Urdu (RTL) — `implements En` |
 | `lib/services/localization/locale.dart` | Runtime locale selection — `_Localization` class, `txt()` function, `Txt` widget |
 | `lib/services/localization/verify.dart` | CLI audit tool — checks key parity and scans for unlocalized strings |
 
 ### Runtime Flow
 
-1. `localSettings.selectedLocale` (an `ObservableState<int>`) holds the index (0=en, 1=ar, 2=es, 3=el).
+1. `localSettings.selectedLocale` holds the index (0=en, 1=ar, 2=es, 3=el, 4=fa, 5=ku, 6=fr, 7=tr, 8=it, 9=ur).
 2. `locale.s` returns the active `En` instance: `list[localSettings.selectedLocale]`.
 3. `locale.isRtl` checks `$direction == Direction.rtl`.
 
@@ -114,7 +120,7 @@ class Fr implements En {
 
 ## RTL (Right-to-Left) Support
 
-- Only **Arabic** (`ar.dart`) is RTL: `$direction = Direction.rtl`
+- **Arabic** (`ar.dart`), **Persian** (`fa.dart`), **Sorani Kurdish** (`ku.dart`), and **Urdu** (`ur.dart`) are RTL: `$direction = Direction.rtl`
 - Check `locale.isRtl` for conditional RTL layout adjustments
 - The `Txt` widget does NOT automatically set `textDirection` — if you need RTL text direction, use `Text(txt(...), textDirection: locale.isRtl ? TextDirection.rtl : TextDirection.ltr)`
 

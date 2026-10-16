@@ -121,8 +121,10 @@ class _PanelScreenState extends State<PanelScreen> {
         }
       },
       child: Container(
-        margin: const EdgeInsetsDirectional.only(
-            top: 5, bottom: 5, start: 0, end: 5),
+        margin: widget.layoutWidth < 490
+            ? EdgeInsets.zero
+            : const EdgeInsetsDirectional.only(
+                top: 5, bottom: 5, start: 0, end: 5),
         decoration: BoxDecoration(
             boxShadow: kElevationToShadow[24],
             color: FluentTheme.of(context)

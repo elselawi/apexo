@@ -9,6 +9,7 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
+import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -96,6 +97,7 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
           PatientTab.dentalNotes => PanelTab(
               title: tab.titleKey,
               icon: tab.icon,
+              padding: 6,
               footer: (network.isOnline() && globalSettings.aiServicesEnabled)
                   ? Builder(
                       builder: (context) => AudioRecorderButton(
@@ -133,20 +135,26 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
                     transcriptionEditCounter.stream
                   ],
                   builder: (context, asyncSnapshot) {
+                    final compact =
+                        MediaQuery.sizeOf(context).width < kOpgViewportMinWidth;
                     return InfoLabel(
                       label: "${txt("dentalNotes")}:",
                       child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Container(
-                            decoration: BoxDecoration(
-                                color: FluentTheme.of(context)
-                                    .resources
-                                    .solidBackgroundFillColorBase,
-                                borderRadius: BorderRadius.circular(5),
-                                border: Border.all(
-                                    color: Colors.grey.withAlpha(100))),
-                            padding: const EdgeInsets.all(4),
+                            decoration: compact
+                                ? null
+                                : BoxDecoration(
+                                    color: FluentTheme.of(context)
+                                        .resources
+                                        .solidBackgroundFillColorBase,
+                                    borderRadius: BorderRadius.circular(5),
+                                    border: Border.all(
+                                        color: Colors.grey.withAlpha(100))),
+                            padding: compact
+                                ? EdgeInsets.zero
+                                : const EdgeInsets.all(4),
                             child: TeethSelector(
                               type: StateType.state,
                               historyTitle: 'toothAppointmentNotes',

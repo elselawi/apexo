@@ -391,15 +391,204 @@ void main() {
     expect(rotatedTags.length, 1);
   });
 
+  testWidgets(
+      'phone / narrow screen bends each jaw into one 16-tooth arch that fits without scrolling',
+      (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await pumpApexoApp(
+      tester,
+      SingleChildScrollView(
+        child: TeethSelector(
+          notation: (iso) => 'Tooth $iso',
+          type: StateType.treatment,
+          currentNotes: const {'11': 'filling', '36': 'crown'},
+          oldNotes: const {'26': 'rCT'},
+          onNote: (iso, note) {},
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(OpgDentalChart), findsOneWidget);
+
+    const selected = {'11', '36'};
+    Offset centerOf(String iso) => tester.getCenter(
+          find.byKey(WK.tooth(iso, selected: selected.contains(iso))),
+        );
+
+    // Every permanent tooth of the arch is drawn, inside the phone's width.
+    for (final iso in [...kOpgUpperPermanent, ...kOpgLowerPermanent]) {
+      final finder = find.byKey(
+        WK.tooth(iso, selected: selected.contains(iso)),
+      );
+      expect(finder, findsOneWidget, reason: 'tooth $iso is missing');
+      final rect = tester.getRect(finder);
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(360));
+    }
+
+    // Patient's right first: 18..11 then 21..28, left to right.
+    expect(centerOf('18').dx, lessThan(centerOf('11').dx));
+    expect(centerOf('11').dx, lessThan(centerOf('21').dx));
+    expect(centerOf('21').dx, lessThan(centerOf('28').dx));
+    expect(centerOf('48').dx, lessThan(centerOf('41').dx));
+    expect(centerOf('31').dx, lessThan(centerOf('38').dx));
+
+    // Ovoid / pyramidal arch shape: each posterior pair widens progressively
+    // from canine (3) -> first premolar (4) -> second premolar (5) -> first
+    // molar (6) -> second molar (7) -> wisdom tooth (8).
+    double pairSpan(String leftIso, String rightIso) =>
+        (centerOf(rightIso).dx - centerOf(leftIso).dx).abs();
+
+    expect(pairSpan('12', '22'), greaterThan(pairSpan('11', '21')));
+    expect(pairSpan('13', '23'), greaterThan(pairSpan('12', '22')));
+    expect(pairSpan('14', '24'), greaterThan(pairSpan('13', '23')));
+    expect(pairSpan('15', '25'), greaterThan(pairSpan('14', '24')));
+    expect(pairSpan('16', '26'), greaterThan(pairSpan('15', '25')));
+    expect(pairSpan('17', '27'), greaterThan(pairSpan('16', '26')));
+    expect(pairSpan('18', '28'), greaterThan(pairSpan('17', '27')));
+
+    expect(pairSpan('43', '33'), greaterThan(pairSpan('42', '32')));
+    expect(pairSpan('44', '34'), greaterThan(pairSpan('43', '33')));
+    expect(pairSpan('45', '35'), greaterThan(pairSpan('44', '34')));
+    expect(pairSpan('46', '36'), greaterThan(pairSpan('45', '35')));
+    expect(pairSpan('47', '37'), greaterThan(pairSpan('46', '36')));
+    expect(pairSpan('48', '38'), greaterThan(pairSpan('47', '37')));
+
+    // One arch per jaw, not a second row: the front teeth stand across the top
+    // of the mouth and the back ones run down its sides.
+    expect(centerOf('11').dy, lessThan(centerOf('18').dy));
+    expect(centerOf('21').dy, lessThan(centerOf('28').dy));
+    expect(centerOf('41').dy, greaterThan(centerOf('48').dy));
+    expect(centerOf('31').dy, greaterThan(centerOf('38').dy));
+
+    // The two jaws face each other across the middle of the mouth: the upper
+    // arch sits above the lower one everywhere, back teeth included.
+    expect(centerOf('11').dy, lessThan(centerOf('41').dy));
+    expect(centerOf('18').dy, lessThan(centerOf('48').dy));
+    expect(centerOf('28').dy, lessThan(centerOf('38').dy));
+
+    // The incisors stand upright across the anterior segment, while the canines
+    // sit at the corner angle where the arch bends into the buccal segments.
+    expect((centerOf('11').dy - centerOf('12').dy).abs(), lessThan(6));
+    expect(centerOf('13').dy, greaterThan(centerOf('12').dy + 4));
+    expect(centerOf('14').dy, greaterThan(centerOf('13').dy + 8));
+    expect((centerOf('41').dy - centerOf('42').dy).abs(), lessThan(6));
+    expect(centerOf('43').dy, lessThan(centerOf('42').dy - 4));
+
+    // The mouth is centred on the panel's midline, and the two sides mirror
+    // each other: the incisors sit level to either side of it.
+    final midline =
+        tester.getRect(find.byKey(const ValueKey('opg-dental-chart'))).width /
+            2;
+    expect(centerOf('11').dx + centerOf('21').dx, closeTo(midline * 2, 1));
+    expect(centerOf('11').dy, closeTo(centerOf('21').dy, 1));
+    expect(centerOf('41').dx + centerOf('31').dx, closeTo(midline * 2, 1));
+
+    // The arch reaches out to the panel's sides, so no width is left unused.
+    final chartWidth =
+        tester.getRect(find.byKey(const ValueKey('opg-dental-chart'))).width;
+    expect(centerOf('18').dx, lessThan(chartWidth * 0.22));
+    expect(centerOf('28').dx, greaterThan(chartWidth * 0.78));
+
+    // The whole chart fits the phone's height with room to spare for the
+    // panel's own chrome: nothing here has to scroll.
+    expect(
+      tester.getRect(find.byKey(const ValueKey('opg-dental-chart'))).height,
+      lessThanOrEqualTo(740 - 190),
+    );
+
+    // The switches pick one dentition: turning the primary teeth on shows them
+    // in place of the permanent ones, in the same space and without overflow.
+    await tester.tap(find.text(txt('showPrimary')).first);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(WK.tooth('16', selected: false)), findsNothing);
+    for (final iso in [...kOpgUpperPrimary, ...kOpgLowerPrimary]) {
+      final rect = tester.getRect(find.byKey(WK.tooth(iso, selected: false)));
+      expect(rect.left, greaterThanOrEqualTo(0));
+      expect(rect.right, lessThanOrEqualTo(360));
+    }
+    expect(
+      tester.getRect(find.byKey(const ValueKey('opg-dental-chart'))).height,
+      lessThanOrEqualTo(740 - 190),
+    );
+
+    //And back again: the permanent teeth return and the primary ones go.
+    await tester.tap(find.text(txt('showPermanent')).first);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(WK.tooth('16', selected: false)), findsOneWidget);
+    expect(find.byKey(WK.tooth('55', selected: false)), findsNothing);
+
+    // Tapping each tooth's visual center on the curved arch opens that exact
+    // tooth's wheel, without adjacent rotated cells stealing the hit.
+    for (final iso in [
+      '11',
+      '12',
+      '13',
+      '14',
+      '15',
+      '16',
+      '17',
+      '18',
+      '33',
+      '46'
+    ]) {
+      final finder =
+          find.byKey(WK.tooth(iso, selected: selected.contains(iso)));
+      await tester.tapAt(tester.getCenter(finder));
+      await tester.pumpAndSettle();
+
+      final wheel =
+          tester.widget<ToothStateWheel>(find.byType(ToothStateWheel));
+      expect(
+        wheel.iso,
+        iso,
+        reason:
+            'tapping center of compact tooth $iso should open $iso, not ${wheel.iso}',
+      );
+
+      await tester.tap(find.byKey(const ValueKey('wheel-close')));
+      await tester.pumpAndSettle();
+    }
+  });
+
   test(
-      'computePanelWidth widens dental tabs on wide screens and preserves 350px elsewhere',
+      'computePanelWidth widens dental tabs on wide screens, fills phone width, and preserves 350px elsewhere',
       () {
-    // Narrow screen: stays 350
+    // Phone screen (< 490): fills the full screen width even when not minimized
+    expect(
+      computePanelWidth(
+        screenWidth: 360,
+        minimized: false,
+        activeTabTitleKey: 'dentalNotes',
+      ),
+      360,
+    );
+
+    // Narrow tablet screen on dental tab: widens to 440 for the compact arch
     expect(
       computePanelWidth(
         screenWidth: 800,
         minimized: false,
         activeTabTitleKey: 'dentalNotes',
+      ),
+      440,
+    );
+
+    // Narrow tablet screen on non-dental tab: stays 350
+    expect(
+      computePanelWidth(
+        screenWidth: 800,
+        minimized: false,
+        activeTabTitleKey: 'patientDetails',
       ),
       350,
     );

@@ -7,6 +7,7 @@ import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/money_display.dart';
+import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
@@ -124,6 +125,7 @@ void openAppointment([Appointment? appointment, int? selectedTabIndex]) async {
         AppointmentTab.operative => PanelTab(
             title: tab.titleKey,
             icon: tab.icon,
+            padding: 6,
             body: _OperativeDetails(editingCopy),
             footer: (network.isOnline() && globalSettings.aiServicesEnabled)
                 ? AudioRecorderButton(
@@ -557,21 +559,27 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           paymentsMade -
           widget.appointment.paid;
     }
+    final compact = MediaQuery.sizeOf(context).width < kOpgViewportMinWidth;
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (widget.appointment.patient != null)
           InfoLabel(
             label: "${txt("dentalNotes")}:",
             child: Container(
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: FluentTheme.of(context).shadowColor.withAlpha(50)),
-                color: FluentTheme.of(context).menuColor,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.all(8),
+              decoration: compact
+                  ? null
+                  : BoxDecoration(
+                      border: Border.all(
+                          color: FluentTheme.of(context)
+                              .shadowColor
+                              .withAlpha(50)),
+                      color: FluentTheme.of(context).menuColor,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+              padding: compact ? EdgeInsets.zero : const EdgeInsets.all(8),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 spacing: 10,
                 children: [
                   TeethSelector(

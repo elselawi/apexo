@@ -9,10 +9,12 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/rendering.dart';
 
 /// Minimum viewport width at which the OPG panoramic dental chart activates
 /// and the panel widens to give the full 16-column dental arch comfortable
-/// breathing room without blocking the underlying clinic screen.
+/// breathing room without blocking the underlying clinic screen. Narrower
+/// viewports (phones, small tablets) get the compact elliptical arch instead.
 const double kOpgViewportMinWidth = 1000.0;
 
 /// Width of the side panel when a dental chart tab is active on a wide screen.
@@ -22,6 +24,29 @@ const double kOpgWidePanelWidth = 960.0;
 /// another appointment or record (not registered in the current draft).
 Color _neutralHistoryColor(bool darkMode) =>
     darkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
+/// The radiographic wash the arch sits in: brighter through the middle of the
+/// mouth, where the jaws part, and cooler towards the bone at either end.
+LinearGradient _archWellGradient(bool darkMode) => LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: darkMode
+          ? const [
+              Color(0xFF0A1018),
+              Color(0xFF111A27),
+              Color(0xFF090E15),
+              Color(0xFF111A27),
+              Color(0xFF0A1018),
+            ]
+          : const [
+              Color(0xFFEDF2F8),
+              Color(0xFFF7FAFC),
+              Color(0xFFE5ECF4),
+              Color(0xFFF7FAFC),
+              Color(0xFFEDF2F8),
+            ],
+      stops: const [0.0, 0.36, 0.5, 0.64, 1.0],
+    );
 
 /// Upper permanent teeth in standard panoramic (OPG) order:
 /// patient's right (18..11) to patient's left (21..28).
@@ -79,6 +104,7 @@ class OpgDentalChart extends StatefulWidget {
     required this.showPrimary,
     required this.onShowPermanentChanged,
     required this.onShowPrimaryChanged,
+    this.isCompactArch = false,
     this.onExtraNote,
     this.textStyle,
     this.history = const [],
@@ -99,6 +125,7 @@ class OpgDentalChart extends StatefulWidget {
   final bool showPrimary;
   final ValueChanged<bool> onShowPermanentChanged;
   final ValueChanged<bool> onShowPrimaryChanged;
+  final bool isCompactArch;
   final TextStyle? textStyle;
   final List<ToothHistory> history;
   final String historyTitle;
@@ -258,6 +285,15 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
         ? const Color(0xFF233044)
         : theme.inactiveColor.withValues(alpha: 0.22);
 
+    if (widget.isCompactArch) {
+      return _buildCompactChart(
+        context: context,
+        darkMode: darkMode,
+        wellBg: archWellBg,
+        borderColor: borderColor,
+      );
+    }
+
     return Directionality(
       // Standard OPG radiographic orientation: Patient Right on viewer left,
       // Patient Left on viewer right, regardless of text directionality.
@@ -315,40 +351,56 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _orientationBadge(widget.rightString, 'R', pillColor, labelStyle),
-        Directionality(
-          textDirection: locale.isRtl ? TextDirection.rtl : TextDirection.ltr,
-          child: Wrap(
-            spacing: 14,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Checkbox(
-                checked: widget.showPermanent,
-                onChanged: (checked) =>
-                    widget.onShowPermanentChanged(checked == true),
-                content: Txt(
-                  txt('showPermanent'),
-                  style: theme.typography.caption?.copyWith(
-                    fontWeight: FontWeight.w600,
+        _orientationBadge(
+          widget.rightString,
+          'R',
+          pillColor,
+          labelStyle,
+          compact: widget.isCompactArch,
+        ),
+        Flexible(
+          child: Directionality(
+            textDirection: locale.isRtl ? TextDirection.rtl : TextDirection.ltr,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    checked: widget.showPermanent,
+                    onChanged: (checked) =>
+                        widget.onShowPermanentChanged(checked == true),
+                    content: Txt(
+                      txt('showPermanent'),
+                      style: theme.typography.caption?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              Checkbox(
-                checked: widget.showPrimary,
-                onChanged: (checked) =>
-                    widget.onShowPrimaryChanged(checked == true),
-                content: Txt(
-                  txt('showPrimary'),
-                  style: theme.typography.caption?.copyWith(
-                    fontWeight: FontWeight.w600,
+                  const SizedBox(width: 12),
+                  Checkbox(
+                    checked: widget.showPrimary,
+                    onChanged: (checked) =>
+                        widget.onShowPrimaryChanged(checked == true),
+                    content: Txt(
+                      txt('showPrimary'),
+                      style: theme.typography.caption?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-        _orientationBadge(widget.leftString, 'L', pillColor, labelStyle),
+        _orientationBadge(
+          widget.leftString,
+          'L',
+          pillColor,
+          labelStyle,
+          compact: widget.isCompactArch,
+        ),
       ],
     );
   }
@@ -357,17 +409,21 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     String text,
     String marker,
     Color bg,
-    TextStyle style,
-  ) {
+    TextStyle style, {
+    bool compact = false,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 5 : 8,
+        vertical: 3,
+      ),
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(4),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        spacing: 5,
+        spacing: 4,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
@@ -380,7 +436,259 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
               style: style.copyWith(fontSize: 10, fontWeight: FontWeight.w800),
             ),
           ),
-          Text(text, style: style),
+          if (!compact) Text(text, style: style),
+        ],
+      ),
+    );
+  }
+
+  /// Compact arch layout for phones and narrow panels
+  /// (`< kOpgViewportMinWidth`): both jaws are drawn as facing anatomical
+  /// arches — the two 16-tooth rows curve around the canines at the corners of
+  /// the arch, spending vertical room instead of width — with roots pointing
+  /// outward and crowns inward, the way an odontogram reads.
+  ///
+  /// One well holds the whole chart — the orientation markers, the switches,
+  /// both arches and the colour key — so none of the width the panel gives is
+  /// spent on padding, and the mouth is laid out in the space that is left.
+  Widget _buildCompactChart({
+    required BuildContext context,
+    required bool darkMode,
+    required Color wellBg,
+    required Color borderColor,
+  }) {
+    final mediaHeight = MediaQuery.sizeOf(context).height;
+    // Give the compact arch generous vertical room so teeth are large, crisp,
+    // and clinical marks/icons/drawings are clearly visible, while still
+    // fitting a phone viewport without scrolling.
+    final room = math.max(380.0, mediaHeight - 190.0);
+
+    final currentLegendNotes = <String>{
+      ...widget.currentNotes.values.where((x) => x.isNotEmpty).map(
+          (x) => txOptions.where((y) => y.label == x).isEmpty ? 'other' : x),
+    };
+    final historicalLegendNotes = <String>{
+      ...[
+        ...widget.oldNotes.values,
+        for (final h in widget.history) ...h.teeth.values,
+      ].where((x) => x.isNotEmpty).map(
+          (x) => txOptions.where((y) => y.label == x).isEmpty ? 'other' : x),
+    }..removeAll(currentLegendNotes);
+    final hasLegend =
+        currentLegendNotes.isNotEmpty || historicalLegendNotes.isNotEmpty;
+
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        key: const ValueKey('opg-dental-chart'),
+        width: double.infinity,
+        height: room,
+        decoration: BoxDecoration(
+          color: wellBg,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: borderColor.withValues(alpha: 0.7)),
+          gradient: _archWellGradient(darkMode),
+        ),
+        padding: const EdgeInsets.fromLTRB(4, 5, 4, 5),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildTopBar(context, darkMode),
+            const SizedBox(height: 2),
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => _buildCompactCanvas(
+                  width: constraints.maxWidth,
+                  height: constraints.maxHeight,
+                  darkMode: darkMode,
+                ),
+              ),
+            ),
+            if (hasLegend) ...[
+              const SizedBox(height: 4),
+              Directionality(
+                textDirection:
+                    locale.isRtl ? TextDirection.rtl : TextDirection.ltr,
+                child: Wrap(
+                  spacing: 5,
+                  runSpacing: 4,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    for (final note in currentLegendNotes)
+                      _buildLegendChip(
+                        context,
+                        note,
+                        neutral: false,
+                        darkMode: darkMode,
+                        compact: true,
+                      ),
+                    for (final note in historicalLegendNotes)
+                      _buildLegendChip(
+                        context,
+                        note,
+                        neutral: true,
+                        darkMode: darkMode,
+                        compact: true,
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The mouth itself: one facing pair of arches, and only ever one dentition —
+  /// a phone has room for the permanent teeth or the primary ones, not both, so
+  /// the switches pick between them.
+  Widget _buildCompactCanvas({
+    required double width,
+    required double height,
+    required bool darkMode,
+  }) {
+    if (width <= 0 || height <= 0) return const SizedBox.shrink();
+
+    final primary = !widget.showPermanent;
+    final pair = _layoutCompactPair(
+      width: width,
+      band: Rect.fromLTWH(0, 0, width, height),
+      upperIsos: primary ? kOpgUpperPrimary : kOpgUpperPermanent,
+      lowerIsos: primary ? kOpgLowerPrimary : kOpgLowerPermanent,
+      toothBand: (width * 0.048).clamp(12.0, 20.0),
+      jawGap: 10.0,
+      // A drawn crown is narrower than its normalized [-1, 1] box, so drawing
+      // each cell slightly wider than its arc share lets adjacent crowns make
+      // realistic interproximal contact while leaving room for the ovoid/
+      // pyramidal arch splay out to the panel edges.
+      toothFill: 1.12,
+    );
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(
+          child: IgnorePointer(
+            child:
+                CustomPaint(painter: _CompactArchPainter(darkMode: darkMode)),
+          ),
+        ),
+        ..._compactPairCells(pair, isPrimary: primary, darkMode: darkMode),
+      ],
+    );
+  }
+
+  List<Widget> _compactPairCells(
+    _CompactPairLayout pair, {
+    required bool isPrimary,
+    required bool darkMode,
+  }) {
+    return [
+      for (final seat in pair.upperSeats)
+        _compactTooth(
+          seat: seat,
+          origin: pair.upperCenter,
+          toothBand: pair.toothBand,
+          isUpper: true,
+          isPrimary: isPrimary,
+          darkMode: darkMode,
+        ),
+      for (final seat in pair.lowerSeats)
+        _compactTooth(
+          seat: seat,
+          origin: pair.lowerCenter,
+          toothBand: pair.toothBand,
+          isUpper: false,
+          isPrimary: isPrimary,
+          darkMode: darkMode,
+        ),
+    ];
+  }
+
+  Widget _compactTooth({
+    required _ArchSeat seat,
+    required Offset origin,
+    required double toothBand,
+    required bool isUpper,
+    required bool isPrimary,
+    required bool darkMode,
+  }) {
+    return Positioned.fromRect(
+      rect: Rect.fromCenter(
+        center: origin + seat.center,
+        width: seat.drawSpan,
+        height: seat.length + toothBand * 1.1,
+      ),
+      child: _OpgToothColumn(
+        key: ValueKey('opg-col-${seat.iso}'),
+        compact: true,
+        compactBand: toothBand,
+        compactSpan: seat.span,
+        compactWidth: seat.drawSpan,
+        archRotation: seat.rotation,
+        iso: seat.iso,
+        isUpper: isUpper,
+        isPrimary: isPrimary,
+        drawingHeight: seat.length,
+        currentNote: widget.currentNotes[seat.iso],
+        oldNote: widget.oldNotes[seat.iso],
+        extraNote: widget.extraNotes[seat.iso] ?? '',
+        history: widget.history,
+        historyTitle: widget.historyTitle,
+        historyEntries: _entriesForTooth(seat.iso),
+        operationLayers: _operationLayersForTooth(seat.iso, darkMode),
+        notation: widget.notation,
+        type: widget.type,
+        onNote: widget.onNote,
+        onExtraNote: widget.onExtraNote,
+        onOpenAppointment: widget.onOpenAppointment,
+        isHovered: _hoveredIso == seat.iso,
+        onHoverChanged: (hovered) {
+          setState(() {
+            if (hovered) {
+              _hoveredIso = seat.iso;
+            } else if (_hoveredIso == seat.iso) {
+              _hoveredIso = null;
+            }
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildLegendChip(
+    BuildContext context,
+    String note, {
+    required bool neutral,
+    required bool darkMode,
+    bool compact = false,
+  }) {
+    final color = neutral ? _neutralHistoryColor(darkMode) : labelToColor(note);
+    final icon = labelToIcon(note);
+    return Container(
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.75)),
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 4 : 5,
+        vertical: compact ? 2 : 3,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: compact ? 11 : 12),
+          SizedBox(width: compact ? 3 : 4),
+          Txt(
+            txt(note),
+            style: FluentTheme.of(context).typography.caption!.copyWith(
+                  color: Colors.white,
+                  fontSize: compact ? 10 : 11,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
         ],
       ),
     );
@@ -404,26 +712,7 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
         color: wellBg,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: borderColor.withValues(alpha: 0.7)),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: darkMode
-              ? const [
-                  Color(0xFF0A1018),
-                  Color(0xFF111A27),
-                  Color(0xFF090E15),
-                  Color(0xFF111A27),
-                  Color(0xFF0A1018),
-                ]
-              : const [
-                  Color(0xFFEDF2F8),
-                  Color(0xFFF7FAFC),
-                  Color(0xFFE5ECF4),
-                  Color(0xFFF7FAFC),
-                  Color(0xFFEDF2F8),
-                ],
-          stops: const [0.0, 0.36, 0.5, 0.64, 1.0],
-        ),
+        gradient: _archWellGradient(darkMode),
       ),
       padding: EdgeInsets.symmetric(
         horizontal: isPrimary ? 48 : 8,
@@ -568,32 +857,612 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
   /// premolars, canines, and incisors, and upper central incisors are broader
   /// than upper lateral incisors, while lower central incisors are the
   /// narrowest teeth in the mouth.
-  int _columnFlexForIso(String iso) {
-    final q = int.parse(iso[0]);
-    final pos = int.parse(iso[1]);
-    if (q >= 5) {
-      return switch (pos) {
-        1 => 9,
-        2 => 8,
-        3 => 9,
-        4 => 11,
-        5 => 12,
-        _ => 10,
-      };
-    }
-    final isUpper = q == 1 || q == 2;
+  int _columnFlexForIso(String iso) => _toothWidthWeight(iso);
+}
+
+/// Anatomical mesiodistal width weight of [iso]: molars are broader than
+/// premolars, canines, and incisors, an upper central incisor is broader than
+/// its lateral neighbour, and a lower central incisor is the narrowest tooth in
+/// the mouth. Used both to size a column of the flat chart and to hand a tooth
+/// its share of the compact arch's curve.
+int _toothWidthWeight(String iso) {
+  final q = int.parse(iso[0]);
+  final pos = int.parse(iso[1]);
+  if (q >= 5) {
     return switch (pos) {
-      1 => isUpper ? 10 : 8,
-      2 => isUpper ? 8 : 9,
+      1 => 9,
+      2 => 8,
       3 => 9,
-      4 => 10,
-      5 => 10,
-      6 => 13,
-      7 => 12,
-      8 => 11,
+      4 => 11,
+      5 => 12,
       _ => 10,
     };
   }
+  final isUpper = q == 1 || q == 2;
+  return switch (pos) {
+    1 => isUpper ? 10 : 8,
+    2 => isUpper ? 8 : 9,
+    3 => 9,
+    4 => 10,
+    5 => 10,
+    6 => 13,
+    7 => 12,
+    8 => 11,
+    _ => 10,
+  };
+}
+
+/// One tooth's seat on a compact arch: the point of the ellipse its centre sits
+/// on (relative to the jaw's ellipse centre), the rotation that turns its root
+/// outward, and the arc length its share of the curve spans — which is what
+/// sizes the tooth.
+class _ArchSeat {
+  const _ArchSeat({
+    required this.iso,
+    required this.center,
+    required this.rotation,
+    required this.span,
+    required this.drawSpan,
+    required this.length,
+  });
+
+  final String iso;
+  final Offset center;
+  final double rotation;
+
+  /// Arc length the tooth owns on the curve.
+  final double span;
+
+  /// Width the tooth is drawn at, which is its own share of the curve.
+  final double drawSpan;
+
+  /// Root-to-crown drawing height. Anterior teeth (incisors and canines) are
+  /// elongated vertically to utilize the vertical room at the top and bottom
+  /// of the arch.
+  final double length;
+}
+
+/// Places [isos] along one jaw's arch, sizing them by their share of the curve
+/// so a molar still reads wider than an incisor on a phone. The seats come back
+/// relative to the jaw's centre.
+///
+/// The teeth stand on the anatomical ovoid/pyramidal arch line their *crowns*
+/// trace:
+/// - Central and lateral incisors (`pos 1, 2`) sit along the anterior segment
+///   with a slight midline diastema/gap between the two centrals and extra
+///   breathing room + gentle rotation on the laterals.
+/// - Canines (`pos 3`) sit squarely at the corner bend of the arch.
+/// - Premolars and molars (`pos 4..8`) diverge progressively outward toward the
+///   wisdom teeth, forming a pyramid on the upper jaw (and an inverted pyramid
+///   on the lower jaw) that reaches the left and right edges of the chart.
+List<_ArchSeat> _seatsAlongArch({
+  required List<String> isos,
+  required bool isUpper,
+  required double rx,
+  required double ry,
+  double toothFill = 1.0,
+}) {
+  final weights = [
+    for (final iso in isos) _toothWidthWeight(iso).toDouble(),
+  ];
+  final total = weights.fold<double>(0, (sum, weight) => sum + weight);
+
+  // Average tooth span estimate so the crown curve sits inside the outer arch
+  // boundary by the radial distance from crown to root tip.
+  final approxArc = _archArc(rx: rx, ry: ry);
+  final avgDrawSpan = (approxArc / isos.length) * toothFill;
+  final avgHalfLen = avgDrawSpan * 0.78;
+
+  // Keep a small radial inset at the top/bottom (where incisors stand upright)
+  // and a slightly smaller horizontal inset at the posterior ends (where tilted
+  // wisdom teeth reach outward).
+  final crownRx = math.max(12.0, rx - avgHalfLen * 0.62);
+  final crownRy = math.max(12.0, ry - avgHalfLen * 0.85);
+
+  Offset crownPoint(double progress) =>
+      _archPointAt(progress, rx: crownRx, ry: crownRy);
+
+  // Arc-length parameterization table so every tooth receives its exact
+  // mesiodistal share of the arch curve.
+  const steps = 240;
+  final lengths = List<double>.filled(steps + 1, 0);
+  var previous = crownPoint(0);
+  for (var step = 1; step <= steps; step++) {
+    final point = crownPoint(step / steps);
+    lengths[step] = lengths[step - 1] + (point - previous).distance;
+    previous = point;
+  }
+  final arc = lengths[steps];
+
+  double progressForShare(double share) {
+    final target = share.clamp(0.0, 1.0) * arc;
+    var low = 0;
+    var high = steps;
+    while (low < high) {
+      final middle = (low + high) ~/ 2;
+      if (lengths[middle] < target) {
+        low = middle + 1;
+      } else {
+        high = middle;
+      }
+    }
+    final index = low.clamp(1, steps);
+    final segment = lengths[index] - lengths[index - 1];
+    final within = segment == 0 ? 0.0 : (target - lengths[index - 1]) / segment;
+    return (index - 1 + within) / steps;
+  }
+
+  // Anchor the canine (`pos 3`) at the exact midpoint of the arch corner, and
+  // keep the four incisors (`pos 1, 2` on both sides) inside the anterior
+  // segment with breathing room between the two centrals and between each
+  // lateral and its neighbouring central.
+  final cornerBounds = _archCornerShareBounds(rx: crownRx, ry: crownRy);
+  final anteriorStartIdx = isos.indexWhere((iso) => iso.endsWith('2'));
+  final canineIdx = isos.indexWhere((iso) => iso.endsWith('3'));
+
+  double weightUpTo(int endExclusive) {
+    var s = 0.0;
+    for (var i = 0; i < endExclusive; i++) {
+      s += weights[i];
+    }
+    return s / total;
+  }
+
+  final rightCanineMidRaw = canineIdx >= 0
+      ? weightUpTo(canineIdx) + (weights[canineIdx] / total) * 0.5
+      : 0.0;
+  final rightAnteriorStartRaw =
+      anteriorStartIdx > 0 ? weightUpTo(anteriorStartIdx) : 0.0;
+  final targetCanineMid = cornerBounds.rightCornerMid;
+  final targetAnteriorStart = cornerBounds.rightCornerEnd;
+
+  // Leave a distinct midline gap between the left and right central incisors
+  // (`0.491` vs `0.509`), and shift the lateral incisors slightly outward
+  // toward the canine corner so they have breathing room away from the
+  // centrals.
+  const midlineHalfGap = 0.009;
+  const anteriorEnd = 0.5 - midlineHalfGap;
+
+  double remapShare(double rawShare, int pos) {
+    if (anteriorStartIdx <= 0 || canineIdx < 0) return rawShare;
+
+    final mirrored = rawShare > 0.5;
+    final s = mirrored ? (1.0 - rawShare) : rawShare;
+    double mapped;
+    if (s <= rightCanineMidRaw) {
+      mapped = rightCanineMidRaw <= 0
+          ? s
+          : (s / rightCanineMidRaw) * targetCanineMid;
+    } else if (s <= rightAnteriorStartRaw) {
+      final t = (s - rightCanineMidRaw) /
+          math.max(1e-6, rightAnteriorStartRaw - rightCanineMidRaw);
+      mapped = targetCanineMid + t * (targetAnteriorStart - targetCanineMid);
+    } else {
+      final t = (s - rightAnteriorStartRaw) /
+          math.max(1e-6, 0.5 - rightAnteriorStartRaw);
+      mapped = targetAnteriorStart + t * (anteriorEnd - targetAnteriorStart);
+      if (pos == 2) {
+        // Nudge the lateral incisor slightly away from the central incisor for
+        // extra interproximal breathing room.
+        mapped -= 0.0045;
+      }
+    }
+    return mirrored ? (1.0 - mapped) : mapped;
+  }
+
+  final half = (isos.length - 1) / 2;
+  final avgAnteriorShare = (weights[isos.length ~/ 2] +
+          weights[(isos.length ~/ 2 - 1).clamp(0, isos.length - 1)]) /
+      (2 * total);
+
+  // Anterior teeth (`pos 1, 2, 3`) get a larger width & vertical length boost
+  // so they stand out prominently and utilize the vertical room at the top and
+  // bottom of each arch.
+  double widthFactorForPos(int pos) => switch (pos) {
+        1 => 1.15,
+        2 => 1.14,
+        3 => 1.10,
+        _ => 1.0,
+      };
+
+  double lengthAspectForPos(int pos) => switch (pos) {
+        1 => 1.72,
+        2 => 1.68,
+        3 => 1.62,
+        4 => 1.50,
+        _ => 1.44,
+      };
+
+  final avgAnteriorLength = arc *
+      avgAnteriorShare *
+      toothFill *
+      widthFactorForPos(1) *
+      lengthAspectForPos(1);
+
+  final seats = <_ArchSeat>[];
+  var walked = 0.0;
+  for (var index = 0; index < isos.length; index++) {
+    final iso = isos[index];
+    final pos = int.parse(iso[1]);
+    final share = weights[index] / total;
+    final midShare = remapShare(walked + share / 2, pos);
+    final progress = progressForShare(midShare);
+    final crown = crownPoint(progress);
+    final rotation = _fanTilt(
+      iso,
+      index,
+      half,
+      isUpper: isUpper,
+    );
+    final span = arc * share;
+    final drawSpan = span * toothFill * widthFactorForPos(pos);
+    final length = drawSpan * lengthAspectForPos(pos);
+    final isIncisor = (index - half).abs() <= 1.6;
+    final centerOffsetLen =
+        isIncisor ? (length * 0.45 + avgAnteriorLength * 0.55) : length;
+    // The tooth grows outward from its crown, which is the point on the curve.
+    final axis = _toothAxis(rotation, isUpper: isUpper);
+    seats.add(_ArchSeat(
+      iso: iso,
+      center: (isUpper ? crown : Offset(crown.dx, -crown.dy)) +
+          axis * (centerOffsetLen / 2),
+      rotation: rotation,
+      span: span,
+      drawSpan: drawSpan,
+      length: length,
+    ));
+    walked += share;
+  }
+  return seats;
+}
+
+/// How much of the notation's own size a compact tooth can carry: scaled down
+/// so Palmer / ISO / Universal labels never overlap on small phone screens.
+double _notationScale(double band, double toothSpan) => math.min(
+      (band / 24.0).clamp(0.46, 0.72),
+      toothSpan <= 0 ? 0.65 : (toothSpan / 29.0).clamp(0.44, 0.72),
+    );
+
+/// The length of the curve an [rx]×[ry] arch runs, which is also the total
+/// width of the teeth that stand on it.
+double _archArc({required double rx, required double ry}) {
+  const steps = 80;
+  var length = 0.0;
+  var previous = _archPointAt(0, rx: rx, ry: ry);
+  for (var step = 1; step <= steps; step++) {
+    final point = _archPointAt(step / steps, rx: rx, ry: ry);
+    length += (point - previous).distance;
+    previous = point;
+  }
+  return length;
+}
+
+/// How far a tooth leans off upright, in radians, and which way.
+///
+/// Uses explicit anatomical tooth angles by position (`1..8` / `1..5`) so that:
+/// - Central incisors (`pos 1`) stand nearly vertical (`~2°`).
+/// - Lateral incisors (`pos 2`) have only a gentle tilt (`~9°`), staying part
+///   of the anterior front row rather than turning the corner.
+/// - Canines (`pos 3`) sit right at the ~38° corner angle of the arch.
+/// - First and second premolars (`pos 4, 5`) and molars (`pos 6, 7, 8`) open
+///   progressively along the ovoid/pyramidal buccal slope (`~50°–60°`).
+double _fanTilt(
+  String iso,
+  int index,
+  double half, {
+  required bool isUpper,
+}) {
+  if (half <= 0) return 0;
+  final pos = int.parse(iso[1]);
+  final isPrimary = int.parse(iso[0]) >= 5;
+
+  final double lean = isPrimary
+      ? switch (pos) {
+          1 => 0.04, // ~2.3°
+          2 => 0.24, // ~13.8°
+          3 => 0.64, // ~36.7° (canine at the arch corner)
+          4 => 0.86, // ~49.3°
+          _ => 0.96, // ~55.0°
+        }
+      : switch (pos) {
+          1 => 0.035, // ~2.0°  central incisor (upright)
+          2 => 0.23, // ~13.2° lateral incisor (gentle flair away from central)
+          3 => 0.66, // ~37.8° canine (cornerstone at the angle of the arch)
+          4 => 0.84, // ~48.1° first premolar
+          5 => 0.90, // ~51.6° second premolar
+          6 => 0.94, // ~53.9° first molar
+          7 => 0.97, // ~55.6° second molar
+          _ => 1.00, // ~57.3° wisdom tooth / third molar
+        };
+
+  final side = index < half ? -1.0 : 1.0;
+  return lean * side * (isUpper ? 1 : -1);
+}
+
+/// The direction a tooth's root points in when it is turned by [rotation].
+Offset _toothAxis(double rotation, {required bool isUpper}) => isUpper
+    ? Offset(math.sin(rotation), -math.cos(rotation))
+    : Offset(-math.sin(rotation), math.cos(rotation));
+
+/// Share of `rx` occupied by the anterior incisor segment (`12–11–21–22`).
+/// Sized so the two central incisors have a clear midline space between them
+/// and the lateral incisors have breathing room away from the centrals while
+/// the canines remain on the arch corners.
+const double _archFrontHalfShare = 0.295;
+
+/// Radius of the canine corner bend as a fraction of the smaller half-axis.
+const double _archCornerShare = 0.22;
+
+/// Outward divergence angle (radians, `~27.5°` off vertical) of the posterior
+/// buccal segments from the canine corner out to the wisdom teeth: each
+/// successive tooth (`4 -> 5 -> 6 -> 7 -> 8`) sits progressively further apart
+/// horizontally than the pair before it, forming a pyramid on the upper jaw and
+/// an inverted pyramid on the lower jaw.
+const double _archPosteriorSplay = 0.48;
+
+/// Returns the arc-length fractions along `_archPointAt` where the right-side
+/// canine corner midpoint and inner end sit, so `_seatsAlongArch` can lock the
+/// canine (`pos 3`) onto the corner and keep the lateral incisor (`pos 2`) on
+/// the anterior segment.
+({double rightCornerMid, double rightCornerEnd}) _archCornerShareBounds({
+  required double rx,
+  required double ry,
+}) {
+  final geom = _archCurveMetrics(rx: rx, ry: ry);
+  if (geom.total <= 0) {
+    return (rightCornerMid: 0.30, rightCornerEnd: 0.35);
+  }
+  return (
+    rightCornerMid: (geom.sideLen + geom.bendLen * 0.5) / geom.total,
+    rightCornerEnd: (geom.sideLen + geom.bendLen * 0.92) / geom.total,
+  );
+}
+
+({
+  double frontHalf,
+  double corner,
+  double sweep,
+  double cosS,
+  double sinS,
+  double rightCx,
+  double rightCy,
+  Offset rightCornerStart,
+  Offset rightEnd,
+  double sideLen,
+  double bendLen,
+  double frontLen,
+  double total,
+}) _archCurveMetrics({required double rx, required double ry}) {
+  final frontHalf = rx * _archFrontHalfShare;
+  final maxCorner = math.min(rx - frontHalf, ry) * 0.55;
+  final double corner = (math.min(rx, ry) * _archCornerShare)
+      .clamp(2.0, math.max(2.0, maxCorner));
+
+  const sweep = (math.pi / 2) - _archPosteriorSplay;
+  final cosS = math.cos(_archPosteriorSplay);
+  final sinS = math.sin(_archPosteriorSplay);
+
+  final rightCx = -frontHalf;
+  final rightCy = -(ry - corner);
+
+  final rightCornerStart = Offset(
+    rightCx - corner * cosS,
+    rightCy - corner * sinS,
+  );
+  final rightEnd = Offset(-rx, 0);
+
+  final sideLen = (rightCornerStart - rightEnd).distance;
+  final bendLen = sweep * corner;
+  final frontLen = 2 * frontHalf;
+  final total = 2 * sideLen + 2 * bendLen + frontLen;
+
+  return (
+    frontHalf: frontHalf,
+    corner: corner,
+    sweep: sweep,
+    cosS: cosS,
+    sinS: sinS,
+    rightCx: rightCx,
+    rightCy: rightCy,
+    rightCornerStart: rightCornerStart,
+    rightEnd: rightEnd,
+    sideLen: sideLen,
+    bendLen: bendLen,
+    frontLen: frontLen,
+    total: total,
+  );
+}
+
+/// A point along one jaw's anatomical ovoid/pyramidal arch curve.
+///
+/// [progress] runs `0 → 1` from the patient's right third molar (`18`/`48`) to
+/// their left (`28`/`38`), laid out in upper-jaw coordinates (`y = -ry` at the
+/// anterior midline, `y = 0` at the posterior ends):
+/// 1. Patient's right posterior buccal segment (`18 → 14`), sloping inward from
+///    `-rx` toward the canine corner so `18–28` are widest apart, `17–27`
+///    slightly narrower, `16–26` narrower still, `15–25` narrower, and `14–24`
+///    narrower approaching the canine.
+/// 2. Right canine corner arc (`13`/`43`), where the buccal slope bends into
+///    the anterior segment.
+/// 3. Gently curved anterior incisor segment (`12, 11, 21, 22`).
+/// 4. Left canine corner arc (`23`/`33`).
+/// 5. Patient's left posterior buccal segment (`24 → 28`), flaring outward to
+///    `+rx`.
+Offset _archPointAt(
+  double progress, {
+  required double rx,
+  required double ry,
+}) {
+  final m = _archCurveMetrics(rx: rx, ry: ry);
+  if (m.total <= 0) return Offset.zero;
+
+  var left = progress.clamp(0.0, 1.0) * m.total;
+
+  // 1. Patient's right posterior buccal segment (18..14 -> 13): gently bowed
+  // ovoid curve from (-rx, 0) up and inward to rightCornerStart.
+  if (left <= m.sideLen) {
+    final t = m.sideLen == 0 ? 0.0 : (left / m.sideLen).clamp(0.0, 1.0);
+    // Slight outward ovoid belly so the molars/premolars trace a natural dental
+    // arch while monotonically widening from 14 out to 18.
+    final linear = Offset.lerp(m.rightEnd, m.rightCornerStart, t)!;
+    final belly = math.sin(t * math.pi) * (rx - m.frontHalf) * 0.08;
+    return Offset(linear.dx - belly, linear.dy);
+  }
+  left -= m.sideLen;
+
+  // 2. Right canine corner (13 / 43)
+  if (left <= m.bendLen) {
+    final theta = (math.pi + _archPosteriorSplay) + (left / m.corner);
+    return Offset(
+      m.rightCx + m.corner * math.cos(theta),
+      m.rightCy + m.corner * math.sin(theta),
+    );
+  }
+  left -= m.bendLen;
+
+  // 3. Anterior incisor segment (12, 11, 21, 22)
+  if (left <= m.frontLen) {
+    final u = m.frontLen == 0 ? 0.5 : (left / m.frontLen).clamp(0.0, 1.0);
+    // Subtle anterior arch curvature (1.5px crown dome at central incisors) so
+    // the four incisors stay level while reading as a natural anterior curve.
+    final dome = math.sin(u * math.pi) * 1.5;
+    return Offset(-m.frontHalf + left, -ry - dome);
+  }
+  left -= m.frontLen;
+
+  // 4. Left canine corner (23 / 33)
+  if (left <= m.bendLen) {
+    final theta = (3 * math.pi / 2) + (left / m.corner);
+    return Offset(
+      m.frontHalf + m.corner * math.cos(theta),
+      m.rightCy + m.corner * math.sin(theta),
+    );
+  }
+  left -= m.bendLen;
+
+  // 5. Patient's left posterior buccal segment (24..28)
+  final leftCornerEnd = Offset(
+    m.frontHalf + m.corner * m.cosS,
+    m.rightCy - m.corner * m.sinS,
+  );
+  final leftEnd = Offset(rx, 0);
+  final t = m.sideLen == 0 ? 1.0 : (left / m.sideLen).clamp(0.0, 1.0);
+  final linear = Offset.lerp(leftCornerEnd, leftEnd, t)!;
+  final belly = math.sin(t * math.pi) * (rx - m.frontHalf) * 0.08;
+  return Offset(linear.dx + belly, linear.dy);
+}
+
+/// The box the teeth of a jaw occupy, relative to that jaw's centre: matches
+/// the exact rotated bounding box of each `_compactTooth` (`seat.length +
+/// band * 1.1` tall by `seat.drawSpan` wide) so the arch fills the full
+/// horizontal width right to `0..width` without overflowing.
+({double left, double right, double top, double bottom}) _seatsExtent(
+  List<_ArchSeat> seats,
+  double band,
+) {
+  var left = double.infinity;
+  var right = -double.infinity;
+  var top = double.infinity;
+  var bottom = -double.infinity;
+  final pad = band * 0.55;
+  for (final seat in seats) {
+    final cos = math.cos(seat.rotation).abs();
+    final sin = math.sin(seat.rotation).abs();
+    final halfHeight =
+        (seat.length / 2 + pad) * cos + (seat.drawSpan / 2) * sin;
+    final halfWidth = (seat.length / 2 + pad) * sin + (seat.drawSpan / 2) * cos;
+    left = math.min(left, seat.center.dx - halfWidth);
+    right = math.max(right, seat.center.dx + halfWidth);
+    top = math.min(top, seat.center.dy - halfHeight);
+    bottom = math.max(bottom, seat.center.dy + halfHeight);
+  }
+  return (left: left, right: right, top: top, bottom: bottom);
+}
+
+/// Where one facing pair of compact arches sits, and the seats its teeth
+/// stand on.
+class _CompactPairLayout {
+  const _CompactPairLayout({
+    required this.toothBand,
+    required this.upperCenter,
+    required this.lowerCenter,
+    required this.upperSeats,
+    required this.lowerSeats,
+  });
+
+  /// Room each tooth keeps beyond its root tip (the apex icons) and beyond its
+  /// crown (its notation).
+  final double toothBand;
+  final Offset upperCenter;
+  final Offset lowerCenter;
+  final List<_ArchSeat> upperSeats;
+  final List<_ArchSeat> lowerSeats;
+}
+
+/// Lays one facing pair of jaws into [band], sizing the curve to the room it is
+/// given: the teeth are only ever as big as the curve they stand on, so a
+/// taller chart buys bigger teeth rather than more empty space in the middle of
+/// the mouth. How they fan is [_seatsAlongArch]'s business; the fit here only
+/// decides how large the mouth ends up.
+_CompactPairLayout _layoutCompactPair({
+  required double width,
+  required Rect band,
+  required List<String> upperIsos,
+  required List<String> lowerIsos,
+  required double toothBand,
+  required double jawGap,
+  double toothFill = 1.0,
+}) {
+  var rx = math.max(24.0, width / 2 - toothBand * 2);
+  var ry = math.max(20.0, band.height / 5);
+  late List<_ArchSeat> upperSeats;
+  late List<_ArchSeat> lowerSeats;
+
+  for (var pass = 0; pass < 8; pass++) {
+    upperSeats = _seatsAlongArch(
+      isos: upperIsos,
+      isUpper: true,
+      rx: rx,
+      ry: ry,
+      toothFill: toothFill,
+    );
+    lowerSeats = _seatsAlongArch(
+      isos: lowerIsos,
+      isUpper: false,
+      rx: rx,
+      ry: ry,
+      toothFill: toothFill,
+    );
+
+    // The pair is as tall as its two jaws plus the daylight between them, and
+    // the curve grows a little slower than that, so the step is damped.
+    final upperExtent = _seatsExtent(upperSeats, toothBand);
+    final lowerExtent = _seatsExtent(lowerSeats, toothBand);
+    final needed = (upperExtent.bottom - upperExtent.top) +
+        (lowerExtent.bottom - lowerExtent.top) +
+        jawGap;
+    ry = math.max(20.0, ry + (band.height - needed) / 2.2);
+
+    // Stretch rx so the outermost posterior teeth reach the left and right
+    // edges of the canvas.
+    final widest = <double>[
+      upperExtent.right.abs(),
+      upperExtent.left.abs(),
+      lowerExtent.right.abs(),
+      lowerExtent.left.abs(),
+    ].reduce(math.max);
+    rx = math.max(24.0, rx + 0.92 * (width / 2 - 1 - widest));
+  }
+
+  final upperExtent = _seatsExtent(upperSeats, toothBand);
+  final lowerExtent = _seatsExtent(lowerSeats, toothBand);
+  return _CompactPairLayout(
+    toothBand: toothBand,
+    upperCenter: Offset(width / 2, band.top - upperExtent.top),
+    lowerCenter: Offset(width / 2, band.bottom - lowerExtent.bottom),
+    upperSeats: upperSeats,
+    lowerSeats: lowerSeats,
+  );
 }
 
 class _ToothHistoryEntry {
@@ -657,6 +1526,11 @@ class _OpgToothColumn extends StatefulWidget {
     required this.onOpenAppointment,
     required this.isHovered,
     required this.onHoverChanged,
+    this.compact = false,
+    this.compactBand = 0,
+    this.compactSpan = 0,
+    this.compactWidth = 0,
+    this.archRotation = 0,
   });
 
   final String iso;
@@ -677,6 +1551,26 @@ class _OpgToothColumn extends StatefulWidget {
   final ValueChanged<String>? onOpenAppointment;
   final bool isHovered;
   final ValueChanged<bool> onHoverChanged;
+
+  /// Whether the column is one cell of the compact arch: the drawing is turned
+  /// by [archRotation] so the root points outward along the curve, the notation
+  /// rides inside the crown instead of above or below it, and the beside-tooth
+  /// notes are left out — a phone has no room for them, and the tooltip and the
+  /// wheel carry the same records.
+  final bool compact;
+
+  /// Room a compact cell keeps past the root tip (for the apex icons) and past
+  /// the crown (for the notation), so neither sits on the drawing.
+  final double compactBand;
+
+  /// The non-overlapping arc width the tooth owns on the curve (used to bound
+  /// its hit-test area so adjacent rotated cells never steal hovers or taps).
+  final double compactSpan;
+
+  /// How wide that cell is drawn: slightly wider than [compactSpan] so
+  /// neighbouring crowns make interproximal contact.
+  final double compactWidth;
+  final double archRotation;
 
   @override
   State<_OpgToothColumn> createState() => _OpgToothColumnState();
@@ -757,7 +1651,9 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
         blocks.add(lines.join('\n'));
       }
     }
-    return blocks.isNotEmpty ? blocks.join('\n\n') : widget.notation(widget.iso);
+    return blocks.isNotEmpty
+        ? blocks.join('\n\n')
+        : widget.notation(widget.iso);
   }
 
   @override
@@ -783,6 +1679,20 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
         : (darkMode ? const Color(0xFFB8C7DC) : const Color(0xFF475569));
 
     final hasHistoryText = widget.historyEntries.isNotEmpty;
+
+    if (widget.compact) {
+      return _buildCompactCell(
+        context,
+        darkMode,
+        iso,
+        layers,
+        hasCurrent,
+        hasOld,
+        neutralColor,
+        stateColor,
+        notationColor,
+      );
+    }
 
     return FlyoutTarget(
       controller: _wheelController,
@@ -907,17 +1817,140 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     );
   }
 
-  /// Renders the treatment icon(s) near the root apex:
+  /// One cell of the compact arch. The tooth is turned so its root points
+  /// outward along the curve ([archRotation]) and keeps a band above it for its
+  /// apex icons and a band below it for its notation, so neither has to sit on
+  /// the drawing. The notation itself stays upright — a number that tilts with
+  /// the arch is a number nobody reads — while the icons turn with the tooth.
+  Widget _buildCompactCell(
+    BuildContext context,
+    bool darkMode,
+    String iso,
+    List<_ToothOperationLayer> layers,
+    bool hasCurrent,
+    bool hasOld,
+    Color neutralColor,
+    Color? stateColor,
+    Color notationColor,
+  ) {
+    // Outward is the top of the cell for an upper tooth and its bottom for a
+    // lower one — the drawing is mirrored for the lower jaw.
+    final outward =
+        widget.isUpper ? Alignment.topCenter : Alignment.bottomCenter;
+    final band = widget.compactBand;
+    final showNotation = band > 6;
+
+    return FlyoutTarget(
+      controller: _wheelController,
+      child: Semantics(
+        button: true,
+        label: widget.notation(iso),
+        onTap: () => unawaited(_openWheel(context)),
+        excludeSemantics: true,
+        child: Transform.rotate(
+          angle: widget.archRotation,
+          child: _TaperedToothHitRegion(
+            isUpper: widget.isUpper,
+            crownWidth: widget.compactSpan > 0
+                ? widget.compactSpan * 0.88
+                : widget.compactWidth * 0.72,
+            rootWidth: widget.compactSpan > 0
+                ? widget.compactSpan * 0.56
+                : widget.compactWidth * 0.45,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              onEnter: (_) => widget.onHoverChanged(true),
+              onExit: (_) => widget.onHoverChanged(false),
+              child: GestureDetector(
+                key: WK.tooth(iso, selected: widget.currentNote != null),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => unawaited(_openWheel(context)),
+                child: Tooltip(
+                  message: _tooltipMessage(),
+                  excludeFromSemantics: true,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    alignment: Alignment.center,
+                    children: [
+                      // 1. The tooth, filling the room between the two bands.
+                      SizedBox(
+                        height: widget.drawingHeight,
+                        width: double.infinity,
+                        child: CustomPaint(
+                          painter: _AnatomicalToothPainter(
+                            iso: iso,
+                            isUpper: widget.isUpper,
+                            isPrimary: widget.isPrimary,
+                            darkMode: darkMode,
+                            stateColor: stateColor,
+                            hasCurrent: hasCurrent,
+                            hasOld: hasOld,
+                            isHovered: widget.isHovered,
+                            operationLayers: layers,
+                          ),
+                        ),
+                      ),
+                      // 2. Apex icons, past the root tip where nothing else is
+                      // drawn.
+                      if (layers.isNotEmpty)
+                        Align(
+                          alignment: Alignment(0, outward.y * 1.18),
+                          child: _buildApexIcons(
+                            layers,
+                            darkMode,
+                            neutralColor,
+                            compact: true,
+                            maxWidth: band + 6,
+                          ),
+                        ),
+                      // 3. The notation, tucked into the lingual/palatal side of
+                      // the arch well clear of the crown outline: turned back
+                      // upright, and scaled to fit its tooth slot.
+                      if (showNotation)
+                        Align(
+                          alignment: Alignment(0, outward.y * -1.32),
+                          child: Transform.rotate(
+                            angle: -widget.archRotation,
+                            child: Transform.scale(
+                              scale: _notationScale(
+                                band,
+                                widget.compactSpan > 0
+                                    ? widget.compactSpan
+                                    : widget.compactWidth,
+                              ),
+                              child: DentalNotation(
+                                iso: iso,
+                                withTooltip: false,
+                                color: notationColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Renders the treatment icon(s) at the root apex:
   /// - No shadows at all
   /// - Larger (`20px`) when only a single treatment is applied
-  /// - Uses a `Wrap` when multiple treatments are present
+  /// - Shrunk to fit [maxWidth] in a compact cell, where a tooth is small and
+  ///   the icons have a band of their own to stay inside
   /// - Neutral color when the treatment came from another appointment/record
   /// - Deduplicates by icon glyph so the same icon is never shown twice
   Widget _buildApexIcons(
     List<_ToothOperationLayer> layers,
     bool darkMode,
-    Color neutralColor,
-  ) {
+    Color neutralColor, {
+    bool compact = false,
+    double maxWidth = 0,
+  }) {
     final uniqueByIcon = <IconData, _ToothOperationLayer>{};
     for (final layer in layers) {
       uniqueByIcon[labelToIcon(layer.operation)] = layer;
@@ -925,8 +1958,15 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     final dedupedLayers = uniqueByIcon.values.toList();
 
     final isSingle = dedupedLayers.length == 1;
-    final double iconSize =
-        isSingle ? 20.0 : (dedupedLayers.length == 2 ? 14.5 : 12.5);
+    double iconSize = compact
+        ? (isSingle ? 15.0 : (dedupedLayers.length == 2 ? 11.5 : 10.0))
+        : (isSingle ? 20.0 : (dedupedLayers.length == 2 ? 14.5 : 12.5));
+    if (compact && maxWidth > 0) {
+      const spacing = 2.0;
+      final fitting = (maxWidth - spacing * (dedupedLayers.length - 1)) /
+          dedupedLayers.length;
+      iconSize = math.max(8.0, math.min(iconSize, fitting));
+    }
 
     return IgnorePointer(
       child: Wrap(
@@ -1088,6 +2128,71 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
   }
 }
 
+/// Constrains pointer hit-testing of a rotated compact-arch tooth cell to a
+/// tapered wedge (wider at the crown/notation end, narrower at the root apex)
+/// bounded by the tooth's own arc share. This prevents adjacent rotated
+/// rectangular cells from overlapping in hit-test space and stealing hover or
+/// tap events from the tooth above or below them.
+class _TaperedToothHitRegion extends SingleChildRenderObjectWidget {
+  const _TaperedToothHitRegion({
+    required this.isUpper,
+    required this.crownWidth,
+    required this.rootWidth,
+    required super.child,
+  });
+
+  final bool isUpper;
+  final double crownWidth;
+  final double rootWidth;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _RenderTaperedToothHitRegion(
+        isUpper: isUpper,
+        crownWidth: crownWidth,
+        rootWidth: rootWidth,
+      );
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    covariant _RenderTaperedToothHitRegion renderObject,
+  ) {
+    renderObject
+      ..isUpper = isUpper
+      ..crownWidth = crownWidth
+      ..rootWidth = rootWidth;
+  }
+}
+
+class _RenderTaperedToothHitRegion extends RenderProxyBox {
+  _RenderTaperedToothHitRegion({
+    required this.isUpper,
+    required this.crownWidth,
+    required this.rootWidth,
+  });
+
+  bool isUpper;
+  double crownWidth;
+  double rootWidth;
+
+  @override
+  bool hitTest(BoxHitTestResult result, {required Offset position}) {
+    if (!size.contains(position)) return false;
+    final h = size.height;
+    if (h <= 0) return false;
+    // Normalized progress from root apex (0.0) to crown/notation end (1.0).
+    final t =
+        (isUpper ? position.dy / h : (h - position.dy) / h).clamp(0.0, 1.0);
+    final allowedHalfWidth =
+        (rootWidth + (crownWidth - rootWidth) * t) / 2.0;
+    final dxFromCenter = (position.dx - size.width / 2.0).abs();
+    if (dxFromCenter > allowedHalfWidth) return false;
+
+    return super.hitTest(result, position: position);
+  }
+}
+
 /// Draws subtle OPG radiograph anatomical guides (maxillary sinus floor,
 /// nasal fossa, and mandibular canal / alveolar crest contour).
 class _OpgBackdropPainter extends CustomPainter {
@@ -1210,6 +2315,44 @@ class _OpgBackdropPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _OpgBackdropPainter oldDelegate) =>
       oldDelegate.darkMode != darkMode || oldDelegate.isPrimary != isPrimary;
+}
+
+/// The compact arch's backdrop: the line the two jaws part along and the
+/// midline between the patient's two sides, which together split the mouth
+/// into its four quadrants.
+class _CompactArchPainter extends CustomPainter {
+  const _CompactArchPainter({required this.darkMode});
+
+  final bool darkMode;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final dividerColor = darkMode
+        ? const Color(0xFF334766).withValues(alpha: 0.75)
+        : const Color(0xFF9EB0C7).withValues(alpha: 0.6);
+
+    final dividerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.0
+      ..color = dividerColor;
+    final dividerY = size.height / 2;
+    canvas.drawPath(
+      Path()
+        ..moveTo(0, dividerY - 1.5)
+        ..quadraticBezierTo(
+            size.width / 2, dividerY + 1.5, size.width, dividerY - 1.5),
+      dividerPaint,
+    );
+    canvas.drawLine(
+      Offset(size.width / 2, 0),
+      Offset(size.width / 2, size.height),
+      dividerPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CompactArchPainter oldDelegate) =>
+      oldDelegate.darkMode != darkMode;
 }
 
 class _OcclusalCurvePainter extends CustomPainter {
@@ -3106,19 +4249,27 @@ _ToothGeometry _lowerMolarGeometry({
 }
 
 /// Computes the panel width for the active panel and tab on a given screen
-/// width. When the active panel tab displays a dental chart on a wide screen,
-/// the panel naturally widens to give the OPG panoramic chart room without
-/// blocking the main workspace with a modal.
+/// width.
+/// - On phone-width viewports (`< 490`), the panel expands to fill the screen
+///   width so the compact dental arch and forms utilize all available horizontal
+///   space.
+/// - When the active panel tab displays a dental chart, the panel widens:
+///   on medium screens (`490..1000`) to `440px` so the compact ovoid arch has
+///   generous horizontal room, and on wide screens (`>= kOpgViewportMinWidth`)
+///   up to `kOpgWidePanelWidth` for the 16-column OPG panoramic chart.
 double computePanelWidth({
   required double screenWidth,
   required bool minimized,
   required String? activeTabTitleKey,
 }) {
-  if (screenWidth < 490 && minimized) return screenWidth;
+  if (screenWidth < 490) return screenWidth;
   final isDentalChartTab = activeTabTitleKey == 'dentalNotes' ||
       activeTabTitleKey == 'operativeDetails';
-  if (!minimized && isDentalChartTab && screenWidth >= kOpgViewportMinWidth) {
-    return math.min(kOpgWidePanelWidth, screenWidth * 0.62);
+  if (!minimized && isDentalChartTab) {
+    if (screenWidth >= kOpgViewportMinWidth) {
+      return math.min(kOpgWidePanelWidth, screenWidth * 0.62);
+    }
+    return math.min(440.0, screenWidth - 40);
   }
   return 350;
 }

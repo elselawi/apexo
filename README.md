@@ -130,6 +130,7 @@ Live-backend tests are separate and must be explicitly requested/configured. The
    
 - For iOS:
    - build with `flutter build ipa --release --export-method app-store`
+   - the icon assets under `ios/Runner/Assets.xcassets/` are committed, so a normal build needs no asset step. When the icon art in `assets/` changes, regenerate them with `dart run flutter_launcher_icons` (writes `AppIcon.appiconset`) **and** `dart run tools/generate_launch_image.dart` (writes `LaunchImage.imageset`): `flutter_launcher_icons` has no launch-image support, and leaving Flutter's placeholder imageset in place makes the archive validation report "Launch image is set to the default placeholder icon".
    - upload with transporter (build/ios/ipa) and deliver
    - continue on appstoreconnect `https://appstoreconnect.apple.com/apps/6767690393/distribution/ios/version/inflight`
 

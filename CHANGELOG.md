@@ -1,4 +1,10 @@
 ### ____0.15.1____
+- New feature & Improvements
+    - New and redesigned dental charting experience
+
+
+
+### ____0.15.1____
 
 - New Features & Improvements
     - The tooth editor opens as a wheel of treatments around the tooth: choosing one records it and leaves a wide notes field, with the chosen treatment on one side of the top, dictation on the other, and Save and Clear controls along the bottom. Save closes the editor with the note kept; Clear takes the note away and puts the wheel back. Tapping a treatment twice, or anywhere outside the editor, closes it; a treatment of your own can be typed straight into the field, with no save button. Teeth that carry records show a read-only summary of earlier visits, keeping the patient's baseline apart from dated visits; any visit listed there can be opened from the summary or brought into the record being edited, and a treatment the chart holds without a visit to back it is named as the chart's note instead of appearing as a bare label. The separate expanders that used to list earlier appointment notes have gone: that history lives in this summary now.

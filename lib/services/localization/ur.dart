@@ -3,7 +3,7 @@
 import "en.dart";
 
 class Ur implements En {
-  Direction $direction = Direction.rtl;
+  TextDirection $direction = TextDirection.rtl;
   String $name = "اردو";
   String $code = "ur";
 

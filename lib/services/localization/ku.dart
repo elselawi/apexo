@@ -3,7 +3,7 @@
 import "en.dart";
 
 class Ku implements En {
-  Direction $direction = Direction.rtl;
+  TextDirection $direction = TextDirection.rtl;
   String $name = "کوردی (سۆرانی)";
   String $code = "ku";
 

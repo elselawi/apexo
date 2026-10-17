@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
 import 'package:flutter/semantics.dart';
@@ -549,7 +550,7 @@ void main() {
             ])));
     expect(find.byKey(const ValueKey('extra-notes-circle')), findsOneWidget);
     expect(find.text(txt('toothHistory')), findsWidgets);
-    expect(find.text('12 June 2026'), findsOneWidget);
+    expect(find.text(DF.full(DateTime(2026, 6, 12))), findsOneWidget);
     expect(find.text('Full historical note'), findsOneWidget);
     expect(find.text('Other tooth'), findsNothing);
     expect(

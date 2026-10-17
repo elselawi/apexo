@@ -16,7 +16,7 @@ import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/patient_side/patient_side_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
-import 'package:apexo/services/localization/en.dart';
+import 'package:apexo/services/localization/flutter_delegates.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/login/login_screen.dart';
 import 'package:apexo/common_widgets/current_account.dart';
@@ -62,6 +62,7 @@ class ApexoApp extends StatelessWidget {
             title: "Apexo",
             key: WK.fluentApp,
             locale: Locale(locale.s.$code),
+            localizationsDelegates: appLocalizationsDelegates,
             theme: localSettings.selectedTheme == ThemeMode.dark
                 ? FluentThemeData.dark()
                 : FluentThemeData.light(),
@@ -253,8 +254,8 @@ class ApexoApp extends StatelessWidget {
     return AnimatedPositioned(
       duration: hasKeyboard ? Duration.zero : const Duration(milliseconds: 300),
       top: 0,
-      left: locale.s.$direction == Direction.rtl ? null : 0,
-      right: locale.s.$direction == Direction.rtl ? 0 : null,
+      left: locale.s.$direction == TextDirection.rtl ? null : 0,
+      right: locale.s.$direction == TextDirection.rtl ? 0 : null,
       height: constraints.maxHeight,
       width: (!hideSidePanel) && constraints.maxWidth >= 710
           ? constraints.maxWidth - (panelWidth + 5)
@@ -336,10 +337,10 @@ class ApexoApp extends StatelessWidget {
       height: minimized ? 100 : constraints.maxHeight,
       top: minimized ? null : 0,
       bottom: minimized ? -20 : null,
-      left: locale.s.$direction == Direction.ltr
+      left: locale.s.$direction == TextDirection.ltr
           ? null
           : (hideSidePanel ? -(panelWidth + 50) : 0),
-      right: locale.s.$direction == Direction.ltr
+      right: locale.s.$direction == TextDirection.ltr
           ? (hideSidePanel ? -(panelWidth + 50) : 0)
           : null,
       child: hideSidePanel

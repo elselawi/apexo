@@ -135,13 +135,13 @@ void main() {
         expect(localeDir.existsSync(), isTrue,
             reason: 'Locale directory not found');
 
-        const exclude = {'locale.dart', 'test.dart', 'verify.dart'};
+        // Only locale dictionaries count; tooling files define no entries.
         final files = localeDir
             .listSync()
             .whereType<File>()
             .where((f) =>
                 f.path.endsWith('.dart') &&
-                !exclude.contains(f.path.split(Platform.pathSeparator).last))
+                _extractDictFromSource(f.readAsStringSync()).isNotEmpty)
             .toList();
 
         expect(files.length, 10,

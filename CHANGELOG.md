@@ -1,6 +1,12 @@
 ### ____0.15.3____
 
+- Reliability & Bug Fixes
+    - Kurdish (Sorani) now lays the app out right-to-left. The dictionary was RTL, but Flutter ships no Kurdish localization data, so direction-sensitive layout — rows, navigation and text alignment — stayed left-to-right and Material date/time pickers had no strings. Flutter's widget, Material and Cupertino delegates are now supplied for Kurdish, with Material controls backed by the closest Flutter data set (Arabic).
+    - The tooth history card now shows a dated visit's weekday and time, and long dates wrap inside the card instead of overflowing it.
 
+- Testing & Developer Experience
+    - Added widget coverage that Kurdish resolves right-to-left and provides Material and Cupertino localizations, while other locales keep Flutter's own.
+    - The localization audit recognizes locale files by the dictionary they define, so support files added to the localization folder are no longer counted as locales.
 
 ### ____0.15.2____
 - New feature & Improvements

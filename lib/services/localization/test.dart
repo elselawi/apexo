@@ -2,7 +2,7 @@
 import "en.dart";
 
 class Test implements En {
-  Direction $direction = Direction.rtl;
+  TextDirection $direction = TextDirection.rtl;
   String $name = "Test";
   String $code = "ar";
 

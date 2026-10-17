@@ -1,5 +1,5 @@
 import 'package:apexo/core/reactive/observable_base.dart';
-import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/localization/intl_data.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/app/app.dart';

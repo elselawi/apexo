@@ -2,7 +2,7 @@ import 'en.dart';
 
 class El implements En {
   @override
-  Direction $direction = Direction.ltr;
+  TextDirection $direction = TextDirection.ltr;
   @override
   String $name = "Ελληνικά";
   @override

@@ -3,7 +3,7 @@
 import "en.dart";
 
 class Fa implements En {
-  Direction $direction = Direction.rtl;
+  TextDirection $direction = TextDirection.rtl;
   String $name = "فارسی";
   String $code = "fa";
 

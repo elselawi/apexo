@@ -1,10 +1,10 @@
-enum Direction {
-  ltr,
-  rtl,
-}
+import "dart:ui" show TextDirection;
+
+// Re-exported so the locale files need only `import "en.dart";`.
+export "dart:ui" show TextDirection;
 
 class En {
-  Direction $direction = Direction.ltr;
+  TextDirection $direction = TextDirection.ltr;
   String $name = "English";
   String $code = "en";
 

@@ -3,7 +3,7 @@ library;
 
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
-import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/localization/intl_data.dart';
 import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

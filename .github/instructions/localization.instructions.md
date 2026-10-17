@@ -7,13 +7,15 @@ applyTo: "lib/services/localization/**"
 
 ## Architecture
 
-Apexo uses a **custom dictionary-based localization system** (not Flutter's `flutter_localizations`). The system is lightweight and designed for a dental clinic management app with English, Arabic, Spanish, and Greek support.
+Apexo uses a **custom dictionary-based localization system** for app strings — not Flutter's `gen-l10n`/ARB workflow. Ten locales are supported: English (`en`), Arabic (`ar`), Spanish (`es`), Greek (`el`), Persian (`fa`), Sorani Kurdish (`ku`), French (`fr`), Turkish (`tr`), Italian (`it`), and Urdu (`ur`).
+
+Framework chrome that Flutter itself localizes (date pickers, text-selection menus, accessibility labels) is separate: it comes from Flutter's own delegates, patched for the locales Flutter does not ship by `flutter_delegates.dart`.
 
 ### Key Files
 
 | File | Purpose |
 |------|---------|
-| `lib/services/localization/en.dart` | **Reference locale** — all other locales mirror its keys. Defines the `En` class with `$direction`, `$name`, `$code`, and `dictionary` map. |
+| `lib/services/localization/en.dart` | **Reference locale** — all other locales mirror its keys. Defines the `En` class with `$direction` (`TextDirection`), `$name`, `$code`, and `dictionary` map. Also re-exports `TextDirection` for the per-locale files. |
 | `lib/services/localization/ar.dart` | Arabic (RTL) — `implements En` |
 | `lib/services/localization/es.dart` | Spanish (LTR) — `implements En` |
 | `lib/services/localization/el.dart` | Greek (LTR) — `implements En` |
@@ -23,14 +25,16 @@ Apexo uses a **custom dictionary-based localization system** (not Flutter's `flu
 | `lib/services/localization/tr.dart` | Turkish (LTR) — `implements En` |
 | `lib/services/localization/it.dart` | Italian (LTR) — `implements En` |
 | `lib/services/localization/ur.dart` | Urdu (RTL) — `implements En` |
-| `lib/services/localization/locale.dart` | Runtime locale selection — `_Localization` class, `txt()` function, `Txt` widget |
-| `lib/services/localization/verify.dart` | CLI audit tool — checks key parity and scans for unlocalized strings |
+| `lib/services/localization/locale.dart` | Runtime core — `_Localization` class, `locale`, `txt()` function, `Txt` widget. Nothing locale-specific or framework-specific lives here. |
+| `lib/services/localization/intl_data.dart` | `intl` number/date symbols for locales `intl` does not ship (currently `ku`). Called from `main.dart` and from `locale.dart`. |
+| `lib/services/localization/flutter_delegates.dart` | Flutter framework delegate overrides for locales Flutter does not ship (currently `ku`): `Directionality` data, Material and Cupertino localizations. Exposes `appLocalizationsDelegates`, passed to `FluentApp`. |
+| `lib/services/localization/verify.dart` | CLI audit tool — checks key parity and scans for unlocalized strings. A locale file is detected by the dictionary it defines, so support files in this folder are ignored automatically. |
 
 ### Runtime Flow
 
 1. `localSettings.selectedLocale` holds the index (0=en, 1=ar, 2=es, 3=el, 4=fa, 5=ku, 6=fr, 7=tr, 8=it, 9=ur).
 2. `locale.s` returns the active `En` instance: `list[localSettings.selectedLocale]`.
-3. `locale.isRtl` checks `$direction == Direction.rtl`.
+3. `locale.isRtl` checks `$direction == TextDirection.rtl`.
 
 ## Adding a New Translatable String
 
@@ -97,7 +101,7 @@ import 'en.dart';
 
 class Fr implements En {
   @override
-  Direction $direction = Direction.ltr;
+  TextDirection $direction = TextDirection.ltr;
   @override
   String $name = "Français";
   @override
@@ -116,13 +120,16 @@ class Fr implements En {
    - Add `Fr()` to the `list` array
    - Update `localSettings.selectedLocale` logic if needed
 
-4. Ensure `initializeDateFormatting('fr', null)` is called in `main.dart` if the locale needs date formatting support.
+4. Ensure `initializeDateFormatting('fr', null)` is called in `main.dart` if the locale needs date formatting support. Custom locales may also need number/date symbols registered in `intl_data.dart` via `ensureCustomIntlLocalesInitialized()` (see `ku`).
+5. If Flutter's own delegates do not support the language code, add the locale's delegates to `appLocalizationsDelegates` in `flutter_delegates.dart` — a `WidgetsLocalizations` delegate supplies `textDirection` (without one the app silently falls back to LTR) and `Material`/`Cupertino` delegates prevent the debug warning at startup. Point the Material/Cupertino delegates at the closest supported language as a fallback (see `_KuMaterialLocalizationsDelegate`).
 
 ## RTL (Right-to-Left) Support
 
-- **Arabic** (`ar.dart`), **Persian** (`fa.dart`), **Sorani Kurdish** (`ku.dart`), and **Urdu** (`ur.dart`) are RTL: `$direction = Direction.rtl`
-- Check `locale.isRtl` for conditional RTL layout adjustments
-- The `Txt` widget does NOT automatically set `textDirection` — if you need RTL text direction, use `Text(txt(...), textDirection: locale.isRtl ? TextDirection.rtl : TextDirection.ltr)`
+- **Arabic** (`ar.dart`), **Persian** (`fa.dart`), **Sorani Kurdish** (`ku.dart`), and **Urdu** (`ur.dart`) are RTL: `$direction = TextDirection.rtl`
+- The app's root `Directionality` comes from Flutter's `Localizations`, driven by `FluentApp(locale: Locale(locale.s.$code), localizationsDelegates: appLocalizationsDelegates)`. `Row`s, `NavigationView`, alignment and text direction therefore flip automatically — do not use `locale.isRtl` to flip a plain `Row` yourself.
+- Flutter ships no `ku` data for its `Widgets`/`Material`/`Cupertino` delegates. `appLocalizationsDelegates` in `flutter_delegates.dart` supplies them: a Kurdish `WidgetsLocalizations` with `TextDirection.rtl` (this is what makes the whole app RTL) plus Material/Cupertino delegates backed by the Arabic data set. Removing that list reintroduces the `ku is not supported by all of its localization delegates` warning and an LTR layout.
+- Check `locale.isRtl` only for manual, non-directional work such as custom painting, `Alignment`/`Offset` math, or animations.
+- The `Txt` widget does NOT automatically set `textDirection` — it inherits the ambient `Directionality`, which is correct in RTL builds. Only pass an explicit `textDirection` when text must stay LTR regardless of the UI language (emails, URLs, phone numbers, money).
 
 ## Key Naming Conventions
 
@@ -146,3 +153,4 @@ For unit tests, you can directly set `localSettings.selectedLocale(index)` and v
 | Passing a raw key to `Txt`, e.g. `Txt("myNewKey")` | `Txt` renders verbatim — the key itself is displayed; pass `Txt(txt("myNewKey"))` |
 | Forgetting to run `verify.dart` after changes | Drift between locale files goes undetected |
 | Using dynamic keys with `txt(someVariable)` | Can't be statically audited by `verify.dart` |
+| Dropping `localizationsDelegates: appLocalizationsDelegates` from `FluentApp` | Kurdish gets Flutter's LTR widget data and no Material/Cupertino localizations: every row flips back to LTR, Material date/time pickers throw, and the startup warning returns |

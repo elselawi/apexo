@@ -233,14 +233,13 @@ void main() {
 // Helpers
 // ──────────────────────────────────────────────────────────────
 
-/// Discover locale Dart files (exclude utility files).
+/// Locale files are the ones defining a dictionary; tooling files define none.
 List<File> _discoverLocaleFiles(Directory dir) {
-  const exclude = {'locale.dart', 'test.dart', 'verify.dart'};
   return dir
       .listSync()
       .whereType<File>()
-      .where((f) =>
-          f.path.endsWith('.dart') && !exclude.contains(_basename(f.path)))
+      .where(
+          (f) => f.path.endsWith('.dart') && _extractDictionary(f).isNotEmpty)
       .toList()
     ..sort((a, b) => _basename(a.path).compareTo(_basename(b.path)));
 }

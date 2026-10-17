@@ -3,7 +3,7 @@
 import "en.dart";
 
 class It implements En {
-  Direction $direction = Direction.ltr;
+  TextDirection $direction = TextDirection.ltr;
   String $name = "Italiano";
   String $code = "it";
 

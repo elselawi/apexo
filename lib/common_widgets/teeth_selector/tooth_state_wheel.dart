@@ -4,6 +4,7 @@ import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'dart:async';
@@ -501,8 +502,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   ///
   /// Saving keeps the note — it was stored as it was typed — and closes the
   /// wheel; clearing takes the choice, the note and the custom label with it
-  /// and puts the ring back. Save comes first, so in left-to-right it sits at
-  /// the left of the pair and in right-to-left the whole row mirrors with it.
+  /// and puts the ring back. Save comes first, so it sits at the start of the
+  /// pair and the row mirrors with the ambient [Directionality].
   Widget _foldedActions({required bool collapsed, required double box}) {
     final color = _accentColor;
     final visible = collapsed && _hasChoice;
@@ -537,7 +538,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: 8,
-                children: locale.isRtl ? [clear, save] : [save, clear],
+                children: [save, clear],
               ),
             ),
           ),
@@ -803,27 +804,30 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                 children: [
                                   Row(
                                     children: [
-                                      Icon(
-                                        record.date == null
-                                            ? FluentIcons.contact_info
-                                            : WindowsIcons.calendar,
-                                        size: 11,
-                                        color: record.date == null
-                                            ? Colors.teal
-                                            : theme.accentColor,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        record.label,
-                                        style:
-                                            theme.typography.caption?.copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 11,
-                                          color: record.date == null
-                                              ? (darkMode
-                                                  ? Colors.teal.lightest
-                                                  : Colors.teal.darkest)
-                                              : theme.typography.caption?.color,
+                                      if (record.date == null) ...[
+                                        Icon(
+                                          FluentIcons.contact_info,
+                                          size: 11,
+                                          color: Colors.teal,
+                                        ),
+                                        const SizedBox(width: 4),
+                                      ],
+                                      Flexible(
+                                        child: Text(
+                                          record.date == null
+                                              ? record.label
+                                              : DF.full(record.date!),
+                                          style: theme.typography.caption
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 11,
+                                            color: record.date == null
+                                                ? (darkMode
+                                                    ? Colors.teal.lightest
+                                                    : Colors.teal.darkest)
+                                                : theme
+                                                    .typography.caption?.color,
+                                          ),
                                         ),
                                       ),
                                     ],

@@ -1,5 +1,4 @@
 import 'package:apexo/app/routing/routes.dart';
-import 'package:apexo/services/localization/en.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -16,7 +15,7 @@ class BackButton extends StatelessWidget {
           message: txt("back"),
           child: IconButton(
               key: WK.backButton,
-              icon: Icon(locale.s.$direction == Direction.rtl
+              icon: Icon(locale.s.$direction == TextDirection.rtl
                   ? FluentIcons.forward
                   : FluentIcons.back),
               onPressed: () => routes.goBack()),

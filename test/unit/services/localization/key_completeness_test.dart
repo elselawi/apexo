@@ -66,7 +66,7 @@ void main() {
 
   group('Locale metadata', () {
     test('en direction is ltr', () {
-      expect(en.$direction, Direction.ltr);
+      expect(en.$direction, TextDirection.ltr);
     });
 
     test('en code is "en"', () {
@@ -74,39 +74,39 @@ void main() {
     });
 
     test('ar direction is rtl', () {
-      expect(locales['ar']!.$direction, Direction.rtl);
+      expect(locales['ar']!.$direction, TextDirection.rtl);
     });
 
     test('fa direction is rtl', () {
-      expect(locales['fa']!.$direction, Direction.rtl);
+      expect(locales['fa']!.$direction, TextDirection.rtl);
     });
 
     test('es direction is ltr', () {
-      expect(locales['es']!.$direction, Direction.ltr);
+      expect(locales['es']!.$direction, TextDirection.ltr);
     });
 
     test('el direction is ltr', () {
-      expect(locales['el']!.$direction, Direction.ltr);
+      expect(locales['el']!.$direction, TextDirection.ltr);
     });
 
     test('ku direction is rtl', () {
-      expect(locales['ku']!.$direction, Direction.rtl);
+      expect(locales['ku']!.$direction, TextDirection.rtl);
     });
 
     test('fr direction is ltr', () {
-      expect(locales['fr']!.$direction, Direction.ltr);
+      expect(locales['fr']!.$direction, TextDirection.ltr);
     });
 
     test('tr direction is ltr', () {
-      expect(locales['tr']!.$direction, Direction.ltr);
+      expect(locales['tr']!.$direction, TextDirection.ltr);
     });
 
     test('it direction is ltr', () {
-      expect(locales['it']!.$direction, Direction.ltr);
+      expect(locales['it']!.$direction, TextDirection.ltr);
     });
 
     test('ur direction is rtl', () {
-      expect(locales['ur']!.$direction, Direction.rtl);
+      expect(locales['ur']!.$direction, TextDirection.rtl);
     });
 
     test('all locales have valid codes', () {

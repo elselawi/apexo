@@ -10,6 +10,10 @@ class Tr implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "İptal",
+    "ok": "Tamam",
+    "hour": "Saat",
+    "minute": "Dakika",
+    "selectTime": "Saat seç",
     "invalidEmail": "Geçerli bir e-posta adresi girin.",
     "patientPageAccess": "Hasta sayfası erişimi",
     "close": "Kapat",
@@ -534,6 +538,11 @@ class Tr implements En {
     "dateFormat": "Tarih biçimi",
     "dateFormat_desc":
         "Bu biçim, geçerli olduğu yerlerde tarihleri göstermek için kullanılacaktır.",
+    "timeFormat": "Saat biçimi",
+    "timeFormat_desc":
+        "Bu biçim, uygun yerlerde saatleri göstermek ve seçmek için kullanılır.",
+    "12-hour": "12 saat (ÖÖ/ÖS)",
+    "24-hour": "24 saat",
     "calendarView": "Takvim görünümü",
     "calendarView_desc":
         "Randevuların takvimde nasıl görüntüleneceğini seçin.",

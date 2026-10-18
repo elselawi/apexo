@@ -10,6 +10,10 @@ class Fr implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Annuler",
+    "ok": "OK",
+    "hour": "Heure",
+    "minute": "Minute",
+    "selectTime": "Sélectionner l'heure",
     "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
     "patientPageAccess": "Accès à la page patient",
     "close": "Fermer",
@@ -538,6 +542,11 @@ class Fr implements En {
     "dateFormat": "Format de date",
     "dateFormat_desc":
         "Ce format sera utilisé pour afficher les dates le cas échéant.",
+    "timeFormat": "Format de l'heure",
+    "timeFormat_desc":
+        "Ce format sera utilisé pour afficher et choisir les heures le cas échéant.",
+    "12-hour": "12 heures (AM/PM)",
+    "24-hour": "24 heures",
     "calendarView": "Vue du calendrier",
     "calendarView_desc":
         "Choisissez le mode d'affichage des rendez-vous dans le calendrier.",

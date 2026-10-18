@@ -37,6 +37,16 @@ void main() {
       expect(localSettings.dateFormat, 'dd/MM/yyyy');
     });
 
+    test('timeFormat defaults to 12-hour', () {
+      expect(localSettings.timeFormat, DF.time12hPattern);
+      expect(DF.is24Hour, isFalse);
+    });
+
+    test('unknown stored timeFormat falls back to 12-hour', () {
+      localSettings.fromJson({'timeFormat': 'not-a-pattern'});
+      expect(localSettings.timeFormat, DF.time12hPattern);
+    });
+
     test('calendarSystem defaults to gregorian', () {
       expect(localSettings.calendarSystem, 'gregorian');
     });
@@ -85,6 +95,7 @@ void main() {
       localSettings.fromJson({
         'selectedLocale': 2,
         'dateFormat': 'MM/dd/yyyy',
+        'timeFormat': 'HH:mm',
         'calendarSystem': 'persian',
         'transcriptionLocale': 'es',
         'dentalNotation': 'f',
@@ -98,6 +109,7 @@ void main() {
 
       expect(localSettings.selectedLocale, 2);
       expect(localSettings.dateFormat, 'MM/dd/yyyy');
+      expect(localSettings.timeFormat, 'HH:mm');
       expect(localSettings.calendarSystem, 'persian');
       expect(localSettings.transcriptionOutputLocale, 'es');
       expect(localSettings.dentalNotation, 'f');
@@ -163,7 +175,9 @@ void main() {
       expect(localSettings.hasValidAiToken, isFalse);
     });
 
-    test('DF formats dates according to calendarSystem (gregorian, persian, hijri)', () async {
+    test(
+        'DF formats dates according to calendarSystem (gregorian, persian, hijri)',
+        () async {
       await initializeDateFormatting('en', null);
       final dt = DateTime(2024, 7, 7, 14, 30);
 
@@ -188,6 +202,24 @@ void main() {
       expect(DF.commonDate(dt), contains('1446/01/01'));
       expect(DF.full(dt), contains('1446/01/01'));
       expect(DF.fullCompact(dt), contains('1446/01/01'));
+    });
+
+    test('DF time output follows the device 12/24-hour setting', () async {
+      await initializeDateFormatting('en', null);
+      localSettings.selectedLocale = 0;
+      final dt = DateTime(2024, 7, 7, 14, 30);
+
+      localSettings.timeFormat = DF.time12hPattern;
+      expect(DF.is24Hour, isFalse);
+      expect(DF.timeOnly(dt), '02:30 PM');
+      expect(DF.time(dt), contains('02:30 PM'));
+      expect(DF.hourLabel(dt), '2 PM');
+
+      localSettings.timeFormat = DF.time24hPattern;
+      expect(DF.is24Hour, isTrue);
+      expect(DF.timeOnly(dt), '14:30');
+      expect(DF.time(dt), contains('14:30'));
+      expect(DF.hourLabel(dt), '14');
     });
   });
 }

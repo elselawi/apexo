@@ -156,6 +156,7 @@ class LocalSettings extends ObservablePersistingObject {
 
   String transcriptionLocaleNonFinal = "";
   String dateFormat = "dd/MM/yyyy";
+  String timeFormat = DF.time12hPattern;
   String calendarSystem = "gregorian";
   ThemeMode selectedTheme = ThemeMode.light;
   int selectedLocale = 0;
@@ -200,6 +201,10 @@ class LocalSettings extends ObservablePersistingObject {
   void fromJson(Map<String, dynamic> json) {
     selectedLocale = json["selectedLocale"] as int? ?? selectedLocale;
     dateFormat = json["dateFormat"] as String? ?? dateFormat;
+    final storedTimeFormat = json["timeFormat"];
+    timeFormat = DF.timeFormats.contains(storedTimeFormat)
+        ? storedTimeFormat as String
+        : DF.time12hPattern;
     calendarSystem = json["calendarSystem"] as String? ?? calendarSystem;
     transcriptionLocaleNonFinal =
         json["transcriptionLocale"] as String? ?? transcriptionLocaleNonFinal;
@@ -229,6 +234,7 @@ class LocalSettings extends ObservablePersistingObject {
     return {
       "selectedLocale": selectedLocale,
       "dateFormat": dateFormat,
+      "timeFormat": timeFormat,
       "calendarSystem": calendarSystem,
       "dentalNotation": dentalNotation,
       "transcriptionLocale": transcriptionLocaleNonFinal,
@@ -245,6 +251,17 @@ class LocalSettings extends ObservablePersistingObject {
 }
 
 abstract class DF {
+  static const String time12hPattern = "hh:mm a";
+  static const String time24hPattern = "HH:mm";
+  static const List<String> timeFormats = [time12hPattern, time24hPattern];
+
+  static String get timePattern =>
+      timeFormats.contains(localSettings.timeFormat)
+          ? localSettings.timeFormat
+          : time12hPattern;
+
+  static bool get is24Hour => timePattern.startsWith("H");
+
   static bool get isPersianCalendar =>
       localSettings.calendarSystem == "persian";
 
@@ -272,8 +289,8 @@ abstract class DF {
       return "${commonDate(date)} ${time(date)}";
     }
     final df = localSettings.dateFormat.startsWith("d") == true
-        ? "📅 EE dd / MM / yyyy 🕒 hh:mm a"
-        : "📅 EE MM / dd / yyyy 🕒 hh:mm a";
+        ? "📅 EE dd / MM / yyyy 🕒 $timePattern"
+        : "📅 EE MM / dd / yyyy 🕒 $timePattern";
     return DateFormat(df, locale.s.$code).format(date);
   }
 
@@ -282,8 +299,8 @@ abstract class DF {
       return "📅 ${allNumbers(date)} ${time(date)}";
     }
     final df = localSettings.dateFormat.startsWith("d") == true
-        ? "📅 dd / MM / yyyy 🕒 hh:mm a"
-        : "📅 MM / dd / yyyy 🕒 hh:mm a";
+        ? "📅 dd / MM / yyyy 🕒 $timePattern"
+        : "📅 MM / dd / yyyy 🕒 $timePattern";
     return DateFormat(df, locale.s.$code).format(date);
   }
 
@@ -305,7 +322,15 @@ abstract class DF {
   }
 
   static String time(DateTime date) {
-    return DateFormat("🕒 hh:mm a", locale.s.$code).format(date);
+    return DateFormat("🕒 $timePattern", locale.s.$code).format(date);
+  }
+
+  static String timeOnly(DateTime date) {
+    return DateFormat(timePattern, locale.s.$code).format(date);
+  }
+
+  static String hourLabel(DateTime date) {
+    return DateFormat(is24Hour ? "HH" : "h a", locale.s.$code).format(date);
   }
 
   static String jalaliDate(DateTime date) => allNumbers(date);

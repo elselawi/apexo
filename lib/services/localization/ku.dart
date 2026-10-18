@@ -10,6 +10,10 @@ class Ku implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "هەڵوەشاندنەوە",
+    "ok": "باشە",
+    "hour": "کاتژمێر",
+    "minute": "خولەک",
+    "selectTime": "کات هەڵبژێرە",
     "invalidEmail": "ئیمەیڵێکی دروست بنووسە.",
     "patientPageAccess": "دەستگەیشتن بە پەڕەی نەخۆش",
     "close": "داخستن",
@@ -532,6 +536,11 @@ class Ku implements En {
     "dateFormat": "شێوازی بەروار",
     "dateFormat_desc":
         "ئەم شێوازە بەکاردێت بۆ پیشاندانی بەروارەکان لە شوێنی گونجاودا.",
+    "timeFormat": "شێوازی کات",
+    "timeFormat_desc":
+        "ئەم شێوازە بۆ پیشاندان و هەڵبژاردنی کات بەکاردێت لەو شوێنانەی پێویستە.",
+    "12-hour": "١٢ کاتژمێری (پ.ن/د.ن)",
+    "24-hour": "٢٤ کاتژمێری",
     "calendarView": "دیمەنی ڕۆژژمێر",
     "calendarView_desc":
         "هەڵبژێرە مەوعیدەکان چۆن لە ڕۆژژمێردا پیشان بدرێن.",

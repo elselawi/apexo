@@ -5,6 +5,42 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart'
     show showTimePicker, showDatePicker, TimeOfDay;
 
+/// Locales whose CLDR time pattern is 24-hour, requiring an English override
+/// when 12-hour mode is selected in settings.
+const _localesWith24HourCldr = {"es", "el", "fa", "fr", "tr", "it"};
+
+Future<TimeOfDay?> showAppTimePicker(
+  BuildContext context, {
+  required TimeOfDay initialTime,
+}) {
+  final use24HourFormat = DF.is24Hour;
+  final forceTwelveHourEnglish =
+      !use24HourFormat && _localesWith24HourCldr.contains(locale.s.$code);
+
+  return showTimePicker(
+    context: context,
+    initialTime: initialTime,
+    helpText: txt("selectTime"),
+    cancelText: txt("cancel"),
+    confirmText: txt("ok"),
+    hourLabelText: txt("hour"),
+    minuteLabelText: txt("minute"),
+    builder: (context, child) {
+      final dialog = MediaQuery(
+        data: MediaQuery.of(context)
+            .copyWith(alwaysUse24HourFormat: use24HourFormat),
+        child: child!,
+      );
+      if (!forceTwelveHourEnglish) return dialog;
+      return Localizations.override(
+        context: context,
+        locale: const Locale("en"),
+        child: dialog,
+      );
+    },
+  );
+}
+
 class DateTimePicker extends StatefulWidget {
   const DateTimePicker({
     super.key,
@@ -76,8 +112,8 @@ class DateTimePickerState extends State<DateTimePicker> {
     DateTime selected = value;
 
     if (widget.pickTime) {
-      final TimeOfDay time = await showTimePicker(
-            context: context,
+      final TimeOfDay time = await showAppTimePicker(
+            context,
             initialTime: TimeOfDay(hour: value.hour, minute: value.minute),
           ) ??
           TimeOfDay(hour: selected.hour, minute: selected.minute);

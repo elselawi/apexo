@@ -12,6 +12,10 @@ class Es implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Cancelar",
+    "ok": "Aceptar",
+    "hour": "Hora",
+    "minute": "Minuto",
+    "selectTime": "Seleccionar hora",
     "invalidEmail": "Introduce una dirección de correo válida.",
     "patientPageAccess": "Acceso a la página del paciente",
     "close": "Cerrar",
@@ -542,6 +546,11 @@ class Es implements En {
     "timeline": "Línea de tiempo (cuadrícula)",
     "dateFormat_desc":
         "Este formato se usará para mostrar fechas cuando aplique.",
+    "timeFormat": "Formato de hora",
+    "timeFormat_desc":
+        "Este formato se usará para mostrar y elegir horas cuando aplique.",
+    "12-hour": "12 horas (AM/PM)",
+    "24-hour": "24 horas",
     "cacheReset": "Reiniciar caché",
     "cacheReset_desc":
         "Puedes usar el siguiente botón para reiniciar el caché de la aplicación, excepto las imágenes. Esto puede ayudar a resolver algunos problemas que podrías estar teniendo al sincronizar con otros dispositivos.",

@@ -10,6 +10,10 @@ class Ur implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "منسوخ کریں",
+    "ok": "ٹھیک ہے",
+    "hour": "گھنٹہ",
+    "minute": "منٹ",
+    "selectTime": "وقت منتخب کریں",
     "invalidEmail": "درست ای میل ایڈریس درج کریں۔",
     "patientPageAccess": "مریض کے صفحے تک رسائی",
     "close": "بند کریں",
@@ -534,6 +538,11 @@ class Ur implements En {
     "dateFormat": "تاریخ کا فارمیٹ",
     "dateFormat_desc":
         "یہ فارمیٹ جہاں لاگو ہو وہاں تاریخیں دکھانے کے لیے استعمال ہوگا۔",
+    "timeFormat": "وقت کی شکل",
+    "timeFormat_desc":
+        "یہ شکل جہاں لاگو ہو وقت دکھانے اور منتخب کرنے کے لیے استعمال ہوگی۔",
+    "12-hour": "12 گھنٹے (AM/PM)",
+    "24-hour": "24 گھنٹے",
     "calendarView": "کیلنڈر ویو",
     "calendarView_desc":
         "منتخب کریں کہ کیلنڈر میں اپائنٹمنٹس کیسے دکھائی جائیں۔",

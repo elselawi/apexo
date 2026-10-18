@@ -10,6 +10,10 @@ class Fa implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "لغو",
+    "ok": "تأیید",
+    "hour": "ساعت",
+    "minute": "دقیقه",
+    "selectTime": "انتخاب زمان",
     "invalidEmail": "یک نشانی ایمیل معتبر وارد کنید.",
     "patientPageAccess": "دسترسی به صفحه بیمار",
     "close": "بستن",
@@ -530,6 +534,11 @@ class Fa implements En {
     "dateFormat": "فرمت تاریخ",
     "dateFormat_desc":
         "این فرمت برای نمایش تاریخ‌ها در جایی که قابل اعمال است استفاده می‌شود.",
+    "timeFormat": "قالب زمان",
+    "timeFormat_desc":
+        "این قالب برای نمایش و انتخاب زمان در موارد مربوطه استفاده می‌شود.",
+    "12-hour": "۱۲ ساعته (ق.ظ/ب.ظ)",
+    "24-hour": "۲۴ ساعته",
     "calendarView": "نمای تقویم",
     "calendarView_desc": "نحوه نمایش نوبت‌ها در تقویم را انتخاب کنید.",
     "agenda": "دستور کار (لیست)",

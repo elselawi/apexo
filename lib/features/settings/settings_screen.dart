@@ -145,6 +145,29 @@ class SettingsScreen extends StatelessWidget {
             },
           ),
           SettingsItem(
+            title: txt("timeFormat"),
+            identifier: "timeFormat",
+            description: txt("timeFormat_desc"),
+            icon: FluentIcons.clock,
+            inputType: InputType.dropDown,
+            scope: Scope.device,
+            options: [
+              ComboBoxItem(
+                value: DF.time12hPattern,
+                child: Txt(txt("12-hour")),
+              ),
+              ComboBoxItem(
+                value: DF.time24hPattern,
+                child: Txt(txt("24-hour")),
+              ),
+            ],
+            initValue: localSettings.timeFormat,
+            apply: (newVal) {
+              localSettings.timeFormat = newVal;
+              localSettings.notifyAndPersist();
+            },
+          ),
+          SettingsItem(
             title: txt("calendarView"),
             identifier: "calendarView",
             description: txt("calendarView_desc"),

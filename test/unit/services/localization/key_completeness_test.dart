@@ -186,6 +186,10 @@ void main() {
             reason: 'DF.allNumbers failed for $code');
         expect(DF.time(sampleDate), isNotEmpty,
             reason: 'DF.time failed for $code');
+        expect(DF.timeOnly(sampleDate), isNotEmpty,
+            reason: 'DF.timeOnly failed for $code');
+        expect(DF.hourLabel(sampleDate), isNotEmpty,
+            reason: 'DF.hourLabel failed for $code');
         expect(DF.jalaliMonthYear(sampleDate), isNotEmpty,
             reason: 'DF.jalaliMonthYear failed for $code');
         expect(DF.jalaliDayOfWeekAbbr(sampleDate), isNotEmpty,

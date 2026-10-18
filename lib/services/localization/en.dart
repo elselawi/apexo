@@ -11,6 +11,10 @@ class En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Cancel",
+    "ok": "OK",
+    "hour": "Hour",
+    "minute": "Minute",
+    "selectTime": "Select time",
     "invalidEmail": "Enter a valid email address.",
     "patientPageAccess": "Patient page access",
     "close": "Close",
@@ -533,6 +537,11 @@ class En {
     "dateFormat": "Date format",
     "dateFormat_desc":
         "This format will be used to display dates where applicable.",
+    "timeFormat": "Time format",
+    "timeFormat_desc":
+        "This format will be used to display and pick times where applicable.",
+    "12-hour": "12-hour (AM/PM)",
+    "24-hour": "24-hour",
     "calendarView": "Calendar view",
     "calendarView_desc":
         "Choose how appointments are displayed in the calendar.",

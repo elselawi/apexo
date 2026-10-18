@@ -10,6 +10,10 @@ class It implements En {
   Map<String, String> dictionary = {
     // common
     "cancel": "Annulla",
+    "ok": "OK",
+    "hour": "Ora",
+    "minute": "Minuto",
+    "selectTime": "Seleziona ora",
     "invalidEmail": "Inserisci un indirizzo email valido.",
     "patientPageAccess": "Accesso alla pagina del paziente",
     "close": "Chiudi",
@@ -540,6 +544,11 @@ class It implements En {
     "dateFormat": "Formato data",
     "dateFormat_desc":
         "Questo formato verrà usato per visualizzare le date dove applicabile.",
+    "timeFormat": "Formato ora",
+    "timeFormat_desc":
+        "Questo formato verrà usato per mostrare e scegliere gli orari quando applicabile.",
+    "12-hour": "12 ore (AM/PM)",
+    "24-hour": "24 ore",
     "calendarView": "Vista calendario",
     "calendarView_desc":
         "Scegli come visualizzare gli appuntamenti nel calendario.",

@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
+import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -12,8 +13,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
-import 'package:flutter/material.dart' show TimeOfDay, showTimePicker;
-import 'package:intl/intl.dart' as intl;
+import 'package:flutter/material.dart' show TimeOfDay;
 import 'appointments_store.dart';
 import 'package:apexo/app/panels/panels_manager.dart';
 
@@ -230,8 +230,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                       final index = PanelsManager.active()
                           .indexWhere((p) => p.itemId == item.id);
                       if (index > -1) return PanelsManager.bringToFront(index);
-                      final TimeOfDay? res = await showTimePicker(
-                          context: context,
+                      final TimeOfDay? res = await showAppTimePicker(context,
                           initialTime: TimeOfDay(
                               hour: item.date.hour, minute: item.date.minute));
                       if (res != null) {
@@ -248,8 +247,7 @@ class AppointmentCalendarTile<Item extends Appointment>
                             ? const Icon(FluentIcons.clock)
                             : const Icon(FluentIcons.open_in_new_tab),
                         const SizedBox(width: 5),
-                        Txt(intl.DateFormat('hh:mm a', locale.s.$code)
-                            .format(item.date)),
+                        Txt(DF.timeOnly(item.date)),
                       ],
                     ),
                   ),

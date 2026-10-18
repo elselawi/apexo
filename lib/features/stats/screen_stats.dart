@@ -17,7 +17,6 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:intl/intl.dart';
 
 class StatsScreen extends StatelessWidget {
   const StatsScreen({super.key});
@@ -189,8 +188,8 @@ class StatsScreen extends StatelessWidget {
                           data: [chartsCtrl.timeOfDayDistribution],
                           labels: List.generate(
                               24,
-                              (index) => DateFormat("hh a", locale.s.$code)
-                                  .format(DateTime(0, 0, 0, index))),
+                              (index) =>
+                                  DF.hourLabel(DateTime(0, 0, 0, index))),
                         ),
                         constraints.maxWidth,
                         context,

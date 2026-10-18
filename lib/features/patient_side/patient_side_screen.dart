@@ -824,7 +824,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    DF.jalaliCommonDate(apt.date),
+                                    DF.full(apt.date),
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: theme

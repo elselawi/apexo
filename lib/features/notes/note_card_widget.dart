@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -14,6 +15,7 @@ import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
+import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -146,19 +148,164 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     return RepaintBoundary(
-      child: LongPressDraggable<Note>(
-        data: widget.note,
-        feedback: SizedBox(
-          width: 280,
+      // The long press is the drag: a note is moved by it, so this menu is on
+      // right click only.
+      child: ContextMenuRegion(
+        longPress: false,
+        items: _contextMenuItems,
+        child: LongPressDraggable<Note>(
+          data: widget.note,
+          feedback: SizedBox(
+            width: 280,
+            child: _buildCard(theme, context),
+          ),
+          childWhenDragging: Opacity(
+            opacity: 0.5,
+            child: _buildCard(theme, context),
+          ),
           child: _buildCard(theme, context),
         ),
-        childWhenDragging: Opacity(
-          opacity: 0.5,
-          child: _buildCard(theme, context),
-        ),
-        child: _buildCard(theme, context),
       ),
     );
+  }
+
+  /// The note's actions on right click, in the order the card offers them: open
+  /// or close it, take an attachment, hand it to someone, move its due date, and
+  /// — last — take it away. An action the user may not do is not there at all.
+  ///
+  /// [menuContext] is the menu's; the card's own context is used for the date
+  /// picker, which outlives the menu that was tapped.
+  List<MenuFlyoutItemBase> _contextMenuItems(
+    BuildContext menuContext,
+    FlyoutController controller,
+  ) {
+    final note = widget.note;
+    final canEdit = this.canEdit && !note.isGhost;
+    return [
+      MenuFlyoutItem(
+        text: Txt(txt(expanded ? "close" : "open")),
+        leading:
+            Icon(expanded ? WindowsIcons.cancel : WindowsIcons.explore_content),
+        onPressed: _toggleExpanded,
+      ),
+      if (note.hasAttachments)
+        MenuFlyoutSubItem(
+          text: menuTitleSuffix(
+            Txt("${txt("download")} ${txt("attachments")}"),
+            menuCountSuffix(note.attachmentsCount),
+          ),
+          leading: const Icon(WindowsIcons.attach),
+          showBehavior: SubItemShowAction.press,
+          items: (context) => [
+            for (final attachment in note.attachments)
+              MenuFlyoutItem(
+                text: Text(
+                  displayNameForFile(attachment),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                leading: const Icon(WindowsIcons.download),
+                onPressed: () => unawaited(_downloadAttachment(attachment)),
+              ),
+          ],
+        ),
+      if (canEdit) ...[
+        const MenuFlyoutSeparator(),
+        MenuFlyoutSubItem(
+          text: Txt(txt("assignedTo")),
+          leading: const Icon(FluentIcons.edit_contact),
+          showBehavior: SubItemShowAction.press,
+          items: (context) => _assigneeItems(),
+        ),
+        MenuFlyoutItem(
+          text: Txt(txt("changeDueDate")),
+          leading: const Icon(FluentIcons.edit_event),
+          onPressed: () {
+            // The menu is closing; the picker belongs to the card, which is
+            // still here after the menu is gone.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              unawaited(_changeDueDate(context));
+            });
+          },
+        ),
+        const MenuFlyoutSeparator(),
+        confirmDeleteMenuItem(
+          controller: controller,
+          actionText: note.archived == true ? "restore" : "delete",
+          actionIcon:
+              note.archived == true ? WindowsIcons.undo : WindowsIcons.delete,
+          preview: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              const Icon(WindowsIcons.quick_note),
+              Txt(note.title),
+            ],
+          ),
+          onConfirm: () => note.archived == true
+              ? notes.unarchive(note.id)
+              : notes.archive(note.id),
+        ),
+      ],
+    ];
+  }
+
+  /// Every user a note can be handed to, then the way to hand it back to no
+  /// one. Shared by the card's assign button and its context menu, so the two
+  /// cannot offer different people.
+  List<MenuFlyoutItemBase> _assigneeItems() {
+    final note = widget.note;
+    return [
+      for (final account in accounts.list())
+        MenuFlyoutItem(
+          leading: const Icon(FluentIcons.contact),
+          text: Txt(accounts.nameOrEmailFromID(account.id)),
+          selected: note.assignedTo == account.id,
+          onPressed: () => notes.set(note..assignedTo = account.id),
+        ),
+      MenuFlyoutItem(
+        leading: const Icon(FluentIcons.clear_filter),
+        text: Txt(txt("noAssignee")),
+        selected: note.assignedTo.isEmpty,
+        onPressed: () => notes.set(note..assignedTo = ""),
+      ),
+    ];
+  }
+
+  void _toggleExpanded() {
+    setState(() {
+      expanded = !expanded;
+      _titleController.text = widget.note.title;
+      _noteController.text = widget.note.note;
+      _showTitleSaveButton = false;
+      _showNoteSaveButton = false;
+    });
+    if (expanded) {
+      _animationController.forward();
+    } else {
+      _animationController.reverse();
+    }
+  }
+
+  Future<void> _changeDueDate(BuildContext context) async {
+    final dueDate = await showDatePicker(
+      context: context,
+      initialDate: widget.note.dueDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 9999)),
+      lastDate: DateTime.now().add(const Duration(days: 9999)),
+    );
+    if (dueDate != null) {
+      notes.set(widget.note..dueDate = dueDate);
+    }
+  }
+
+  Future<void> _downloadAttachment(String attachment) async {
+    try {
+      await downloadFile(widget.note.id, attachment);
+    } catch (e, s) {
+      showErrorMessage(e, "downloadingFile");
+      logger("Error during downloading file: $e", s);
+    }
   }
 
   Widget _buildCard(FluentThemeData theme, BuildContext context) {
@@ -332,20 +479,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
             )
           ],
         ),
-        onPressed: () {
-          setState(() {
-            expanded = !expanded;
-            _titleController.text = widget.note.title;
-            _noteController.text = widget.note.note;
-            _showTitleSaveButton = false;
-            _showNoteSaveButton = false;
-          });
-          if (expanded) {
-            _animationController.forward();
-          } else {
-            _animationController.reverse();
-          }
-        },
+        onPressed: _toggleExpanded,
       ),
     );
   }
@@ -684,7 +818,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
                 notes.set(widget.note..done = checked == true);
                 // Trigger checkbox rotation animation when note is marked as done
                 if (checked == true) {
-                  unawaited(_checkBoxScaleAnimationController.forward().then((_) {
+                  unawaited(
+                      _checkBoxScaleAnimationController.forward().then((_) {
                     _checkBoxScaleAnimationController.reverse();
                   }));
                 }
@@ -899,17 +1034,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
       child: IconButton(
         style: _iconButtonStyle(theme),
         icon: const Icon(FluentIcons.edit_event),
-        onPressed: () async {
-          final dueDate = await showDatePicker(
-            context: context,
-            initialDate: widget.note.dueDate,
-            firstDate: DateTime.now().subtract(const Duration(days: 9999)),
-            lastDate: DateTime.now().add(const Duration(days: 9999)),
-          );
-          if (dueDate != null) {
-            notes.set(widget.note..dueDate = dueDate);
-          }
-        },
+        onPressed: () => unawaited(_changeDueDate(context)),
       ),
     );
   }
@@ -965,28 +1090,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         icon: const Icon(FluentIcons.edit_contact),
         onPressed: () async {
           await flyoutFocusFix(context);
-          unawaited(_assigningFlyoutCtrl.showFlyout(builder: (context) {
-            return MenuFlyout(
-                items: List.generate(accounts.list().length, (i) {
-              final item = accounts.list()[i];
-              final id = item.id;
-              final username = accounts.nameOrEmailFromID(id);
-              return MenuFlyoutItem(
-                leading: const Icon(FluentIcons.contact),
-                text: Txt(username),
-                onPressed: () {
-                  notes.set(widget.note..assignedTo = id);
-                },
-              );
-            })
-                  ..add(MenuFlyoutItem(
-                    leading: const Icon(FluentIcons.clear_filter),
-                    text: Txt(txt("noAssignee")),
-                    onPressed: () {
-                      notes.set(widget.note..assignedTo = "");
-                    },
-                  )));
-          }));
+          unawaited(_assigningFlyoutCtrl.showFlyout(
+              builder: (context) => MenuFlyout(items: _assigneeItems())));
         },
       ),
     );

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/features/notes/dialog_column_edit.dart';
-import 'package:apexo/features/notes/dialog_note_edit.dart';
+import 'package:apexo/features/notes/column_edit_dialog.dart';
+import 'package:apexo/features/notes/note_edit_dialog.dart';
 import 'package:apexo/features/notes/note_card_widget.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';

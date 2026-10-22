@@ -15,8 +15,12 @@ import 'package:apexo/utils/js/js_bridge.dart';
 class Messaging {
   static FirebaseMessagingService? firebase;
   static LocalNotificationsService? local;
+
+  /// Initializes Firebase, FCM and local notifications on the platforms that
+  /// receive pushes: Android, iOS and macOS. Web is handled by `fcm/fcm.js`,
+  /// and Windows only has in-app notifications.
   static Future<void> initializeReceiving() async {
-    if (Platform.isAndroid || Platform.isIOS) {
+    if (Platform.isAndroid || Platform.isIOS || Platform.isMacOS) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
@@ -49,7 +53,7 @@ class Messaging {
       JSBridge.setGlobalVariable("lang", locale.s.$code);
       JSBridge.setGlobalVariable("shouldShowPrompt", "yes");
     } else {
-      // this is for android and ios
+      // this is for Android, iOS and macOS
       // this identifies this device to the relay server
       if (firebase != null &&
           (firebase!.authStatus == AuthorizationStatus.authorized ||

@@ -395,8 +395,10 @@ class _LoginService extends ObservablePersistingObject {
         : savedPermissions;
     adminCollectionId =
         json["adminCollectionId"] as String? ?? adminCollectionId;
-    pushNotificationsToken =
-        json["pushNotificationsToken"] as String? ?? pushNotificationsToken;
+    if (pushNotificationsToken.isEmpty) {
+      pushNotificationsToken =
+          json["pushNotificationsToken"] as String? ?? pushNotificationsToken;
+    }
     if (token.isNotEmpty) {
       await activate(url, [token], true);
     } else {

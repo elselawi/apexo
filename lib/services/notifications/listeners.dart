@@ -142,8 +142,8 @@ void backgroundNotificationResponse(NotificationResponse response) {
 }
 
 /// This function is called when a background message is received.
-/// It initializes the local notifications plugin and shows the notification.
-/// It should stay top-level to avoid isolate issues.
+/// It initializes Firebase and the local notifications plugin, and shows the
+/// notification. It should stay top-level to avoid isolate issues.
 @pragma('vm:entry-point')
 Future<void> backgroundMsg(RemoteMessage message) async {
   await login.ready;
@@ -161,14 +161,12 @@ Future<void> backgroundMsg(RemoteMessage message) async {
   PushListeners._addStaticNotification(pushData);
 
   WidgetsFlutterBinding.ensureInitialized();
-  if (kIsWeb || Platform.isWindows == false) {
-    if (Firebase.apps.isEmpty) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      );
-    }
+  if (!kIsWeb && !Platform.isWindows && Firebase.apps.isEmpty) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
   }
-  if (kIsWeb == false && (Platform.isAndroid || Platform.isIOS)) {
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS || Platform.isMacOS)) {
     final local = LocalNotificationsService.instance();
     await local.init();
     await local.showNotification(tuple[0], tuple[1], parsed.raw);
@@ -218,16 +216,18 @@ abstract class PushListeners {
     }
     final parsed = tryParsePushPayload(res.payload);
     if (parsed == null) return;
-    final pushData = parsed.data;
-    if (pushData.store == "notes") {
-      routes.navigate(AppRoute.notes);
-    } else if (pushData.store == "appointments") {
-      routes.navigate(AppRoute.calendar);
-      openAppointmentIfExist(pushData.id);
-    }
+    _navigateTo(parsed.data);
   }
 
-  static void causedTheAppToOpen(RemoteMessage message) {
+  /// A notification tap opened or resumed the app: record the notice and show
+  /// the record it is about.
+  ///
+  /// The tap that launched the app gets here while the session is still
+  /// loading, hence the wait — without it the payload would look like it
+  /// belongs to no one and be dropped.
+  static Future<void> causedTheAppToOpen(RemoteMessage message) async {
+    await login.ready;
+    await patientSide.ready;
     if (login.token.isEmpty && patientSide.patientID.isEmpty) {
       return;
     }
@@ -235,6 +235,24 @@ abstract class PushListeners {
     if (parsed == null) return;
     final pushData = parsed.data;
     _addStaticNotification(pushData);
+    _navigateTo(pushData);
+    // A tap that launched the app can arrive before the record exists on this
+    // device: the route change starts a sync, so open the record once it lands.
+    if (pushData.store == "appointments" &&
+        appointments.get(pushData.id) == null) {
+      await appointments.synchronize();
+      openAppointmentIfExist(pushData.id);
+    }
+  }
+
+  /// Opens the record a payload is about.
+  static void _navigateTo(PushData pushData) {
+    if (pushData.store == "notes") {
+      routes.navigate(AppRoute.notes);
+    } else if (pushData.store == "appointments") {
+      routes.navigate(AppRoute.calendar);
+      openAppointmentIfExist(pushData.id);
+    }
   }
 
   static void _addStaticNotification(PushData pushData) {

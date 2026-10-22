@@ -42,7 +42,7 @@ void main() async {
   await initDicomToolkit();
 
   // initialize receiving notifications
-  // on Android and iOS
+  // on Android, iOS and macOS
   if (kIsWeb == false) await Messaging.initializeReceiving();
 
   // initialize stores

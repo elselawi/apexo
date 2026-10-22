@@ -31,7 +31,7 @@
             "macos": {
                 "default": {
                     "projectId": "apexo-14f90",
-                    "appId": "1:107363374876:ios:d6cf0f906a40c2bc620cd9",
+                    "appId": "1:107363374876:ios:40e65238e966f30a620cd9",
                     "uploadDebugSymbols": false,
                     "fileOutput": "macos/Runner/GoogleService-Info.plist"
                 }

@@ -1,4 +1,5 @@
 import 'package:apexo/services/notifications/listeners.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class LocalNotificationsService {
@@ -17,10 +18,14 @@ class LocalNotificationsService {
   final _androidInitializationSettings =
       const AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  final _iosInitializationSettings = const DarwinInitializationSettings(
-    requestAlertPermission: true,
-    requestBadgePermission: true,
-    requestSoundPermission: true,
+  // iOS and macOS initialization settings, shared since both use the same
+  // Darwin plugin. Permission is not requested here: FirebaseMessagingService
+  // asks for it before local notifications are initialized, and the display
+  // permission is app-wide, so asking again would only repeat the request.
+  final _darwinInitializationSettings = const DarwinInitializationSettings(
+    requestAlertPermission: false,
+    requestBadgePermission: false,
+    requestSoundPermission: false,
   );
 
   //Android notification channel configuration
@@ -37,7 +42,15 @@ class LocalNotificationsService {
   //Counter for generating unique notification IDs
   int _notificationIdCounter = 0;
 
-  /// Initializes the local notifications plugin for Android and iOS.
+  /// The last notification handed to the OS.
+  ///
+  /// A device's notification centre cannot be read from Dart, so an end-to-end
+  /// test asserts this instead: it is exactly what the platform was asked to
+  /// display.
+  @visibleForTesting
+  ({String? title, String? body, String? payload})? lastShown;
+
+  /// Initializes the local notifications plugin for Android, iOS and macOS.
   Future<void> init() async {
     if (_isFlutterLocalNotificationInitialized) {
       return;
@@ -49,7 +62,8 @@ class LocalNotificationsService {
     // Combine platform-specific settings
     final initializationSettings = InitializationSettings(
       android: _androidInitializationSettings,
-      iOS: _iosInitializationSettings,
+      iOS: _darwinInitializationSettings,
+      macOS: _darwinInitializationSettings,
     );
 
     // Initialize plugin with settings and callback for notification taps
@@ -89,14 +103,24 @@ class LocalNotificationsService {
       priority: Priority.high,
     );
 
-    // iOS-specific notification details
-    const iosDetails = DarwinNotificationDetails();
+    // iOS and macOS notification details. The banner and list presentations
+    // cover the newer Apple systems, where `presentAlert` no longer applies.
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBanner: true,
+      presentList: true,
+      presentBadge: true,
+      presentSound: true,
+    );
 
     // Combine platform-specific details
     final notificationDetails = NotificationDetails(
       android: androidDetails,
-      iOS: iosDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
     );
+
+    lastShown = (title: title, body: body, payload: payload);
 
     // Display the notification
     await _flutterLocalNotificationsPlugin.show(

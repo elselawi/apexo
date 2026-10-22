@@ -17,9 +17,20 @@ class Ku implements En {
     "invalidEmail": "ئیمەیڵێکی دروست بنووسە.",
     "patientPageAccess": "دەستگەیشتن بە پەڕەی نەخۆش",
     "close": "داخستن",
+    "minimize": "بچووککردنەوە",
+    "xRayViewer": "بینەری تیشک",
+    "showOrders": "پیشاندانی داواکارییەکان",
+    "downloadingFile": "داگرتنی فایل",
+    "penColor": "ڕەنگی قەڵەم",
+    "previousPhoto": "پێشووی وێنە",
+    "nextPhoto": "دواتر وێنە",
+    "play": "لێدان",
+    "pause": "وەستان",
+    "openRecord": "کردنەوەی تۆمار",
+    "openPatientRecord": "کردنەوەی تۆماری {name}",
+    "unsavedChanges": "گۆڕانکاری پاشەکەوتنەکراو",
     "save": "پاشەکەوتکردن",
     "reset": "ڕێکخستنەوە",
-    "dicomViewer": "پیشاندەری DICOM",
     "window": "پەنجەرە",
     "colorMap": "نەخشەی ڕەنگ",
     "invert": "پێچەوانەکردنەوە",
@@ -37,7 +48,8 @@ class Ku implements En {
     "ruler": "ڕاستە",
     "roi": "ناوچەی دیاریکراو",
     "exportPng": "هەناردەکردنی PNG",
-    "measureInstructions": "پەنجە بنێ بە دوو خاڵ لەسەر وێنەکە بۆ پێوانەکردنی دووری.",
+    "measureInstructions":
+        "پەنجە بنێ بە دوو خاڵ لەسەر وێنەکە بۆ پێوانەکردنی دووری.",
     "roiInstructions":
         "ڕابکێشە بۆ کێشانی لاکێشەیەک. ئامارەکان کاتی بەردان دەردەکەون.",
     "clearMeasurement": "سڕینەوەی پێوانە",
@@ -77,6 +89,8 @@ class Ku implements En {
     "home": "سەرەکی",
     "calendar": "ڕۆژژمێر",
     "gettingImages": "هێنانی وێنەکان",
+    "retry": "دووبارە هەوڵدانەوە",
+    "couldNotOpenImage": "وێنەکە نەکرایەوە",
     "more": "زیاتر",
     "howToUse": "چۆنیەتی بەکارهێنان",
 
@@ -170,6 +184,7 @@ class Ku implements En {
 
     // patients
     "patientDetails": "زانیارییەکانی نەخۆش",
+    "allAppointments": "هەموو مەوعیدەکان",
     "age": "تەمەن",
     "gender": "ڕەگەز",
     "lastVisit": "دوایین سەردان",
@@ -198,6 +213,8 @@ class Ku implements En {
     "telegram": "تێلێگرام",
     "printQR": "چاپکردنی کۆدی QR",
     "dentalNotes": "تێبینییەکانی ددان",
+    "dentalChart": "نەخشەی ددان",
+    "treatments": "چارەسەرەکان",
     "toothHistory": "مێژووی ددان",
     "toothPatientHistory": "مێژووی ددانی نەخۆش",
     "toothAppointmentNotes": "تێبینییەکانی مەوعید",
@@ -322,7 +339,8 @@ class Ku implements En {
     "dicomWatchDir": "فۆڵدەری چاودێری تیشک",
     "dicomWatchDir_desc":
         "ئەو فۆڵدەرەی کە بەرنامەی سێنسەری تیشکەکەت فایلەکانی .dcm تێدا پاشەکەوت دەکات. Apexo دەیپشکنێت بۆ تیشکی نوێ.",
-    "dicomWatchDir_notSet": "هیچ فۆڵدەرێک دیاری نەکراوە — دانەیەک هەڵبژێرە بۆ دەستپێکردنی هاوردەکردن",
+    "dicomWatchDir_notSet":
+        "هیچ فۆڵدەرێک دیاری نەکراوە — دانەیەک هەڵبژێرە بۆ دەستپێکردنی هاوردەکردن",
     "dicomAutoImport": "هاوردەکردنی خۆکار",
     "dicomAutoImport_desc":
         "هاوردەکردنی خۆکاری تیشکە نوێیەکان بۆ نەخۆشە بەستراوەکان لە کاتی پشکنیندا.",
@@ -526,8 +544,7 @@ class Ku implements En {
     "phone_desc":
         "ژمارەی تەلەفۆنەکە لەسەر چاپکراوەکان و پەڕەی وێبی نەخۆشەکان پیشان دەدرێت.",
     "prescriptionFooter": "پەڕاوێزی ڕەچەتە",
-    "prescriptionFooter_desc":
-        "ئەم دەقە لە خوارەوەی ڕەچەتەکە پیشان دەدرێت.",
+    "prescriptionFooter_desc": "ئەم دەقە لە خوارەوەی ڕەچەتەکە پیشان دەدرێت.",
     "language": "زمان",
     "language_desc":
         "زمانی ڕووکاری لیستەکان، دوگمەکان و زانیارییەکانی ناو بەرنامەکە.",
@@ -542,8 +559,7 @@ class Ku implements En {
     "12-hour": "١٢ کاتژمێری (پ.ن/د.ن)",
     "24-hour": "٢٤ کاتژمێری",
     "calendarView": "دیمەنی ڕۆژژمێر",
-    "calendarView_desc":
-        "هەڵبژێرە مەوعیدەکان چۆن لە ڕۆژژمێردا پیشان بدرێن.",
+    "calendarView_desc": "هەڵبژێرە مەوعیدەکان چۆن لە ڕۆژژمێردا پیشان بدرێن.",
     "agenda": "ئەجێندا (لیست)",
     "timeline": "کاتنامە (خشتەی کات)",
     "cacheReset": "پاککردنەوەی کاش",
@@ -595,7 +611,8 @@ class Ku implements En {
     "backups_cron_hint":
         "خشتەیەکی ئامادەکراو لە لیستەکە هەڵبژێرە. دەستەواژەی cron بە شێوەی خۆکار پڕدەکرێتەوە.",
     "backups_max_keep": "زۆرترین ژمارەی باکئەپ بۆ هێشتنەوە",
-    "backups_max_keep_hint": "باکئەپە کۆنەکان دەسڕێنەوە کاتێک لەم ژمارەیە تێدەپەڕێت",
+    "backups_max_keep_hint":
+        "باکئەپە کۆنەکان دەسڕێنەوە کاتێک لەم ژمارەیە تێدەپەڕێت",
     "backups_s3_enabled": "هەڵگرتنی باکئەپەکان لە S3",
     "backups_save_success": "ڕێکخستنەکانی باکئەپ بە سەرکەوتوویی پاشەکەوت کران",
     "backups_save_fail": "پاشەکەوتکردنی ڕێکخستنەکانی باکئەپ سەرکەوتوو نەبوو",
@@ -603,10 +620,10 @@ class Ku implements En {
     // Meta settings
     "meta_settings": "ڕێکخستنەکانی بەرنامە",
     "meta_info_title": "زانیاری گشتی بەرنامە",
-    "meta_info_desc":
-        "ناوی بەرنامەکەت، بەستەر و ڕێکخستنەکانی براندینگ ڕێکبخە.",
+    "meta_info_desc": "ناوی بەرنامەکەت، بەستەر و ڕێکخستنەکانی براندینگ ڕێکبخە.",
     "meta_appName": "ناوی بەرنامە",
-    "meta_appName_hint": "لە ئیمەیڵەکان و ناونیشانی پەڕەی چوونەژوورەوە پیشان دەدرێت",
+    "meta_appName_hint":
+        "لە ئیمەیڵەکان و ناونیشانی پەڕەی چوونەژوورەوە پیشان دەدرێت",
     "meta_appUrl": "بەستەری بەرنامە (URL)",
     "meta_appUrl_hint": "لە ئیمەیڵەکان و بەستەرە هاوبەشەکاندا بەکاردێت",
     "meta_save_success": "ڕێکخستنەکانی بەرنامە بە سەرکەوتوویی پاشەکەوت کران",
@@ -623,7 +640,8 @@ class Ku implements En {
     "auth_superusers_duration": "دانیشتنی بەڕێوەبەر (ڕۆژ)",
     "auth_superusers_duration_hint":
         "چەند ڕۆژ پێش ئەوەی بەڕێوەبەران پێویست بکات دووبارە بچنە ژوورەوە",
-    "auth_save_success": "ڕێکخستنەکانی چوونەژوورەوە بە سەرکەوتوویی پاشەکەوت کران",
+    "auth_save_success":
+        "ڕێکخستنەکانی چوونەژوورەوە بە سەرکەوتوویی پاشەکەوت کران",
     "auth_save_fail": "پاشەکەوتکردنی ڕێکخستنەکانی چوونەژوورەوە سەرکەوتوو نەبوو",
 
     // File upload settings
@@ -634,8 +652,10 @@ class Ku implements En {
     "file_upload_max_size": "زۆرترین قەبارەی فایل (MB)",
     "file_upload_max_size_hint":
         "زۆرترین قەبارە بە مێگابایت بۆ هەر فایلێکی بارکراو",
-    "file_upload_save_success": "ڕێکخستنەکانی بارکردنی فایل بە سەرکەوتوویی پاشەکەوت کران",
-    "file_upload_save_fail": "پاشەکەوتکردنی ڕێکخستنەکانی بارکردنی فایل سەرکەوتوو نەبوو",
+    "file_upload_save_success":
+        "ڕێکخستنەکانی بارکردنی فایل بە سەرکەوتوویی پاشەکەوت کران",
+    "file_upload_save_fail":
+        "پاشەکەوتکردنی ڕێکخستنەکانی بارکردنی فایل سەرکەوتوو نەبوو",
 
     // advanced settings: Admins
     "admins": "بەڕێوەبەران",
@@ -643,8 +663,7 @@ class Ku implements En {
     "password": "تێپەڕەوشە",
     "leaveBlankToKeepUnchanged": "بە بەتاڵی جێی بهێڵە بۆ ئەوەی نەگۆڕێت",
     "updatingPassword": "نوێکردنەوەی تێپەڕەوشە",
-    "leaveItEmpty":
-        "خانەی تێپەڕەوشە بە بەتاڵی جێبهێڵە ئەگەر ناتەوێت بیگۆڕیت.",
+    "leaveItEmpty": "خانەی تێپەڕەوشە بە بەتاڵی جێبهێڵە ئەگەر ناتەوێت بیگۆڕیت.",
     "minimumPasswordLength": "تێپەڕەوشە دەبێت لانیکەم ١٠ نووسە بێت",
 
     // advanced settings: Users
@@ -718,7 +737,8 @@ class Ku implements En {
         "بە بەتاڵی جێی بهێڵە بۆ ئەوەی نەگۆڕێت. تێپەڕەوشەی تایبەت بە بەرنامە بەکاربهێنە ئەگەر پشتڕاستکردنەوەی دوو هەنگاوی (2FA) چالاک بێت",
     "smtp_app_passwords": "تێپەڕەوشەکانی بەرنامە",
     "smtp_senderName_hint": "ئەو ناوەی لە خانەی (لەلایەن) پیشان دەدرێت",
-    "smtp_senderEmail_hint": "ئەو ناونیشانی ئیمەیڵەی لە خانەی (لەلایەن) پیشان دەدرێت",
+    "smtp_senderEmail_hint":
+        "ئەو ناونیشانی ئیمەیڵەی لە خانەی (لەلایەن) پیشان دەدرێت",
     "smtp_localName": "ناوی ناوخۆیی HELO/EHLO",
     "smtp_localName_hint": "لە سڵاوی HELO/EHLO بەکاردێت، بەزۆری دۆمەینی خۆتە",
     "smtp_enabled": "چالاککردنی SMTP",

@@ -17,9 +17,20 @@ class Fr implements En {
     "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
     "patientPageAccess": "Accès à la page patient",
     "close": "Fermer",
+    "minimize": "Réduire",
+    "xRayViewer": "Visionneuse de radiographie",
+    "showOrders": "Afficher les commandes",
+    "downloadingFile": "Téléchargement du fichier",
+    "penColor": "Couleur du stylo",
+    "previousPhoto": "Photo précédente",
+    "nextPhoto": "Photo suivante",
+    "play": "Lecture",
+    "pause": "Pause",
+    "openRecord": "Ouvrir la fiche",
+    "openPatientRecord": "Ouvrir la fiche de {name}",
+    "unsavedChanges": "Modifications non enregistrées",
     "save": "Enregistrer",
     "reset": "Réinitialiser",
-    "dicomViewer": "Visionneuse DICOM",
     "window": "Fenêtre",
     "colorMap": "Palette de couleurs",
     "invert": "Inverser",
@@ -78,6 +89,8 @@ class Fr implements En {
     "home": "Accueil",
     "calendar": "Calendrier",
     "gettingImages": "Récupération des images",
+    "retry": "Réessayer",
+    "couldNotOpenImage": "La photo n'a pas pu être ouverte",
     "more": "Plus",
     "howToUse": "Mode d'emploi",
 
@@ -171,6 +184,7 @@ class Fr implements En {
 
     // patients
     "patientDetails": "Détails du patient",
+    "allAppointments": "Tous les rendez-vous",
     "age": "Âge",
     "gender": "Sexe",
     "lastVisit": "Dernière visite",
@@ -199,6 +213,8 @@ class Fr implements En {
     "telegram": "Telegram",
     "printQR": "Imprimer le code QR",
     "dentalNotes": "Notes dentaires",
+    "dentalChart": "Schéma dentaire",
+    "treatments": "Traitements",
     "toothHistory": "Historique de la dent",
     "toothPatientHistory": "Historique dentaire du patient",
     "toothAppointmentNotes": "Notes de rendez-vous",
@@ -389,8 +405,7 @@ class Fr implements En {
     "dicomMatchingPatient": "Patient correspondant",
     "dicomDatesMatchList":
         "Ces dates correspondent à des rendez-vous existants :",
-    "dicomDatesNoMatchList":
-        "Ces dates ne correspondent à aucun rendez-vous :",
+    "dicomDatesNoMatchList": "Ces dates ne correspondent à aucun rendez-vous :",
     "foundAppointment": "Rendez-vous trouvé",
     "willBeCreated": "Sera créé",
 
@@ -532,8 +547,7 @@ class Fr implements En {
     "phone_desc":
         "Le numéro de téléphone sera affiché sur les impressions et la page web des patients.",
     "prescriptionFooter": "Pied de page de l'ordonnance",
-    "prescriptionFooter_desc":
-        "Ce texte sera affiché au bas de l'ordonnance.",
+    "prescriptionFooter_desc": "Ce texte sera affiché au bas de l'ordonnance.",
     "language": "Langue",
     "language_desc":
         "La langue de l'interface pour les menus, boutons et informations dans toute l'application.",
@@ -604,9 +618,9 @@ class Fr implements En {
     "backups_max_keep_hint":
         "Les anciennes sauvegardes seront supprimées en cas de dépassement",
     "backups_s3_enabled": "Stocker les sauvegardes sur S3",
-    "backups_save_success":
-        "Paramètres de sauvegarde enregistrés avec succès",
-    "backups_save_fail": "Échec de l'enregistrement des paramètres de sauvegarde",
+    "backups_save_success": "Paramètres de sauvegarde enregistrés avec succès",
+    "backups_save_fail":
+        "Échec de l'enregistrement des paramètres de sauvegarde",
 
     // Meta settings
     "meta_settings": "Paramètres de l'application",
@@ -614,12 +628,10 @@ class Fr implements En {
     "meta_info_desc":
         "Configurez le nom, l'URL et l'image de marque de votre application.",
     "meta_appName": "Nom de l'application",
-    "meta_appName_hint":
-        "Affiché dans les e-mails et sur l'écran de connexion",
+    "meta_appName_hint": "Affiché dans les e-mails et sur l'écran de connexion",
     "meta_appUrl": "URL de l'application",
     "meta_appUrl_hint": "Utilisée dans les e-mails et les liens partagés",
-    "meta_save_success":
-        "Paramètres de l'application enregistrés avec succès",
+    "meta_save_success": "Paramètres de l'application enregistrés avec succès",
     "meta_save_fail":
         "Échec de l'enregistrement des paramètres de l'application",
 

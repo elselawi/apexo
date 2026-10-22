@@ -17,9 +17,20 @@ class It implements En {
     "invalidEmail": "Inserisci un indirizzo email valido.",
     "patientPageAccess": "Accesso alla pagina del paziente",
     "close": "Chiudi",
+    "minimize": "Riduci",
+    "xRayViewer": "Visualizzatore radiografie",
+    "showOrders": "Mostra gli ordini",
+    "downloadingFile": "Download del file",
+    "penColor": "Colore della penna",
+    "previousPhoto": "Foto precedente",
+    "nextPhoto": "Foto successiva",
+    "play": "Riproduci",
+    "pause": "Pausa",
+    "openRecord": "Apri scheda",
+    "openPatientRecord": "Apri scheda di {name}",
+    "unsavedChanges": "Modifiche non salvate",
     "save": "Salva",
     "reset": "Reimposta",
-    "dicomViewer": "Visualizzatore DICOM",
     "window": "Finestra",
     "colorMap": "Mappa colori",
     "invert": "Inverti",
@@ -78,6 +89,8 @@ class It implements En {
     "home": "Home",
     "calendar": "Calendario",
     "gettingImages": "Recupero immagini",
+    "retry": "Riprova",
+    "couldNotOpenImage": "Impossibile aprire la foto",
     "more": "Altro",
     "howToUse": "Come usare",
 
@@ -172,6 +185,7 @@ class It implements En {
 
     // patients
     "patientDetails": "Dettagli paziente",
+    "allAppointments": "Tutti gli appuntamenti",
     "age": "Età",
     "gender": "Sesso",
     "lastVisit": "Ultima visita",
@@ -200,6 +214,8 @@ class It implements En {
     "telegram": "Telegram",
     "printQR": "Stampa codice QR",
     "dentalNotes": "Note odontoiatriche",
+    "dentalChart": "Odontogramma",
+    "treatments": "Trattamenti",
     "toothHistory": "Storico del dente",
     "toothPatientHistory": "Storico dentale del paziente",
     "toothAppointmentNotes": "Note dell'appuntamento",
@@ -522,7 +538,7 @@ class It implements En {
     "doneAndMissedAppointmentsIn": "Appuntamenti completati e mancati in",
     "distributionOfAppointments": "Distribuzione degli appuntamenti",
     "maleAndFemalePatients": "Pazienti maschi e femmine",
-    "done": "completati",
+    "done": "completato",
     "missed": "mancati",
     "periodicity": "Periodicità",
 
@@ -633,10 +649,8 @@ class It implements En {
     "auth_superusers_duration": "Sessione amministratore (giorni)",
     "auth_superusers_duration_hint":
         "Quanti giorni prima che gli amministratori debbano riaccedere",
-    "auth_save_success":
-        "Impostazioni di autenticazione salvate con successo",
-    "auth_save_fail":
-        "Impossibile salvare le impostazioni di autenticazione",
+    "auth_save_success": "Impostazioni di autenticazione salvate con successo",
+    "auth_save_fail": "Impossibile salvare le impostazioni di autenticazione",
 
     // File upload settings
     "file_upload_settings": "Impostazioni caricamento file",

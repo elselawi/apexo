@@ -17,9 +17,20 @@ class Ur implements En {
     "invalidEmail": "درست ای میل ایڈریس درج کریں۔",
     "patientPageAccess": "مریض کے صفحے تک رسائی",
     "close": "بند کریں",
+    "minimize": "چھوٹا کریں",
+    "xRayViewer": "ایکس رے ویور",
+    "showOrders": "آرڈرز دکھائیں",
+    "downloadingFile": "فائل ڈاؤن لوڈ ہو رہی ہے",
+    "penColor": "قلم کا رنگ",
+    "previousPhoto": "پچھلا تصویر",
+    "nextPhoto": "اگلا تصویر",
+    "play": "چلانا",
+    "pause": "وقفہ",
+    "openRecord": "ریکارڈ کھولیں",
+    "openPatientRecord": "{name} کا ریکارڈ کھولیں",
+    "unsavedChanges": "غیر محفوظ شدہ تبدیلیاں",
     "save": "محفوظ کریں",
     "reset": "ری سیٹ کریں",
-    "dicomViewer": "DICOM ویوئر",
     "window": "ونڈو",
     "colorMap": "رنگوں کا نقشہ",
     "invert": "الٹائیں",
@@ -37,8 +48,7 @@ class Ur implements En {
     "ruler": "فٹہ (رولر)",
     "roi": "مطلوبہ حصہ",
     "exportPng": "PNG برآمد کریں",
-    "measureInstructions":
-        "فاصلہ ناپنے کے لیے تصویر پر دو نقاط کو چھوئیں۔",
+    "measureInstructions": "فاصلہ ناپنے کے لیے تصویر پر دو نقاط کو چھوئیں۔",
     "roiInstructions":
         "مستطیل حصہ بنانے کے لیے کھینچیں۔ چھوڑنے پر اعداد و شمار ظاہر ہوں گے۔",
     "clearMeasurement": "پیمائش صاف کریں",
@@ -78,6 +88,8 @@ class Ur implements En {
     "home": "ہوم",
     "calendar": "کیلنڈر",
     "gettingImages": "تصاویر حاصل کی جا رہی ہیں",
+    "retry": "دوبارہ کوشش کریں",
+    "couldNotOpenImage": "تصویر کھولنے میں ناکام",
     "more": "مزید",
     "howToUse": "طریقۂ استعمال",
 
@@ -111,8 +123,7 @@ class Ur implements En {
     "onceConnectionIsStable":
         "کنکشن مستحکم ہونے پر آپ دوبارہ جڑنے کے لیے اوپر دائیں کونے میں موجود بٹن استعمال کر سکتے ہیں۔",
     "unRestrictedAccess": "ایپلیکیشن میں مکمل رسائی",
-    "restrictedAccess":
-        "ایڈمنسٹریٹر کی طرف سے کچھ اسکرینوں تک محدود رسائی",
+    "restrictedAccess": "ایڈمنسٹریٹر کی طرف سے کچھ اسکرینوں تک محدود رسائی",
     "youAreCurrentlyIn": "آپ اس وقت ہیں",
     "mode": "موڈ",
     "youHave": "آپ کے پاس ہے",
@@ -171,6 +182,7 @@ class Ur implements En {
 
     // patients
     "patientDetails": "مریض کی تفصیلات",
+    "allAppointments": "تمام اپائنٹمنٹس",
     "age": "عمر",
     "gender": "جنس",
     "lastVisit": "پچھلا معائنہ",
@@ -199,6 +211,8 @@ class Ur implements En {
     "telegram": "ٹیلی گرام",
     "printQR": "QR کوڈ پرنٹ کریں",
     "dentalNotes": "ڈینٹل نوٹس",
+    "dentalChart": "ڈینٹل چارٹ",
+    "treatments": "علاجات",
     "toothHistory": "دانت کی ہسٹری",
     "toothPatientHistory": "مریض کی ڈینٹل ہسٹری",
     "toothAppointmentNotes": "اپائنٹمنٹ کے نوٹس",
@@ -525,11 +539,9 @@ class Ur implements En {
     "currency": "کرنسی",
     "currency_desc":
         "پوری ایپلیکیشن میں استعمال ہونے والا کرنسی کوڈ (مثلاً PKR, USD, EUR)۔",
-    "phone_desc":
-        "یہ فون نمبر پرنٹس اور مریضوں کے ویب صفحے پر دکھایا جائے گا۔",
+    "phone_desc": "یہ فون نمبر پرنٹس اور مریضوں کے ویب صفحے پر دکھایا جائے گا۔",
     "prescriptionFooter": "نسخے کا فوٹر",
-    "prescriptionFooter_desc":
-        "یہ عبارت نسخے کے نچلے حصے میں دکھائی جائے گی۔",
+    "prescriptionFooter_desc": "یہ عبارت نسخے کے نچلے حصے میں دکھائی جائے گی۔",
     "language": "زبان",
     "language_desc":
         "پوری ایپ میں مینو، بٹنوں اور معلومات کے لیے انٹرفیس کی زبان۔",
@@ -608,7 +620,8 @@ class Ur implements En {
     "meta_info_desc":
         "اپنی ایپلیکیشن کا نام، URL اور برانڈنگ کی ترتیبات متعین کریں۔",
     "meta_appName": "ایپلیکیشن کا نام",
-    "meta_appName_hint": "ای میلز اور لاگ ان اسکرین کے عنوان میں دکھایا جاتا ہے",
+    "meta_appName_hint":
+        "ای میلز اور لاگ ان اسکرین کے عنوان میں دکھایا جاتا ہے",
     "meta_appUrl": "ایپلیکیشن کا URL",
     "meta_appUrl_hint": "ای میلز اور شیئر کردہ لنکس میں استعمال ہوتا ہے",
     "meta_save_success": "ایپلیکیشن کی ترتیبات کامیابی سے محفوظ ہو گئیں",
@@ -636,7 +649,8 @@ class Ur implements En {
     "file_upload_max_size": "فائل کا زیادہ سے زیادہ سائز (MB)",
     "file_upload_max_size_hint":
         "ہر اپ لوڈ کردہ فائل کے لیے میگا بائٹس میں زیادہ سے زیادہ سائز",
-    "file_upload_save_success": "فائل اپ لوڈ کی ترتیبات کامیابی سے محفوظ ہو گئیں",
+    "file_upload_save_success":
+        "فائل اپ لوڈ کی ترتیبات کامیابی سے محفوظ ہو گئیں",
     "file_upload_save_fail": "فائل اپ لوڈ کی ترتیبات محفوظ کرنے میں ناکامی",
 
     // advanced settings: Admins
@@ -720,9 +734,11 @@ class Ur implements En {
         "تبدیل نہ کرنے کے لیے خالی چھوڑ دیں۔ اگر 2FA فعال ہے تو ایپ کے لیے مخصوص پاس ورڈ استعمال کریں",
     "smtp_app_passwords": "ایپ پاس ورڈز",
     "smtp_senderName_hint": "منجانب (From) خانے میں دکھایا جانے والا نام",
-    "smtp_senderEmail_hint": "منجانب (From) خانے میں دکھایا جانے والا ای میل ایڈریس",
+    "smtp_senderEmail_hint":
+        "منجانب (From) خانے میں دکھایا جانے والا ای میل ایڈریس",
     "smtp_localName": "HELO/EHLO مقامی نام",
-    "smtp_localName_hint": "HELO/EHLO سلام میں استعمال ہوتا ہے، عموماً آپ کا ڈومین",
+    "smtp_localName_hint":
+        "HELO/EHLO سلام میں استعمال ہوتا ہے، عموماً آپ کا ڈومین",
     "smtp_enabled": "SMTP فعال کریں",
     "smtp_test_success": "SMTP کی ترتیب درست کام کر رہی ہے",
     "smtp_test_fail": "SMTP کی ترتیب کا ٹیسٹ ناکام رہا",
@@ -797,7 +813,8 @@ class Ur implements En {
     "updatingAccounts": "اکاؤنٹس اپ ڈیٹ کرتے وقت",
     "deletingAccount": "اکاؤنٹ حذف کرتے وقت",
     "uploadingPatientImageFromCamera": "کیمرے سے مریض کی تصویر اپ لوڈ کرتے وقت",
-    "uploadingPatientImageFromGallery": "گیلری سے مریض کی تصویر اپ لوڈ کرتے وقت",
+    "uploadingPatientImageFromGallery":
+        "گیلری سے مریض کی تصویر اپ لوڈ کرتے وقت",
     "deletingOrderImageFromServer": "سرور سے آرڈر کی تصویر حذف کرتے وقت",
     "uploadingOrderImageFromGallery": "گیلری سے آرڈر کی تصویر اپ لوڈ کرتے وقت",
     "uploadingOrderImageFromCamera": "کیمرے سے آرڈر کی تصویر اپ لوڈ کرتے وقت",

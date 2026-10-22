@@ -52,7 +52,7 @@ final result = await DentalHistory.processAudioBytes(
 // result.teethExtraNotes = {"11": "Deep caries, needs RCT"}
 ```
 
-**Used in**: Patient panel → Dental Notes tab → Audio recorder button
+**Used in**: Patient panel → Dental Chart window → Audio recorder button
 
 ### ReceiptScanner (`ai_services/receipt_scanner.dart`)
 

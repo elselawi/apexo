@@ -78,6 +78,23 @@ Txt(txt("myNewKey"))    // rebuilds when the user switches language
 
 > ⚠️ `Txt` renders its argument **verbatim** — it does not look the key up itself. It is `Text` plus the locale stream. `Txt("myNewKey")` displays the literal text `myNewKey`; always hand it the `txt(...)` result.
 
+### Strings that name a record
+
+A sentence that has to name a record keeps a `{name}` token in the dictionary,
+and the caller fills it in:
+
+```dart
+"openPatientRecord": "Open {name}'s record",
+```
+
+```dart
+text: Txt(txt("openPatientRecord").replaceAll("{name}", patient.title)),
+```
+
+The token is plain text to `txt()`, so the sentence comes back with it intact —
+the caller substitutes, and each language decides where in its sentence the name
+belongs (`{name} kaydını aç` in Turkish, `Ouvrir la fiche de {name}` in French).
+
 ### Step 4: Run the audit tool
 
 ```bash

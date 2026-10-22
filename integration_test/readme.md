@@ -211,10 +211,11 @@ Tests must run on a native window **and** in a browser:
   local file. Assertions have to be relative to what is already there ("the day's count goes
   up by one") or scoped to the record under test — `Fixtures.openAppointmentTile(patient: …)`
   opens *that* patient's tile, not the day's first one.
-- **Panel tabs are icons.** `Panel.showTitles` is off by default, so a `PanelTab`'s label
-  is never rendered: switch with `Fixtures.openPanelTab(tester, 'operativeDetails')`, which
-  taps the tab's icon in the `TabView`. And only the **selected** tab is built, so a field on
-  another tab has no finder at all until you switch.
+- **A panel keeps its first window inline and floats the rest.** The panel's dock
+  carries a button per window it can float, and the button is keyed by the
+  window's id: switch with `Fixtures.openPanelTab(tester, 'operativeDetails')`,
+  which taps that button. Only the **open** windows are built, so a field on a
+  window that was never opened has no finder at all.
 - **Finders skip what a scroll view has scrolled out of sight.** Use `Fixtures.enterField` for
   fields below a panel's fold (it scrolls the body), and `Fixtures.fieldText` to read one —
   the key usually sits on a wrapper (`LiveTranscribingTextField`), not on the field.

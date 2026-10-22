@@ -82,6 +82,31 @@ Do not register network/sync/logout callbacks separately in feature stores.
 Optional post-sync behavior stays feature-owned through `afterSynchronize`;
 use its `isCurrent` check after awaits before publishing session-bound state.
 
+## Layers below the features
+
+The features sit at the top. Two folders below them exist for code more than one
+feature uses, and neither may import a feature (a guard test enforces both):
+
+- `lib/ui/workspace/` — the window system: panels, windows, the dock and the
+  layer that draws them. It may use `core`, `services`, `common_widgets` and
+  itself. A record it needs — a store to relabel a window, a file URL to show —
+  is handed in by the app (see `refreshStreams`, `WindowDefaults`,
+  `fileLinkResolver`), never imported.
+- `lib/shared/` — editors more than one feature opens: `image_viewer/` and
+  `dental_chart/`. They know teeth, pages and pens, not patients or visits; the
+  feature supplies its model-bound glue (`patient_dental_chart.dart`,
+  `appointment_dental_chart.dart`, `patient_owner_line.dart`).
+
+Naming: `open_<record>_panel.dart` opens a panel over a stored record and is
+built with `PanelsManager.open`; a window shown on its own with
+`WindowsManager.showStandalone` lives in the feature as
+`open_<record>_window.dart`. A file that edits one record's field group is
+`<thing>_widget.dart`, not a second `open_*` file.
+
+Tests mirror `lib/`: `test/widget/features/<feature>/`, `test/widget/app/` for
+the shell, `test/widget/shared/<editor>/` for a shared editor, and
+`test/widget/common_widgets/` for the atoms.
+
 ## Panel pattern
 
 Use `RowPanel<T>` and its independent `RowDraft` for one stored record.
@@ -142,24 +167,28 @@ The region plays the platform feedback for the long press, anchors the menu at
 the pointer, and flips it in RTL. Reuse `controller` for a follow-up flyout
 (a delete confirmation); the menu closes by itself when an item is clicked.
 
-When the row opens a panel, offer **one item per panel tab** instead of a single
-"open". Declare the tabs once as an enum in the panel's own file (`PatientTab`,
-`AppointmentTab`, `ExpenseTab`), expose the reachable ones (`patientTabs()`,
-`appointmentTabs(appointment)`, `expenseTabs(...)`) plus the matching index
-helper, and let both the panel and the menu read that list — then a menu item
-cannot land on the wrong tab:
+When the row opens a panel, offer **one item per panel window** instead of a
+single "open". Declare the windows once as an enum in the feature — in
+`<feature>_windows.dart` when a menu or another file reads it
+(`PatientWindow`, `ExpenseWindow`), or beside the opener when nothing outside
+it does (`AppointmentWindow`) — expose the reachable ones (`patientWindows()`,
+`appointmentWindows(appointment)`, `expenseWindows(...)`), and let both the
+panel and the menu read that list — then a menu item cannot land on the wrong
+window:
 
 ```dart
-for (final tab in patientTabs())
+for (final window in patientWindows())
   MenuFlyoutItem(
-    text: Txt(txt(tab.titleKey)),
-    leading: Icon(tab.icon),
-    onPressed: () => openPatient(patient, patientTabIndex(tab)),
+    text: Txt(txt(window.titleKey)),
+    leading: Icon(window.icon),
+    onPressed: () => openPatient(patient, window),
   ),
 ```
 
-Keep `PanelTab.title` a localization **key**: the host runs it through `txt()`,
-so an open panel relabels on a language switch.
+Keep `PanelWindow.title` a localization **key**: the host runs it through
+`txt()`, so an open window relabels on a language switch. The window's `id` is
+what the dock button, the opener and the menu all name it by — never its
+position in a list.
 
 ## Controller Pattern (for non-Store features)
 

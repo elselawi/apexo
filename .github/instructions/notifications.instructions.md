@@ -7,7 +7,7 @@ applyTo: "lib/services/notifications/**"
 
 ## Overview
 
-Apexo has a **multi-layered push notification system** that works across Android, iOS, and Web:
+Apexo has a **multi-layered push notification system** that works across Android, iOS, macOS, and Web:
 
 ```
 ┌──────────────────────────────────────────────────────────┐
@@ -28,7 +28,8 @@ Apexo has a **multi-layered push notification system** that works across Android
 | **Relay Client** | `lib/services/notifications/push_relay.dart` | Sends push payloads to the Cloudflare Worker relay at `apexo-notifications-relay.alisaleem.workers.dev` |
 | **Deferred Queue** | `lib/services/notifications/push_deferring.dart` | Hive-persisted queue for pushes that couldn't be sent while offline |
 | **FCM Service** | `lib/services/notifications/core_firebase_messaging.dart` | Firebase Cloud Messaging — token management, permission requests, foreground/background listeners |
-| **Local Notifications** | `lib/services/notifications/core_local_notification.dart` | `flutter_local_notifications` — displays OS-level notifications on Android/iOS |
+| **Local Notifications** | `lib/services/notifications/core_local_notification.dart` | `flutter_local_notifications` — displays OS-level notifications on Android/iOS/macOS |
+| **APNs Token Wait** | `lib/services/notifications/apns_token.dart` | `waitForAPNSToken()` — bounded retry for the APNs token iOS/macOS need before FCM issues a token |
 | **Static Notifications** | `lib/services/notifications/static_notifications.dart` | In-app notification list — today's appointments, due labworks, pending notes, and received push notifications |
 | **Initializer** | `lib/services/notifications/core_notifications_initializer.dart` | Orchestrates setup — calls Firebase init, FCM init, local notification init, device identification |
 | **Listeners & Dispatch** | `lib/services/notifications/listeners.dart` | Handles foreground/background/tap events, deduplicates notices across FCM and sync, syncs stores, navigates to items |
@@ -37,14 +38,40 @@ Apexo has a **multi-layered push notification system** that works across Android
 
 ```
 main() → Messaging.initializeReceiving()
-  ├── Platform.isAndroid/iOS → Firebase.initializeApp() → FCM.init() → LocalNotifications.init()
+  ├── Platform.isAndroid/iOS/macOS → Firebase.initializeApp() → FCM.init() → LocalNotifications.init()
+  ├── FCM.init(): requestPermission() → foreground/background/tap listeners
+  │     └── iOS/macOS: waitForAPNSToken() (10 reads, 500 ms apart) → getToken()
+  │     └── Android: getToken()
+  │     └── the token fetch is not awaited, so it never delays the first frame
+  │     └── no APNs token / empty token: logged, not stored; onTokenRefresh registers the device later
   └── Web → handled by fcm/fcm.js (JS bridge)
 
 After login → Messaging.identifyDevice()
   ├── PushRelay.ensureKey() — creates/retrieves relay key from PocketBase
   ├── Web: JSBridge.setGlobalVariable() → fcm.js handles token + registration
-  └── Native: PushRelay.putDevice() → registers FCM token with relay server
+  └── Native (Android/iOS/macOS): PushRelay.putDevice() → registers FCM token and platform with relay server
 ```
+
+`getToken()` is called without a `vapidKey` on native platforms — the VAPID key identifies a
+web push subscription and lives in `web/fcm/constants.js` for `fcm.js`.
+
+## What the Relay Sends Per Platform
+
+`putDevice` records `platform` (`ios`, `macos`, `android`, `web`) with the token, and `/push`
+shapes the message from it. Every push also carries `alert: {title, body}`, rendered on the
+sending device by `displayTuple()` — the relay has no text of its own, so it is in the
+**sender's** language.
+
+| Token platform | Message | Displayed by |
+|---|---|---|
+| `ios` | `apns-push-type: alert`, `apns-priority: 10`, `aps.alert` + sound + badge, **no** `content-available` | iOS itself — works even when the app is closed or force-quit; tapping opens the app with `data` and `PushListeners.causedTheAppToOpen` navigates to the record |
+| `macos` | `apns-push-type: background`, `content-available: 1` | the app, only while it runs |
+| `android` | data-only, `android.priority: high` | the app (`foregroundMsg`/`backgroundMsg`) |
+| `web` / unknown | data-only | the service worker |
+
+An alert push deliberately omits `content-available`: the app is not woken, so it cannot post a
+second notification for the same event. A device registered before `platform` existed gets the
+silent push until its next login re-registers it.
 
 ## How Push Notifications Are Triggered
 
@@ -102,10 +129,10 @@ deferredPush.clearByStore(name); // clear all pushes for a store
 | Platform | FCM | Local Notifications | How Push Arrives |
 |----------|-----|---------------------|------------------|
 | **Android** | ✅ via `firebase_messaging` | ✅ via `flutter_local_notifications` | FCM → local notification |
-| **iOS** | ✅ via `firebase_messaging` | ✅ via `flutter_local_notifications` | FCM → local notification |
+| **iOS** | ✅ via `firebase_messaging` | ✅ via `flutter_local_notifications` | APNs alert (system displays it, app closed included) → tap opens the record |
 | **Web** | ✅ via `fcm/fcm.js` (JS bridge) | ❌ | Service worker → `setGlobalVariable` → JS handles display |
 | **Windows** | ❌ | ❌ | Only static in-app notifications + ding sound |
-| **macOS** | ❌ | ❌ | Only static in-app notifications |
+| **macOS** | ✅ via `firebase_messaging` | ✅ via `flutter_local_notifications` | APNs → FCM → local notification |
 
 ## Static In-App Notifications
 
@@ -131,4 +158,9 @@ On web, instead of using the Flutter FCM plugin directly, notifications go throu
 | Forgetting to call `Messaging.initializeReceiving()` | Must be called before `runApp()` in `main.dart` |
 | Not calling `Messaging.identifyDevice()` after login | Device won't be registered with the relay server |
 | Editing `lib/core/synchronization/push_data.dart` or `lib/services/notifications/push_interpretation.dart` without syncing `web/fcm/push_data.js` | Web push display will break — the JS file mirrors the Dart wire model, interpretations, and all 10 locale translations |
-| Assuming notifications work on desktop | Only static in-app notifications work on Windows/macOS |
+| Assuming notifications work on desktop | Browsers use the JS bridge, macOS uses FCM, and only Windows has static in-app notifications alone |
+| Removing `com.apple.developer.aps-environment` from the macOS entitlements | Set to `development` in `DebugProfile.entitlements` and `production` in `Release.entitlements`; without it APNs never registers and no FCM token is issued |
+| Calling `getToken(vapidKey: ...)` on native platforms | `vapidKey` is web-only — native calls take no key |
+| Calling `getToken()` on iOS/macOS when no APNs token exists yet | It throws `apns-token-not-set`; `waitForAPNSToken()` first, and let `onTokenRefresh` pick up a late token |
+| Expecting a Mac notification while the app is not running | macOS gets the silent `apns-push-type: background` push, so the app shows the notice itself; iOS gets an alert the system displays |
+| Registering a device without `platform` | `putDevice` sends it, and the relay only sends iOS an alert; a token without it keeps the silent push |

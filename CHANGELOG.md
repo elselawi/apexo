@@ -15,8 +15,12 @@
     - **12-hour / 24-hour time.** A device setting now applies to appointment timestamps, calendar views, time pickers and hourly statistics.
     - **Kurdish (Sorani) right-to-left.** The app lays out right-to-left and Material date and time pickers are localised.
     - **Tooth history card.** A dated visit now shows its weekday and time, and long dates wrap inside the card.
+    - **Push notifications on the Mac.** The Mac app now receives clinic notices through Firebase Cloud Messaging while it is running and shows them as system notifications, and registers itself with the notification relay the way the phone apps do.
+    - **Notices on a closed iPhone.** A clinic notice now appears as a system notification on an iPhone even when the app is closed or was swiped away, and tapping it opens the record it is about.
 
 - Reliability & Bug Fixes
+    - iOS and macOS wait for Apple's push token before asking Firebase for one, so a first launch no longer ends with no FCM token at all: a token that arrives later is still registered with the relay, and an empty token is never stored as this device's.
+    - Asking for notification permission on an Apple platform now happens once, when messaging starts, instead of again when system notifications are set up.
     - Windows can be dragged anywhere when no panel is open, come back when minimised, no longer reappear invisible, and follow the reading direction in right-to-left languages.
     - A panel's windows fill one row beside it; the rest wait in the dock, and a phone shows a single content-sized sheet with its buttons at the window's foot.
     - Asking for a record's window while its panel is open shows it inside the panel, so two drafts cannot overwrite each other.

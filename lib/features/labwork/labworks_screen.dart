@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
@@ -9,7 +10,7 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
-import 'package:apexo/features/labwork/labworks_ctrl.dart';
+import 'package:apexo/features/labwork/labworks_controller.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -60,12 +61,12 @@ class _LabworksTableState extends State<LabworksTable> {
     super.dispose();
   }
 
-  bool canEdit(List<String> operatorIDs) {
-    if (login.isAdmin) return true;
-    if (login.perm(Perm.appointments).full) return true;
-    if (operatorIDs.contains(login.currentAccountID)) return true;
-    return false;
-  }
+  /// Whether the user may change the visits this table shows.
+  ///
+  /// One rule, shared with the visit's own panel: a labwork order is part of
+  /// the visit, so the gate for writing to it is the gate for writing to the
+  /// visit.
+  bool canEdit(List<String> operatorIDs) => canEditAppointments(operatorIDs);
 
   List<Appointment> get filteredAndSorted {
     List<Appointment> result = showReceived
@@ -206,11 +207,11 @@ class _LabworksTableState extends State<LabworksTable> {
         itemBuilder: (context, index) {
           final apt = truncated[index];
           return ContextMenuRegion(
-            items: (context, controller) => _labworkMenuItems(apt),
+            items: (context, controller) => _labworkMenuItems(apt, controller),
             child: HoverButton(
               onPressed: () {
                 if (canEditLabwork(apt) == false) return;
-                unawaited(openLabworkPanel(apt));
+                openAppointmentWindow(apt, AppointmentWindow.labwork);
                 return;
               },
               builder: (context, states) {
@@ -268,23 +269,25 @@ class _LabworksTableState extends State<LabworksTable> {
   }
 
   /// Long press (touch) or right click (mouse) on a labwork row.
-  List<MenuFlyoutItemBase> _labworkMenuItems(Appointment apt) {
+  List<MenuFlyoutItemBase> _labworkMenuItems(
+      Appointment apt, FlyoutController controller) {
     return [
       if (canEditLabwork(apt))
         MenuFlyoutItem(
           text: Txt(txt("open")),
           leading: const Icon(WindowsIcons.open_in_new_window),
           onPressed: () {
-            unawaited(openLabworkPanel(apt));
+            openAppointmentWindow(apt, AppointmentWindow.labwork);
           },
         ),
-      MenuFlyoutItem(
-        text: Txt(txt("appointment")),
-        leading: const Icon(WindowsIcons.calendar),
-        onPressed: () {
-          openAppointment(apt);
-        },
-      ),
+      if (login.perm(Perm.appointments).some)
+        MenuFlyoutItem(
+          text: Txt(txt("appointment")),
+          leading: const Icon(WindowsIcons.calendar),
+          onPressed: () {
+            openAppointment(apt);
+          },
+        ),
       if (canEdit(apt.operatorsIDs)) ...[
         const MenuFlyoutSeparator(),
         ToggleMenuFlyoutItem(
@@ -292,6 +295,25 @@ class _LabworksTableState extends State<LabworksTable> {
           value: apt.labworkReceived,
           onChanged: (received) {
             apt.labworkReceived = received;
+            appointments.set(apt);
+          },
+        ),
+        const MenuFlyoutSeparator(),
+        // Deleting a labwork takes the order off the visit: the visit itself,
+        // and everything else it carries, stays.
+        confirmDeleteMenuItem(
+          controller: controller,
+          restorable: false,
+          preview: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              const Icon(FluentIcons.manufacturing),
+              Txt("${txt("labwork")}: ${apt.patient?.title ?? ""}"),
+            ],
+          ),
+          onConfirm: () {
+            apt.hasLabwork = false;
             appointments.set(apt);
           },
         ),

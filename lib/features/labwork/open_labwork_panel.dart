@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'package:apexo/app/panels/delegated_panel.dart';
-import 'package:apexo/app/panels/panel_tab.dart';
+import 'package:apexo/ui/workspace/panel_accent.dart';
+import 'package:apexo/ui/workspace/delegated_panel.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
@@ -17,7 +18,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
 
 final _isEditing = ObservableState(false);
 final _selectedPatientID = ObservableState<String>("");
@@ -60,12 +61,10 @@ Future<String?> openLabworkPanel(
     // panel edits whichever appointment the user picks, so it has no single
     // stored record behind it.
     itemId: _panelIdentifier(initiallySelectedAppointment?.id ?? ""),
-    showTitles: true,
     showBottomControls: false,
-    inherentlyScrollable: false,
     singularName: "labwork",
+    accent: PanelAccents.labwork,
     unicodeSymbol: "🔬",
-    selectedTabIndex: 0,
     icon: FluentIcons.manufacturing,
     // The header names the appointment's patient, and falls back to the
     // "new labwork" label when the panel opens with nothing selected.
@@ -79,11 +78,13 @@ Future<String?> openLabworkPanel(
     checkUnsavedChanges: () => false,
     onSave: () async => <String>[],
     additionalControls: _LabeWorkPanelActions(),
-    tabs: [
-      PanelTab(
-        title: txt("labwork"),
+    windows: [
+      // A localization key: the window host runs it through txt().
+      const PanelWindow(
+        id: 'labwork',
+        title: "labwork",
         icon: FluentIcons.manufacturing,
-        body: const Padding(
+        body: Padding(
           padding: EdgeInsets.all(8.0),
           child: _SingleLabworkPanelBody(),
         ),
@@ -255,7 +256,11 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
             spacing: 10,
             children: [
               if (selectedAppointment != null &&
-                  selectedAppointment.hasLabwork == true)
+                  selectedAppointment.hasLabwork == true &&
+                  // Deleting the order changes the visit, so it asks the same
+                  // question the table's own delete asks: may this user
+                  // change this visit?
+                  canEditAppointments(selectedAppointment.operatorsIDs))
                 FlyoutTarget(
                   controller: confirmDeleteFlyoutController,
                   child: IconButton(
@@ -291,7 +296,10 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                     ),
                   ),
                 ),
-              if (selectedAppointment != null)
+              if (selectedAppointment != null &&
+                  // Writing the order changes the visit, so it asks the same
+                  // question the table's own delete asks.
+                  canEditAppointments(selectedAppointment.operatorsIDs))
                 IconButton(
                   style: filledButtonStyle(
                       _hasEdited() ? Colors.blue : Colors.grey.withAlpha(100)),

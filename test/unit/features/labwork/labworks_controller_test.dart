@@ -3,7 +3,7 @@ library;
 
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/labwork/labworks_ctrl.dart';
+import 'package:apexo/features/labwork/labworks_controller.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/login.dart';

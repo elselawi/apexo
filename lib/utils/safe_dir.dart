@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -7,9 +8,11 @@ const baseDir = 'apexo-files';
 
 /// Whether the app is running under `flutter test`.
 ///
-/// The test runner sets `FLUTTER_TEST` for every process it starts.
+/// The test runner sets `FLUTTER_TEST` for every process it starts. A browser
+/// has no environment to read — `Platform.environment` throws there — and a
+/// browser is never the runner's process.
 bool get isTestEnvironment =>
-    Platform.environment.containsKey('FLUTTER_TEST');
+    !kIsWeb && Platform.environment.containsKey('FLUTTER_TEST');
 
 /// Where the app keeps its files: the platform's documents folder, with the
 /// app's own folder inside it.

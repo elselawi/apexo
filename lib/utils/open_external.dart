@@ -11,7 +11,7 @@ library;
 
 import 'dart:async';
 
-import 'package:apexo/app/app.dart';
+import 'package:apexo/app/app_context.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';

@@ -11,8 +11,13 @@ import 'package:http/http.dart' as http;
 void main() {
   late Map<String, dynamic> savedPatientSide;
 
-  setUp(() {
+  setUp(() async {
     savedPatientSide = patientSide.toJson();
+    // Every instance of the class shares one box: a stored copy left by an
+    // earlier test would be read by the next one and start an activation of
+    // its own — a request the test never made.
+    await patientSide.ready;
+    await (await patientSide.box).delete('patient-side');
   });
 
   tearDown(() {
@@ -263,6 +268,10 @@ void main() {
         },
       );
 
+      // The stored copy is read before anything is written: the box is shared,
+      // and a read that lands after an activation would find the state that
+      // activation wrote and start a second one.
+      await side.ready;
       await side.activate();
 
       expect(requests, 0);
@@ -283,6 +292,10 @@ void main() {
         },
       );
 
+      // The stored copy is read before anything is written: the box is shared,
+      // and a read that lands after an activation would find the state that
+      // activation wrote and start a second one.
+      await side.ready;
       await side.activate();
 
       expect(requests, 0);
@@ -318,6 +331,7 @@ void main() {
         identifyDevice: () async => identifyCalls++,
       );
 
+      await side.ready;
       await side.activate();
       await side.activate();
 

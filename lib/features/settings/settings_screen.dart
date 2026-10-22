@@ -4,7 +4,6 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/notes/notes_store.dart';

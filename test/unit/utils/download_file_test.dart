@@ -1,8 +1,7 @@
 import 'dart:typed_data';
 
-import 'package:apexo/app/app.dart';
+import 'package:apexo/app/app_context.dart';
 import 'package:apexo/core/persistence/save_remote.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:file_picker/src/platform/file_picker_platform_interface.dart';
@@ -47,7 +46,6 @@ void main() {
 
   setUp(() {
     final previousPicker = FilePickerPlatform.instance;
-    final previousRemote = appointments.remote;
     picker = RecordingFilePicker();
     FilePickerPlatform.instance = picker;
     downloads = [];
@@ -69,10 +67,8 @@ void main() {
       'download_scan_abcdef.dcm',
       'download_scan_abcdef.dcm.png',
     ];
-    appointments.remote = remote;
     addTearDown(() {
       FilePickerPlatform.instance = previousPicker;
-      appointments.remote = previousRemote;
       remote.dispose();
       client.close();
     });
@@ -95,7 +91,8 @@ void main() {
         (tester) async {
       await mountContext(tester);
       await tester.runAsync(() => http.runWithClient(
-            () => downloadFile('download-row', name),
+            () => downloadFile('download-row', name,
+                resolve: (rowID, file) => remote.getImageLink(rowID, file)),
             () => client,
           ));
 
@@ -123,7 +120,8 @@ void main() {
     statusCode = 404;
     await tester.runAsync(() => expectLater(
           http.runWithClient(
-            () => downloadFile('download-row', 'download_photo_abcdef.jpg'),
+            () => downloadFile('download-row', 'download_photo_abcdef.jpg',
+                resolve: (rowID, file) => remote.getImageLink(rowID, file)),
             () => client,
           ),
           throwsA(isA<Exception>().having(

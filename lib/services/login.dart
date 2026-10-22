@@ -2,8 +2,8 @@ import 'package:apexo/core/persistence/observable_persisting_object.dart';
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:apexo/app/app.dart';
-import 'package:apexo/app/routing/routes.dart';
+import 'package:apexo/app/app_context.dart';
+import 'package:apexo/services/session_events.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -24,7 +24,6 @@ import 'package:apexo/utils/js/js_bridge.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pocketbase/pocketbase.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
 
 /// Callbacks invoked during [Login.logout], before credentials are cleared.
 ///
@@ -176,17 +175,16 @@ class _LoginService extends ObservablePersistingObject {
     for (final cb in onLogoutCallbacks) {
       cb();
     }
-    // Reset navigation state so the next login starts at the dashboard.
-    routes.reset();
+    // The screen is the app's: it resets its route stack, closes its panels and
+    // its windows. A service that authenticates a clinic must not know they
+    // exist — it announces the end of the session and the app does the rest.
+    SessionEvents.ended();
     // Deferred push is keyed by server URL — reset so the next login
     // opens the correct Hive box for the new server.
     deferredPush.reset();
     staticNotifications.clear();
     resetStaticNotificationDedupe();
     notifyAndPersist();
-    // Settles each panel's `result`, so any opener still awaiting one is
-    // released instead of hanging on a panel that is gone.
-    PanelsManager.closeAll();
     return loginCtrl.finishedLoginProcess();
   }
 
@@ -376,7 +374,7 @@ class _LoginService extends ObservablePersistingObject {
     // so the welcome dialog was unreachable (`login 12`). The check is idempotent:
     // it shows the changelog for a version the device has not seen, and the
     // welcome dialog only when this launch found no collections at all.
-    unawaited(ApexoApp.showDialogsIfNeeded());
+    SessionEvents.started();
     return loginCtrl.finishedLoginProcess();
   }
 

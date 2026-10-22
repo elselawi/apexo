@@ -11,7 +11,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import '../../helpers/pump_app.dart';
+import '../../../helpers/pump_app.dart';
 
 Finder _card(String identifier) => find.byKey(WK.settingsItem(identifier));
 

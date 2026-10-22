@@ -791,7 +791,13 @@ class DicomImporter {
         _clearSkipped = clearSkipped ?? dicomSkippedLog.clear,
         _allPatients = allPatients ?? (() => patients.present.values.toList()),
         _getWatchDirs = getWatchDirs ?? (() => globalSettings.dicomWatchDirs),
-        _handleNewDcm = handleNewDcm ?? imgs.handleNewDcm,
+        _handleNewDcm = handleNewDcm ??
+            (({required String rowID, required String sourcePath}) =>
+                imgs.handleNewDcm(
+                  rowID: rowID,
+                  sourcePath: sourcePath,
+                  targetStore: appointments,
+                )),
         _setAppointment = setAppointment ?? appointments.set,
         _appointmentsForPatient = appointmentsForPatient ??
             ((id) =>

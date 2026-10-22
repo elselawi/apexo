@@ -3,7 +3,6 @@ library;
 
 import 'package:apexo/core/persistence/observable_persisting_object.dart';
 
-import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -82,6 +81,15 @@ void main() {
       expect(localSettings.dicomViewerPrefs, isEmpty);
     });
 
+    test('a settings blob without the kept windows remembers none of them', () {
+      // Empty means "this device has no opinion", so the next panel opens its
+      // own first picks rather than inheriting a stale list.
+      localSettings.windowsPerKind = '{"patient":["dentalChart"]}';
+      localSettings.fromJson({});
+
+      expect(localSettings.windowsPerKind, isEmpty);
+    });
+
     test('transcriptionLocaleNonFinal defaults to empty', () {
       expect(localSettings.transcriptionLocaleNonFinal, isEmpty);
     });
@@ -105,6 +113,7 @@ void main() {
         'calendarEventsViewMode': EventsViewMode.timeline.index,
         'lastSeenVersion': '1.2.3',
         'dicomViewerPrefs': '{"invert":true}',
+        'windowsPerKind': '{"patient":["dentalChart"]}',
       });
 
       expect(localSettings.selectedLocale, 2);
@@ -120,6 +129,7 @@ void main() {
       expect(localSettings.calendarEventsViewMode, EventsViewMode.timeline);
       expect(localSettings.lastSeenVersion, '1.2.3');
       expect(localSettings.dicomViewerPrefs, '{"invert":true}');
+      expect(localSettings.windowsPerKind, '{"patient":["dentalChart"]}');
     });
 
     test('toJson omits absent AI credentials and serializes active values', () {

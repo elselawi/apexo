@@ -283,18 +283,23 @@ List<_TxtCall> _scanCodebaseForTxtCalls(Directory root) {
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
 
-      // Match txt("literal")
-      final literalRegex = RegExp(r'''txt\(\s*"((?:[^"\\]|\\.)*)"\s*\)''');
+      // Match txt("literal") and txt('literal') — both spellings are used in
+      // the codebase, and a scanner that only knows one of them misses every
+      // key the other one names.
+      final literalRegex =
+          RegExp(r'''txt\(\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*\)''');
       for (final m in literalRegex.allMatches(line)) {
-        results.add(_TxtCall(entity.path, i + 1, m.group(1)!, m.group(0)!));
+        final key = m.group(1) ?? m.group(2);
+        if (key == null) continue;
+        results.add(_TxtCall(entity.path, i + 1, key, m.group(0)!));
       }
 
       // Match txt(variable) or txt("${...}") — non-literal argument
-      final dynamicRegex = RegExp(r'''txt\(\s*([^"][^)]*?)\s*\)''');
+      final dynamicRegex = RegExp(r'''txt\(\s*([^'"][^)]*?)\s*\)''');
       for (final m in dynamicRegex.allMatches(line)) {
         final arg = m.group(1)!.trim();
         // Skip if it was already matched as literal
-        if (arg.startsWith('"')) continue;
+        if (arg.startsWith('"') || arg.startsWith("'")) continue;
         // Truncate long arguments
         final excerpt = arg.length > 50 ? '${arg.substring(0, 47)}...' : arg;
         results.add(_TxtCall(entity.path, i + 1, null, 'txt($excerpt)'));

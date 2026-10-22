@@ -13,7 +13,7 @@ import 'package:apexo/utils/que.dart';
 import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/save_file_multiplatform.dart';
 import 'package:apexo/utils/strip_id_from_file.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/services/file_links.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/adapters.dart';
@@ -59,7 +59,7 @@ Future<String> handleNewImage({
   required String rowID,
   required String sourcePath,
   XFile? sourceFile,
-  Store? targetStore,
+  required Store targetStore,
 }) async {
   final bool fromLink = sourcePath.startsWith("http");
   String extension;
@@ -119,7 +119,7 @@ Future<String> handleNewImage({
   }
 
   // uploading
-  final store = targetStore ?? appointments;
+  final store = targetStore;
   final finalFileName = await store.uploadImg(
     rowID: rowID,
     filename: imgName,
@@ -168,7 +168,7 @@ final _dcmPngQue =
 Future<String> handleNewDcm({
   required String rowID,
   required String sourcePath,
-  Store? targetStore,
+  required Store targetStore,
 }) async {
   // Web has no filesystem — DCM import is Windows-only.
   if (kIsWeb) return '';
@@ -197,7 +197,7 @@ Future<String> handleNewDcm({
   }
 
   // Upload the .dcm immediately — do not block on PNG generation.
-  final store = targetStore ?? appointments;
+  final store = targetStore;
   final finalDcmName = await store.uploadImg(
     rowID: rowID,
     filename: dcmName,
@@ -307,7 +307,7 @@ String _stripLastHashFromFileName(String name) {
 }
 
 Future<ImageProvider?> getImage(String rowID, String name,
-    [bool thumb = true]) async {
+    [bool thumb = true, FileLinkResolver? resolve]) async {
   if (isUrl(name)) {
     name = Uri.parse(name).pathSegments.last;
   }
@@ -316,7 +316,7 @@ Future<ImageProvider?> getImage(String rowID, String name,
   // PNG preview instead. The raw .dcm is only fetched on-demand inside the
   // viewer panel (Phase 6).
   if (isADcmName(name)) {
-    return getImage(rowID, '$name.png', thumb);
+    return getImage(rowID, '$name.png', thumb, resolve);
   }
 
   if (thumb &&
@@ -331,7 +331,7 @@ Future<ImageProvider?> getImage(String rowID, String name,
     final img = Image.network(link).image;
     return imgMemoryCache[link] = img;
   } else {
-    final img = await _getImage(rowID, name, thumb);
+    final img = await _getImage(rowID, name, thumb, resolve);
     if (thumb) imgMemoryCache[name] = img;
     if (imgMemoryCache.length > 30) {
       imgMemoryCache.remove(imgMemoryCache.keys.first);
@@ -340,10 +340,15 @@ Future<ImageProvider?> getImage(String rowID, String name,
   }
 }
 
-Future<ImageProvider?> _getImage(String rowID, String name, bool thumb) async {
+Future<ImageProvider?> _getImage(
+  String rowID,
+  String name,
+  bool thumb,
+  FileLinkResolver? resolve,
+) async {
   // Web platform doesn't support local files
   if (kIsWeb) {
-    final imgUrl = await appointments.remote!.getImageLink(rowID, name);
+    final imgUrl = await (resolve ?? resolveFileLink)(rowID, name);
     return imgUrl == null
         ? null
         : NetworkImage(thumb ? _urlToThumbUrl(imgUrl) : imgUrl);
@@ -357,7 +362,7 @@ Future<ImageProvider?> _getImage(String rowID, String name, bool thumb) async {
 
   // if the file doesn't exist locally, download it from the server
   final imgUrl = await _imageHttpReqQue
-      .add(() => appointments.remote!.getImageLink(rowID, name));
+      .add(() => (resolve ?? resolveFileLink)(rowID, name));
   if (imgUrl == null) return null;
   final download = await _imageHttpReqQue.add(() => saveImageFromUrl(
       thumb ? _urlToThumbUrl(imgUrl) : imgUrl,
@@ -464,7 +469,8 @@ bool isADcmName(String name) {
 /// Otherwise the local cache is checked first on native platforms, then
 /// [rowId] + [name] are used to resolve a remote URL via [getImageLink].
 /// Web downloads always use the remote file, without accessing the filesystem.
-Future<void> downloadFile(String? rowId, String name) async {
+Future<void> downloadFile(String? rowId, String name,
+    {FileLinkResolver? resolve}) async {
   final saveAs = displayNameForFile(name);
   Uint8List bytes;
 
@@ -476,7 +482,7 @@ Future<void> downloadFile(String? rowId, String name) async {
     final file = await getOrCreateFile(name);
     bytes = await file.readAsBytes();
   } else if (rowId != null) {
-    final url = await appointments.remote!.getImageLink(rowId, name);
+    final url = await (resolve ?? resolveFileLink)(rowId, name);
     if (url == null) throw Exception('File not found');
     final response = await http.get(Uri.parse(url));
     if (response.statusCode != 200) throw Exception('Download failed');

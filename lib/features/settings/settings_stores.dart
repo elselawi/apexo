@@ -2,7 +2,9 @@ import 'package:apexo/app/data/application_store_effects.dart';
 import 'package:apexo/app/data/store_session_binding.dart';
 import 'package:apexo/core/persistence/observable_persisting_object.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
-import 'package:apexo/features/appointments/calendar_widget.dart';
+import 'events_view_mode.dart';
+
+export 'events_view_mode.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/country_code_iso_fetch.dart';
@@ -159,7 +161,22 @@ class LocalSettings extends ObservablePersistingObject {
   String timeFormat = DF.time12hPattern;
   String calendarSystem = "gregorian";
   ThemeMode selectedTheme = ThemeMode.light;
-  int selectedLocale = 0;
+  int _selectedLocale = 0;
+
+  /// The language the user picked, persisted with the rest of the device
+  /// settings — and pushed into [locale], which owns what is on screen.
+  ///
+  /// The setter is the only way in, so a stored preference, a settings dropdown
+  /// and a language button cannot leave the dictionary and the persisted value
+  /// disagreeing.
+  int get selectedLocale => _selectedLocale;
+
+  set selectedLocale(int value) {
+    _selectedLocale = value < 0
+        ? 0
+        : (value >= locale.list.length ? locale.list.length - 1 : value);
+    locale.select(_selectedLocale);
+  }
   String dentalNotation = "p";
   String? aiToken;
   String aiTokenServer = '';
@@ -174,6 +191,13 @@ class LocalSettings extends ObservablePersistingObject {
   // on open and writes back (debounced) when the dentist changes a setting,
   // so the next image opens with the same preferences.
   String dicomViewerPrefs = "";
+
+  // ── Panels' floating windows
+  // JSON string: {"patient": ["dentalChart", "appointments"], ...} — the windows
+  // each kind of panel was left with, so the next panel of that kind opens the
+  // way the last one was left. Read and written through `WindowDefaults`; kept
+  // per device and deliberately not offered as a setting.
+  String windowsPerKind = "";
 
   static const _aiTokenSafetyMargin = Duration(hours: 2);
 
@@ -227,6 +251,7 @@ class LocalSettings extends ObservablePersistingObject {
         EventsViewMode.values[json["calendarEventsViewMode"] as int? ?? 0];
     lastSeenVersion = json["lastSeenVersion"] as String? ?? lastSeenVersion;
     dicomViewerPrefs = json["dicomViewerPrefs"] as String? ?? "";
+    windowsPerKind = json["windowsPerKind"] as String? ?? "";
   }
 
   @override
@@ -242,6 +267,7 @@ class LocalSettings extends ObservablePersistingObject {
       "lastSeenVersion": lastSeenVersion,
       "calendarEventsViewMode": calendarEventsViewMode.index,
       "dicomViewerPrefs": dicomViewerPrefs,
+      "windowsPerKind": windowsPerKind,
       'aiTokenServer': aiTokenServer,
       if (aiToken != null) "aiToken": aiToken,
       if (aiTokenExpiry != null)

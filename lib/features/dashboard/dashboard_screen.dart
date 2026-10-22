@@ -11,7 +11,7 @@ import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
-import 'package:apexo/features/labwork/labworks_ctrl.dart';
+import 'package:apexo/features/labwork/labworks_controller.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
@@ -93,7 +93,7 @@ class DashboardScreen extends StatelessWidget {
                             .map((e) => ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   onPressed: () {
-                                    openAppointment(e, 0);
+                                    openAppointment(e);
                                   },
                                   title: ItemTitle(item: e, maxWidth: 123),
                                   trailing: Text(DF.time(e.date)),
@@ -112,10 +112,14 @@ class DashboardScreen extends StatelessWidget {
                         onPressed: () => routes.navigate(AppRoute.calendar),
                         title: txt("newPatientsToday"),
                         items: dashboardCtrl.newPatientsToday.map((e) {
-                          final a = e.allAppointments.first;
+                          final a = e.allAppointments.firstOrNull;
+                          if (a == null) return const SizedBox.shrink();
                           return ListTile(
                             onPressed: () {
-                              unawaited(openPatient(e, 2));
+                              // The patient, not one of their windows: a new
+                              // patient is a record to read, and its windows
+                              // would only crowd it.
+                              unawaited(openPatientRecord(e));
                             },
                             title: ItemTitle(item: e),
                             subtitle: Text(
@@ -134,9 +138,10 @@ class DashboardScreen extends StatelessWidget {
                         title: "${txt("labworks")} (${txt("due")})",
                         items: labworks.due
                             .map((e) => ListTile(
-                                  onPressed: () {
-                                    unawaited(openPatient(e.patient, 2));
-                                  },
+                                  // Each row is one order: its labwork window is
+                                  // the thing that is due.
+                                  onPressed: () => openAppointmentWindow(
+                                      e, AppointmentWindow.labwork),
                                   title: ItemTitle(item: e),
                                   subtitle: Txt(
                                       "${DateTime.now().difference(e.date).inDays} ${txt("daysAgo")}"),
@@ -153,14 +158,23 @@ class DashboardScreen extends StatelessWidget {
                         onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("undelivered")})",
                         items: labworks.notDeliveredPatients
-                            .map((e) => ListTile(
-                                  onPressed: () {
-                                    unawaited(openPatient(e, 2));
-                                  },
+                            .map((e) {
+                              // The undelivered order belongs to the patient's
+                              // latest visit: that is the record whose labwork
+                              // window this opens. A patient whose visits have
+                              // all been archived has no visit to open.
+                              final visit = e.allAppointments.lastOrNull;
+                              if (visit == null) {
+                                return const SizedBox.shrink();
+                              }
+                              return ListTile(
+                                  onPressed: () => openAppointmentWindow(
+                                      visit, AppointmentWindow.labwork),
                                   title: ItemTitle(item: e),
                                   subtitle: Txt(
-                                      "${DateTime.now().difference(e.doneAppointments.lastOrNull?.date ?? e.allAppointments.last.date).inDays} ${txt("daysAgo")}"),
-                                ))
+                                      "${DateTime.now().difference(e.doneAppointments.lastOrNull?.date ?? visit.date).inDays} ${txt("daysAgo")}"),
+                                );
+                            })
                             .toList(),
                       ),
                     if (login.perm(Perm.expenses).some)
@@ -181,10 +195,14 @@ class DashboardScreen extends StatelessWidget {
                                         .bodyStrong,
                                   ),
                                   onPressed: () {
+                                    // What is owed, not the supplier's record:
+                                    // the list of unpaid orders is the answer.
                                     unawaited(openExpenses(
                                       expenses.ordersPerSupplier[e.id]!,
                                       e.supplierName,
                                       e.id,
+                                      null,
+                                      ExpenseWindow.due,
                                     ));
                                   },
                                   subtitle:

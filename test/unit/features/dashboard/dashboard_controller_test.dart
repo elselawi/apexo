@@ -172,13 +172,16 @@ void main() {
 
     test('todayAppointments is sorted and excludes missing-patient concerns',
         () {
+      // Anchored to fixed hours of today: "now + 1h" would fall on tomorrow
+      // when the suite runs late in the evening.
+      final today = DateTime.now();
       final later = testAppointment(
         id: 'dash-later',
-        date: DateTime.now().add(const Duration(hours: 1)),
+        date: DateTime(today.year, today.month, today.day, 9),
       );
       final earlier = testAppointment(
         id: 'dash-earlier',
-        date: DateTime.now().subtract(const Duration(hours: 1)),
+        date: DateTime(today.year, today.month, today.day, 8),
       );
       appointments.setAll([later, earlier]);
       injectedApptIds.addAll([later.id, earlier.id]);

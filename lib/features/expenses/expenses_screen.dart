@@ -8,6 +8,7 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
+import 'package:apexo/features/expenses/expense_actions.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/expenses/scan_receipt_dialog.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -209,13 +210,13 @@ class _SuppliersListState extends State<SuppliersList> {
         final supplier = suppliers[index];
         return SupplierListTile(
             supplier: supplier,
-            onOpen: (tabIndex) {
+            onOpen: (window) {
               unawaited(openExpenses(
                 expenses.ordersPerSupplier[supplier.id]!,
                 supplier.supplierName,
                 supplier.id,
                 null,
-                tabIndex,
+                window,
               ));
             });
       },
@@ -263,9 +264,10 @@ class SupplierListTile extends StatefulWidget {
 
   final Expense supplier;
 
-  /// Opens the supplier's orders on a specific tab — see [ExpenseTab]; the tab
-  /// index comes from [expenseTabs], the same list the panel builds from.
-  final void Function(int tabIndex) onOpen;
+  /// Opens the supplier's orders: the panel, or one of its windows when a menu
+  /// item names it — [expenseWindows] is the same list the panel builds from,
+  /// so the two cannot drift.
+  final void Function(ExpenseWindow? window) onOpen;
 
   @override
   State<SupplierListTile> createState() => _SupplierListTileState();
@@ -273,13 +275,11 @@ class SupplierListTile extends StatefulWidget {
 
 class _SupplierListTileState extends State<SupplierListTile> {
   final FlyoutController menuController = FlyoutController();
-  final FlyoutController archiveConfirmationController = FlyoutController();
   final bool canEdit = login.perm(Perm.expenses).exact(2);
 
   @override
   void dispose() {
     menuController.dispose();
-    archiveConfirmationController.dispose();
     super.dispose();
   }
 
@@ -294,8 +294,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
     final captionStyle = FluentTheme.of(context).typography.caption;
 
     return ContextMenuRegion(
-      items: (ctx, controller) =>
-          _menuItems(context, () => controller.close<void>()),
+      items: (ctx, controller) => _menuItems(controller),
       child: ListTile(
         margin: EdgeInsets.zero,
         contentPadding: const EdgeInsetsGeometry.all(8),
@@ -305,7 +304,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
         leading: _buildContextMenuButton(context),
         trailing: _DuePaymentAmount(due: due),
         title: _buildSupplierName(orders, captionStyle),
-        onPressed: () => widget.onOpen(0),
+        onPressed: () => widget.onOpen(null),
       ),
     );
   }
@@ -319,10 +318,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
             spacing: 5,
             children: [
               const Icon(WindowsIcons.folder),
-              FlyoutTarget(
-                controller: archiveConfirmationController,
-                child: Text(widget.supplier.supplierName),
-              ),
+              Text(widget.supplier.supplierName),
             ],
           ),
           if (orders.isNotEmpty)
@@ -344,7 +340,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
             await flyoutFocusFix(context);
             unawaited(menuController.showFlyout(builder: (context) {
               return MenuFlyout(
-                items: _menuItems(context, () => menuController.close<void>()),
+                items: _menuItems(menuController),
               );
             }));
           }),
@@ -352,16 +348,38 @@ class _SupplierListTileState extends State<SupplierListTile> {
   }
 
   /// The supplier's actions, shared by the "more" button and by long press /
-  /// right click on the whole row: one item per tab of the orders panel, then
-  /// the editing actions.
-  List<MenuFlyoutItemBase> _menuItems(
-      BuildContext context, VoidCallback close) {
+  /// right click on the whole row: one item per window of the orders panel,
+  /// then the editing actions.
+  ///
+  /// [controller] is the menu's own controller, so the delete confirmation opens
+  /// where the menu was.
+  List<MenuFlyoutItemBase> _menuItems(FlyoutController controller) {
+    final orders = expenses.ordersPerSupplier[widget.supplier.id] ?? [];
+    // The same split the due and paid windows make — and the same one they
+    // filter by: a count that includes an archived order says there is an
+    // order in the list that is not there.
+    final live = orders.where((order) => order.archived != true).toList();
+    final due = live.where((order) => order.processed == false).length;
+    final paid = live.where((order) => order.processed == true).length;
     return [
-      for (final tab in expenseTabs())
+      MenuFlyoutItem(
+        text: menuTitleSuffix(
+          Txt(txt("orders")),
+          menuCountSuffix(live.length),
+        ),
+        leading: const Icon(FluentIcons.receipt_processing),
+        onPressed: () => widget.onOpen(null),
+      ),
+      for (final window in expenseWindows())
         MenuFlyoutItem(
-          text: Txt(txt(tab.titleKey)),
-          leading: Icon(tab.icon),
-          onPressed: () => widget.onOpen(expenseTabIndex(tab)),
+          text: menuTitleSuffix(
+            Txt(txt(window.titleKey)),
+            menuCountSuffix(
+              window == ExpenseWindow.due ? due : paid,
+            ),
+          ),
+          leading: Icon(window.icon),
+          onPressed: () => widget.onOpen(window),
         ),
       if (canEdit) const MenuFlyoutSeparator(),
       if (canEdit)
@@ -369,38 +387,25 @@ class _SupplierListTileState extends State<SupplierListTile> {
           text: Txt(txt("rename")),
           leading: const Icon(WindowsIcons.edit),
           onPressed: () {
-            close();
+            controller.close<void>();
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              _showRenameSupplierDialog(context, widget.supplier);
+              unawaited(renameSupplierDialog(context, widget.supplier.id));
             });
           },
         ),
       if (canEdit)
-        MenuFlyoutItem(
-          text: Txt(txt("delete")),
-          leading: const Icon(WindowsIcons.delete),
-          onPressed: () {
-            close();
-            WidgetsBinding.instance.addPostFrameCallback((_) async {
-              await flyoutFocusFix(context);
-              unawaited(archiveConfirmationController.showFlyout(
-                  builder: (ctx) => ConfirmDeleteFlyout(
-                      restorable: true,
-                      controller: archiveConfirmationController,
-                      actionIcon: WindowsIcons.delete,
-                      actionText: txt("delete"),
-                      preview: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        spacing: 5,
-                        children: [
-                          const Icon(WindowsIcons.folder),
-                          Txt("${txt("supplier")}: ${widget.supplier.supplierName}")
-                        ],
-                      ),
-                      onConfirm: () {
-                        expenses.archive(widget.supplier.id);
-                      })));
-            });
+        confirmDeleteMenuItem(
+          controller: controller,
+          preview: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              const Icon(WindowsIcons.folder),
+              Txt("${txt("supplier")}: ${widget.supplier.supplierName}")
+            ],
+          ),
+          onConfirm: () {
+            expenses.archive(widget.supplier.id);
           },
         ),
     ];
@@ -435,20 +440,4 @@ class _DuePaymentAmount extends StatelessWidget {
           : const SizedBox.shrink(),
     );
   }
-}
-
-void _showRenameSupplierDialog(BuildContext context, Expense supplier) {
-  unawaited(showDialog(
-    context: context,
-    barrierDismissible: true,
-    dismissWithEsc: true,
-    builder: (context) => DialogWithTextBox(
-      title: txt("rename"),
-      initialValue: supplier.supplierName,
-      onSave: (name) {
-        expenses.set(supplier..supplierName = name);
-      },
-      icon: FluentIcons.edit,
-    ),
-  ));
 }

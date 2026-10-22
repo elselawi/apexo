@@ -34,6 +34,7 @@ class OrderRow extends StatefulWidget {
     this.strictSupplierInput = false,
     this.additionalSupplier,
     this.supplierNameError = false,
+    this.onSaved,
   });
   final Expense order;
   final bool justCreated;
@@ -43,6 +44,11 @@ class OrderRow extends StatefulWidget {
   final bool showPhotosSection;
   final Expense? additionalSupplier;
   final bool supplierNameError;
+
+  /// A write that landed here and not through the owner's Save — a photo added
+  /// or deleted, the order archived. The owner re-baselines its dirty check by
+  /// it, so work already stored is not reported as unsaved.
+  final VoidCallback? onSaved;
 
   @override
   State<OrderRow> createState() => OrderRowState();
@@ -618,11 +624,20 @@ class OrderRowState extends State<OrderRow>
         const SizedBox(height: 8),
         GridGallery(
           onProgress: (busy) {
+            // The gallery can outlive this row — it lives in a window of its
+            // own — so the row may be gone by the time the work reports back.
+            if (!mounted) return;
             setState(() {
               inProgress = busy;
             });
           },
           rowId: widget.order.id,
+          // Whose photos these are: an order's, with the supplier it is from.
+          owner: () => [
+            txt('order'),
+            if (widget.order.fromSupplierName.isNotEmpty)
+              widget.order.fromSupplierName,
+          ].join(' · '),
           imgs: widget.order.photos,
           onPressDelete: (img) async {
             try {
@@ -632,6 +647,7 @@ class OrderRowState extends State<OrderRow>
               );
               widget.order.photos.remove(img);
               expenses.set(widget.order);
+              widget.onSaved?.call();
             } catch (e, s) {
               showErrorMessage(e, "deletingOrderImageFromServer");
               login.askForLoginAgain(e);
@@ -652,6 +668,7 @@ class OrderRowState extends State<OrderRow>
               widget.order.photos.addAll(names);
               widget.order.photos = widget.order.photos.toSet().toList();
               expenses.set(widget.order);
+              widget.onSaved?.call();
             },
           ),
         )
@@ -754,6 +771,7 @@ class OrderRowState extends State<OrderRow>
                                           ? null
                                           : true;
                                   expenses.set(widget.order);
+                                  widget.onSaved?.call();
                                 })));
                       });
                     },

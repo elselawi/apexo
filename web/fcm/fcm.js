@@ -349,6 +349,7 @@ class FCMManager {
                     clinicKey: this.config.clinicKey,
                     accountId: this.config.accountId,
                     deviceToken,
+                    platform: "web",
                 }),
             });
 

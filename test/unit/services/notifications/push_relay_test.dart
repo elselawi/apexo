@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/core/synchronization/push_data.dart';
+import 'package:apexo/services/notifications/push_interpretation.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -108,6 +109,21 @@ void main() {
       expect(body['clinicKey'], 'clinic-key');
       expect(body['accountIds'], ['other'],
           reason: 'the device that made the change told itself');
+    });
+
+    test('a push carries the rendered title and body for the iOS alert',
+        () async {
+      relaySays(200);
+      final data = pushFor(['other']);
+
+      await PushRelay.sendPushWithKey('clinic-key', [data]);
+
+      final body = jsonDecode(requests.single.body) as Map<String, dynamic>;
+      final alert = body['alert'] as Map<String, dynamic>;
+      expect(alert['title'], data.displayTuple()[0]);
+      expect(alert['body'], data.displayTuple()[1]);
+      expect(alert['title'], isNotEmpty);
+      expect(alert['body'], isNotEmpty);
     });
 
     test('the caller\'s targets survive the send', () async {

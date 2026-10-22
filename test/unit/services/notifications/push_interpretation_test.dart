@@ -143,6 +143,17 @@ void main() {
         );
       }
     });
+    test('web/fcm/fcm.js registers the device as a web token', () {
+      final fcmSource = File('web/fcm/fcm.js').readAsStringSync();
+
+      // The relay only alerts iOS. A web registration must say so, or the
+      // relay would keep sending this browser the data push it already shows.
+      expect(
+        RegExp(r'platform\s*:\s*"web"').hasMatch(fcmSource),
+        isTrue,
+        reason: 'web/fcm/fcm.js does not send platform: "web" to the relay',
+      );
+    });
   });
 
   group('interpret() & displayTuple()', () {
@@ -393,7 +404,8 @@ void main() {
         newVals: [true],
         targetIDs: [],
       );
-      expect(markedDone.interpret(), PushInterpretation.noteHasBeenMarkedAsDone);
+      expect(
+          markedDone.interpret(), PushInterpretation.noteHasBeenMarkedAsDone);
 
       final markedPending = PushData(
         store: 'notes',

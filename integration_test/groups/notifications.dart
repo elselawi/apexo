@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -8,12 +11,21 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/notifications/core_local_notification.dart';
+import 'package:apexo/services/notifications/core_notifications_initializer.dart';
+import 'package:apexo/services/notifications/listeners.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
+import 'package:apexo/services/notifications/push_interpretation.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/constants.dart' show dataCollectionName;
 import 'package:apexo/utils/hash.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 
 import '../support/e2e.dart';
 import '../support/fixtures.dart';
@@ -243,14 +255,196 @@ void registerNotificationsTests() {
       expect(true, isTrue);
     }, skip: true);
 
-    testWidgets('07: relay delivery reaches a registered device token',
+    testWidgets('07: a device registers with the relay and the relay takes it',
         (tester) async {
-      expect(true, isTrue);
-    }, skip: true);
+      await E2E.signIn(tester);
+
+      // A clinic server of its own, so the relay creates a fresh record: this
+      // run's PocketBase reset minted a new relay key, and the relay keeps the
+      // key it first stored for the shared test clinic.
+      final previousUrl = login.url;
+      final previousToken = login.pushNotificationsToken;
+      addTearDown(() {
+        login.url = previousUrl;
+        login.pushNotificationsToken = previousToken;
+        PushRelay.deviceIsPut = false;
+      });
+      login.url = 'https://pb.apexo.app/e2e-${_id('clinic')}';
+      login.pushNotificationsToken = _fakeFcmToken();
+
+      // The real relay: this proves the Worker accepts a device carrying the
+      // `platform` field, and that it stored the clinic record.
+      await PushRelay.putDevice();
+      expect(
+        PushRelay.deviceIsPut,
+        isTrue,
+        reason: 'The relay did not accept this device registration '
+            '(platform "${_expectedPlatform()}").',
+      );
+
+      final relayKey = await PushRelay.ensureKey();
+      final response = await PushRelay.client.post(
+        Uri.parse('${PushRelay.relayServer}/push'),
+        body: jsonEncode({
+          "clinicServer": login.url,
+          "clinicKey": relayKey,
+          "accountIds": [login.currentAccountID],
+          "data": {"payload": "{}"},
+          "alert": {"title": "e2e", "body": "e2e"},
+        }),
+      );
+      // The token is synthetic, so FCM refuses it — as unregistered (404, which
+      // the relay turns into success) or as malformed (400). Either way, the
+      // relay resolved the device it had just stored and built a message for
+      // it: a clinic-record problem would answer "clinic not found" or "clinic
+      // key does not match" instead.
+      expect(
+        response.statusCode,
+        anyOf(200, 400),
+        reason: 'The relay did not reach FCM for the device it had just '
+            'registered: ${response.body}',
+      );
+      if (response.statusCode == 400) {
+        expect(response.body, contains('registration token'),
+            reason: 'FCM refused the message for a reason other than the '
+                'synthetic token: ${response.body}');
+      }
+    });
 
     testWidgets('08: denied notifications are reported on Android and iOS',
         (tester) async {
       expect(true, isTrue);
     }, skip: true);
+
+    testWidgets(
+        '09: an appointment for another account is pushed and displayed here',
+        (tester) async {
+      await E2E.signIn(tester);
+
+      final previousClient = PushRelay.client;
+      final previousToken = login.pushNotificationsToken;
+      final requests = <http.Request>[];
+      PushRelay.client = MockClient((request) async {
+        requests.add(request);
+        return http.Response('ok', 200);
+      });
+      addTearDown(() {
+        PushRelay.client = previousClient;
+        login.pushNotificationsToken = previousToken;
+      });
+      login.pushNotificationsToken = 'e2e-${_id('token')}'.replaceAll('-', '');
+
+      // 1. This device registers with the platform the relay shapes with.
+      await PushRelay.putDevice();
+      final registration =
+          jsonDecode(requests.single.body) as Map<String, dynamic>;
+      expect(registration['platform'], _expectedPlatform(),
+          reason: 'The device was registered without the platform the relay '
+              'uses to choose between an alert and a data push.');
+      expect(registration['deviceToken'], login.pushNotificationsToken);
+
+      // 2. The action: a visit for another account.
+      final patient = _patient(Fixtures.stamp('e2e notif push'));
+      final otherAccount = _id('notif-account');
+      final appointment = Appointment.fromJson({
+        'id': _id('notif-appt'),
+        'patientID': patient.id,
+        'operatorsIDs': [otherAccount, login.currentAccountID],
+        'date': dateToWire(DateTime.now().add(const Duration(hours: 2))),
+      });
+      addTearDown(() async {
+        await _deleteAppointmentEverywhere(appointment.id);
+        await _deletePatientEverywhere(patient.id);
+      });
+      requests.clear();
+
+      await _storePatient(patient);
+      await _storeAppointment(appointment);
+
+      final pushes =
+          requests.where((r) => r.url.path.endsWith('/push')).toList();
+      expect(pushes, isNotEmpty,
+          reason: 'Creating a visit for another account produced no push.');
+
+      final body = jsonDecode(pushes.last.body) as Map<String, dynamic>;
+      expect(body['accountIds'], contains(otherAccount),
+          reason: 'The other account was not targeted.');
+      expect(body['accountIds'], isNot(contains(login.currentAccountID)),
+          reason: 'The sending account told itself about its own change.');
+
+      final raw = (body['data'] as Map<String, dynamic>)['payload'] as String;
+      final pushed = PushData.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      final alert = body['alert'] as Map<String, dynamic>;
+      expect(alert['title'], pushed.displayTuple()[0],
+          reason: 'The alert title is not the text this device renders.');
+      expect(alert['body'], pushed.displayTuple()[1],
+          reason: 'The alert body is not the text this device renders.');
+      expect(alert['title'] as String, isNotEmpty);
+      expect(alert['body'] as String, isNotEmpty);
+
+      // 3. The receiving side: the same push reaches the app and is shown.
+      final local = Messaging.local ?? LocalNotificationsService.instance();
+      Messaging.local = local;
+      if (!kIsWeb) {
+        await tester.runAsync(local.init);
+      }
+      final before = staticNotifications.notifications.length;
+
+      await tester.runAsync(
+        () => PushListeners.foregroundMsg(
+          RemoteMessage(data: {'payload': raw}),
+        ),
+      );
+      await E2E.settle(tester, frames: 5);
+
+      expect(staticNotifications.notifications.length, greaterThan(before),
+          reason: 'The push did not reach the in-app notification list.');
+      expect(
+        staticNotifications.notifications
+            .where((n) => n.title == alert['title'] && n.body == alert['body'])
+            .length,
+        1,
+        reason: 'The in-app notice does not carry the pushed title and body.',
+      );
+
+      if (!kIsWeb) {
+        expect(local.lastShown?.title, alert['title'],
+            reason: 'The OS was not handed the pushed title.');
+        expect(local.lastShown?.body, alert['body'],
+            reason: 'The OS was not handed the pushed body.');
+      }
+    });
   });
+}
+
+/// The `platform` this build registers with the relay.
+String _expectedPlatform() {
+  if (kIsWeb) return 'web';
+  switch (defaultTargetPlatform) {
+    case TargetPlatform.iOS:
+      return 'ios';
+    case TargetPlatform.android:
+      return 'android';
+    case TargetPlatform.macOS:
+      return 'macos';
+    case TargetPlatform.windows:
+      return 'windows';
+    case TargetPlatform.linux:
+      return 'linux';
+    case TargetPlatform.fuchsia:
+      return 'fuchsia';
+  }
+}
+
+/// A synthetic FCM token: long and opaque, the shape FCM uses, so the relay's
+/// delivery attempt is answered by FCM ("unregistered") rather than rejected as
+/// a malformed request.
+String _fakeFcmToken() {
+  final random = Random(DateTime.now().microsecondsSinceEpoch);
+  const alphabet =
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+  return List.generate(
+    152,
+    (_) => alphabet[random.nextInt(alphabet.length)],
+  ).join();
 }

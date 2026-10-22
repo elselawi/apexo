@@ -1,5 +1,6 @@
 import Flutter
 import UIKit
+import UserNotifications
 import flutter_local_notifications
 
 @main
@@ -19,5 +20,16 @@ import flutter_local_notifications
       
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    // Alert pushes carry a badge of 1, meaning "an unseen notice": clear it as
+    // soon as the clinic is looking at the app.
+    if #available(iOS 16.0, *) {
+      UNUserNotificationCenter.current().setBadgeCount(0) { _ in }
+    } else {
+      application.applicationIconBadgeNumber = 0
+    }
   }
 }

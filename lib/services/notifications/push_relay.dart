@@ -1,12 +1,14 @@
 import 'dart:convert';
 
-import 'package:apexo/services/login.dart';
 import 'package:apexo/core/synchronization/push_data.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/notifications/push_interpretation.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/logger.dart';
-import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 import 'package:http/http.dart' as http;
 
 class PushRelay {
@@ -20,6 +22,27 @@ class PushRelay {
   static const relayServer =
       "https://apexo-notifications-relay.alisaleem.workers.dev";
   static const relayKeyIDInCollection = "notifications_k";
+
+  /// The platform this device runs on, recorded with the device so the relay
+  /// can shape its pushes: an iOS alert the system displays, or a silent data
+  /// message the app renders itself.
+  static String get _platform {
+    if (kIsWeb) return "web";
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.iOS:
+        return "ios";
+      case TargetPlatform.android:
+        return "android";
+      case TargetPlatform.macOS:
+        return "macos";
+      case TargetPlatform.windows:
+        return "windows";
+      case TargetPlatform.linux:
+        return "linux";
+      case TargetPlatform.fuchsia:
+        return "fuchsia";
+    }
+  }
 
   static Future<String?> _getRelayKey() async {
     try {
@@ -55,7 +78,8 @@ class PushRelay {
   static Future<void> putDevice({bool isPatient = false}) async {
     final relayKey = isPatient ? patientSide.relayKey : await _getRelayKey();
     final server = isPatient ? patientSide.server : login.url;
-    final accountId = isPatient ? patientSide.patientID : login.currentAccountID;
+    final accountId =
+        isPatient ? patientSide.patientID : login.currentAccountID;
     final token = login.pushNotificationsToken;
     if (relayKey == null ||
         relayKey.isEmpty ||
@@ -72,6 +96,7 @@ class PushRelay {
         "clinicKey": relayKey,
         "deviceToken": token,
         "accountId": accountId,
+        "platform": _platform,
       }),
     );
     if (res.body == "ok") {
@@ -142,8 +167,12 @@ class PushRelay {
           ];
           if (targets.isEmpty) return;
 
+          // Rendered here, in this device's language: the relay has no text of
+          // its own, and attaches this to the iOS alert push.
+          final List<String> alert;
           final http.Response res;
           try {
+            alert = data.displayTuple();
             res = await client.post(
               Uri.parse('$relayServer/push'),
               body: jsonEncode({
@@ -151,6 +180,7 @@ class PushRelay {
                 "clinicKey": relayKey,
                 "accountIds": targets,
                 "data": {"payload": jsonEncode(data.toJson())},
+                "alert": {"title": alert[0], "body": alert[1]},
               }),
             );
           } catch (e) {

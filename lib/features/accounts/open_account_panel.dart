@@ -1,8 +1,9 @@
 import 'package:apexo/app/data/application_store_effects.dart';
 import 'dart:async';
-import 'package:apexo/app/panels/panel_tab.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
-import 'package:apexo/app/panels/row_panel.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/panel_accent.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
+import 'package:apexo/ui/workspace/row_panel.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/core/model.dart';
@@ -120,12 +121,11 @@ class _AccountStore extends Store<AccountModel> {
 
 final _accountStore = _AccountStore();
 
-final deleteConfirmFlyoutController = FlyoutController();
-
 Future<String?> openAccount([AccountModel? account]) async {
   final editingCopy = AccountModel.fromJson(account?.toJson() ?? {});
   final isNew = accounts.list().every((e) => e.id != editingCopy.id);
   final panel = RowPanel<AccountModel>(
+    accent: PanelAccents.account,
     archiveButtonReplacement: login.currentAccountID == editingCopy.id
         ? const SizedBox.shrink()
         : DeleteButton(
@@ -156,11 +156,15 @@ Future<String?> openAccount([AccountModel? account]) async {
     // A localization key rather than a sentence: the header runs it through
     // txt(), so it follows the language the app is in now.
     title: editingCopy.isAdmin ? "newAdmin" : "newUser",
-    tabs: [
-      PanelTab(
+    windows: [
+      PanelWindow(
+        id: 'account',
+        // A localization *key*, not a sentence: the window's title is
+        // translated where it is drawn, so a language switch relabels a window
+        // that is already open.
         title: isNew
-            ? txt(editingCopy.isAdmin ? "newAdmin" : "newUser")
-            : txt(editingCopy.isAdmin ? "admin" : "user"),
+            ? (editingCopy.isAdmin ? "newAdmin" : "newUser")
+            : (editingCopy.isAdmin ? "admin" : "user"),
         icon: FluentIcons.people,
         body: _AccountDetails(editingCopy),
       ),

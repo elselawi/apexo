@@ -12,7 +12,6 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/accounts/open_account_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:pocketbase/pocketbase.dart';
 
@@ -136,39 +135,20 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                 ),
                                 // Deleting yourself would sign you out mid-air.
                                 if (login.currentAccountID != account.id)
-                                  MenuFlyoutItem(
-                                    text: Txt(txt("delete")),
-                                    leading: const Icon(WindowsIcons.delete),
-                                    onPressed: () {
-                                      controller.close<void>();
-                                      WidgetsBinding.instance
-                                          .addPostFrameCallback((_) async {
-                                        await flyoutFocusFix(context);
-                                        unawaited(controller.showFlyout(
-                                            builder: (ctx) =>
-                                                ConfirmDeleteFlyout(
-                                                  restorable: false,
-                                                  controller: controller,
-                                                  actionIcon:
-                                                      WindowsIcons.delete,
-                                                  actionText: txt("delete"),
-                                                  preview: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    spacing: 5,
-                                                    children: [
-                                                      const Icon(
-                                                          FluentIcons.people),
-                                                      Txt(name)
-                                                    ],
-                                                  ),
-                                                  onConfirm: () {
-                                                    unawaited(accounts.delete(
-                                                        isAdmin: isAdmin,
-                                                        id: account.id));
-                                                  },
-                                                )));
-                                      });
+                                  confirmDeleteMenuItem(
+                                    controller: controller,
+                                    restorable: false,
+                                    preview: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      spacing: 5,
+                                      children: [
+                                        const Icon(FluentIcons.people),
+                                        Txt(name)
+                                      ],
+                                    ),
+                                    onConfirm: () {
+                                      unawaited(accounts.delete(
+                                          isAdmin: isAdmin, id: account.id));
                                     },
                                   ),
                               ],

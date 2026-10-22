@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
+import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
@@ -27,7 +28,7 @@ class PatientTableLabel {
     required this.value,
     required this.searchableString,
     required this.sortable,
-    required this.tab,
+    required this.window,
   });
   final IconData icon;
   final Color? color;
@@ -36,7 +37,10 @@ class PatientTableLabel {
   final double value;
   final String searchableString;
   final bool sortable;
-  final int tab;
+
+  /// The window that shows [content]: the patients table opens the panel there.
+  final PatientWindow window;
+
   final bool view;
 }
 
@@ -262,7 +266,7 @@ class Patient extends Model {
       value: age.toDouble(),
       searchableString: age.toString(),
       sortable: true,
-      tab: 0,
+      window: PatientWindow.details,
     ));
 
     // gender
@@ -275,7 +279,7 @@ class Patient extends Model {
       value: gender.toDouble(),
       searchableString: gender == 1 ? "male" : "female",
       sortable: true,
-      tab: 0,
+      window: PatientWindow.details,
     ));
 
     // phones
@@ -285,7 +289,7 @@ class Patient extends Model {
       value: 0,
       searchableString: phonesString,
       sortable: false,
-      tab: 0,
+      window: PatientWindow.details,
       icon: WindowsIcons.phone,
       color: phone.isEmpty ? Colors.orange : null,
     ));
@@ -296,7 +300,7 @@ class Patient extends Model {
       value: 0,
       searchableString: "",
       sortable: false,
-      tab: 3,
+      window: PatientWindow.page,
       icon: FluentIcons.q_r_code,
     ));
 
@@ -308,7 +312,7 @@ class Patient extends Model {
       value: allAppointments.length.toDouble(),
       content: allAppointments.length.toString(),
       sortable: true,
-      tab: 2,
+      window: PatientWindow.appointments,
     ));
 
     // last visit
@@ -322,7 +326,7 @@ class Patient extends Model {
       value: (daysSinceLastAppointment ?? double.infinity).toDouble(),
       content: lastVisitContent,
       sortable: true,
-      tab: 2,
+      window: PatientWindow.appointments,
     ));
 
     final paymentStatus = txt(underPaid
@@ -342,7 +346,7 @@ class Patient extends Model {
       searchableString: paymentStatus,
       title: txt("paid"),
       sortable: true,
-      tab: 2,
+      window: PatientWindow.appointments,
     ));
 
     _.add(PatientTableLabel(
@@ -353,7 +357,7 @@ class Patient extends Model {
       searchableString: paymentStatus,
       title: txt("underpaid"),
       sortable: true,
-      tab: 2,
+      window: PatientWindow.appointments,
       view: underPaid,
     ));
 
@@ -365,7 +369,7 @@ class Patient extends Model {
       searchableString: paymentStatus,
       title: txt("overpaid"),
       sortable: true,
-      tab: 2,
+      window: PatientWindow.appointments,
       view: overPaid,
     ));
 
@@ -377,7 +381,7 @@ class Patient extends Model {
         searchableString: tag,
         value: 0,
         sortable: false,
-        tab: 0,
+        window: PatientWindow.details,
       ));
     }
 
@@ -392,8 +396,7 @@ class Patient extends Model {
     if (parts.length != 2 || parts.first.isEmpty || parts.first.length > 64) {
       return false;
     }
-    if (!RegExp(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$")
-            .hasMatch(parts.first) ||
+    if (!RegExp(r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+$").hasMatch(parts.first) ||
         parts.first.startsWith('.') ||
         parts.first.endsWith('.') ||
         parts.first.contains('..')) {

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
+import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -12,15 +13,18 @@ import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:flutter/foundation.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/widget_keys.dart';
 
 final treatments = txOptions.where((x) => x.type != StateType.state).toList();
@@ -273,7 +277,7 @@ class _PatientsPageState extends State<_PatientsPage> {
     String searchStringLowerCased,
   ) {
     return ContextMenuRegion(
-      items: (context, controller) => _patientMenuItems(patient),
+      items: (context, controller) => _patientMenuItems(controller, patient),
       child: ListTile.selectable(
         key: ValueKey(patient.id),
         selected: selected.contains(patient.id),
@@ -311,20 +315,48 @@ class _PatientsPageState extends State<_PatientsPage> {
     );
   }
 
-  /// Long press (touch) or right click (mouse) on a row: one item per tab of
-  /// the patient panel, then the ways to reach the patient.
-  List<MenuFlyoutItemBase> _patientMenuItems(Patient patient) {
+  /// Long press (touch) or right click (mouse) on a row: one item per window of
+  /// the patient panel, then the ways to reach the patient, then the action that
+  /// takes the record away.
+  List<MenuFlyoutItemBase> _patientMenuItems(
+      FlyoutController controller, Patient patient) {
     return [
-      for (final tab in patientTabs())
+      for (final window in patientWindows())
         MenuFlyoutItem(
-          text: Txt(txt(tab.titleKey)),
-          leading: Icon(tab.icon),
-          onPressed: () {
-            unawaited(openPatient(patient, patientTabIndex(tab)));
-          },
+          text: menuTitleSuffix(
+            Txt(txt(window.titleKey)),
+            // What the window holds, appended after the title: how many visits
+            // the patient has, and whether their web page exists yet.
+            switch (window) {
+              PatientWindow.appointments =>
+                menuCountSuffix(patient.allAppointments.length),
+              PatientWindow.page =>
+                menuPresenceSuffix(patient.shortLink.isNotEmpty),
+              _ => null,
+            },
+          ),
+          leading: Icon(window.icon),
+          onPressed: () => unawaited(openPatient(patient, window)),
         ),
       if (patient.phone.isNotEmpty || patient.email.isNotEmpty)
         ...contactMenuItems(phones: patient.phone, email: patient.email),
+      // Archiving a patient takes their whole history out of the app: full
+      // access to patients, not the personal level that may edit their own.
+      if (login.perm(Perm.patients).full) ...[
+        const MenuFlyoutSeparator(),
+        confirmDeleteMenuItem(
+          controller: controller,
+          preview: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              const Icon(FluentIcons.medication_admin),
+              Txt(patient.title),
+            ],
+          ),
+          onConfirm: () => patients.archive(patient.id),
+        ),
+      ],
     ];
   }
 
@@ -366,10 +398,12 @@ class _PatientsPageState extends State<_PatientsPage> {
   }
 
   Widget _buildTreatmentLabels(BoxConstraints constraints, Patient patient) {
+    final labels = patient.treatmentLabels;
+    if (labels.isEmpty) return const SizedBox.shrink();
     return GestureDetector(
-      onTap: () {
-        unawaited(openPatient(patient, 1));
-      },
+      onTap: () => unawaited(
+        openPatient(patient, PatientWindow.dentalChart),
+      ),
       child: SizedBox(
         width: constraints.maxWidth - 255,
         height: 30,
@@ -377,7 +411,7 @@ class _PatientsPageState extends State<_PatientsPage> {
           reverse: true,
           scrollDirection: Axis.horizontal,
           child: Row(
-            children: patient.treatmentLabels
+            children: labels
                 .map((e) => SingleTreatmentLabel(
                       label: e,
                       showPalmer: false,
@@ -412,7 +446,7 @@ class _PatientsPageState extends State<_PatientsPage> {
                 label: label,
                 color: color,
                 patient: patient,
-                targetTab: label.tab,
+                targetWindow: label.window,
               );
             }),
           )),
@@ -541,7 +575,7 @@ class ClickableBottomLabel extends StatelessWidget {
     required this.label,
     required this.color,
     required this.patient,
-    required this.targetTab,
+    required this.targetWindow,
   });
 
   final double cW;
@@ -549,7 +583,7 @@ class ClickableBottomLabel extends StatelessWidget {
   final PatientTableLabel label;
   final Color color;
   final Patient patient;
-  final int targetTab;
+  final PatientWindow targetWindow;
   final GlobalKey<PhoneNumberButtonState> phoneButtonKey =
       GlobalKey<PhoneNumberButtonState>();
 
@@ -562,7 +596,7 @@ class ClickableBottomLabel extends StatelessWidget {
           if (label.title == txt("phone")) {
             unawaited(phoneButtonKey.currentState?.showMenu());
           } else {
-            unawaited(openPatient(patient, targetTab));
+            unawaited(openPatient(patient, targetWindow));
           }
         },
         child: Container(
@@ -598,7 +632,7 @@ class ClickableBottomLabel extends StatelessWidget {
                       color: label.color == null ? null : Colors.white),
                   style: darkIconButtonStyle(context, label.color),
                   onPressed: () {
-                    unawaited(openPatient(patient, targetTab));
+                    unawaited(openPatient(patient, targetWindow));
                   },
                 ),
               Column(

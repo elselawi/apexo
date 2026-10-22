@@ -1,29 +1,28 @@
 import 'dart:async';
+import 'dart:convert';
 
-import 'package:apexo/app/panels/panel_tab.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
-import 'package:apexo/app/panels/row_panel.dart';
+import 'package:apexo/ui/workspace/panel_accent.dart';
+import 'package:apexo/ui/workspace/panel.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
+import 'package:apexo/ui/workspace/row_panel.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/floating_window.dart';
+import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
-import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
-import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
-import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
-import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
-import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
-import 'package:apexo/services/ai_services/dental_history.dart';
+import 'package:apexo/features/patients/patient_dental_chart.dart';
+import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
+import 'package:apexo/features/dicom/open_dicom_viewer_window.dart';
+import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/services/login.dart';
-import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
-import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:apexo/utils/phone_numbers_extractor.dart';
@@ -33,6 +32,7 @@ import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
+import 'package:apexo/features/patients/patient_owner_line.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/widget_keys.dart';
@@ -40,180 +40,141 @@ import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 import 'package:flutter/cupertino.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
-final transcriptionEditCounter = ObservableState(0);
+part 'patient_panel_widgets.dart';
 
-/// The patient panel's tabs, in the order the panel shows them.
-///
-/// The panel builds its strip from [patientTabs] and the row context menu
-/// offers one item per entry, so neither can drift from the other.
-enum PatientTab {
-  details("patientDetails", FluentIcons.medication_admin),
-  dentalNotes("dentalNotes", FluentIcons.teeth),
-  appointments("appointments", WindowsIcons.calendar),
-  page("patientPage", FluentIcons.q_r_code);
-
-  const PatientTab(this.titleKey, this.icon);
-
-  final String titleKey;
-  final IconData icon;
+/// Opens the appointment a chart's history points at.
+void _openAppointmentFromChart(String id) {
+  final appointment = appointments.get(id);
+  if (appointment != null) openAppointment(appointment);
 }
 
-/// The patient panel's tabs for the current user, in panel order.
-List<PatientTab> patientTabs() => [
-      PatientTab.details,
-      PatientTab.dentalNotes,
-      if (login.perm(Perm.appointments).some) PatientTab.appointments,
-      PatientTab.page,
-    ];
-
-/// Where [tab] sits in the panel as built for the current user.
-int patientTabIndex(PatientTab tab) => patientTabs().indexOf(tab);
-
-Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
+Future<String?> openPatient([Patient? patient, PatientWindow? window]) async {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
+  // A window of a record whose panel is already open is that panel's window:
+  // opening a second editor for the same teeth would give the record two
+  // drafts, and whichever was saved last would win. The panel is brought
+  // forward and asked for that window instead.
+  final panelIsOpen =
+      PanelsManager.active().any((panel) => panel.itemId == editingCopy.id);
+  // A window that is not the panel's own body opens on its own: asking a table
+  // for "this patient's appointments" should not unfold the whole record.
+  if (!panelIsOpen && window != null && window != PatientWindow.details) {
+    await _openPatientWindow(editingCopy, window);
+    return null;
+  }
+  return _openPatientPanel(
+    editingCopy,
+    focus: window == PatientWindow.details ? null : window?.id,
+  );
+}
+
+/// The patient's record and nothing beside it: the panel, with none of the
+/// windows it would otherwise open by itself. What a caller means when it wants
+/// *the patient* rather than something the patient has — a dashboard row for a
+/// new patient, say. Every window is still one click away in the dock.
+Future<String?> openPatientRecord(Patient patient) => _openPatientPanel(
+      Patient.fromJson(patient.toJson()),
+      withWindows: false,
+    );
+
+/// The panel for [editingCopy], optionally focused on one of its windows.
+Future<String?> _openPatientPanel(
+  Patient editingCopy, {
+  String? focus,
+  bool withWindows = true,
+}) async {
+  // The panel holds these windows now, so the ones standing on their own for
+  // this record have nothing left to show.
+  final scope = 'patient:${editingCopy.id}';
+  final stored = patients.get(editingCopy.id);
+
+  // The patient's panel may already be on screen. Then this is not a new
+  // panel: the editor is already there, and a panel built here would be thrown
+  // away — taking the work it had adopted with it, silently. So the question
+  // is asked *before* any window state is touched.
+  final identifier = Panel.identifierFor(
+    'patient',
+    editingCopy.id,
+    isNew: stored == null,
+  );
+  final existing = PanelsManager.find(identifier);
+  if (existing != null) {
+    WindowsManager.showOnPanel(existing, scope: scope, focus: focus);
+    await existing.result;
+    return existing.savedId;
+  }
+
+  // Work a window of this patient still holds comes in with the panel rather
+  // than staying beside it as a second draft of the same record: the panel
+  // adopts it and opens dirty on it, so its own Save is the one write.
+  String? baseline;
+  if (stored != null) {
+    final carried = WindowsManager.adoptWork(scope, stored.toJson());
+    if (carried != null) {
+      editingCopy = Patient.fromJson(carried);
+      baseline = jsonEncode(stored.toJson());
+    }
+  }
+  WindowsManager.closeScope(scope);
+  final chart = patientDentalChart(
+    editingCopy,
+    onOpenAppointment: _openAppointmentFromChart,
+    footer: dentalHistoryVoiceAction(),
+  );
   late final RowPanel<Patient> panel;
   panel = RowPanel<Patient>(
     singularName: "patient",
+    accent: PanelAccents.patient,
     unicodeSymbol: "👤",
-    selectedTabIndex: selectedTabIndex,
+    // The window the caller asked for: a table cell that means "the
+    // appointments" asks for it here rather than counting windows.
+    initialWindow: focus,
+    opensWithWindows: withWindows,
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,
     existing: patients.get(editingCopy.id) != null,
+    // The record on screen carries work that is not stored yet, so the panel
+    // starts with something to save.
+    savedBaseline: baseline,
     validate: () =>
         Patient.isValidEmail(editingCopy.email) ? null : txt('invalidEmail'),
     // A localization key rather than a sentence: the header runs it through
     // txt(), so it follows the language the app is in now. A stored patient
     // gets their own name from readTitle() below instead.
     title: "newPatient",
-    tabs: [
-      for (final tab in patientTabs())
-        switch (tab) {
-          PatientTab.details => PanelTab(
-              title: tab.titleKey,
-              icon: tab.icon,
+    windows: [
+      for (final entry in patientWindows())
+        switch (entry) {
+          PatientWindow.details => PanelWindow(
+              id: entry.id,
+              title: entry.titleKey,
+              icon: entry.icon,
               body: _PatientDetails(editingCopy),
             ),
-          PatientTab.dentalNotes => PanelTab(
-              title: tab.titleKey,
-              icon: tab.icon,
-              padding: 6,
-              footer: (network.isOnline() && globalSettings.aiServicesEnabled)
-                  ? Builder(
-                      builder: (context) => AudioRecorderButton(
-                        hint: txt("dentalHistoryVoiceAutoFillHint"),
-                        label: txt("voiceAutoFill"),
-                        onRecordingComplete: (bytes, mimeType) async {
-                          try {
-                            final result =
-                                await DentalHistory.processAudioBytes(
-                              bytes,
-                              mimeType,
-                            );
-                            if (result.teeth.isNotEmpty) {
-                              editingCopy.teeth.addAll(result.teeth);
-                            }
-                            if (result.teethExtraNotes.isNotEmpty) {
-                              editingCopy.teethExtraNotes
-                                  .addAll(result.teethExtraNotes);
-                            }
-                            transcriptionEditCounter(
-                                transcriptionEditCounter() + 1);
-                          } catch (e, s) {
-                            showErrorMessage(e, "processingDentalHistory");
-                            logger(
-                                "Error processing dental history audio: $e", s);
-                          }
-                        },
-                      ),
-                    )
-                  : null,
-              body: MStreamBuilder(
-                  streams: [
-                    patients.observableMap.stream,
-                    appointments.observableMap.stream,
-                    transcriptionEditCounter.stream
-                  ],
-                  builder: (context, asyncSnapshot) {
-                    final compact =
-                        MediaQuery.sizeOf(context).width < kOpgViewportMinWidth;
-                    return InfoLabel(
-                      label: "${txt("dentalNotes")}:",
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Container(
-                            decoration: compact
-                                ? null
-                                : BoxDecoration(
-                                    color: FluentTheme.of(context)
-                                        .resources
-                                        .solidBackgroundFillColorBase,
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                        color: Colors.grey.withAlpha(100))),
-                            padding: compact
-                                ? EdgeInsets.zero
-                                : const EdgeInsets.all(4),
-                            child: TeethSelector(
-                              type: StateType.state,
-                              historyTitle: 'toothAppointmentNotes',
-                              history: [
-                                for (final appointment
-                                    in editingCopy.allAppointments)
-                                  ToothHistory(
-                                      label: DF.allNumbers(appointment.date),
-                                      date: appointment.date,
-                                      appointmentId: appointment.id,
-                                      teeth: Map.of(appointment.teeth),
-                                      notes:
-                                          Map.of(appointment.teethExtraNotes))
-                              ],
-                              onOpenAppointment: (id) {
-                                final appointment = appointments.get(id);
-                                if (appointment != null) {
-                                  openAppointment(appointment);
-                                }
-                              },
-                              onNote: (x, y) {
-                                if (y != null) {
-                                  editingCopy.teeth[x] = y;
-                                } else {
-                                  editingCopy.teeth.remove(x);
-                                  editingCopy.teethExtraNotes.remove(x);
-                                }
-                              },
-                              onExtraNote: (x, extra) {
-                                editingCopy.teethExtraNotes[x] = extra;
-                              },
-                              extraNotes: editingCopy.teethExtraNotes,
-                              notation: (isoString) =>
-                                  isoToTextualNotation(isoString),
-                              rightString: txt("right"),
-                              leftString: txt("left"),
-                              currentNotes: editingCopy.teeth,
-                              oldNotes: editingCopy.allAppointmentsDentalNotes
-                                ..removeWhere(
-                                    (k, v) => editingCopy.teeth.containsKey(k)),
-                              showPrimary: editingCopy.age < 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-            ),
-          PatientTab.appointments => PanelTab(
-              title: tab.titleKey,
-              icon: tab.icon,
+          PatientWindow.dentalChart => dentalChartWindow(chart),
+          PatientWindow.appointments => PanelWindow(
+              id: entry.id,
+              title: entry.titleKey,
+              icon: entry.icon,
+              subtitle: () => patientOwnerLine(editingCopy),
               body: PatientAppointments(editingCopy),
               footer: AppointmentsListFooter(forPatientID: editingCopy.id),
               onlyIfSaved: true,
               padding: 0,
+              // One card per visit: the list asks for the room its visits take,
+              // so a short history is a short window and a longer one is not
+              // squeezed into half a screen.
+              maxHeight: appointmentsListMaxHeight,
+              minHeight: appointmentsListHeight(
+                editingCopy.allAppointments.length,
+              ),
             ),
-          PatientTab.page => PanelTab(
-              title: tab.titleKey,
-              icon: tab.icon,
+          PatientWindow.page => PanelWindow(
+              id: entry.id,
+              title: entry.titleKey,
+              icon: entry.icon,
+              subtitle: () => patientOwnerLine(editingCopy),
               body: _PatientQrPage(
                 editingCopy: editingCopy,
                 onFieldsSaved: (fields) => panel.markFieldsSaved(fields),
@@ -230,511 +191,71 @@ Future<String?> openPatient([Patient? patient, int? selectedTabIndex]) async {
   return shown.savedId;
 }
 
-class _PatientQrPage extends StatefulWidget {
-  const _PatientQrPage({
-    required this.editingCopy,
-    required this.onFieldsSaved,
-  });
+/// A patient's window, shown on its own — no panel, so it carries the Save and
+/// Close a panel would have offered (Close alone for a window that only reads).
+///
+/// This is what a table cell, a chart link or a context-menu item means when it
+/// names one window: the edit the user asked for, not the whole record.
+Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
+  final scope = 'patient:${patient.id}';
+  switch (window) {
+    case PatientWindow.details:
+      // The panel *is* the details; the caller wanted the record.
+      await openPatient(patient);
+    case PatientWindow.dentalChart:
+      await openPatientDentalChart(
+        patient,
+        onOpenAppointment: _openAppointmentFromChart,
+        onOpenRecord: () =>
+            _openPatientPanel(patient, focus: PatientWindow.dentalChart.id),
+      );
+    case PatientWindow.appointments:
+      late final FloatingWindow floating;
 
-  final Patient editingCopy;
-  final void Function(Iterable<String> fields) onFieldsSaved;
-
-  @override
-  State<_PatientQrPage> createState() => _PatientQrPageState();
-}
-
-class _PatientQrPageState extends State<_PatientQrPage> {
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 25),
-        Center(
-          child: FilledButton(
-            child: ButtonContent(FluentIcons.q_r_code, txt("generateQRLink")),
-            onPressed: () async {
-              final pID = widget.editingCopy.id;
-              final p = patients.get(pID)?.copy(false);
-              if (p == null) {
-                return;
-              } else {
-                try {
-                  p.link = await p.generatePatientLink();
-                } catch (e, stacktrace) {
-                  showErrorMessage(e, "generatingPatientLink");
-                  login.askForLoginAgain(e);
-                  logger("error while generating patient link $e", stacktrace);
-                  return;
-                }
-                final current = patients.get(pID);
-                if (current == null) return;
-                final updated = current.copy(false)..link = p.link;
-                patients.set(updated);
-                widget.editingCopy.link = updated.link;
-                widget.onFieldsSaved(['link']);
-              }
-              if (mounted) setState(() {});
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        ToggleSwitch(
-          key: const Key('patientPortalAccess'),
-          content: Txt(txt('patientPageAccess')),
-          checked: !widget.editingCopy.portalAccessRevoked,
-          onChanged: (enabled) {
-            final stored = patients.get(widget.editingCopy.id);
-            if (stored == null) return;
-            final updated = stored.copy(false)..portalAccessRevoked = !enabled;
-            patients.set(updated);
-            setState(() => widget.editingCopy.portalAccessRevoked = !enabled);
-            widget.onFieldsSaved(['portalAccessRevoked']);
-          },
-        ),
-        if (!widget.editingCopy.portalAccessRevoked &&
-            widget.editingCopy.shortLink.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          _PatientWebPage(widget.editingCopy),
-          _PrintQRButton(widget.editingCopy)
-        ]
-      ],
-    );
-  }
-}
-
-class _PrintQRButton extends StatelessWidget {
-  const _PrintQRButton(this.patient);
-  final Patient patient;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FilledButton(
-              child: Row(
-                children: [
-                  const Icon(FluentIcons.print),
-                  const SizedBox(width: 5),
-                  Txt(txt("printQR"))
-                ],
-              ),
-              onPressed: () {
-                unawaited(printingQRCode(
-                  context,
-                  patient.shortLink,
-                  "Access your information",
-                  "Scan to visit link:\n${patient.shortLink}\nto access your appointments, payments and photos.",
-                ));
-              }),
-        ],
-      ),
-    );
-  }
-}
-
-class _PatientWebPage extends StatelessWidget {
-  const _PatientWebPage(this.patient);
-  final Patient patient;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(children: [
-      InfoBar(
-        title: Txt(txt("patientCanUseTheFollowing")),
-      ),
-      const SizedBox(height: 10),
-      Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: SelectableText(patient.shortLink),
-      ),
-      QRLink(link: patient.shortLink),
-    ]);
-  }
-}
-
-class PatientAppointments extends StatelessWidget {
-  const PatientAppointments(this.patient,
-      {super.key,
-      this.readOnly = false,
-      this.excludedAppointment,
-      this.hide = const [AppointmentSections.patient]});
-  final Patient patient;
-  final List<AppointmentSections> hide;
-  final Appointment? excludedAppointment;
-  final bool readOnly;
-  @override
-  Widget build(BuildContext context) {
-    return MStreamBuilder(
-        streams: [appointments.observableMap.stream],
-        builder: (context, snapshot) {
-          final apts = patient.allAppointments;
-          return Column(
-            children: apts.isEmpty
-                ? [
-                    InfoBar(title: Txt(txt("noAppointmentsFound"))),
-                  ]
-                : [
-                    ...List.generate(apts.length, (index) {
-                      final appointment = apts[index];
-                      String? difference;
-                      if (apts.last != appointment &&
-                          !hide.contains(AppointmentSections.timeDifference)) {
-                        difference =
-                            "${txt("after")} ${Patient.formatDuration(appointment.date, apts[index + 1].date)}";
-                      }
-                      if (appointment.id == excludedAppointment?.id) {
-                        return const SizedBox.shrink();
-                      }
-                      return AppointmentCard(
-                        key: Key(appointment.id),
-                        appointment: appointment,
-                        difference: difference,
-                        hide: hide,
-                        number: index + 1,
-                        readOnly: readOnly,
-                      );
-                    }),
-                    const Divider(),
-                    if (!hide.contains(AppointmentSections.paymentSummary))
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 10, 12, 50),
-                        child: Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(5),
-                            boxShadow: [
-                              BoxShadow(
-                                offset: const Offset(0.0, 6.0),
-                                blurRadius: 30.0,
-                                spreadRadius: 5.0,
-                                color: Colors.grey.withAlpha(50),
-                              )
-                            ],
-                            border: Border(
-                                top: BorderSide(
-                              color: (colorBasedOnPayments(patient.paymentsMade,
-                                          patient.pricesGiven) ??
-                                      FluentTheme.of(context).cardColor)
-                                  .withValues(alpha: 0.3),
-                              width: 5,
-                            )),
-                          ),
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 5),
-                                child: Txt(
-                                    "${txt("paymentSummary")} (${currency()})",
-                                    style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.grey)),
-                              ),
-                              const SizedBox(height: 10),
-                              const Divider(),
-                              const SizedBox(height: 15),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                spacing: 10,
-                                runSpacing: 10,
-                                children: [
-                                  PaymentPill(
-                                    finalTextColor: Colors.grey,
-                                    title: txt("cost"),
-                                    amount:
-                                        patient.pricesGiven.toStringAsFixed(2),
-                                    color: Colors.white,
-                                  ),
-                                  PaymentPill(
-                                    finalTextColor: Colors.grey,
-                                    title: txt("paid"),
-                                    amount:
-                                        patient.paymentsMade.toStringAsFixed(2),
-                                    color: Colors.white,
-                                  ),
-                                  PaymentPill(
-                                    finalTextColor: Colors.grey,
-                                    title: patient.overPaid
-                                        ? txt("overpaid")
-                                        : patient.underPaid
-                                            ? txt("underpaid")
-                                            : txt("fullyPaid"),
-                                    amount: (patient.paymentsMade -
-                                            patient.pricesGiven)
-                                        .abs()
-                                        .toStringAsFixed(2),
-                                  )
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-          );
-        });
-  }
-}
-
-class _PatientDetails extends StatefulWidget {
-  const _PatientDetails(this.patient);
-  final Patient patient;
-
-  @override
-  State<_PatientDetails> createState() => _PatientDetailsState();
-}
-
-class _PatientDetailsState extends State<_PatientDetails> {
-  final phoneTextController = PhoneTextEditingController();
-  final emailTextController = TextEditingController();
-  final phoneFlyoutController = FlyoutController();
-  final nameController = TextEditingController();
-  final yobController = TextEditingController();
-  final addressController = TextEditingController();
-  final notesController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    phoneTextController.text = widget.patient.phonesString;
-    emailTextController.text = widget.patient.email;
-    nameController.text = widget.patient.title;
-    yobController.text = widget.patient.birth.toString();
-    addressController.text = widget.patient.address;
-    notesController.text = widget.patient.notes;
-  }
-
-  @override
-  void dispose() {
-    phoneTextController.dispose();
-    emailTextController.dispose();
-    phoneFlyoutController.dispose();
-    nameController.dispose();
-    yobController.dispose();
-    addressController.dispose();
-    notesController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    phoneTextController.accentColor = FluentTheme.of(context).accentColor;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InfoLabel(
-          label: "${txt("name")}:",
-          isHeader: true,
-          child: CupertinoTextField(
-            key: WK.fieldPatientName,
-            placeholder: "${txt("name")}...",
-            controller: nameController,
-            onChanged: (value) => widget.patient.title = value,
-          ),
-        ),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          Expanded(
-            child: InfoLabel(
-              label: "${txt("birthYear")}:",
-              isHeader: true,
-              child: CupertinoTextField(
-                key: WK.fieldPatientYOB,
-                placeholder: "${txt("birthYear")}...",
-                controller: yobController,
-                onChanged: (value) => widget.patient.birth =
-                    int.tryParse(value) ?? widget.patient.birth,
-              ),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: InfoLabel(
-              label: "${txt("gender")}:",
-              isHeader: true,
-              child: ComboBox<int>(
-                key: WK.fieldPatientGender,
-                isExpanded: true,
-                items: [
-                  ComboBoxItem<int>(
-                    value: 1,
-                    child: Txt("♂️ ${txt("male")}"),
-                  ),
-                  ComboBoxItem<int>(
-                    value: 0,
-                    child: Txt("♀️ ${txt("female")}"),
-                  )
-                ],
-                value: widget.patient.gender,
-                onChanged: (value) {
-                  setState(() {
-                    widget.patient.gender = value ?? widget.patient.gender;
-                  });
-                },
-              ),
-            ),
-          ),
-        ]),
-        InfoLabel(
-          label: "${txt("email")}:",
-          isHeader: true,
-          child: CupertinoTextField(
-            textDirection: TextDirection.ltr,
-            key: WK.fieldPatientEmail,
-            placeholder: "${txt("email")}...",
-            controller: emailTextController,
-            onChanged: (value) {
-              setState(() {
-                widget.patient.email = value;
-              });
-            },
-            suffix: !Patient.isValidEmail(widget.patient.email)
-                ? Tooltip(
-                    message: txt('invalidEmail'),
-                    child: const Padding(
-                      padding: EdgeInsets.all(5),
-                      child: Icon(WindowsIcons.warning),
-                    ),
-                  )
-                : widget.patient.email.isNotEmpty
-                    ? EmailButton(email: widget.patient.email)
-                    : null,
-          ),
-        ),
-        InfoLabel(
-          label: "${txt("phone")}:",
-          isHeader: true,
-          child: CupertinoTextField(
-            suffix: phoneTextController.text.isNotEmpty &&
-                    widget.patient.phone.isEmpty
-                ? const Padding(
-                    padding: EdgeInsets.all(5),
-                    child: Icon(
-                      WindowsIcons.warning,
-                      color: Colors.warningPrimaryColor,
-                    ),
-                  )
-                : null,
-            textDirection: TextDirection.ltr,
-            key: WK.fieldPatientPhone,
-            placeholder: "${txt("phone")}...",
-            controller: phoneTextController,
-            onChanged: (value) {
-              setState(() {
-                widget.patient.phone = PhoneNumberExtractor.extract(value)
-                    .map((s) => ParsedPhoneNumber(s))
-                    .toList();
-              });
-            },
-          ),
-        ),
-        if (phoneTextController.text.isNotEmpty && widget.patient.phone.isEmpty)
-          Txt(txt("noValidNumbersFound")),
-        if (widget.patient.phone.isNotEmpty)
-          Text("${txt("theFollowingPhoneNumbersAreDetected")}:"),
-        ...widget.patient.phone.map((p) => PhoneNumberButton(
-              onlyIcon: false,
-              phoneNumbers: [p],
-            )),
-        const SizedBox(height: 10),
-        InfoLabel(
-          label: "${txt("address")}:",
-          isHeader: true,
-          child: CupertinoTextField(
-            key: WK.fieldPatientAddress,
-            controller: addressController,
-            onChanged: (value) => widget.patient.address = value,
-            placeholder: "${txt("address")}...",
-          ),
-        ),
-        InfoLabel(
-          label: "${txt("notes")}:",
-          isHeader: true,
-          child: LiveTranscribingTextField(
-            key: WK.fieldPatientNotes,
-            controller: notesController,
-            onChanged: (value) => setState(() => widget.patient.notes = value),
-            maxLines: null,
-            placeholder: "${txt("notes")}...",
-          ),
-        ),
-        InfoLabel(
-          label: "${txt("patientTags")}:",
-          isHeader: true,
-          child: TagInputWidget(
-            key: WK.fieldPatientTags,
-            suggestions: patients.allTags
-                .map((t) => TagInputItem(value: t, label: t))
-                .toList(),
-            onChanged: (tags) {
-              widget.patient.tags = List<String>.from(
-                  tags.map((e) => e.value).where((e) => e != null));
-            },
-            initialValue: widget.patient.tags
-                .map((e) => TagInputItem(value: e, label: e))
-                .toList(),
-            strict: false,
-            limit: 9999,
-            placeholder: "${txt("patientTags")}...",
-          ),
-        )
-      ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
-    );
-  }
-}
-
-class PhoneTextEditingController extends TextEditingController {
-  Color? accentColor;
-
-  @override
-  TextSpan buildTextSpan({
-    required BuildContext context,
-    TextStyle? style,
-    required bool withComposing,
-  }) {
-    final List<TextSpan> children = [];
-    final List<String> parts = text.split(' ');
-
-    for (int i = 0; i < parts.length; i++) {
-      final String part = parts[i];
-      if (PhoneNumber.parse(part,
-              destinationCountry: IsoCode.values.byName(isoCC()))
-          .isValid()) {
-        children.add(
-          TextSpan(
-            text: part,
-            style: style?.copyWith(
-              decoration: TextDecoration.underline,
-              decorationColor: accentColor,
-              decorationThickness: 2,
-            ),
-          ),
-        );
-      } else {
-        children.add(
-          TextSpan(
-            text: part,
-            style: style?.copyWith(
-              decoration: TextDecoration.underline,
-              decorationColor: Colors.red,
-              decorationThickness: 2,
-            ),
-          ),
-        );
+      /// The list was only a way in: whatever it opens — a visit it lists, or a
+      /// new one it starts — it closes, so the panel has the screen to itself.
+      void closeThen(void Function() open) {
+        WindowsManager.close(floating);
+        open();
       }
-      if (i < parts.length - 1) {
-        children.add(TextSpan(text: ' ', style: style));
-      }
-    }
 
-    return TextSpan(children: children, style: style);
+      floating = WindowsManager.showStandalone(
+        PanelWindow(
+          id: window.id,
+          title: window.titleKey,
+          icon: window.icon,
+          subtitle: () => patientOwnerLine(patient),
+          maxHeight: appointmentsListMaxHeight,
+          minHeight: appointmentsListHeight(patient.allAppointments.length),
+          padding: 0,
+          body: PatientAppointments(
+            patient,
+            onOpenAppointment: (appointment, window) =>
+                closeThen(() => openAppointment(appointment, window)),
+          ),
+          footer: AppointmentsListFooter(
+            forPatientID: patient.id,
+            onOpen: (draft) => closeThen(() => openAppointment(draft)),
+          ),
+        ),
+        scope: scope,
+        onOpenRecord: () => _openPatientPanel(patient, focus: window.id),
+      );
+    case PatientWindow.page:
+      WindowsManager.showStandalone(
+        PanelWindow(
+          id: window.id,
+          title: window.titleKey,
+          icon: window.icon,
+          subtitle: () => patientOwnerLine(patient),
+          body: _PatientQrPage(
+            editingCopy: patient,
+            onFieldsSaved: (_) {},
+          ),
+        ),
+        scope: scope,
+        onOpenRecord: () => _openPatientPanel(patient, focus: window.id),
+      );
   }
 }
+

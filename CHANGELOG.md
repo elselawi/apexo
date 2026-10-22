@@ -1,16 +1,37 @@
-### ____0.15.3____
+### ____0.16.0____
 
 - New Features & Improvements
-    - Added a device-level 12-hour / 24-hour time format setting, applied across appointment timestamps, calendar agenda and timeline views, time pickers, and hourly statistics.
+    - **Windows instead of tabs.** A panel keeps its first editor inline and opens the rest as floating windows beside it — draggable, brought to front on touch, and minimised to a dock under the header. Windows size to their content, and each panel remembers which ones you keep open.
+    - **Every window names its record.** A window shows the patient, visit or supplier it belongs to, marks unsaved work with a dot, and carries its own Save and Close when it edits; read-only windows have none. Opening a record's panel takes a window's draft with it, so a record has one write.
+    - **Record colours.** Patients are blue, visits violet, suppliers teal and labwork amber, worn by the panel's kind badge and its windows' icons.
+    - **Row menus everywhere.** Right-click a patient, visit, supplier, user, labwork or note row for its actions — with a count of what is behind each item, items hidden when you lack the permission rather than greyed out, and Delete last. The Deleted Items page offers Open and Restore the same way.
+    - **Notes get the same menu**, with attachment downloads, assignment and a due date, while long-press still drags the card.
+    - **Visit badges.** Dental notes, prescriptions, labwork and photos show as a stack of badges on the agenda and timeline; hovering shows one card with every tooth note, prescription, lab order and the first photo.
+    - **Dental Chart window.** The chart is a window called **Dental Chart** on a patient and **Treatments** on a visit, with one editor for both scopes.
+    - **Labwork window.** Labwork is its own appointment window that creates and removes the visit's order, instead of fields inside the operative record.
+    - **Supplier and order panels.** Suppliers and the clinic show what is due and paid, suppliers can be renamed where they belong, and paid or unpaid orders open in their own windows.
+    - **Photo, X-ray and scan windows.** Media opens in a window with its own draw, erase, download and delete tools instead of a full-screen dialog; the rebuilt photo viewer shows its own loading and retry, and downloads the record's file on every device.
+    - **Dashboard routes precisely.** Each row opens what it names — a new patient's record alone, a due labwork order, unpaid orders — and a single editor opens as one window rather than the whole panel.
+    - **12-hour / 24-hour time.** A device setting now applies to appointment timestamps, calendar views, time pickers and hourly statistics.
+    - **Kurdish (Sorani) right-to-left.** The app lays out right-to-left and Material date and time pickers are localised.
+    - **Tooth history card.** A dated visit now shows its weekday and time, and long dates wrap inside the card.
 
 - Reliability & Bug Fixes
-    - Kurdish (Sorani) now lays the app out right-to-left. The dictionary was RTL, but Flutter ships no Kurdish localization data, so direction-sensitive layout — rows, navigation and text alignment — stayed left-to-right and Material date/time pickers had no strings. Flutter's widget, Material and Cupertino delegates are now supplied for Kurdish, with Material controls backed by the closest Flutter data set (Arabic).
-    - The tooth history card now shows a dated visit's weekday and time, and long dates wrap inside the card instead of overflowing it.
+    - Windows can be dragged anywhere when no panel is open, come back when minimised, no longer reappear invisible, and follow the reading direction in right-to-left languages.
+    - A panel's windows fill one row beside it; the rest wait in the dock, and a phone shows a single content-sized sheet with its buttons at the window's foot.
+    - Asking for a record's window while its panel is open shows it inside the panel, so two drafts cannot overwrite each other.
+    - Opening a visit from a patient's visit list closes the list, and closing a scan or photo no longer closes the screen behind it.
+    - The "record is open" state on agenda and timeline rows updates the moment a panel closes.
+    - Right-click opens the app's own menu on the web too; the timeline uses right-click for the visit menu and keeps long-press for dragging.
+    - A date picker shrinks instead of overflowing a narrow window, and a panel's bottom bar wraps instead of clipping its buttons.
+    - Supplier figures and the order windows beside them report the same totals, and a rename updates both headers.
+    - Pulsing borders animate only while they are visible, so quiet screens stop repainting for nothing.
 
 - Testing & Developer Experience
-    - Added widget coverage that Kurdish resolves right-to-left and provides Material and Cupertino localizations, while other locales keep Flutter's own.
-    - Added unit and widget coverage for 12-hour and 24-hour time formatting and time picker dialogs across 12-hour and 24-hour CLDR locales.
-    - The localization audit recognizes locale files by the dictionary they define, so support files added to the localization folder are no longer counted as locales.
+    - Added unit and widget coverage for the window workspace, row menus, shared editors and panel navigation.
+    - Tests keep their files in a per-process temporary folder, so parallel runs no longer lock each other's Hive files.
+    - The localization audit now recognises single-quoted keys and identifies locale files by their dictionary.
+    - The new `lib/ui/workspace` and `lib/shared` layers are documented and guarded by an architecture test.
 
 ### ____0.15.2____
 - New feature & Improvements

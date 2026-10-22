@@ -7,7 +7,7 @@
 // its display modes — which is the subject here.
 import 'package:apexo/app/app.dart';
 import 'package:apexo/app/navbar_widget.dart' show BottomNavBar;
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';

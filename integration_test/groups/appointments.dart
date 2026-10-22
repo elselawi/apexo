@@ -125,10 +125,10 @@ void registerAppointmentsTests() {
       await Fixtures.selectDay(tester, Fixtures.tomorrow());
       await Fixtures.openAppointmentTile(tester, patient: patient);
 
-      // The panel's three tabs, and the notes the appointment was booked with.
+      // The panel's windows, and the notes the appointment was booked with.
       for (final title in ['appointment', 'operativeDetails', 'gallery']) {
-        expect(Fixtures.tabIcon(title), findsWidgets,
-            reason: 'the panel has no "$title" tab');
+        expect(Fixtures.windowButton(title), findsWidgets,
+            reason: 'the panel has no "$title" window');
       }
       expect(Fixtures.fieldText(tester, WK.fieldAppointmentPreOpNotes),
           'e2e pre-op');

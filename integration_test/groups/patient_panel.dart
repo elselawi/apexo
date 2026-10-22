@@ -1,5 +1,5 @@
-import 'package:apexo/app/panels/panel_screen.dart' show PanelScreen;
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panel_screen.dart' show PanelScreen;
+import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/common_widgets/appointment_card.dart' show PaymentPill;
 import 'package:apexo/common_widgets/audio_recorder.dart'
     show AudioRecorderButton;

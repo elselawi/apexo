@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:apexo/app/app.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart'

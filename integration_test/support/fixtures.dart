@@ -1,9 +1,13 @@
-import 'package:apexo/app/panels/panel_screen.dart' show PanelScreen;
+import 'package:apexo/ui/workspace/panel_screen.dart' show PanelScreen;
 import 'package:apexo/common_widgets/duration_pill.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart'
+    show AppointmentWindow;
+import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart'
+    show kDentalChartWindowId;
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/notes/notes_model.dart';
@@ -556,7 +560,7 @@ abstract final class Fixtures {
           scrollable: _panelBody(WK.fieldAppointmentPreOpNotes));
     }
     if (price != null || postOpNotes != null || labName != null) {
-      await openPanelTab(tester, 'operativeDetails');
+      await openPanelWindow(tester, AppointmentWindow.operative.id);
     }
     if (price != null) {
       await enterField(tester, WK.fieldAppointmentPrice, price,
@@ -790,7 +794,7 @@ abstract final class Fixtures {
     String? orderNotes,
     bool received = false,
   }) async {
-    await openPanelTab(tester, 'operativeDetails');
+    await openPanelWindow(tester, AppointmentWindow.operative.id);
     await E2E.tapFirst(tester, find.text(txt('addLabwork')),
         description: 'the add-labwork link');
     await E2E.waitFor(tester, find.byKey(WK.fieldLabworkLabName),
@@ -1011,40 +1015,53 @@ abstract final class Fixtures {
     await E2E.settle(tester, frames: 8);
   }
 
-  /// Switches the orders panel to one of its two tabs (they are titled here).
-  static Future<void> openOrdersTab(WidgetTester tester, String title) async {
-    await E2E.tapFirst(tester, find.text(txt(title)),
-        description: 'the "$title" tab');
+  /// The window a panel offers under the given label.
+  ///
+  /// A panel's dock carries a button per window it can float, and the button
+  /// is keyed by the window's own id — the same id the row menus and the
+  /// openers name it by. The labels below are the ones the windows are titled
+  /// by, so a test can ask for a window the way the user sees it.
+  static const _windowIdsByTitle = <String, String>{
+    'patientDetails': 'details',
+    'dentalNotes': kDentalChartWindowId,
+    'patientPage': 'page',
+    'appointment': 'details',
+    'appointments': 'appointments',
+    'operativeDetails': 'operative',
+    'gallery': 'gallery',
+    'order': 'order',
+    'due': 'due',
+    'paid': 'paid',
+  };
+
+  /// The dock button of the window titled [title].
+  static Finder windowButton(String title) {
+    final id = _windowIdsByTitle[title];
+    if (id == null) {
+      throw ArgumentError('no window is titled "$title"');
+    }
+    return find.byKey(WK.windowToggle(id));
+  }
+
+  /// Opens one of a panel's windows, by the id the window is named by.
+  static Future<void> openPanelWindow(WidgetTester tester, String id) async {
+    await E2E.tapFirst(tester, find.byKey(WK.windowToggle(id)),
+        description: 'the "$id" window');
     await E2E.settle(tester, frames: 8);
   }
 
-  /// The icon a panel gives the tab titled [title].
-  ///
-  /// A panel draws its tabs as **icons only**: `Panel.showTitles` defaults
-  /// to `false`, so the label the app passes to `PanelTab` is never rendered
-  /// (only expenses and labworks turn titles on). Switching tabs therefore means
-  /// tapping the icon the panel built that tab with.
-  static const tabIcons = <String, IconData>{
-    'patientDetails': FluentIcons.medication_admin,
-    'dentalNotes': FluentIcons.teeth,
-    'patientPage': FluentIcons.q_r_code,
-    'appointment': WindowsIcons.calendar,
-    'appointments': WindowsIcons.calendar,
-    'operativeDetails': FluentIcons.medical_care,
-    'gallery': FluentIcons.camera,
-  };
-
-  /// The tab strip's match for the tab titled [title].
-  static Finder tabIcon(String title) => find.descendant(
-        of: find.byType(TabView),
-        matching: find.byIcon(tabIcons[title]!),
-      );
-
-  /// Switches the open panel to the tab titled [title] (`txt('gallery')`
-  /// and friends).
+  /// Opens one of a panel's windows, by the label the window is titled by.
   static Future<void> openPanelTab(WidgetTester tester, String title) async {
-    await E2E.tapFirst(tester, tabIcon(title), description: 'the "$title" tab');
-    await E2E.settle(tester, frames: 8);
+    final id = _windowIdsByTitle[title];
+    if (id == null) {
+      throw ArgumentError('no window is titled "$title"');
+    }
+    await openPanelWindow(tester, id);
+  }
+
+  /// Switches the orders panel to one of its two windows.
+  static Future<void> openOrdersTab(WidgetTester tester, String title) async {
+    await openPanelTab(tester, title);
   }
 
   /// Records [condition] on a tooth of whatever teeth chart is on screen.

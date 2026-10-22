@@ -7,7 +7,7 @@
 // So the whole feature is one piece of device state plus one dialog, and both are
 // reachable from a test: a stale `lastSeenVersion` is what a user has right after
 // an update.
-import 'package:apexo/app/app.dart' show bContext;
+import 'package:apexo/app/app_context.dart' show bContext;
 import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart'
     show showChangelogDialog;
 import 'package:apexo/features/settings/settings_stores.dart'

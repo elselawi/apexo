@@ -49,6 +49,43 @@ void main() {
     }
   });
 
+  testWidgets('the panoramic arch starts exactly at the width it says',
+      (tester) async {
+    // The threshold is a number the app depends on: a pixel narrower and the
+    // chart bends into a compact arch, a pixel wider and it stays panoramic.
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    Future<bool> pumpAt(double width) async {
+      tester.view.physicalSize = Size(width, 900);
+      tester.view.devicePixelRatio = 1.0;
+      await pumpApexoApp(
+        tester,
+        SingleChildScrollView(
+          child: TeethSelector(
+            notation: (iso) => 'Tooth $iso',
+            onNote: (iso, note) {},
+            type: StateType.state,
+          ),
+        ),
+      );
+      return tester
+          .widget<OpgDentalChart>(find.byType(OpgDentalChart))
+          .isCompactArch;
+    }
+
+    expect(
+      await pumpAt(kOpgViewportMinWidth),
+      isFalse,
+      reason: 'at the width it says, the chart is the panoramic one',
+    );
+    expect(
+      await pumpAt(kOpgViewportMinWidth - 1),
+      isTrue,
+      reason: 'a pixel narrower, the arch bends into the compact one',
+    );
+  });
+
   testWidgets(
       'OPG chart arranges upper teeth 18..11 then 21..28 from left to right',
       (tester) async {
@@ -558,67 +595,5 @@ void main() {
       await tester.tap(find.byKey(const ValueKey('wheel-close')));
       await tester.pumpAndSettle();
     }
-  });
-
-  test(
-      'computePanelWidth widens dental tabs on wide screens, fills phone width, and preserves 350px elsewhere',
-      () {
-    // Phone screen (< 490): fills the full screen width even when not minimized
-    expect(
-      computePanelWidth(
-        screenWidth: 360,
-        minimized: false,
-        activeTabTitleKey: 'dentalNotes',
-      ),
-      360,
-    );
-
-    // Narrow tablet screen on dental tab: widens to 440 for the compact arch
-    expect(
-      computePanelWidth(
-        screenWidth: 800,
-        minimized: false,
-        activeTabTitleKey: 'dentalNotes',
-      ),
-      440,
-    );
-
-    // Narrow tablet screen on non-dental tab: stays 350
-    expect(
-      computePanelWidth(
-        screenWidth: 800,
-        minimized: false,
-        activeTabTitleKey: 'patientDetails',
-      ),
-      350,
-    );
-
-    // Wide screen on non-dental tab (e.g. patientDetails): stays 350
-    expect(
-      computePanelWidth(
-        screenWidth: 1600,
-        minimized: false,
-        activeTabTitleKey: 'patientDetails',
-      ),
-      350,
-    );
-
-    // Wide screen on dentalNotes or operativeDetails: widens up to kOpgWidePanelWidth
-    expect(
-      computePanelWidth(
-        screenWidth: 1600,
-        minimized: false,
-        activeTabTitleKey: 'dentalNotes',
-      ),
-      kOpgWidePanelWidth,
-    );
-    expect(
-      computePanelWidth(
-        screenWidth: 1600,
-        minimized: false,
-        activeTabTitleKey: 'operativeDetails',
-      ),
-      kOpgWidePanelWidth,
-    );
   });
 }

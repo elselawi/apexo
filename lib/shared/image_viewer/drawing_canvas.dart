@@ -1,6 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 
+/// Whether [drawing] holds anything worth drawing — the stored form of a photo
+/// with no strokes on it is an empty list.
+bool hasStrokes(String? drawing) =>
+    drawing != null && drawing.isNotEmpty && drawing != '[]';
+
 class DrawingCanvas extends StatefulWidget {
   const DrawingCanvas({
     super.key,

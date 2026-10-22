@@ -6,19 +6,24 @@ import 'package:apexo/common_widgets/adaptive_hover_widget.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
-import 'package:apexo/common_widgets/dialogs/loading_blocking.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/store.dart';
-import 'package:apexo/features/dicom/open_dicom_viewer_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
-import 'package:apexo/common_widgets/slideshow/slideshow.dart';
+import 'package:apexo/ui/workspace/floating_window.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/windows_manager.dart';
+import 'package:apexo/shared/image_viewer/file_download_button.dart';
+import 'package:apexo/shared/image_viewer/photo_viewer_window.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:image_picker/image_picker.dart';
+
+part 'gallery_preview.dart';
+part 'gallery_tiles.dart';
 
 // ─── Constants ────────────────────────────────────────────────────────────
 
@@ -38,150 +43,9 @@ ButtonStyle get _deleteButtonStyle => const ButtonStyle(
 
 // ─── Gallery delete button ───────────────────────────────────────────────
 
-class _GalleryDeleteButton extends StatelessWidget {
-  const _GalleryDeleteButton({
-    required this.onConfirm,
-    required this.rowId,
-    required this.name,
-  });
-  final VoidCallback onConfirm;
-  final String rowId;
-  final String name;
-
-  @override
-  Widget build(BuildContext context) {
-    return DeleteButton(
-      onConfirm: onConfirm,
-      preview: FileDeletePreview(rowId: rowId, name: name),
-      actionText: txt("delete"),
-      actionIcon: WindowsIcons.delete,
-      restorable: false,
-      style: _deleteButtonStyle.copyWith(
-        iconSize: const WidgetStatePropertyAll(18),
-      ),
-      child: const Icon(
-        WindowsIcons.delete,
-        size: 18,
-        color: Colors.white,
-      ),
-    );
-  }
-}
-
-class GalleryDownloadButton extends StatefulWidget {
-  const GalleryDownloadButton({
-    super.key,
-    this.rowId,
-    this.buttonLabel,
-    required this.name,
-  });
-  final String? rowId;
-  final String name;
-  final String? buttonLabel;
-
-  @override
-  State<GalleryDownloadButton> createState() => GalleryDownloadButtonState();
-}
-
-class GalleryDownloadButtonState extends State<GalleryDownloadButton> {
-  bool _isDownloading = false;
-
-  Future<void> _download() async {
-    setState(() => _isDownloading = true);
-    try {
-      await downloadFile(widget.rowId, widget.name);
-    } catch (e) {
-      if (mounted) {
-        showErrorMessage(e, "downloadingFile");
-      }
-    } finally {
-      if (mounted) setState(() => _isDownloading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      icon: _isDownloading
-          ? const SizedBox(
-              width: 18, height: 18, child: ProgressRing(strokeWidth: 2))
-          : ButtonContent(WindowsIcons.download, widget.buttonLabel ?? "",
-              size: 18),
-      onPressed: _isDownloading ? null : _download,
-      style: const ButtonStyle(
-        foregroundColor: WidgetStatePropertyAll(Colors.white),
-      ),
-    );
-  }
-}
-
-// ─── File preview widget ─────────────────────────────────────────────────
-
-/// A unified preview widget that auto-detects whether [name] is an image
-/// (by extension) and shows either a loaded thumbnail or a file placeholder.
-///
-/// When [imageProvider] is supplied (e.g. from an already-open viewer), it is
-/// used directly. Otherwise [rowId] + [name] are used to load a thumbnail.
-class FileDeletePreview extends StatelessWidget {
-  const FileDeletePreview({
-    super.key,
-    this.rowId,
-    required this.name,
-    this.size = 80,
-    this.imageProvider,
-  });
-  final String? rowId;
-  final String name;
-  final double size;
-  final ImageProvider? imageProvider;
-
-  @override
-  Widget build(BuildContext context) {
-    // Pre-loaded image takes priority
-    if (imageProvider != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: Image(
-          image: imageProvider!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-        ),
-      );
-    }
-    final fileThumb = _FileThumbnail(
-      name: name,
-      iconSize: size * 0.5,
-      showLabel: false,
-    );
-    if (!isAnImageName(name)) {
-      return fileThumb;
-    }
-    return FutureBuilder<ImageProvider?>(
-      future: getImage(rowId!, name, true),
-      builder: (_, snap) {
-        if (!snap.hasData) {
-          return fileThumb;
-        }
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Image(
-            image: snap.data!,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-          ),
-        );
-      },
-    );
-  }
-}
-
-// ─── Upload configuration ────────────────────────────────────────────────
-
 class GalleryUploadConfig {
   const GalleryUploadConfig({
-    this.store,
+    required this.store,
     required this.modelPersistence,
     required this.canUpload,
     this.acceptedSources = const {
@@ -191,7 +55,10 @@ class GalleryUploadConfig {
       UploadSource.files
     },
   });
-  final Store? store;
+  /// The record store the files are uploaded to. Required: an upload without a
+  /// store would have to guess one, and guessing meant every feature's files
+  /// went to the appointments collection.
+  final Store store;
   final Future<void> Function(List<String> newNames) modelPersistence;
   final bool canUpload;
   final Set<UploadSource> acceptedSources;
@@ -219,6 +86,8 @@ class GridGallery extends StatefulWidget {
     this.onTapClip,
     this.onProgress,
     this.uploadConfig,
+    this.owner,
+    this.onOpenRecord,
   });
   final String rowId;
   final List<String> imgs;
@@ -234,7 +103,7 @@ class GridGallery extends StatefulWidget {
   /// are removed (see `Store.deleteDcmImg`).
   final Future<void> Function(String dcmName)? onPressDeleteDcm;
 
-  /// Tap handler for DCM entries. Defaults to [openDicomViewerPanel] when
+  /// Tap handler for DCM entries. Defaults to [openDicomViewerWindow] when
   /// `null`; supplied explicitly so callers (e.g. read-only previews) can
   /// override or suppress it.
   final void Function(BuildContext context, String rowId, String dcmName)?
@@ -250,6 +119,14 @@ class GridGallery extends StatefulWidget {
   final VoidCallback? onTapClip;
   final void Function(bool)? onProgress;
   final GalleryUploadConfig? uploadConfig;
+
+  /// Whose gallery this is — the patient and day of the visit, say. A photo's
+  /// window says it, so several open at once can be told apart.
+  final String Function()? owner;
+
+  /// The record these photos belong to, for a photo's own window: it leads back
+  /// to the panel that holds them. Null where there is no such panel.
+  final Future<void> Function()? onOpenRecord;
 
   @override
   State<GridGallery> createState() => _GridGalleryState();
@@ -383,10 +260,12 @@ class _GridGalleryState extends State<GridGallery>
 
   Future<void> _doDelete(String img) async {
     if (_isDeleting) return;
-    setState(() {
-      _isDeleting = true;
-      widget.onProgress?.call(true);
-    });
+    _isDeleting = true;
+    // The photo's own window outlives this gallery: deleting from it reaches
+    // here after the panel that holds the gallery may be gone — so the owner
+    // is only told about it while there is one to tell.
+    if (mounted) widget.onProgress?.call(true);
+    if (mounted) setState(() {});
     try {
       // DCM X-rays need a dedicated delete (removes both .dcm + .png preview).
       // Only entries explicitly in `dcmImgs` get this path — a `.dcm` file
@@ -398,12 +277,9 @@ class _GridGalleryState extends State<GridGallery>
         await widget.onPressDelete(img);
       }
     } finally {
-      if (mounted) {
-        setState(() {
-          _isDeleting = false;
-          widget.onProgress?.call(false);
-        });
-      }
+      _isDeleting = false;
+      if (mounted) widget.onProgress?.call(false);
+      if (mounted) setState(() {});
     }
   }
 
@@ -532,13 +408,10 @@ class _GridGalleryState extends State<GridGallery>
     // itself — no dependency on the PNG preview being ready yet). Only entries
     // explicitly in `dcmImgs` route here — a `.dcm` file attached to a
     // note/expense falls through to the regular download path below.
-    if (_dcmNames.contains(img)) {
-      final onTapDcm = widget.onTapDcm;
-      if (onTapDcm != null) {
-        onTapDcm(context, widget.rowId, img);
-      } else {
-        await openDicomViewerPanel(context, widget.rowId, img);
-      }
+    // A DCM opens in the viewer its owner passes in. Without one — a gallery
+    // that is not a record's X-rays — it is a file like any other and downloads.
+    if (_dcmNames.contains(img) && widget.onTapDcm != null) {
+      widget.onTapDcm!(context, widget.rowId, img);
       return;
     }
     if (!isAnImageName(img)) {
@@ -552,70 +425,79 @@ class _GridGalleryState extends State<GridGallery>
       }
       return;
     }
-    await _openSingleImage(img);
+    _openSingleImage(img);
   }
 
-  Future<void> _openSingleImage(String img) async {
-    final provider = await _loadImages([img]);
-    if (provider == null || !mounted) return;
-    showImageViewer(
-      context,
-      provider.first,
-      canDelete: _deleteEnabled,
-      backgroundColor: Colors.black.withValues(alpha: 0.9),
-      doubleTapZoomable: true,
-      immersive: false,
-      swipeDismissible: true,
-      drawings: widget.drawings,
-      imageIds: [img],
-      onSaveDrawing: widget.onSaveDrawing,
-      onPressDelete: (_) => _doDelete(img),
+  void _openSingleImage(String img) {
+    _showImageWindow(
+      id: 'image:$img',
+      title: 'photo',
+      subtitle: () => _joinOwner(img),
+      images: [img],
+      onDelete: _deleteEnabled ? (_) => _doDelete(img) : null,
     );
   }
 
-  Future<void> _openSlideShow([int initialIndex = 0]) async {
-    final providers = await _loadImages(viewableImgs);
-    if (providers == null || !mounted) return;
-    final multi = MultiImageProvider(providers, initialIndex: initialIndex);
-    unawaited(showImageViewerPager(
-      context,
-      multi,
-      backgroundColor: Colors.black.withValues(alpha: 0.9),
-      doubleTapZoomable: true,
-      immersive: false,
-      swipeDismissible: true,
-      infinitelyScrollable: true,
-      canDelete: _deleteEnabled,
-      drawings: widget.drawings,
-      imageIds: viewableImgs,
-      onSaveDrawing: widget.onSaveDrawing,
-      onPressDelete: (int index) => _doDelete(viewableImgs[index]),
-    ));
+  void _openSlideShow([int initialIndex = 0]) {
+    _showImageWindow(
+      id: 'images:${viewableImgs.join(",")}',
+      title: 'photoSlideshow',
+      subtitle: () => _joinOwner(''),
+      images: viewableImgs,
+      initialIndex: initialIndex,
+      onDelete:
+          _deleteEnabled ? (index) => _doDelete(viewableImgs[index]) : null,
+    );
   }
 
-  /// Loads [imgs] with a blocking dialog, caches providers, and returns them.
-  /// Returns `null` if loading fails or the widget is no longer mounted.
-  Future<List<ImageProvider<Object>>?> _loadImages(List<String> imgs) async {
-    final closeDialog =
-        showLoadingBlockingDialog(context, txt("gettingImages"));
-    try {
-      final providers = (await Future.wait(
-        imgs.map((img) => getImage(widget.rowId, img, false)),
-      ))
-          .map((p) =>
-              p ??
-              const AssetImage("assets/images/missing.png")
-                  as ImageProvider<Object>)
-          .toList();
-      _imageProviders.addAll(providers);
-      return providers;
-    } catch (e, s) {
-      showErrorMessage(e, "openingImagesFromGrid");
-      logger("Error loading images: $e", s);
-      return null;
-    } finally {
-      closeDialog();
-    }
+  /// Whose photos these are, and which file — enough for a window to say what it
+  /// is when several are open.
+  String _joinOwner(String fileName) => [
+        if ((widget.owner?.call() ?? '').isNotEmpty) widget.owner!(),
+        if (fileName.isNotEmpty) fileName,
+      ].join(' · ');
+
+  /// Shows photos in a window of their own — beside the app, not over it.
+  ///
+  /// A photo is something you glance at while you keep working, so it takes a
+  /// window the way a scan or a chart does: drawn, downloaded, deleted and
+  /// closed from the window's own tools, and closed by its frame like any other.
+  ///
+  /// The photos load *inside* that window: opening one never puts a blocking
+  /// dialog over the app behind it.
+  void _showImageWindow({
+    required String id,
+    required String title,
+    required List<String> images,
+    String Function()? subtitle,
+    int initialIndex = 0,
+    ValueChanged<int>? onDelete,
+  }) {
+    late final FloatingWindow floating;
+    floating = WindowsManager.showStandalone(
+      PanelWindow(
+        id: id,
+        title: title,
+        icon: FluentIcons.photo,
+        subtitle: subtitle,
+        padding: 0,
+        scrollable: false,
+        // A photo is its own viewer, not a column of a panel.
+        matchesPanelWidth: false,
+        preferredWidth: 760,
+        body: PhotoViewerWindow(
+          rowId: widget.rowId,
+          images: images,
+          initialIndex: initialIndex,
+          drawings: widget.drawings,
+          onSaveDrawing: widget.onSaveDrawing,
+          onDelete: onDelete,
+          onClosed: () => WindowsManager.close(floating),
+        ),
+      ),
+      scope: 'row:${widget.rowId}',
+      onOpenRecord: widget.onOpenRecord,
+    );
   }
 
   // ── Build ──
@@ -709,9 +591,13 @@ class _GridGalleryState extends State<GridGallery>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(WindowsIcons.warning),
-            Txt(
-              txt("noFiles"),
-              style: FluentTheme.of(context).typography.caption,
+            // The gallery is as wide as its `rowWidth`, or narrower where it is
+            // given less: the note wraps rather than pushing past the edge.
+            Flexible(
+              child: Txt(
+                txt("noFiles"),
+                style: FluentTheme.of(context).typography.caption,
+              ),
             ),
           ],
         ),
@@ -757,651 +643,3 @@ class _GridGalleryState extends State<GridGallery>
 
 // ─── Entrance animation wrapper ───────────────────────────────────────────
 
-class _EntranceWrapper extends StatelessWidget {
-  const _EntranceWrapper({required this.child, this.animation});
-  final Widget child;
-  final Animation<double>? animation;
-
-  @override
-  Widget build(BuildContext context) {
-    if (animation == null) return child;
-    return AnimatedBuilder(
-      animation: animation!,
-      builder: (_, child) => Opacity(
-        opacity: animation!.value.clamp(0.0, 1.0),
-        child: Transform.translate(
-          offset: Offset(0, 14 * (1 - animation!.value)),
-          child: child,
-        ),
-      ),
-      child: child,
-    );
-  }
-}
-
-// ─── Individual image tile ────────────────────────────────────────────────
-
-class _ImageTile extends StatefulWidget {
-  const _ImageTile({
-    required this.img,
-    required this.rowId,
-    this.isDcm = false,
-    required this.canDelete,
-    required this.showClipOverlay,
-    required this.remainingCount,
-    required this.onTap,
-    required this.onDelete,
-    required this.imageProviders,
-    required this.downloadingFiles,
-    required this.tileSize,
-    this.useOriginal = false,
-    this.onTapClip,
-  });
-  final String img;
-  final String rowId;
-
-  /// When `true`, [img] is a `.dcm`/`.dicom` X-ray. The tile renders the PNG
-  /// preview (via `getImage`, which auto-redirects `.dcm` → `.dcm.png`), shows
-  /// a "DCM" badge, displays a spinner placeholder while the PNG is still
-  /// generating, and rebuilds when `dicomPngReady` bumps.
-  final bool isDcm;
-  final bool canDelete;
-  final bool showClipOverlay;
-  final int remainingCount;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-  final Set<ImageProvider> imageProviders;
-  final Set<String> downloadingFiles;
-  final double tileSize;
-  final bool useOriginal;
-  final VoidCallback? onTapClip;
-
-  @override
-  State<_ImageTile> createState() => _ImageTileState();
-}
-
-class _ImageTileState extends State<_ImageTile> {
-  bool _isHovered = false;
-  bool _hasLoaded = false;
-  late Future<ImageProvider<Object>?> _imageFuture;
-  StreamSubscription<int>? _pngReadySub;
-
-  bool get _showHoverEffects => _isHovered;
-  bool get _showLargeHoverEffects => _showHoverEffects && widget.tileSize >= 56;
-
-  @override
-  void initState() {
-    super.initState();
-    _imageFuture = getImage(widget.rowId, widget.img, !widget.useOriginal);
-    // DCM previews are generated lazily; rebuild the cell each time a new
-    // PNG lands so a placeholder flips to the real preview.
-    if (widget.isDcm) {
-      _pngReadySub = dicomPngReady.stream.listen((_) {
-        if (!mounted) return;
-        setState(() {
-          _hasLoaded = false;
-          _imageFuture =
-              getImage(widget.rowId, widget.img, !widget.useOriginal);
-        });
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(_ImageTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.img != widget.img ||
-        oldWidget.useOriginal != widget.useOriginal) {
-      setState(() {
-        _hasLoaded = false;
-        _imageFuture = getImage(widget.rowId, widget.img, !widget.useOriginal);
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    unawaited(_pngReadySub?.cancel());
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return AdaptiveHoverWidget(
-      onEnter: () => setState(() => _isHovered = true),
-      onExit: () => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTap: widget.onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(6),
-            boxShadow: [
-              BoxShadow(
-                color: (isDark ? Colors.white : Colors.black)
-                    .withValues(alpha: _showHoverEffects ? 0.3 : 0.10),
-                blurRadius: _isHovered ? 12 : 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
-            border: Border.all(
-              color: theme.resources.cardStrokeColorDefault,
-              width: 1,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (!_hasLoaded && !widget.isDcm) const _ShimmerPlaceholder(),
-                _buildImageContent(theme),
-                if (widget.isDcm) const _DcmBadge(),
-                if (widget.downloadingFiles.contains(widget.img))
-                  Positioned.fill(
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                            gradient: RadialGradient(colors: [
-                          Colors.black.withValues(alpha: 0.5),
-                          Colors.transparent
-                        ])),
-                        child: const SizedBox(
-                          width: 25,
-                          height: 25,
-                          child: ProgressRing(backgroundColor: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                if (_showLargeHoverEffects) _buildHoverGradient(),
-                if (widget.showClipOverlay)
-                  GestureDetector(
-                    onTap: widget.onTapClip,
-                    child: _ClipCountOverlay(count: widget.remainingCount),
-                  ),
-                // Download / delete buttons on hover
-                if (_showLargeHoverEffects)
-                  Positioned(
-                    right: 8,
-                    bottom: 0,
-                    child: Row(
-                      spacing: 10,
-                      children: [
-                        if (widget.canDelete)
-                          _GalleryDeleteButton(
-                            onConfirm: widget.onDelete,
-                            rowId: widget.rowId,
-                            name: widget.img,
-                          ),
-                        GalleryDownloadButton(
-                          rowId: widget.rowId,
-                          name: widget.img,
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHoverGradient() {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: 0,
-      height: widget.tileSize * 0.45,
-      child: IgnorePointer(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.black.withValues(alpha: 0.7),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageContent(FluentThemeData theme) {
-    return FutureBuilder<ImageProvider<Object>?>(
-      future: _imageFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          if (!_hasLoaded) {
-            _hasLoaded = true;
-            if (snapshot.data != null) {
-              widget.imageProviders.add(snapshot.data!);
-            }
-          }
-          if (snapshot.hasData) {
-            return Image(
-              image: snapshot.data!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildFilePlaceholder(theme),
-            );
-          }
-          // A completed lookup without an image is not an active load.
-          // DCM tiles remain tappable and retry when dicomPngReady emits.
-          return _buildFilePlaceholder(theme);
-        }
-        // Loading: DCM shows the spinner; photos leave the shimmer visible.
-        return widget.isDcm ? _buildDcmPlaceholder() : const SizedBox.expand();
-      },
-    );
-  }
-
-  /// Loading placeholder while the DCM preview lookup is pending.
-  Widget _buildDcmPlaceholder() {
-    return Tooltip(
-      message: txt("generatingPreview"),
-      child: Container(
-        color:
-            FluentTheme.of(context).resources.cardBackgroundFillColorSecondary,
-        child: const Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: ProgressRing(strokeWidth: 2),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilePlaceholder(FluentThemeData theme) {
-    return _FileThumbnail(
-      name: widget.img,
-      iconSize: widget.tileSize * 0.5,
-      showLabel: widget.tileSize >= 45,
-      labelWidth: widget.tileSize,
-    );
-  }
-}
-
-// ─── DCM badge overlay ────────────────────────────────────────────────────
-
-/// Small "DCM" badge rendered in the top-left corner of a gallery cell to
-/// distinguish X-ray previews from regular photos.
-class _DcmBadge extends StatelessWidget {
-  const _DcmBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      top: 4,
-      left: 4,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0078D4),
-          borderRadius: BorderRadius.circular(3),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 2,
-              offset: const Offset(0, 1),
-            ),
-          ],
-        ),
-        child: Text(
-          txt("dcm"),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── File thumbnail ───────────────────────────────────────────────────────
-
-class _FileThumbnail extends StatelessWidget {
-  const _FileThumbnail({
-    required this.name,
-    required this.iconSize,
-    this.showLabel = true,
-    this.labelWidth,
-  });
-  final String name;
-  final double iconSize;
-  final bool showLabel;
-  final double? labelWidth;
-
-  String get _ext => name.contains('.') ? name.split('.').last : '';
-  String get _baseName => displayNameForFile(name).replaceAll('.$_ext', '');
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    return Container(
-      color: theme.resources.cardBackgroundFillColorSecondary,
-      width: labelWidth ?? iconSize + 10,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Icon(WindowsIcons.document,
-                      size: iconSize, color: theme.inactiveColor),
-                  if (_ext.isNotEmpty && _ext.length <= 5)
-                    Positioned(
-                      right: iconSize * 0.5 - 15,
-                      bottom: 0,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 3, vertical: 1),
-                        decoration: BoxDecoration(
-                          color: theme.inactiveColor,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _ext.toUpperCase(),
-                          style: theme.typography.caption?.copyWith(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: theme.inactiveBackgroundColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              if (showLabel) ...[
-                const SizedBox(height: 2),
-                SizedBox(
-                  width: labelWidth,
-                  child: Text(
-                    _baseName,
-                    style: theme.typography.bodyStrong?.copyWith(
-                      color: theme.inactiveColor,
-                      fontSize: ((iconSize.clamp(55, 120) - 55) / 13) + 11,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Shimmer loading placeholder ──────────────────────────────────────────
-
-class _ShimmerPlaceholder extends StatefulWidget {
-  const _ShimmerPlaceholder();
-
-  @override
-  State<_ShimmerPlaceholder> createState() => _ShimmerPlaceholderState();
-}
-
-class _ShimmerPlaceholderState extends State<_ShimmerPlaceholder>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (_, __) => IgnorePointer(
-        child: CustomPaint(
-          painter: _ShimmerPainter(
-            progress: _controller.value,
-            isDark: isDark,
-          ),
-          size: Size.infinite,
-        ),
-      ),
-    );
-  }
-}
-
-class _ShimmerPainter extends CustomPainter {
-  _ShimmerPainter({required this.progress, required this.isDark});
-  final double progress;
-  final bool isDark;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final baseColor =
-        isDark ? const Color(0xFF2E2E2E) : const Color(0xFFE6E6E6);
-    final highlightColor =
-        isDark ? const Color(0xFF454545) : const Color(0xFFF2F2F2);
-
-    // Base fill
-    canvas.drawRect(
-      Rect.fromLTWH(0, 0, size.width, size.height),
-      Paint()..color = baseColor,
-    );
-
-    // Moving highlight band
-    final bandWidth = size.width * 0.6;
-    final bandLeft = (progress * (size.width + bandWidth)) - bandWidth;
-
-    canvas.drawRect(
-      Rect.fromLTWH(
-        bandLeft.clamp(0.0, size.width),
-        0,
-        math.min(bandWidth, size.width),
-        size.height,
-      ),
-      Paint()
-        ..shader = ui.Gradient.linear(
-          Offset(bandLeft, 0),
-          Offset(bandLeft + bandWidth, 0),
-          [baseColor, highlightColor, baseColor],
-          [0.0, 0.5, 1.0],
-        ),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _ShimmerPainter old) => old.progress != progress;
-}
-
-// ─── "+N" frosted overlay ─────────────────────────────────────────────────
-
-class _ClipCountOverlay extends StatelessWidget {
-  const _ClipCountOverlay({required this.count});
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: FluentTheme.of(context).resources.cardStrokeColorDefault,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(6),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            BackdropFilter(
-              filter: ui.ImageFilter.blur(sigmaX: 3, sigmaY: 3),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: (isDark ? Colors.black : Colors.white)
-                      .withValues(alpha: 0.5),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.25),
-                    width: 0.5,
-                  ),
-                ),
-              ),
-            ),
-            Center(
-              child: Text(
-                "+$count",
-                style: TextStyle(
-                  color: isDark ? Colors.white : const Color(0xFF1A1A1A),
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.5,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Featured masonry ─────────────────────────────────────────────────────
-
-class _FeaturedMasonry extends StatefulWidget {
-  const _FeaturedMasonry({
-    required this.rowId,
-    required this.imgs,
-    required this.width,
-    required this.canDelete,
-    required this.clipCount,
-    required this.imageProviders,
-    required this.downloadingFiles,
-    required this.onTapImage,
-    required this.onDeleteImage,
-    required this.dcmNames,
-    this.onTapClip,
-  });
-  final String rowId;
-  final List<String> imgs;
-  final double width;
-  final bool canDelete;
-  final int clipCount;
-  final Set<ImageProvider> imageProviders;
-  final Set<String> downloadingFiles;
-  final void Function(int index) onTapImage;
-  final void Function(int index) onDeleteImage;
-  final VoidCallback? onTapClip;
-
-  /// Names in [imgs] that are DCM X-rays (sourced from `GridGallery.dcmImgs`).
-  /// Only these get the DCM badge / spinner placeholder / viewer routing.
-  final Set<String> dcmNames;
-
-  @override
-  State<_FeaturedMasonry> createState() => _FeaturedMasonryState();
-}
-
-class _FeaturedMasonryState extends State<_FeaturedMasonry> {
-  int get _totalCount => math.min(
-        widget.clipCount > 0 ? widget.clipCount : widget.imgs.length,
-        widget.imgs.length,
-      );
-
-  @override
-  Widget build(BuildContext context) {
-    final total = _totalCount;
-    if (total == 0) return const SizedBox.shrink();
-
-    final featuredH = widget.width * 0.62;
-    final gridTile =
-        (widget.width - (_kGridColumns - 1) * _kGallerySpacing) / _kGridColumns;
-
-    return SizedBox(
-      width: widget.width,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildFeaturedTile(featuredH),
-          if (total > 1)
-            Padding(
-              padding: const EdgeInsets.only(top: _kGallerySpacing),
-              child: GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: _kGridColumns,
-                  crossAxisSpacing: _kGallerySpacing,
-                  mainAxisSpacing: _kGallerySpacing,
-                  childAspectRatio: 1,
-                ),
-                itemCount: total - 1,
-                itemBuilder: (_, i) => _buildTile(i + 1, gridTile),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturedTile(double featuredH) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(6),
-      child: SizedBox(
-        width: widget.width,
-        height: featuredH,
-        child: _buildTile(0, featuredH, original: true),
-      ),
-    );
-  }
-
-  Widget _buildTile(int index, double tileSize, {bool original = false}) {
-    final isLast = widget.clipCount > 0 &&
-        index == widget.clipCount - 1 &&
-        widget.imgs.length > widget.clipCount;
-
-    return _ImageTile(
-      img: widget.imgs[index],
-      rowId: widget.rowId,
-      isDcm: widget.dcmNames.contains(widget.imgs[index]),
-      canDelete: widget.canDelete && widget.clipCount == 0,
-      showClipOverlay: isLast,
-      remainingCount: isLast ? widget.imgs.length - widget.clipCount : 0,
-      useOriginal: original,
-      onTap: () => widget.onTapImage(index),
-      onDelete: () => widget.onDeleteImage(index),
-      imageProviders: widget.imageProviders,
-      downloadingFiles: widget.downloadingFiles,
-      tileSize: tileSize,
-      onTapClip: widget.onTapClip,
-    );
-  }
-}

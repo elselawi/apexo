@@ -163,7 +163,10 @@ class TreatmentLabels extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 40,
-      height: showPalmer ? null : 25,
+      // A chip is its 18px icon, 3px of padding above and below, and a 1px
+      // border: 26. At 25 the chip's own column was a pixel taller than the
+      // row it was given, and the row it sat in reported an overflow.
+      height: showPalmer ? null : 26,
       child: ListView(
         shrinkWrap: showPalmer,
         scrollDirection: showPalmer ? Axis.vertical : Axis.horizontal,
@@ -246,24 +249,26 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Row(children: [
-                Icon(widget.label.icon, size: 18),
-                if (widget.showPalmer) ...[
-                  const SizedBox(width: 5),
-                  Txt(txt(widget.label.string)),
-                  Expanded(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        DentalNotation(iso: widget.label.iso ?? "11"),
-                      ],
-                    ),
-                  )
-                ]
+                  Icon(widget.label.icon, size: 18),
+                  if (widget.showPalmer) ...[
+                    const SizedBox(width: 5),
+                    Txt(txt(widget.label.string)),
+                    Expanded(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          DentalNotation(iso: widget.label.iso ?? "11"),
+                        ],
+                      ),
+                    )
+                  ]
                 ]),
-                if (widget.showPalmer && widget.label.extraNote?.isNotEmpty == true)
+                if (widget.showPalmer &&
+                    widget.label.extraNote?.isNotEmpty == true)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text(widget.label.extraNote!, style: FluentTheme.of(context).typography.caption),
+                    child: Text(widget.label.extraNote!,
+                        style: FluentTheme.of(context).typography.caption),
                   ),
               ],
             )),

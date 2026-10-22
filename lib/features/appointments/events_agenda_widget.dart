@@ -1,4 +1,6 @@
 import 'package:apexo/common_widgets/contact_buttons.dart';
+import 'package:apexo/features/appointments/appointment_indicators.dart';
+import 'package:apexo/features/appointments/appointment_menu_items.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/item_title.dart';
@@ -15,7 +17,8 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show TimeOfDay;
 import 'appointments_store.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panel_open_builder.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
 
 // ─── Agenda (plain list) view ───────────────────────────────────────────
 
@@ -32,8 +35,8 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
   final List<Item> items;
   final bool showPayments;
 
-  /// Opens [item], optionally on a specific panel tab — see [AppointmentTab].
-  final void Function(Item item, int? tabIndex) onSelect;
+  /// Opens [item], optionally on a specific window — see [AppointmentWindow].
+  final void Function(Item item, AppointmentWindow? window) onSelect;
   final void Function(Item item) onSetTime;
 
   @override
@@ -89,41 +92,28 @@ class AppointmentCalendarTile<Item extends Appointment>
   final Item item;
   final void Function(Item item) onSetTime;
 
-  /// Opens [item], optionally on a specific panel tab — see [AppointmentTab].
-  final void Function(Item item, int? tabIndex) onSelect;
+  /// Opens [item], optionally on a specific window — see [AppointmentWindow].
+  final void Function(Item item, AppointmentWindow? window) onSelect;
   final bool showPayments;
 
   final BuildContext context;
 
   @override
   Widget build(BuildContext context) {
+    // What the visit carries rides under the title, on the line its note is on
+    // — the same line the timeline chip gives it. The title itself has only
+    // the room its patient's name needs; the badges never take from it.
+    final hasInfo =
+        AppointmentIndicators.hasAny(item, showDentalNotes: false) ||
+            item.subtitleLine1.isNotEmpty;
     return ContextMenuRegion(
       items: (context, controller) => [
-        // One item per tab of the appointment panel, then the row's actions.
-        for (final tab in appointmentTabs(item))
-          MenuFlyoutItem(
-            text: Txt(txt(tab.titleKey)),
-            leading: Icon(tab.icon),
-            onPressed: () => onSelect(item, appointmentTabIndex(item, tab)),
-          ),
-        const MenuFlyoutSeparator(),
-        // The checkbox lives in the tile, but a finger reaching for the row
-        // should be able to finish the appointment from here too.
-        MenuFlyoutItem(
-          text: Txt(txt(item.isDone ? "markAsPending" : "markAsDone")),
-          leading: Icon(
-              item.isDone ? FluentIcons.hour_glass : WindowsIcons.completed),
-          onPressed: () {
-            item.isDone = !item.isDone;
-            appointments.set(item);
-          },
+        // The visit's windows and its own actions, shared with the timeline.
+        ...appointmentMenuItems(
+          item: item,
+          onOpenWindow: (window) => onSelect(item, window),
+          controller: controller,
         ),
-        if ((item.patient?.phone ?? []).isNotEmpty ||
-            (item.patient?.email ?? '').isNotEmpty)
-          ...contactMenuItems(
-            phones: item.patient?.phone ?? const [],
-            email: item.patient?.email ?? '',
-          ),
       ],
       child: Container(
         decoration: BoxDecoration(
@@ -153,42 +143,34 @@ class AppointmentCalendarTile<Item extends Appointment>
                   SizedBox(width: 165, child: ItemTitle(item: item)),
                 ],
               ),
-              Column(
-                children: [
-                  if (item.hasLabwork) ...[
-                    const Icon(FluentIcons.manufacturing, size: 17),
-                    const SizedBox(height: 5),
-                  ],
-                  TreatmentLabels(
-                      labels: item.teeth.entries
-                          .toSet()
-                          .map((e) => TreatmentLabel(
-                              string: e.value,
-                              color: labelToColor(e.value),
-                              icon: labelToIcon(e.value),
-                              iso: e.key,
-                              extraNote: item.teethExtraNotes[e.key]))
-                          .toList()),
-                ],
-              )
+              TreatmentLabels(
+                  labels: item.teeth.entries
+                      .toSet()
+                      .map((e) => TreatmentLabel(
+                          string: e.value,
+                          color: labelToColor(e.value),
+                          icon: labelToIcon(e.value),
+                          iso: e.key,
+                          extraNote: item.teethExtraNotes[e.key]))
+                      .toList()),
             ],
           ),
-          subtitle: item.subtitleLine1.isNotEmpty
-              ? Txt(item.subtitleLine1, overflow: TextOverflow.ellipsis)
+          subtitle: hasInfo
+              ? AppointmentInfoLine(
+                  item: item,
+                  note: item.subtitleLine1,
+                  iconSize: 18,
+                  // The chips above already say which teeth were treated.
+                  showDentalNotes: false,
+                )
               : null,
           leading: Row(children: [
-            PanelsManager.active().where((p) => p.itemId == item.id).isNotEmpty
-                ? IconButton(
-                    icon: const Icon(FluentIcons.open_in_new_tab),
-                    onPressed: () {
-                      final index = PanelsManager.active()
-                          .indexWhere((p) => p.itemId == item.id);
-                      if (index == -1) return;
-                      PanelsManager.bringToFront(index);
-                    })
-                : Transform.scale(
-                    scale: 1.25,
-                    child: Checkbox(
+            PanelOpenBuilder(
+              itemId: item.id,
+              builder: (context, panelIndex) => panelIndex == null
+                  ? Transform.scale(
+                      scale: 1.25,
+                      child: Checkbox(
                         style: CheckboxThemeData(
                           icon: WindowsIcons.completed,
                           uncheckedIconColor: WidgetStatePropertyAll(
@@ -198,8 +180,11 @@ class AppointmentCalendarTile<Item extends Appointment>
                         onChanged: (checked) {
                           item.isDone = checked == true;
                           appointments.set(item as Appointment);
-                        }),
-                  ),
+                        },
+                      ),
+                    )
+                  : OpenInPanelButton(panelIndex: panelIndex),
+            ),
             const SizedBox(width: 8),
             const Divider(direction: Axis.vertical, size: 40),
           ]),
@@ -225,30 +210,32 @@ class AppointmentCalendarTile<Item extends Appointment>
                         ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: () async {
-                      final index = PanelsManager.active()
-                          .indexWhere((p) => p.itemId == item.id);
-                      if (index > -1) return PanelsManager.bringToFront(index);
-                      final TimeOfDay? res = await showAppTimePicker(context,
-                          initialTime: TimeOfDay(
-                              hour: item.date.hour, minute: item.date.minute));
-                      if (res != null) {
-                        item.date = DateTime(item.date.year, item.date.month,
-                            item.date.day, res.hour, res.minute);
-                        onSetTime(item);
-                      }
-                    },
-                    icon: Row(
-                      children: [
-                        PanelsManager.active()
-                                .where((p) => p.itemId == item.id)
-                                .isEmpty
-                            ? const Icon(FluentIcons.clock)
-                            : const Icon(FluentIcons.open_in_new_tab),
-                        const SizedBox(width: 5),
-                        Txt(DF.timeOnly(item.date)),
-                      ],
+                  PanelOpenBuilder(
+                    itemId: item.id,
+                    builder: (context, panelIndex) => IconButton(
+                      onPressed: () async {
+                        if (panelIndex != null) {
+                          return PanelsManager.bringToFront(panelIndex);
+                        }
+                        final TimeOfDay? res = await showAppTimePicker(context,
+                            initialTime: TimeOfDay(
+                                hour: item.date.hour,
+                                minute: item.date.minute));
+                        if (res != null) {
+                          item.date = DateTime(item.date.year, item.date.month,
+                              item.date.day, res.hour, res.minute);
+                          onSetTime(item);
+                        }
+                      },
+                      icon: Row(
+                        children: [
+                          panelIndex == null
+                              ? const Icon(FluentIcons.clock)
+                              : const Icon(FluentIcons.open_in_new_tab),
+                          const SizedBox(width: 5),
+                          Txt(DF.timeOnly(item.date)),
+                        ],
+                      ),
                     ),
                   ),
                   if (item.subtitleLine2.isNotEmpty)

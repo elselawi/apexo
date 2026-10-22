@@ -9,8 +9,14 @@ class AppointmentsListFooter extends StatelessWidget {
   const AppointmentsListFooter({
     super.key,
     this.forPatientID,
+    this.onOpen,
   });
   final String? forPatientID;
+
+  /// How the list opens the visit it starts here. A list that is a window of its
+  /// own passes its own opener, so a new visit makes way for the panel that holds
+  /// it instead of leaving the list behind. Defaults to opening the visit.
+  final void Function(Appointment appointment)? onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -26,13 +32,19 @@ class AppointmentsListFooter extends StatelessWidget {
             ],
           ),
           onPressed: () {
-            openAppointment(Appointment.fromJson({
+            final draft = Appointment.fromJson({
               if (forPatientID != null) "patientID": forPatientID,
               if (login.perm(Perm.patients).exact(1) ||
                   login.perm(Perm.appointments).exact(1) ||
                   login.currentLoginIsOperator)
                 "operatorsIDs": [login.currentAccountID]
-            }));
+            });
+            final open = onOpen;
+            if (open != null) {
+              open(draft);
+              return;
+            }
+            openAppointment(draft);
           }),
     );
   }

@@ -136,7 +136,8 @@ class Appointments extends Store<Appointment> {
   }
 
   late final _session = StoreSessionBinding<Appointment>(
-    store: this, name: _storeName,
+    store: this,
+    name: _storeName,
     loadingMessage: 'Synchronizing appointments',
     seedDemo: () => demoAppointments(1000),
   );
@@ -145,7 +146,6 @@ class Appointments extends Store<Appointment> {
   void init() {
     super.init();
     _session.install();
-
   }
 
   final filterByOperatorID = ObservableState("");

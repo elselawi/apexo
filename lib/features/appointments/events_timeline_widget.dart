@@ -1,9 +1,14 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/duration_pill.dart';
+import 'package:apexo/features/appointments/appointment_indicators.dart';
 import 'package:apexo/common_widgets/money_display.dart';
+import 'package:apexo/ui/workspace/panel_open_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/appointments/appointment_menu_items.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -13,7 +18,6 @@ import 'package:pocketbase/pocketbase.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import 'appointments_store.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calendar Timeline View (Google‑Calendar‑style time grid)
@@ -33,7 +37,7 @@ class CalendarTimelineView extends StatefulWidget {
   final List<Appointment> items;
   final bool showPayments;
   final DateTime selectedDate;
-  final void Function(Appointment item) onSelect;
+  final void Function(Appointment item, AppointmentWindow? window) onSelect;
   final void Function(Appointment item) onSetTime;
   final void Function(DateTime date) onAddNew;
 
@@ -596,7 +600,11 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
           showPayments: widget.showPayments,
           onTap: () {
             setState(() => _frontAppId = app.id);
-            widget.onSelect(app);
+            widget.onSelect(app, null);
+          },
+          onSelect: (window) {
+            setState(() => _frontAppId = app.id);
+            widget.onSelect(app, window);
           },
           onLongPressStart: (d) => _onDragStart(app, d),
           onLongPressMove: (d) => _onDragUpdate(d),
@@ -746,6 +754,7 @@ class TimelineChip extends StatefulWidget {
     required this.color,
     required this.showPayments,
     required this.onTap,
+    required this.onSelect,
     required this.onLongPressStart,
     required this.onLongPressMove,
     required this.onLongPressEnd,
@@ -754,6 +763,10 @@ class TimelineChip extends StatefulWidget {
   final Color color;
   final bool showPayments;
   final VoidCallback onTap;
+
+  /// Opens one of the visit's windows — what the context menu offers. The chip
+  /// itself consumes the long press for dragging, so the menu is on right click.
+  final void Function(AppointmentWindow window) onSelect;
   final void Function(LongPressStartDetails) onLongPressStart;
   final void Function(LongPressMoveUpdateDetails) onLongPressMove;
   final VoidCallback onLongPressEnd;
@@ -763,6 +776,11 @@ class TimelineChip extends StatefulWidget {
 }
 
 class _TimelineChipState extends State<TimelineChip> {
+  /// The glyph size of the badges that float on the card, and how far the pile
+  /// hangs into its top edge.
+  static const double _pileIconSize = 18;
+  static const double _pileInside = 14;
+
   final _operatorsFlyout = FlyoutController();
 
   @override
@@ -771,147 +789,277 @@ class _TimelineChipState extends State<TimelineChip> {
     super.dispose();
   }
 
-  bool get isCurrentlyOpenInAPanel {
-    return PanelsManager.active()
-        .where((p) => p.itemId == widget.item.id)
-        .isNotEmpty;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final double titleWidth = widget.showPayments ? 100 : 130;
+    // The chip is wrapped so a right click opens the same menu the agenda row
+    // does. Its long press is the drag: this one never claims that gesture.
+    return ContextMenuRegion(
+      longPress: false,
+      items: (context, controller) => appointmentMenuItems(
+        item: widget.item,
+        onOpenWindow: widget.onSelect,
+        controller: controller,
+      ),
+      child: PanelOpenBuilder(
+        itemId: widget.item.id,
+        builder: (context, panelIndex) => _buildChip(context, panelIndex),
+      ),
+    );
+  }
+
+  Widget _buildChip(BuildContext context, int? panelIndex) {
+    final isCurrentlyOpenInAPanel = panelIndex != null;
     final String note = widget.item.postOpNotes.isEmpty
         ? widget.item.preOpNotes
         : widget.item.postOpNotes;
+    // What the visit carries is piled **on** the card, over its top corner,
+    // rather than taking a line inside it: a fifteen-minute card is shorter
+    // than two lines of text, and the pile still has to be readable there.
+    final carries = AppointmentIndicators.hasAny(widget.item);
+
     return GestureDetector(
       onTap: widget.onTap,
       onLongPressStart: widget.onLongPressStart,
       onLongPressMoveUpdate: widget.onLongPressMove,
       onLongPressEnd: (_) => widget.onLongPressEnd(),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(5),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                widget.color.withValues(alpha: 0.10),
-                widget.color.withValues(alpha: 0.04),
-              ],
-            ),
-            border: BorderDirectional(
-              start: BorderSide(color: widget.color, width: 4),
-              bottom: BorderSide(
-                  color: widget.color.withValues(alpha: 0.15), width: 1),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withValues(alpha: 0.08),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(5),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    widget.color.withValues(alpha: 0.10),
+                    widget.color.withValues(alpha: 0.04),
+                  ],
+                ),
+                border: BorderDirectional(
+                  start: BorderSide(color: widget.color, width: 4),
+                  bottom: BorderSide(
+                      color: widget.color.withValues(alpha: 0.15), width: 1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: widget.color.withValues(alpha: 0.08),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 2,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 2,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 5,
-            children: [
-              isCurrentlyOpenInAPanel
-                  ? _buildBringToFrontButton()
-                  : _buildDoneCheckBox(context),
-              const Divider(direction: Axis.vertical),
-              Flexible(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.max,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          SizedBox(
-                            width: titleWidth,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.item.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: FluentTheme.of(context)
-                                      .typography
-                                      .bodyStrong
-                                      ?.copyWith(fontSize: 15),
-                                ),
-                                if (note.isNotEmpty)
-                                  Tooltip(
-                                    message: note,
-                                    child: Text(
-                                      note,
-                                      style: TextStyle(
-                                          fontSize: 12,
-                                          color: FluentTheme.of(context)
-                                              .inactiveColor),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  )
-                              ],
-                            ),
-                          ),
-                          Column(
-                            spacing: 2,
-                            children: [
-                              DurationPill(
-                                disabled: isCurrentlyOpenInAPanel,
-                                item: widget.item,
-                                color: widget.color,
-                                onSet: (duration) => appointments
-                                    .set(widget.item..duration = duration),
-                              ),
-                              Row(
-                                spacing: 2,
+              padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 5,
+                children: [
+                  isCurrentlyOpenInAPanel
+                      ? OpenInPanelButton(panelIndex: panelIndex)
+                      : _buildDoneCheckBox(context),
+                  const Divider(direction: Axis.vertical),
+                  Flexible(
+                    child: LayoutBuilder(
+                        builder: (context, room) => Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (widget.showPayments &&
-                                      widget.item.paid > 0)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 0),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            Colors.green.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(5),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              widget.item.title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: FluentTheme.of(context)
+                                                  .typography
+                                                  .bodyStrong
+                                                  ?.copyWith(fontSize: 15),
+                                            ),
+                                            // The chip and the note share the line under
+                                            // the title, as they do in the agenda row —
+                                            // when the slot is tall enough to hold them.
+                                            // A fifteen-minute card at a large text size
+                                            // is not, and the title is the line that
+                                            // stays rather than a line that overflows.
+                                            if (_fitsInfoLine(
+                                                context, room.maxHeight, note))
+                                              AppointmentInfoLine(
+                                                item: widget.item,
+                                                note: note,
+                                                // The pile rides on the card's
+                                                // corner; this line keeps the note.
+                                                showIndicators: false,
+                                                noteStyle: TextStyle(
+                                                  fontSize: 12,
+                                                  color: FluentTheme.of(context)
+                                                      .inactiveColor,
+                                                ),
+                                              ),
+                                          ],
+                                        ),
                                       ),
-                                      child: MoneyDisplay(
-                                          "💵 ${widget.item.paid.toStringAsFixed(0)} ${globalSettings.currency}",
-                                          style: TextStyle(
-                                              fontSize: 13,
-                                              color: FluentTheme.of(context)
-                                                  .inactiveColor)),
-                                    )
-                                  else
-                                    _buildOperatorsPill()
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ]),
+                                      const SizedBox(width: 4),
+                                      Padding(
+                                        // Room for the pile that hangs over the
+                                        // card's corner, so it never covers the
+                                        // duration pill.
+                                        padding: EdgeInsetsDirectional.only(
+                                            top: carries ? _pileInside : 0),
+                                        child: Column(
+                                          spacing: 2,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.end,
+                                          children: [
+                                            DurationPill(
+                                              disabled: isCurrentlyOpenInAPanel,
+                                              item: widget.item,
+                                              color: widget.color,
+                                              onSet: (duration) =>
+                                                  appointments.set(widget.item
+                                                    ..duration = duration),
+                                            ),
+                                            if (_fitsSecondRow(
+                                                context, room.maxHeight))
+                                              Row(
+                                                spacing: 2,
+                                                children: [
+                                                  if (widget.showPayments &&
+                                                      widget.item.paid > 0)
+                                                    // A long amount must not take the title's
+                                                    // room: past ~90px it scales down instead.
+                                                    ConstrainedBox(
+                                                      constraints:
+                                                          const BoxConstraints(
+                                                              maxWidth: 90),
+                                                      child: FittedBox(
+                                                        fit: BoxFit.scaleDown,
+                                                        alignment:
+                                                            AlignmentDirectional
+                                                                .centerEnd,
+                                                        child: Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal:
+                                                                      0),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: Colors.green
+                                                                .withValues(
+                                                                    alpha: 0.1),
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        5),
+                                                          ),
+                                                          child: MoneyDisplay(
+                                                              "💵 ${widget.item.paid.toStringAsFixed(0)} ${globalSettings.currency}",
+                                                              style: TextStyle(
+                                                                  fontSize: 13,
+                                                                  color: FluentTheme.of(
+                                                                          context)
+                                                                      .inactiveColor)),
+                                                        ),
+                                                      ),
+                                                    )
+                                                  else
+                                                    _buildOperatorsPill(
+                                                        isCurrentlyOpenInAPanel)
+                                                ],
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ])),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
-        ),
+          if (carries)
+            PositionedDirectional(
+              end: 8,
+              top: -12,
+              child: AppointmentIndicators(
+                item: widget.item,
+                iconSize: _pileIconSize,
+              ),
+            ),
+        ],
       ),
     );
+  }
+
+  /// Whether the card is tall enough for the note under the title.
+  ///
+  /// A card is as tall as the visit is long, so a fifteen-minute visit at a
+  /// large text size has room for the title alone. Two lines there are an
+  /// overflow rather than information, and the title is the one that matters:
+  /// whose visit it is, and when — the note is in the visit, one click away.
+  bool _fitsInfoLine(BuildContext context, double available, String note) {
+    if (!available.isFinite || note.isEmpty) return true;
+    final typography = FluentTheme.of(context).typography;
+    final title = _lineHeight(
+      context,
+      typography.bodyStrong?.copyWith(fontSize: 15),
+    );
+    final second = _lineHeight(
+      context,
+      typography.body?.copyWith(fontSize: 12),
+    );
+    return title + second <= available;
+  }
+
+  /// Whether the card is tall enough for the money (or the operators) under
+  /// the duration pill — the shortest card drops it rather than overflowing,
+  /// and the pill alone still says how long the visit is. The pile floating
+  /// over the corner takes its own share of the column first.
+  bool _fitsSecondRow(BuildContext context, double available) {
+    if (!available.isFinite) return true;
+    final body = FluentTheme.of(context).typography.body;
+    final pile = AppointmentIndicators.hasAny(widget.item) ? _pileInside : 0.0;
+    final pill = _lineHeight(
+          context,
+          body?.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
+        ) +
+        4;
+    final paid = widget.showPayments && widget.item.paid > 0;
+    final second = _lineHeight(
+      context,
+      // The money's integer part is drawn a little larger than its style.
+      body?.copyWith(fontSize: paid ? 13 * 1.05 : 9.5),
+    );
+    return pile + pill + 2 + second <= available;
+  }
+
+  /// The height one line of [style] takes as drawn: same font, same scaler.
+  double _lineHeight(BuildContext context, TextStyle? style) {
+    final painter = TextPainter(
+      text: TextSpan(text: "X", style: style),
+      maxLines: 1,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final height = painter.height;
+    painter.dispose();
+    return height;
   }
 
   Transform _buildDoneCheckBox(BuildContext context) {
@@ -933,7 +1081,7 @@ class _TimelineChipState extends State<TimelineChip> {
     );
   }
 
-  Widget _buildOperatorsPill() {
+  Widget _buildOperatorsPill(bool isCurrentlyOpenInAPanel) {
     final selectedIds = widget.item.operatorsIDs.toSet();
     final ops = accounts.operators;
     final display = ops.where((o) => selectedIds.contains(o.id)).toList();
@@ -1050,17 +1198,6 @@ class _TimelineChipState extends State<TimelineChip> {
         );
       },
     );
-  }
-
-  IconButton _buildBringToFrontButton() {
-    return IconButton(
-        icon: const Icon(FluentIcons.open_in_new_tab),
-        onPressed: () {
-          final index = PanelsManager.active()
-              .indexWhere((p) => p.itemId == widget.item.id);
-          if (index == -1) return;
-          PanelsManager.bringToFront(index);
-        });
   }
 }
 

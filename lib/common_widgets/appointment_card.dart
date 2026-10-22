@@ -9,6 +9,7 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/features/appointments/appointment_owner_line.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
@@ -48,7 +49,9 @@ class AppointmentCard extends StatelessWidget {
     this.showLeftBorder = true,
     this.showSectionTitle = true,
     this.openButtonColor = const Color(0xFF0078D4),
-    this.openOnTab = 0,
+    this.openOnWindow = AppointmentWindow.details,
+    this.onOpen,
+    this.onTapDcm,
   });
   final Appointment appointment;
   final List<AppointmentSections> hide;
@@ -59,7 +62,27 @@ class AppointmentCard extends StatelessWidget {
   final bool showLeftBorder;
   final bool showSectionTitle;
   final Color openButtonColor;
-  final int openOnTab;
+  final AppointmentWindow openOnWindow;
+
+  /// How the card opens the visit. A window that is itself a list of visits —
+  /// a patient's history, say — passes its own opener, so it can make way for the
+  /// visit it opened. Defaults to opening the visit's panel.
+  final void Function(Appointment appointment, AppointmentWindow window)?
+      onOpen;
+
+  /// Opens a `.dcm` X-ray. The card shows the thumbnails; the viewer belongs to
+  /// the feature that owns the visit, and is handed in by it.
+  final void Function(BuildContext context, String rowId, String dcmName)?
+      onTapDcm;
+
+  void _open(AppointmentWindow window) {
+    final open = onOpen;
+    if (open != null) {
+      open(appointment, window);
+      return;
+    }
+    openAppointment(appointment, window);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,8 +204,10 @@ class AppointmentCard extends StatelessWidget {
                               GridGallery(
                                 canDelete: login.perm(Perm.photos).exact(1),
                                 rowId: appointment.id,
+                                owner: () => appointmentOwnerLine(appointment),
                                 imgs: appointment.imgs,
                                 dcmImgs: appointment.dcmImgs,
+                                onTapDcm: onTapDcm,
                                 countPerLine: 4,
                                 clipCount: photosClipCount,
                                 rowWidth: 200,
@@ -193,7 +218,7 @@ class AppointmentCard extends StatelessWidget {
                                   appointments.set(appointment);
                                 },
                                 onTapClip: () {
-                                  openAppointment(appointment, 2);
+                                  _open(AppointmentWindow.gallery);
                                 },
                                 onPressDelete: (img) async {
                                   try {
@@ -485,7 +510,7 @@ class AppointmentCard extends StatelessWidget {
         if (!hide.contains(AppointmentSections.openAppointmentButton)) ...[
           IconButton(
             icon: const Icon(FluentIcons.go, size: 17, color: Colors.white),
-            onPressed: () => openAppointment(appointment, openOnTab),
+            onPressed: () => _open(openOnWindow),
             iconButtonMode: IconButtonMode.large,
             style: filledButtonStyle(openButtonColor),
           ),

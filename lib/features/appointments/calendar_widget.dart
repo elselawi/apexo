@@ -15,17 +15,9 @@ import 'package:flutter/material.dart' show Card;
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import '../../utils/round.dart';
+import 'open_appointment_panel.dart' show AppointmentWindow;
 import 'events_agenda_widget.dart';
 import 'events_timeline_widget.dart';
-
-/// Which view to show below the day title bar.
-enum EventsViewMode {
-  /// Plain sorted list of appointment tiles.
-  agenda,
-
-  /// Google‑Calendar‑style time grid with duration‑based positioning.
-  timeline,
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main widget
@@ -49,8 +41,8 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   final void Function(DateTime date) onAddNew;
   final void Function(Item item) onSetTime;
 
-  /// Opens [item], optionally on a specific panel tab — see [AppointmentTab].
-  final void Function(Item item, int? tabIndex) onSelect;
+  /// Opens [item], optionally on a specific panel window — see [AppointmentWindow].
+  final void Function(Item item, AppointmentWindow? window) onSelect;
 
   @override
   WeekAgendaCalendarState<Item> createState() =>
@@ -124,8 +116,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
                         items: itemsForSelectedDay.cast<Appointment>().toList(),
                         showPayments: showPayments,
                         selectedDate: selectedDate,
-                        onSelect: (appointment) =>
-                            widget.onSelect(appointment as Item, null),
+                        onSelect: (appointment, window) =>
+                            widget.onSelect(appointment as Item, window),
                         onSetTime: (appointment) =>
                             widget.onSetTime(appointment as Item),
                         onAddNew: widget.onAddNew,

@@ -59,6 +59,43 @@ class _DeleteButtonState extends State<DeleteButton> {
   }
 }
 
+/// The last item of a row's context menu: it closes the menu, asks for
+/// confirmation where the menu was, and runs [onConfirm] when confirmed.
+///
+/// [controller] is the context menu's own controller. Reusing it anchors the
+/// confirmation to the row the menu belonged to instead of opening a flyout
+/// somewhere else on the screen.
+MenuFlyoutItem confirmDeleteMenuItem({
+  required FlyoutController controller,
+  required Widget preview,
+  required VoidCallback onConfirm,
+  String actionText = "delete",
+  IconData actionIcon = WindowsIcons.delete,
+  bool restorable = true,
+}) {
+  return MenuFlyoutItem(
+    text: Txt(txt(actionText)),
+    leading: Icon(actionIcon),
+    onPressed: () {
+      controller.close<void>();
+      // The menu is still closing; show the confirmation once it has left the
+      // controller free to open another flyout.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(controller.showFlyout<void>(
+          builder: (ctx) => ConfirmDeleteFlyout(
+            restorable: restorable,
+            controller: controller,
+            actionIcon: actionIcon,
+            actionText: txt(actionText),
+            preview: preview,
+            onConfirm: onConfirm,
+          ),
+        ));
+      });
+    },
+  );
+}
+
 class ConfirmDeleteFlyout extends StatelessWidget {
   const ConfirmDeleteFlyout({
     super.key,

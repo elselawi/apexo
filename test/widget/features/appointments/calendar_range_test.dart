@@ -4,7 +4,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:table_calendar/table_calendar.dart';
 
-import '../../helpers/pump_app.dart';
+import '../../../helpers/pump_app.dart';
 
 void main() {
   for (final yearsFromToday in [-10, 10, -40]) {

@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/dicom/dicom_byte_fetcher.dart';
 import 'package:apexo/services/dicom/dicom_viewer_prefs.dart';
@@ -13,7 +14,13 @@ import 'package:apexo/services/login.dart' show login;
 import 'package:apexo/utils/logger.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:apexo/ui/workspace/floating_window.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+
+part 'dicom_measure_overlay.dart';
+part 'dicom_viewport_controls.dart';
 
 /// Maps a `dicom_toolkit` English label to its localized equivalent via
 /// `txt()`. Keys are lowercase-without-spaces versions of the English labels.
@@ -37,77 +44,102 @@ String _dicomLabel(String englishLabel) {
 
 // ─── Public entry ─────────────────────────────────────────────────
 
-Future<void> openDicomFromBytes(BuildContext context, Uint8List bytes) async {
-  await showDialog<void>(
-    context: context,
-    barrierColor: Colors.black,
-    builder: (_) => _DicomViewerDialog(bytes: bytes),
+/// Shows raw DICOM bytes the user picked, in a window of their own.
+void openDicomFromBytes(Uint8List bytes, {String? name}) {
+  late final FloatingWindow floating;
+  // Each imported file is a window of its own: two files must not replace one
+  // another, and the user has to be able to tell which is which.
+  final id = 'dicom:bytes:${_importedScans++}';
+  floating = WindowsManager.showStandalone(
+    PanelWindow(
+      id: id,
+      title: "xRayViewer",
+      icon: FluentIcons.medical_care,
+      // Which file this is: several imported scans can be open at once, and
+      // they all carry the same title.
+      subtitle: () => name ?? '',
+      padding: 0,
+      scrollable: false,
+      // A scan is its own viewer, not a column of a panel: it asks for the room
+      // an X-ray needs.
+      matchesPanelWidth: false,
+      preferredWidth: 1100,
+      body: DicomScanViewer(
+        bytes: bytes,
+        onClose: () => WindowsManager.close(floating),
+      ),
+    ),
   );
 }
 
-Future<void> openDicomViewerPanel(
-  BuildContext context,
-  String rowId,
-  String dcmName,
-) async {
-  await showDialog<void>(
-    context: context,
-    barrierColor: Colors.black,
-    builder: (_) => _DicomViewerDialog(rowId: rowId, dcmName: dcmName),
+/// How many scans have been imported and opened in this session — what tells
+/// one imported file's window from another's.
+int _importedScans = 0;
+
+/// Shows one of a record's scans in a window of its own — beside the app, not
+/// over it: a scan is something you look at while you keep working.
+void openDicomViewerWindow(String rowId, String dcmName) {
+  late final FloatingWindow floating;
+  floating = WindowsManager.showStandalone(
+    PanelWindow(
+      id: 'dicom:$dcmName',
+      title: "xRayViewer",
+      icon: FluentIcons.medical_care,
+      // Whose scan it is, and which file: several can be open at once.
+      subtitle: () {
+        final owner = appointments.get(rowId)?.patient?.title ?? '';
+        return [if (owner.isNotEmpty) owner, dcmName].join(' · ');
+      },
+      padding: 0,
+      scrollable: false,
+      // A scan is its own viewer, not a column of a panel: it asks for the room
+      // an X-ray needs.
+      matchesPanelWidth: false,
+      preferredWidth: 1100,
+      body: DicomScanViewer(
+        rowId: rowId,
+        dcmName: dcmName,
+        onClose: () => WindowsManager.close(floating),
+      ),
+    ),
+    // The scan belongs to a visit, and it is named the way the visit's own
+    // windows are: the panel of that visit takes the scan's place when it
+    // opens, and the scan wears the visit's colour.
+    scope: 'appointment:$rowId',
+    // A scan belongs to a visit: its window leads back to that record. A scan
+    // whose record is gone — an imported file — has nowhere to go.
+    onOpenRecord: appointments.get(rowId) == null
+        ? null
+        : () async {
+            final appointment = appointments.get(rowId);
+            if (appointment != null) openAppointment(appointment);
+          },
   );
 }
 
 // ─── Measurement state ────────────────────────────────────────────
 
-enum _MeasureMode { none, ruler, roi }
-
-class _MeasureState {
-  const _MeasureState({
-    this.mode = _MeasureMode.none,
-    this.start,
-    this.end,
-    this.stats,
-    this.rulerMm,
+class DicomScanViewer extends StatefulWidget {
+  const DicomScanViewer({
+    super.key,
+    this.rowId,
+    this.dcmName,
+    this.bytes,
+    required this.onClose,
   });
-  final _MeasureMode mode;
-  final Offset? start;
-  final Offset? end;
-  final RoiStatistics? stats;
-  final double? rulerMm;
 
-  _MeasureState copyWith({
-    _MeasureMode? mode,
-    Offset? start,
-    Offset? end,
-    RoiStatistics? stats,
-    double? rulerMm,
-    bool clearStart = false,
-    bool clearEnd = false,
-    bool clearStats = false,
-    bool clearRuler = false,
-  }) =>
-      _MeasureState(
-        mode: mode ?? this.mode,
-        start: clearStart ? null : (start ?? this.start),
-        end: clearEnd ? null : (end ?? this.end),
-        stats: clearStats ? null : (stats ?? this.stats),
-        rulerMm: clearRuler ? null : (rulerMm ?? this.rulerMm),
-      );
-}
-
-// ─── Dialog ───────────────────────────────────────────────────────
-
-class _DicomViewerDialog extends StatefulWidget {
-  const _DicomViewerDialog({this.rowId, this.dcmName, this.bytes});
   final String? rowId;
   final String? dcmName;
   final Uint8List? bytes;
 
+  /// Closes the viewer: the window it lives in is the one that goes away.
+  final VoidCallback onClose;
+
   @override
-  State<_DicomViewerDialog> createState() => _DicomViewerDialogState();
+  State<DicomScanViewer> createState() => _DicomViewerState();
 }
 
-class _DicomViewerDialogState extends State<_DicomViewerDialog> {
+class _DicomViewerState extends State<DicomScanViewer> {
   DicomViewerController? _controller;
   bool _loading = true;
   String? _error;
@@ -166,7 +198,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
         _loading = false;
       });
     } catch (e, s) {
-      logger('openDicomViewerPanel load error: $e', s);
+      logger('openDicomViewerWindow load error: $e', s);
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -357,7 +389,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
         appointments.set(appt);
       }
       if (!mounted) return;
-      Navigator.of(context).maybePop();
+      widget.onClose();
     } catch (e, s) {
       showErrorMessage(e, "deletingPatientImageFromServer");
       login.askForLoginAgain(e);
@@ -376,12 +408,12 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
     bool isSelected(DicomWindowPreset p) =>
         curCenter == p.center && curWidth == p.width;
     unawaited(_windowFlyoutCtrl.showFlyout<void>(
-      builder: (ctx) => MenuFlyout(items: _buildPresetItems(isSelected)),
+      builder: (ctx) => MenuFlyout(items: _buildPresetItems(isSelected, ctx)),
     ));
   }
 
   List<MenuFlyoutItem> _buildPresetItems(
-      bool Function(DicomWindowPreset) isSelected) {
+      bool Function(DicomWindowPreset) isSelected, BuildContext flyoutContext) {
     final result = _controller?.result;
     if (result == null) return [];
     return DicomWindowPreset.forImage(result).map((preset) {
@@ -392,7 +424,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
         text: Text(_dicomLabel(preset.label)),
         onPressed: () {
           _controller!.applyPreset(center: preset.center, width: preset.width);
-          Navigator.pop(context);
+          Navigator.pop(flyoutContext);
         },
       );
     }).toList();
@@ -736,7 +768,7 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
                             ),
                           ],
                         ),
-                        onPressed: () => Navigator.of(context).maybePop(),
+                        onPressed: widget.onClose,
                       ),
                     ],
                   ),
@@ -868,245 +900,3 @@ class _DicomViewerDialogState extends State<_DicomViewerDialog> {
 
 // ─── Viewer button (dark pill overlay style) ──────────────────────
 
-class _VwBtn extends StatefulWidget {
-  const _VwBtn({
-    required this.icon,
-    this.label,
-    required this.tooltip,
-    this.onTap,
-    this.active = false,
-  });
-  final IconData icon;
-  final String? label;
-  final String tooltip;
-  final VoidCallback? onTap;
-  final bool active;
-
-  @override
-  State<_VwBtn> createState() => _VwBtnState();
-}
-
-class _VwBtnState extends State<_VwBtn> {
-  bool _hovered = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final fgColor = widget.active
-        ? const Color(0xFF4CC2FF)
-        : Colors.white.withValues(alpha: 0.85);
-
-    return Tooltip(
-      message: widget.tooltip,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            decoration: BoxDecoration(
-              color: _hovered
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(widget.icon, size: 18, color: fgColor),
-                if (widget.label != null) ...[
-                  const SizedBox(width: 6),
-                  Txt(
-                    widget.label!,
-                    style: TextStyle(
-                      color: fgColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Vertical slider ──────────────────────────────────────────────
-
-class _VerticalSlider extends StatelessWidget {
-  const _VerticalSlider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-  });
-  final String label;
-  final double value, min, max;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final clamped = value.clamp(min, max);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: 9,
-                fontWeight: FontWeight.w700,
-                color: Colors.white.withValues(alpha: 0.4))),
-        Expanded(
-          child: RotatedBox(
-            quarterTurns: -1,
-            child: Slider(
-                value: clamped, min: min, max: max, onChanged: onChanged),
-          ),
-        ),
-        Text(clamped.toStringAsFixed(0),
-            style: TextStyle(
-                fontSize: 9, color: Colors.white.withValues(alpha: 0.5))),
-      ],
-    );
-  }
-}
-
-// ─── Measurement overlay (CustomPaint) ────────────────────────────
-
-class _MeasureOverlay extends StatelessWidget {
-  const _MeasureOverlay({required this.measure, required this.imageSize});
-  final _MeasureState measure;
-  final Size imageSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final widgetSize = Size(constraints.maxWidth, constraints.maxHeight);
-      final imgAspect = imageSize.width / imageSize.height;
-      final widgetAspect = widgetSize.width / widgetSize.height;
-      double displayW, displayH, offsetX, offsetY;
-      if (imgAspect > widgetAspect) {
-        displayW = widgetSize.width;
-        displayH = widgetSize.width / imgAspect;
-        offsetX = 0;
-        offsetY = (widgetSize.height - displayH) / 2;
-      } else {
-        displayH = widgetSize.height;
-        displayW = widgetSize.height * imgAspect;
-        offsetX = (widgetSize.width - displayW) / 2;
-        offsetY = 0;
-      }
-      return IgnorePointer(
-        child: CustomPaint(
-          size: Size.infinite,
-          painter: _MeasurePainter(
-            measure: measure,
-            displayW: displayW,
-            displayH: displayH,
-            offsetX: offsetX,
-            offsetY: offsetY,
-            imageW: imageSize.width,
-            imageH: imageSize.height,
-          ),
-        ),
-      );
-    });
-  }
-}
-
-class _MeasurePainter extends CustomPainter {
-  _MeasurePainter({
-    required this.measure,
-    required this.displayW,
-    required this.displayH,
-    required this.offsetX,
-    required this.offsetY,
-    required this.imageW,
-    required this.imageH,
-  });
-  final _MeasureState measure;
-  final double displayW, displayH, offsetX, offsetY;
-  final double imageW, imageH;
-  static const _accent = Color(0xFF4CC2FF);
-
-  Offset _toCanvas(Offset pixel) => Offset(
-        pixel.dx / imageW * displayW + offsetX,
-        pixel.dy / imageH * displayH + offsetY,
-      );
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = _accent
-      ..strokeWidth = 2.0
-      ..style = PaintingStyle.stroke;
-    final start = measure.start;
-    if (start == null) return;
-    final s = _toCanvas(start);
-
-    if (measure.mode == _MeasureMode.ruler) {
-      _crosshair(canvas, s, paint);
-      if (measure.end != null) {
-        final e = _toCanvas(measure.end!);
-        _crosshair(canvas, e, paint);
-        canvas.drawLine(s, e, paint..strokeWidth = 1.5);
-        if (measure.rulerMm != null) {
-          _label(canvas, e, '${measure.rulerMm!.toStringAsFixed(1)} mm');
-        }
-      }
-    }
-
-    if (measure.mode == _MeasureMode.roi && measure.end != null) {
-      final e = _toCanvas(measure.end!);
-      final rect = Rect.fromPoints(s, e);
-      canvas.drawRect(
-          rect,
-          paint
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 1.5);
-      canvas.drawRect(
-          rect,
-          paint
-            ..color = _accent.withValues(alpha: 0.12)
-            ..style = PaintingStyle.fill);
-    }
-  }
-
-  void _crosshair(Canvas canvas, Offset c, Paint paint) {
-    const r = 5.0;
-    canvas.drawCircle(c, r, paint);
-    canvas.drawLine(Offset(c.dx - r - 2, c.dy), Offset(c.dx + r + 2, c.dy),
-        paint..strokeWidth = 1);
-    canvas.drawLine(
-        Offset(c.dx, c.dy - r - 2), Offset(c.dx, c.dy + r + 2), paint);
-  }
-
-  void _label(Canvas canvas, Offset pos, String text) {
-    final tp = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: const TextStyle(
-            color: Colors.white,
-            fontSize: 10,
-            fontWeight: FontWeight.w600,
-            shadows: [Shadow(blurRadius: 3, color: Colors.black)]),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    const padX = 4.0, padY = 2.0;
-    canvas.drawRRect(
-        RRect.fromRectAndRadius(
-            Rect.fromLTWH(pos.dx - padX, pos.dy - tp.height - padY,
-                tp.width + padX * 2, tp.height + padY * 2),
-            const Radius.circular(3)),
-        Paint()..color = _accent.withValues(alpha: 0.8));
-    tp.paint(canvas, Offset(pos.dx, pos.dy - tp.height - padY + 1));
-  }
-
-  @override
-  bool shouldRepaint(covariant _MeasurePainter o) => measure != o.measure;
-}

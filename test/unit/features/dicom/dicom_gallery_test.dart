@@ -127,7 +127,7 @@ void main() {
 
   group('gallery routing decision matrix', () {
     // The GridGallery routes each cell by name classification:
-    //   DCM  → openDicomViewerPanel (viewer)
+    //   DCM  → openDicomViewerWindow (viewer)
     //   img  → photo slideshow
     //   else → download
     // These tests pin the classification the routing branches rely on.

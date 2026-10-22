@@ -253,7 +253,7 @@ void main() {
     test('viewer control keys exist', () {
       final en = En();
       for (final key in [
-        'dicomViewer',
+        'xRayViewer',
         'window',
         'colorMap',
         'invert',

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
@@ -12,8 +13,8 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
-import 'package:apexo/features/notes/dialog_column_edit.dart';
-import 'package:apexo/features/notes/dialog_note_edit.dart';
+import 'package:apexo/features/notes/column_edit_dialog.dart';
+import 'package:apexo/features/notes/note_edit_dialog.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -58,6 +59,7 @@ class _ArchivedRow {
     required this.subtitle,
     required this.onRestore,
     required this.onOpen,
+    required this.canRestore,
   });
   final Model item;
   final String storeLabel;
@@ -66,6 +68,11 @@ class _ArchivedRow {
   final String subtitle;
   final VoidCallback onRestore;
   final VoidCallback? onOpen;
+
+  /// Whether this user may put the record back: the same level the record's own
+  /// delete asks for, so an archived row cannot hand back what the page it came
+  /// from would not let them take away.
+  final bool canRestore;
 }
 
 class _ArchivedPageState extends State<_ArchivedPage> {
@@ -181,6 +188,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           onOpen: () {
             unawaited(openPatient(p));
           },
+          canRestore: login.perm(Perm.patients).full,
         );
       case "appointments":
         final a = appointments.get(key[0])!;
@@ -197,6 +205,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           onOpen: () {
             openAppointment(a);
           },
+          canRestore: login.perm(Perm.appointments).full,
         );
       case "expenses":
         final e = expenses.get(key[0])!;
@@ -219,7 +228,18 @@ class _ArchivedPageState extends State<_ArchivedPage> {
                     true,
                   ));
                 }
-              : null,
+              // A supplier has no record of its own; what it has is orders.
+              : () {
+                  unawaited(openExpenses(
+                    expenses.present.values
+                        .where((x) => x.isOrder && x.supplierId == e.id)
+                        .toList()
+                      ..sort((a, b) => b.date.compareTo(a.date)),
+                    e.supplierName,
+                    e.id,
+                  ));
+                },
+          canRestore: login.perm(Perm.expenses).exact(2),
         );
       case "notes":
         final n = notes.get(key[0])!;
@@ -239,6 +259,9 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           onOpen: () => n.isColumn
               ? showColumnEditDialog(context, column: n)
               : showNoteEditDialog(context, note: n),
+          canRestore: login.isAdmin ||
+              login.perm(Perm.notes).some ||
+              n.createdBy == login.currentAccountID,
         );
       default:
         throw ArgumentError("Unknown store key: ${key[1]}");
@@ -248,7 +271,12 @@ class _ArchivedPageState extends State<_ArchivedPage> {
   void _restoreSelected() {
     for (final key in _sortKeys) {
       if (_selected.contains(key[0])) {
-        _rowForKey(key).onRestore();
+        final row = _rowForKey(key);
+        // The bulk restore asks the same question the row's own restore asks:
+        // a user without the right may not hand back what they could not have
+        // taken away.
+        if (!row.canRestore) continue;
+        row.onRestore();
       }
     }
     _collectionCache = {};
@@ -457,47 +485,67 @@ class _ArchivedPageState extends State<_ArchivedPage> {
   }
 
   Widget _buildRow(BuildContext context, _ArchivedRow row) {
-    return ListTile.selectable(
-      key: ValueKey(row.item.id),
-      selected: _selected.contains(row.item.id),
-      selectionMode: ListTileSelectionMode.multiple,
-      onSelectionChange: (isSelected) {
-        if (isSelected) {
-          _selected.add(row.item.id);
-        } else {
-          _selected.remove(row.item.id);
-        }
-        _rebuild();
-      },
-      margin: EdgeInsets.zero,
-      shape: listDividerBorder(context),
-      tileColor: WidgetStateColor.resolveWith((states) {
-        if (_selected.contains(row.item.id)) {
-          return Colors.blue.withAlpha(20);
-        }
-        if (states.contains(WidgetState.hovered)) {
-          return FluentTheme.of(context).resources.controlAltFillColorTertiary;
-        }
-        return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
-      }),
-      contentPadding:
-          const EdgeInsetsDirectional.only(top: 0, bottom: 0, start: 4, end: 4),
-      leading: _buildStoreTag(context, row),
-      title: GestureDetector(
-        onTap: row.onOpen,
-        child: ItemTitle(
-          item: row.item,
-          radius: 13,
-          maxWidth: 160,
-          fontSize: 13,
-          icon: row.storeIcon,
-          archivedStyling: false,
+    return ContextMenuRegion(
+      items: (context, controller) => [
+        if (row.onOpen != null)
+          MenuFlyoutItem(
+            text: Txt(txt("open")),
+            leading: const Icon(WindowsIcons.open_in_new_window),
+            onPressed: row.onOpen,
+          ),
+        // Restoring is the only way out of this page — nothing here deletes for
+        // good — and it is offered only to whoever could have deleted it.
+        if (row.canRestore)
+          MenuFlyoutItem(
+            text: Txt(txt("restore")),
+            leading: const Icon(WindowsIcons.undo),
+            onPressed: row.onRestore,
+          ),
+      ],
+      child: ListTile.selectable(
+        key: ValueKey(row.item.id),
+        selected: _selected.contains(row.item.id),
+        selectionMode: ListTileSelectionMode.multiple,
+        onSelectionChange: (isSelected) {
+          if (isSelected) {
+            _selected.add(row.item.id);
+          } else {
+            _selected.remove(row.item.id);
+          }
+          _rebuild();
+        },
+        margin: EdgeInsets.zero,
+        shape: listDividerBorder(context),
+        tileColor: WidgetStateColor.resolveWith((states) {
+          if (_selected.contains(row.item.id)) {
+            return Colors.blue.withAlpha(20);
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return FluentTheme.of(context)
+                .resources
+                .controlAltFillColorTertiary;
+          }
+          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
+        }),
+        contentPadding: const EdgeInsetsDirectional.only(
+            top: 0, bottom: 0, start: 4, end: 4),
+        leading: _buildStoreTag(context, row),
+        title: GestureDetector(
+          onTap: row.onOpen,
+          child: ItemTitle(
+            item: row.item,
+            radius: 13,
+            maxWidth: 160,
+            fontSize: 13,
+            icon: row.storeIcon,
+            archivedStyling: false,
+          ),
         ),
-      ),
-      subtitle: Text(
-        row.subtitle,
-        style: TextStyle(fontSize: 11, color: Colors.grey[120]),
-        overflow: TextOverflow.ellipsis,
+        subtitle: Text(
+          row.subtitle,
+          style: TextStyle(fontSize: 11, color: Colors.grey[120]),
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

@@ -89,13 +89,18 @@ class DateTimePickerState extends State<DateTimePicker> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(
-                height: 34,
-                child: Center(
-                    child: Txt(
-                  widget.pickTime ? DF.time(value) : DF.commonDate(value),
-                  style: widget.textStyle,
-                ))),
+            // The date shortens before the row overflows: a window is as narrow
+            // as its panel, and the button beside it does not shrink.
+            Flexible(
+              child: SizedBox(
+                  height: 34,
+                  child: Center(
+                      child: Txt(
+                    widget.pickTime ? DF.time(value) : DF.commonDate(value),
+                    style: widget.textStyle,
+                    overflow: TextOverflow.ellipsis,
+                  ))),
+            ),
             if (widget.showButton && widget.enabled)
               IconButton(
                 onPressed: pick,

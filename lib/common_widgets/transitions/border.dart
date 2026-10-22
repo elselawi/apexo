@@ -26,12 +26,32 @@ class BorderColorTransitionState extends State<BorderColorTransition>
     _controller = AnimationController(
       duration: widget.duration,
       vsync: this,
-    )..repeat(reverse: true);
+    );
 
     _colorAnimation = ColorTween(
       begin: Colors.white,
       end: Colors.transparent,
     ).animate(_controller);
+    _followAnimate();
+  }
+
+  @override
+  void didUpdateWidget(covariant BorderColorTransition oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animate != oldWidget.animate) _followAnimate();
+  }
+
+  /// Repeats only while the border is meant to pulse: a controller left running
+  /// behind `animate: false` repaints the whole subtree forever for a border
+  /// nobody sees.
+  void _followAnimate() {
+    if (widget.animate) {
+      _controller.repeat(reverse: true);
+    } else {
+      _controller
+        ..stop()
+        ..value = 0;
+    }
   }
 
   @override

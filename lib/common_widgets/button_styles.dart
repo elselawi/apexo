@@ -19,6 +19,7 @@ class ButtonContent extends StatelessWidget {
     this.size,
     super.key,
     this.inProgress = false,
+    this.flipInRtl = false,
   });
 
   final String txt;
@@ -26,20 +27,31 @@ class ButtonContent extends StatelessWidget {
   final double? size;
   final bool inProgress;
 
+  /// Whether the icon says something directional — "open in", "next", "back" —
+  /// and must therefore be mirrored where the app reads right to left, the way
+  /// the text beside it already is.
+  final bool flipInRtl;
+
   @override
   Widget build(BuildContext context) {
+    final Widget glyph = inProgress
+        ? const SizedBox(
+            height: 20,
+            width: 20,
+            child: ProgressRing(
+              strokeWidth: 4,
+            ))
+        : Icon(icon, size: size);
+    // Only the glyph turns: the label beside it keeps reading its own way.
+    final mirrored =
+        flipInRtl && Directionality.of(context) == TextDirection.rtl
+            ? Transform.scale(scaleX: -1, child: glyph)
+            : glyph;
     return Row(
       spacing: 5,
       mainAxisSize: MainAxisSize.min,
       children: [
-        inProgress
-            ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: ProgressRing(
-                  strokeWidth: 4,
-                ))
-            : Icon(icon, size: size),
+        mirrored,
         Txt(
           txt,
           style: TextStyle(

@@ -1,13 +1,15 @@
 import 'dart:async';
-import 'package:apexo/app/panels/panel.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
+
+import 'package:apexo/ui/workspace/panel.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
+import 'package:apexo/ui/workspace/unsaved_dot.dart';
+import 'package:apexo/ui/workspace/windows_layout.dart';
+import 'package:apexo/ui/workspace/window_dock.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
-import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
-import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/logger.dart';
@@ -15,8 +17,15 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
-/// The panel host: the chrome drawn around whatever [Panel] is on screen —
-/// header, tab strip, body, footer and the archive/save/close bar.
+/// The panel host: the chrome drawn around whatever [Panel] is on screen — its
+/// header, its record's editor, the switches for the record's other windows,
+/// and the archive/save/close bar.
+///
+/// A panel holds its **first** window inline, as its own body: what used to be
+/// the first tab is still the panel, so a panel is never an empty frame with a
+/// row of buttons. The windows after it are what the panel floats beside
+/// itself, drawn by `WindowsLayer` at the size their content needs and switched
+/// from the dock under the panel's header.
 ///
 /// It reaches the panel only through [Panel] and never touches the records
 /// behind it. That is what lets one host draw a row panel, a delegated panel and
@@ -25,11 +34,9 @@ import 'package:flutter/services.dart';
 final class PanelScreen extends StatefulWidget {
   const PanelScreen({
     required this.panel,
-    this.layoutHeight = 500,
     this.layoutWidth = 500,
     super.key,
   });
-  final double layoutHeight;
   final double layoutWidth;
   final Panel panel;
 
@@ -44,12 +51,13 @@ class _PanelScreenState extends State<PanelScreen> {
   final confirmCancelController = FlyoutController();
   Timer? saveButtonCheckTimer;
   StreamSubscription<int>? pendingEditsSub;
-  bool ctrlPressed = false;
+  StreamSubscription<bool>? savingSub;
 
   @override
   void dispose() {
     saveButtonCheckTimer?.cancel();
     unawaited(pendingEditsSub?.cancel());
+    unawaited(savingSub?.cancel());
     focusNode.dispose();
     panelSwitchController.dispose();
     confirmCancelController.dispose();
@@ -84,6 +92,16 @@ class _PanelScreenState extends State<PanelScreen> {
     } else {
       pendingEditsSub = signal.stream.listen((_) => _syncPendingEdits());
     }
+    // A window of this panel saves with the panel's own write, so the panel is
+    // the only place that hears about it. A new record becomes an existing one
+    // there, and the dock and the archive button have to say so.
+    savingSub = widget.panel.inProgress.stream.listen((saving) {
+      if (saving || !mounted) return;
+      _syncPendingEdits();
+      if (widget.panel.isNew != isNew) {
+        setState(() => isNew = widget.panel.isNew);
+      }
+    });
     _syncPendingEdits();
   }
 
@@ -98,26 +116,6 @@ class _PanelScreenState extends State<PanelScreen> {
             PanelsManager.active().isNotEmpty &&
             widget.panel.inProgress() == false) {
           closeOrConfirmCancel();
-          return;
-        }
-
-        if (value.logicalKey == LogicalKeyboardKey.controlLeft ||
-                    value.logicalKey == LogicalKeyboardKey.controlRight) {
-          if (value is KeyDownEvent) {
-            ctrlPressed = true;
-          } else {
-            ctrlPressed = false;
-          }
-        }
-
-        if (value is KeyDownEvent &&
-            value.logicalKey == LogicalKeyboardKey.tab &&
-            ctrlPressed) {
-          if (widget.panel.selectedTab() == widget.panel.tabs.length - 1) {
-            widget.panel.selectedTab(0);
-          } else {
-            widget.panel.selectedTab(widget.panel.selectedTab() + 1);
-          }
         }
       },
       child: Container(
@@ -134,23 +132,20 @@ class _PanelScreenState extends State<PanelScreen> {
             borderRadius: BorderRadius.circular(5)),
         child: MStreamBuilder(
             streams: [
-              localSettings.stream,
-              widget.panel.selectedTab.stream,
+              locale.selected.stream,
               PanelsManager.minimize.stream,
             ],
             builder: (context, snapshot) {
               return Column(
-                key: Key(localSettings.selectedLocale.toString()),
+                key: Key(locale.selected().toString()),
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _buildPanelHeader(),
                   if (PanelsManager.minimize() == false ||
-                      widget.layoutWidth >= 710) ...[
-                    _buildTabsControllers(),
-                    _buildTabBody(),
-                    if (widget.panel.tabs[widget.panel.selectedTab()].footer !=
-                        null)
-                      widget.panel.tabs[widget.panel.selectedTab()].footer!,
+                      widget.layoutWidth >= kWindowsBreakpoint) ...[
+                    if (widget.panel.floatingWindows.isNotEmpty)
+                      _buildWindowDock(),
+                    Expanded(child: _buildPrimaryWindow()),
                     _buildBottomControls(),
                   ],
                 ],
@@ -160,39 +155,202 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  Widget _buildTabBody() {
-    return Expanded(
-      child: widget.panel.inherentlyScrollable
-          ? _buildBodyChild()
-          : SingleChildScrollView(
-              child: _buildBodyChild(),
-            ),
+  /// The panel's first window: the record's own editor, drawn in the panel
+  /// itself just as the first tab used to be.
+  Widget _buildPrimaryWindow() {
+    final window = widget.panel.primaryWindow;
+    if (window == null) return const SizedBox.shrink();
+    final body = window.body;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: ColoredBox(
+            color: FluentTheme.of(context).scaffoldBackgroundColor,
+            child: window.scrollable
+                ? SingleChildScrollView(
+                    padding: EdgeInsets.all(window.padding),
+                    child: body,
+                  )
+                : Padding(
+                    padding: EdgeInsets.all(window.padding),
+                    child: body,
+                  ),
+          ),
+        ),
+        if (window.footer != null) window.footer!,
+      ],
     );
   }
 
-  SwipeDetector _buildBodyChild() {
-    return SwipeDetector(
-      onSwipePrev: () {
-        if (widget.panel.selectedTab() > 0) {
-          widget.panel.selectedTab(widget.panel.selectedTab() - 1);
-        }
+  /// The switches for everything the panel does not keep inline: one labelled
+  /// pill per window, showing whether it is on screen.
+  Widget _buildWindowDock() {
+    return StreamBuilder<int>(
+      stream: widget.panel.workspace.revision.stream,
+      builder: (context, _) {
+        return WindowDock(
+          windows: widget.panel.floatingWindows,
+          isOpen: (window) => widget.panel.workspace.isOpen(window.id),
+          enabled: (window) => !(window.onlyIfSaved && isNew),
+          accent: _accent,
+          onToggle: (window) => widget.panel.workspace.toggle(window.id),
+        );
       },
-      onSwipeNext: () {
-        if (widget.panel.selectedTab() < widget.panel.tabs.length - 1) {
-          widget.panel.selectedTab(widget.panel.selectedTab() + 1);
-        }
+    );
+  }
+
+  /// The colour this kind of record is known by, so a patient's panel and a
+  /// visit's are told apart at a glance instead of by reading the header.
+  Color get _accent =>
+      widget.panel.accent ?? FluentTheme.of(context).accentColor;
+
+  Widget _buildPanelHeader() {
+    return GestureDetector(
+      onTap: () {
+        if (PanelsManager.minimize()) PanelsManager.minimize(false);
       },
       child: Container(
-        color: FluentTheme.of(context).scaffoldBackgroundColor,
-        padding: EdgeInsets.all(
-            widget.panel.tabs[widget.panel.selectedTab()].padding.toDouble()),
-        constraints: BoxConstraints(
-            minHeight:
-                widget.panel.tabs[widget.panel.selectedTab()].footer == null
-                    ? widget.layoutHeight - 161
-                    : widget.layoutHeight - 206),
-        child: widget.panel.tabs[widget.panel.selectedTab()].body,
+        padding: const EdgeInsets.symmetric(vertical: 2.8, horizontal: 5),
+        decoration: BoxDecoration(
+          color: Color.alphaBlend(
+            _accent.withValues(alpha: 0.10),
+            FluentTheme.of(context).menuColor,
+          ),
+          border:
+              Border(bottom: BorderSide(color: _accent.withValues(alpha: 0.5))),
+        ),
+        child: StreamBuilder(
+            stream: widget.panel.inProgress.stream,
+            builder: (context, snapshot) {
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(spacing: 2, children: [
+                    _buildPanelHeaderStoreName(),
+                    _buildPanelHeaderItemName(),
+                  ]),
+                  Row(children: [
+                    if (PanelsManager.active().length > 1)
+                      _buildPanelSwitcher(),
+                    // minimization is useless is prevented in big screens
+                    if (widget.layoutWidth < kWindowsBreakpoint)
+                      _buildPanelMinimizeButton(),
+                    widget.panel.inProgress()
+                        ? const SizedBox(
+                            height: 20, width: 20, child: ProgressRing())
+                        : _buildPanelCloseButton()
+                  ])
+                ],
+              );
+            }),
       ),
+    );
+  }
+
+  Widget _buildPanelCloseButton() {
+    return FlyoutTarget(
+      controller: confirmCancelController,
+      child: IconButton(
+        icon: const Icon(WindowsIcons.cancel),
+        onPressed: closeOrConfirmCancel,
+      ),
+    );
+  }
+
+  IconButton _buildPanelMinimizeButton() {
+    return IconButton(
+      key: WK.panelMinimize,
+      icon: Icon(PanelsManager.minimize()
+          ? WindowsIcons.chevron_up
+          : WindowsIcons.chevron_down),
+      onPressed: () => PanelsManager.minimize(!PanelsManager.minimize()),
+    );
+  }
+
+  FlyoutTarget _buildPanelSwitcher() {
+    return FlyoutTarget(
+      controller: panelSwitchController,
+      child: IconButton(
+        icon: Row(
+          spacing: 2,
+          children: [
+            const Icon(FluentIcons.reopen_pages),
+            Text(
+              PanelsManager.active().length.toString(),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+            )
+          ],
+        ),
+        onPressed: openPanelSwitch,
+      ),
+    );
+  }
+
+  Widget _buildPanelHeaderStoreName() {
+    return SizedBox(
+      width: 105,
+      child: Row(
+        children: [
+          // The record kind, as a badge in the kind's own colour: the header of
+          // a patient's panel and of a visit's look the same otherwise.
+          Flexible(
+            child: StreamBuilder<bool>(
+              // Whether this record holds work that has not been stored: the dot
+              // sits on the badge, above everything else the panel shows.
+              stream: widget.panel.hasUnsavedChanges.stream,
+              builder: (context, _) => Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsetsDirectional.fromSTEB(4, 1, 6, 1),
+                    decoration: BoxDecoration(
+                      color: _accent.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(4),
+                      border:
+                          Border.all(color: _accent.withValues(alpha: 0.45)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Txt(widget.panel.unicodeSymbol,
+                            style: const TextStyle(fontSize: 13)),
+                        const SizedBox(width: 3),
+                        Flexible(
+                          child: Txt(
+                            txt(widget.panel.singularName),
+                            style: TextStyle(
+                                fontSize: 11,
+                                color: _accent,
+                                fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (widget.panel.hasUnsavedChanges())
+                    PositionedDirectional(
+                      top: -4,
+                      start: -4,
+                      child: Tooltip(
+                        message: txt('unsavedChanges'),
+                        child: const UnsavedDot(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPanelHeaderItemName() {
+    return SizedBox(
+      width: 134,
+      child: widget.panel.buildTitle(context),
     );
   }
 
@@ -210,8 +368,15 @@ class _PanelScreenState extends State<PanelScreen> {
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
               child: widget.panel.inProgress()
                   ? const Center(child: ProgressBar())
-                  : Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  // A wrap rather than a row: three labelled buttons and a
+                  // language that spells them out at length are wider than a
+                  // 350-pixel panel, and a second line reads better than a bar
+                  // that clips its own Save.
+                  : Wrap(
+                      alignment: WrapAlignment.spaceEvenly,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 6,
                       children: [
                         if (widget.panel.additionalControls != null)
                           widget.panel.additionalControls!,
@@ -287,7 +452,7 @@ class _PanelScreenState extends State<PanelScreen> {
   Widget _buildArchiveButton() {
     final isArchived = widget.panel.isArchived;
     final icon = isArchived ? WindowsIcons.undo : WindowsIcons.delete;
-    final action = isArchived ? txt("restore") : txt("delete");
+    final action = txt(isArchived ? "restore" : "delete");
     final color = isArchived ? Colors.teal : Colors.grey;
     return widget.panel.archiveButtonReplacement ??
         DeleteButton(
@@ -326,160 +491,6 @@ class _PanelScreenState extends State<PanelScreen> {
           child:
               ButtonContent(icon, "$action ${txt(widget.panel.singularName)}"),
         );
-  }
-
-  Widget _buildTabsControllers() {
-    return Container(
-      decoration:
-          BoxDecoration(color: FluentTheme.of(context).inactiveBackgroundColor),
-      padding: const EdgeInsets.fromLTRB(3, 15, 3, 0),
-      child: SizedBox(
-        height: 39,
-        child: TabView(
-          closeButtonVisibility: CloseButtonVisibilityMode.never,
-          onChanged: (value) => widget.panel.selectedTab(value),
-          currentIndex: widget.panel.selectedTab(),
-          showScrollButtons: false,
-          shortcutsEnabled: true,
-          tabWidthBehavior: widget.panel.showTitles
-              ? TabWidthBehavior.equal
-              : TabWidthBehavior.compact,
-          header: widget.panel.selectedTab() != 0
-              ? IconButton(
-                  icon: Icon(Directionality.of(context) == TextDirection.rtl
-                      ? WindowsIcons.chevron_right
-                      : WindowsIcons.chevron_left),
-                  onPressed: () =>
-                      widget.panel.selectedTab(widget.panel.selectedTab() - 1),
-                )
-              : const SizedBox(width: 25),
-          footer: widget.panel.selectedTab() <
-                  widget.panel.tabs
-                          .where((t) => t.onlyIfSaved ? (!isNew) : true)
-                          .length -
-                      1
-              ? IconButton(
-                  icon: Icon(Directionality.of(context) == TextDirection.rtl
-                      ? WindowsIcons.chevron_left
-                      : WindowsIcons.chevron_right),
-                  onPressed: () =>
-                      widget.panel.selectedTab(widget.panel.selectedTab() + 1),
-                )
-              : const SizedBox(width: 25),
-          tabs: widget.panel.tabs
-              .map((e) => Tab(
-                    text: Txt(txt(e.title)),
-                    icon: Icon(e.icon),
-                    body: const SizedBox(),
-                    disabled: e.onlyIfSaved && isNew,
-                  ))
-              .toList(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildPanelHeader() {
-    return GestureDetector(
-      onTap: () {
-        if (PanelsManager.minimize()) PanelsManager.minimize(false);
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 2.8, horizontal: 5),
-        color: Colors.grey.withValues(alpha: 0.1),
-        child: StreamBuilder(
-            stream: widget.panel.inProgress.stream,
-            builder: (context, snapshot) {
-              return Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(spacing: 2, children: [
-                    _buildPanelHeaderStoreName(),
-                    _buildPanelHeaderItemName(),
-                  ]),
-                  Row(children: [
-                    if (PanelsManager.active().length > 1)
-                      _buildPanelSwitcher(),
-                    // minimization is useless is prevented in big screens
-                    if (widget.layoutWidth < 710) _buildPanelMinimizeButton(),
-                    widget.panel.inProgress()
-                        ? const SizedBox(
-                            height: 20, width: 20, child: ProgressRing())
-                        : _buildPanelCloseButton()
-                  ])
-                ],
-              );
-            }),
-      ),
-    );
-  }
-
-  Widget _buildPanelCloseButton() {
-    return FlyoutTarget(
-      controller: confirmCancelController,
-      child: IconButton(
-        icon: const Icon(WindowsIcons.cancel),
-        onPressed: closeOrConfirmCancel,
-      ),
-    );
-  }
-
-  IconButton _buildPanelMinimizeButton() {
-    return IconButton(
-      key: WK.panelMinimize,
-      icon: Icon(PanelsManager.minimize()
-          ? WindowsIcons.chevron_up
-          : WindowsIcons.chevron_down),
-      onPressed: () => PanelsManager.minimize(!PanelsManager.minimize()),
-    );
-  }
-
-  FlyoutTarget _buildPanelSwitcher() {
-    return FlyoutTarget(
-      controller: panelSwitchController,
-      child: IconButton(
-        icon: Row(
-          spacing: 2,
-          children: [
-            const Icon(FluentIcons.reopen_pages),
-            Text(
-              PanelsManager.active().length.toString(),
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-            )
-          ],
-        ),
-        onPressed: openPanelSwitch,
-      ),
-    );
-  }
-
-  Widget _buildPanelHeaderStoreName() {
-    return SizedBox(
-      width: 105,
-      child: Row(
-        children: [
-          Txt(
-            widget.panel.unicodeSymbol,
-            style: const TextStyle(fontSize: 20),
-          ),
-          Txt(
-            txt(widget.panel.singularName),
-            style: TextStyle(
-                fontSize: 12,
-                color: FluentTheme.of(context).shadowColor,
-                fontWeight: FontWeight.w500),
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPanelHeaderItemName() {
-    return SizedBox(
-      width: 134,
-      child: widget.panel.buildTitle(context),
-    );
   }
 
   void closeOrConfirmCancel() async {
@@ -527,7 +538,7 @@ class _PanelScreenState extends State<PanelScreen> {
   void openPanelSwitch() async {
     await flyoutFocusFix(context);
     unawaited(panelSwitchController.showFlyout<void>(
-      barrierDismissible: widget.layoutWidth < 710,
+      barrierDismissible: widget.layoutWidth < kWindowsBreakpoint,
       dismissWithEsc: true,
       dismissOnPointerMoveAway: true,
       builder: (context) => MenuFlyout(items: [

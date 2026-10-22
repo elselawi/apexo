@@ -1,4 +1,4 @@
-import 'package:apexo/app/panels/panel.dart';
+import 'package:apexo/ui/workspace/panel.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 /// A panel that shows editors whose persistence belongs to the caller.
@@ -16,7 +16,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 final class DelegatedPanel extends Panel {
   DelegatedPanel({
     required this.itemId,
-    required super.tabs,
+    required super.windows,
     required super.icon,
     required super.singularName,
     required super.unicodeSymbol,
@@ -27,12 +27,13 @@ final class DelegatedPanel extends Panel {
     this.onSetArchived,
     super.newTitle,
     super.recordTitle,
-    super.inherentlyScrollable,
-    super.showTitles,
+    super.liveTitle,
     super.showBottomControls,
     super.additionalControls,
     super.archiveButtonReplacement,
-    super.selectedTabIndex,
+    super.initialWindow,
+    super.opensWithWindows,
+    super.accent,
   })  : _isNew = isNew,
         _checkArchived = checkArchived;
 

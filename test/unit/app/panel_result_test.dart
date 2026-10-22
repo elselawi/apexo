@@ -8,10 +8,10 @@ library;
 
 import 'dart:async';
 
-import 'package:apexo/app/panels/delegated_panel.dart';
-import 'package:apexo/app/panels/panel.dart';
-import 'package:apexo/app/panels/panel_tab.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/delegated_panel.dart';
+import 'package:apexo/ui/workspace/panel.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -25,11 +25,12 @@ void main() {
         icon: WindowsIcons.folder,
         checkUnsavedChanges: () => false,
         onSave: () async => const [],
-        tabs: [
-          PanelTab(
+        windows: [
+          const PanelWindow(
+            id: 'orders',
             title: 'orders',
             icon: WindowsIcons.folder,
-            body: const SizedBox.shrink(),
+            body: SizedBox.shrink(),
           ),
         ],
       );
@@ -85,7 +86,8 @@ void main() {
     });
   });
 
-  test('saving blocks duplicate writes and clears progress after failure', () async {
+  test('saving blocks duplicate writes and clears progress after failure',
+      () async {
     final write = Completer<List<String>>();
     var calls = 0;
     final panel = DelegatedPanel(
@@ -99,7 +101,7 @@ void main() {
         calls++;
         return write.future;
       },
-      tabs: [],
+      windows: [],
     );
 
     final saving = panel.save();
@@ -114,7 +116,8 @@ void main() {
     expect(await settled(panel), isFalse);
   });
 
-  test('a successful delegated save changes a new panel into an existing one', () async {
+  test('a successful delegated save changes a new panel into an existing one',
+      () async {
     final panel = DelegatedPanel(
       itemId: 'new-record',
       singularName: 'orders',
@@ -123,7 +126,7 @@ void main() {
       isNew: true,
       checkUnsavedChanges: () => true,
       onSave: () async => ['new-record'],
-      tabs: [],
+      windows: [],
     );
 
     await panel.save();

@@ -1,17 +1,24 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:apexo/app/app_context.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/navbar_widget.dart';
-import 'package:apexo/app/panels/panel_screen.dart';
-import 'package:apexo/app/panels/panels_manager.dart';
+import 'package:apexo/ui/workspace/panel_screen.dart';
+import 'package:apexo/ui/workspace/panel_width.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
+import 'package:apexo/ui/workspace/windows_layout.dart';
+import 'package:apexo/ui/workspace/window_defaults.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
-import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
 import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/first_launch_dialog.dart';
 import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/ui/workspace/window_origin.dart';
+import 'package:apexo/ui/workspace/windows_layer.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/patient_side/patient_side_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -29,8 +36,6 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-
-late BuildContext bContext;
 
 /// One cached [GlobalObjectKey] per route, so a screen keeps its element and
 /// state (scroll offset, text controllers) when the shell rebuilds.
@@ -55,6 +60,11 @@ class ApexoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Where the last tap landed: a window opened from a row or a menu is put at
+    // that row, not at the panel's side of the screen. The recorder is global,
+    // because a menu lives in the navigator's overlay and a listener inside the
+    // app would never see the tap that chose a menu item.
+    WindowOrigin.install();
     return StreamBuilder(
         stream: localSettings.stream,
         builder: (context, snapshot) {
@@ -187,14 +197,12 @@ class ApexoApp extends StatelessWidget {
         launch.open.stream,
         routes.currentRoute.stream,
         PanelsManager.active.stream,
-        if (PanelsManager.active().isNotEmpty)
-          PanelsManager.active().last.selectedTab.stream,
       ],
       key: WK.builder,
       builder: (context, _) => PopScope(
         canPop: false,
         onPopInvokedWithResult: (_, __) {
-          if (launch.layoutWidth < 710 &&
+          if (launch.layoutWidth < kWindowsBreakpoint &&
               PanelsManager.active().isNotEmpty &&
               PanelsManager.minimize() == false) {
             PanelsManager.minimize(true);
@@ -211,10 +219,11 @@ class ApexoApp extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _buildPositionedMainScreen(constraints, hideSidePanel, context),
+                _buildPositionedMainScreen(
+                    constraints, hideSidePanel, context),
                 if (PanelsManager.active().isNotEmpty &&
                     PanelsManager.minimize() == false &&
-                    constraints.maxWidth < 710)
+                    constraints.maxWidth < kWindowsBreakpoint)
                   ModalBarrier(
                     color: FluentTheme.of(context)
                         .menuColor
@@ -222,6 +231,21 @@ class ApexoApp extends StatelessWidget {
                     onDismiss: () => PanelsManager.minimize(true),
                   ),
                 _buildPositionedPanel(context, constraints, hideSidePanel),
+                WindowsLayer(
+                  visible: launch.open() == Open.staff,
+                  screenWidth: constraints.maxWidth,
+                  refreshStreams: [
+                    patients.observableMap.stream,
+                    appointments.observableMap.stream,
+                  ],
+                  defaults: WindowDefaults(
+                    read: () => localSettings.windowsPerKind,
+                    write: (value) {
+                      localSettings.windowsPerKind = value;
+                      localSettings.notifyAndPersist();
+                    },
+                  ),
+                ),
               ],
             ),
           );
@@ -230,34 +254,20 @@ class ApexoApp extends StatelessWidget {
     );
   }
 
-  double _activePanelWidth(BoxConstraints constraints, bool minimized) {
-    final activePanels = PanelsManager.active();
-    final activePanel = activePanels.isNotEmpty ? activePanels.last : null;
-    final tabIdx = activePanel?.selectedTab() ?? 0;
-    final activeTabKey = (activePanel != null &&
-            tabIdx >= 0 &&
-            tabIdx < activePanel.tabs.length)
-        ? activePanel.tabs[tabIdx].title
-        : null;
-    return computePanelWidth(
-      screenWidth: constraints.maxWidth,
-      minimized: minimized,
-      activeTabTitleKey: activeTabKey,
-    );
-  }
+  double _activePanelWidth(BoxConstraints constraints) =>
+      computePanelWidth(screenWidth: constraints.maxWidth);
 
   Widget _buildPositionedMainScreen(
       BoxConstraints constraints, bool hideSidePanel, BuildContext context) {
     final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
-    final minimized = PanelsManager.minimize() && constraints.maxWidth < 710;
-    final panelWidth = _activePanelWidth(constraints, minimized);
+    final panelWidth = _activePanelWidth(constraints);
     return AnimatedPositioned(
       duration: hasKeyboard ? Duration.zero : const Duration(milliseconds: 300),
       top: 0,
       left: locale.s.$direction == TextDirection.rtl ? null : 0,
       right: locale.s.$direction == TextDirection.rtl ? 0 : null,
       height: constraints.maxHeight,
-      width: (!hideSidePanel) && constraints.maxWidth >= 710
+      width: (!hideSidePanel) && constraints.maxWidth >= kWindowsBreakpoint
           ? constraints.maxWidth - (panelWidth + 5)
           : constraints.maxWidth,
       child: Container(
@@ -274,7 +284,8 @@ class ApexoApp extends StatelessWidget {
             title: NavScreenTitle(),
           ),
           onDisplayModeChanged: (mode) {
-            if (mode == PaneDisplayMode.minimal && constraints.maxWidth < 710) {
+            if (mode == PaneDisplayMode.minimal &&
+                constraints.maxWidth < kWindowsBreakpoint) {
               routes.showBottomNav(true);
             } else {
               routes.showBottomNav(false);
@@ -309,7 +320,7 @@ class ApexoApp extends StatelessWidget {
                         child: Padding(
                           padding: EdgeInsets.only(
                               bottom: (routes.showBottomNav() &&
-                                      constraints.maxWidth < 710)
+                                      constraints.maxWidth < kWindowsBreakpoint)
                                   ? 66
                                   : 0),
                           child: route.buildScreen(),
@@ -328,9 +339,10 @@ class ApexoApp extends StatelessWidget {
 
   Widget _buildPositionedPanel(
       BuildContext context, BoxConstraints constraints, bool hideSidePanel) {
-    final minimized = PanelsManager.minimize() && constraints.maxWidth < 710;
+    final minimized =
+        PanelsManager.minimize() && constraints.maxWidth < kWindowsBreakpoint;
     final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
-    final panelWidth = _activePanelWidth(constraints, minimized);
+    final panelWidth = _activePanelWidth(constraints);
     return AnimatedPositioned(
       duration: hasKeyboard ? Duration.zero : const Duration(milliseconds: 300),
       width: panelWidth,
@@ -363,7 +375,6 @@ class ApexoApp extends StatelessWidget {
                 },
                 child: PanelScreen(
                   key: Key(PanelsManager.active().last.identifier),
-                  layoutHeight: constraints.maxHeight,
                   layoutWidth: constraints.maxWidth,
                   panel: PanelsManager.active().last,
                 ),

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:apexo/app/panels/panel.dart';
+import 'package:apexo/ui/workspace/panel.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 
@@ -22,7 +22,7 @@ final class RowPanel<T extends Model> extends Panel {
     required this.item,
     required this.store,
     required this.title,
-    required super.tabs,
+    required super.windows,
     required super.icon,
     required super.singularName,
     required super.unicodeSymbol,
@@ -31,14 +31,15 @@ final class RowPanel<T extends Model> extends Panel {
     this.checkUnsavedChanges,
     this.onSave,
     this.validate,
-    super.inherentlyScrollable,
-    super.showTitles,
+    String? savedBaseline,
     super.showBottomControls,
     super.additionalControls,
     super.archiveButtonReplacement,
-    super.selectedTabIndex,
+    super.initialWindow,
+    super.opensWithWindows,
+    super.accent,
   })  : _existing = existing ?? (store.get(item.id) != null),
-        _savedJson = jsonEncode(item.toJson()),
+        _savedJson = savedBaseline ?? jsonEncode(item.toJson()),
         super(
           // The old constructor took one `title` that already knew whether the
           // record existed; the host wants the two questions apart. Splitting it
@@ -79,10 +80,29 @@ final class RowPanel<T extends Model> extends Panel {
   bool _existing;
 
   /// The record's JSON as of the last save, for the unsaved-changes check.
+  ///
+  /// A panel that adopts work a window was holding starts at the *stored* JSON
+  /// ([savedBaseline]) rather than at its item's: the item already carries the
+  /// work, so the panel opens saying there is something to save.
   String _savedJson;
 
   @override
   String get itemId => item.id;
+
+  /// The record's own draft, as JSON: what the work of a window of this record
+  /// is written over.
+  @override
+  Map<String, dynamic> get draftJson => item.toJson();
+
+  /// Takes in the work a window of this record was holding.
+  ///
+  /// The fields are written onto the draft the panel already holds, rather than
+  /// replacing it: the panel's own windows edit that very draft, so a new copy
+  /// of it would leave them editing something the panel no longer saves.
+  @override
+  void adoptDraft(Map<String, dynamic> json) {
+    item.fromJson(json);
+  }
 
   @override
   bool get isNew => !canNotBeNew && !_existing;
@@ -145,8 +165,8 @@ final class RowPanel<T extends Model> extends Panel {
   Future<void> setArchived(bool archived) async {
     final validationError = validate?.call();
     if (validationError != null) throw FormatException(validationError);
-    final updated = store.modeling(
-        jsonDecode(jsonEncode(item.toJson())) as Map<String, dynamic>)
+    final updated = store
+        .modeling(jsonDecode(jsonEncode(item.toJson())) as Map<String, dynamic>)
       ..archived = archived;
     store.set(updated);
     item.archived = archived;

@@ -4,8 +4,8 @@
 /// that cannot archive is offered no archive button rather than a dead one.
 library;
 
-import 'package:apexo/app/panels/delegated_panel.dart';
-import 'package:apexo/app/panels/panel_tab.dart';
+import 'package:apexo/ui/workspace/delegated_panel.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -33,11 +33,12 @@ void main() {
         checkUnsavedChanges: checkUnsavedChanges ?? () => false,
         onSave: onSave ?? () async => const [],
         recordTitle: recordTitle,
-        tabs: [
-          PanelTab(
+        windows: [
+          const PanelWindow(
+            id: 'orders',
             title: 'orders',
             icon: WindowsIcons.folder,
-            body: const SizedBox.shrink(),
+            body: SizedBox.shrink(),
           ),
         ],
       );

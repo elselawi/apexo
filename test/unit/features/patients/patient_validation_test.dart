@@ -1,4 +1,4 @@
-import 'package:apexo/app/panels/row_panel.dart';
+import 'package:apexo/ui/workspace/row_panel.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/utils/constants.dart';
@@ -42,7 +42,7 @@ void main() {
       item: patient,
       store: store,
       title: 'patient',
-      tabs: const [],
+      windows: const [],
       icon: FluentIcons.contact,
       singularName: 'patient',
       unicodeSymbol: '',
@@ -70,7 +70,7 @@ void main() {
       item: patient,
       store: store,
       title: 'patient',
-      tabs: const [],
+      windows: const [],
       icon: FluentIcons.contact,
       singularName: 'patient',
       unicodeSymbol: '',
@@ -94,7 +94,7 @@ void main() {
       item: patient,
       store: store,
       title: 'patient',
-      tabs: const [],
+      windows: const [],
       icon: FluentIcons.contact,
       singularName: 'patient',
       unicodeSymbol: '',

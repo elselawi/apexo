@@ -1,4 +1,4 @@
-import 'package:apexo/app/panels/panel.dart';
+import 'package:apexo/ui/workspace/panel.dart';
 import 'package:apexo/core/reactive/observable.dart';
 
 abstract class PanelsManager {
@@ -13,7 +13,15 @@ abstract class PanelsManager {
         .indexWhere((element) => element.identifier == panel.identifier);
     if (foundPanel > -1) {
       final kept = active()[foundPanel];
-      kept.selectedTab(panel.selectedTab());
+      // The caller may have asked for a window this time (a table cell that
+      // means "the appointments of this patient"), so honour it on the panel
+      // that is already open. The panel's first window is inline, so only a
+      // floating one has anything to bring back.
+      final requested = panel.initialWindow;
+      if (requested != null &&
+          kept.floatingWindows.any((w) => w.id == requested)) {
+        kept.workspace.show(requested);
+      }
       bringToFront(foundPanel);
       panel.settle();
       return kept;
@@ -22,6 +30,18 @@ abstract class PanelsManager {
       minimize(false);
       return panel;
     }
+  }
+
+  /// The panel already showing [identifier], if there is one.
+  ///
+  /// The same rule [open] uses, so "is this record's panel already open?" and
+  /// "open it" can never disagree — an opener that answered this question
+  /// before it built a panel must get the same answer [open] would.
+  static Panel? find(String identifier) {
+    for (final panel in active()) {
+      if (panel.identifier == identifier) return panel;
+    }
+    return null;
   }
 
   static void bringToFront(int index) {

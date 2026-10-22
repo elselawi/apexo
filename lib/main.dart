@@ -1,4 +1,12 @@
+import 'dart:async';
+
+import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/core/reactive/observable_base.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/services/file_links.dart';
+import 'package:apexo/services/session_events.dart';
+import 'package:apexo/ui/workspace/panels_manager.dart';
+import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/services/localization/intl_data.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
@@ -40,6 +48,24 @@ void main() async {
   // initialize stores
   initializeStores();
 
+  // What the app does with a session — the service announces it, the app tears
+  // down the screen it owns and shows the first dialogs. `login` therefore
+  // imports no panel, no window and no app widget.
+  SessionEvents.onEnded(() {
+    routes.reset();
+    PanelsManager.closeAll();
+    WindowsManager.closeAll();
+  });
+  SessionEvents.onStarted(
+    () => unawaited(ApexoApp.showDialogsIfNeeded()),
+  );
+
+  // Where a record's files are resolved. Uploads go to the appointments
+  // collection, so that is the store the app binds; an image util asks this
+  // instead of importing the feature.
+  fileLinkResolver =
+      (rowID, name) => appointments.remote!.getImageLink(rowID, name);
+
   // Register the DICOM scan lifecycle (the login activator) *before* any
   // login can run. `dicomCtrl` is a lazily-initialized top-level final, so
   // nothing else touches it early enough: without this the periodic
@@ -49,6 +75,11 @@ void main() async {
 
   if (kIsWeb) {
     JSBridge.removeItemFromSessionStorage('canvaskit_reload_count');
+    // The browser's own context menu would open on top of the app's menus —
+    // and on the rows whose long press belongs to a drag, it was the *only*
+    // thing that opened, so the app's own menu could not be reached at all.
+    // The app knows what a row means; the browser does not.
+    await SystemChannels.contextMenu.invokeMethod('disableContextMenu');
   }
 
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

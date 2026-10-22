@@ -1,5 +1,5 @@
-import 'package:apexo/app/panels/panel_tab.dart';
-import 'package:apexo/app/panels/row_panel.dart';
+import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/row_panel.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -20,8 +20,9 @@ void main() {
       singularName: 'note',
       unicodeSymbol: '',
       icon: FluentIcons.edit,
-      tabs: [
-        PanelTab(title: 'note', icon: FluentIcons.edit, body: const SizedBox())
+      windows: [
+        const PanelWindow(
+            id: 'note', title: 'note', icon: FluentIcons.edit, body: SizedBox())
       ],
     );
     await panel.save();

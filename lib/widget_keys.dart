@@ -170,6 +170,14 @@ class WK {
   static const calendarAppointmentTile = Key("calendarAppointmentTile");
   static const calendarDayButton = Key("calendarDayButton");
 
+  /// The chip that says what a visit carries wherever it is listed — its
+  /// dental notes, prescriptions, labwork and gallery — and the icon within it
+  /// for one `AppointmentIndicator` kind.
+  static const appointmentInfoBadges = Key("appointmentInfoBadges");
+
+  static Key appointmentIndicator(String kind) =>
+      Key("appointmentIndicator-$kind");
+
   /// The day cell for one date. The *selected* day carries [calendarSelected]
   /// instead, so a test can tap a cell by date and still ask what is selected.
   static Key calendarDay(DateTime day) =>
@@ -196,6 +204,32 @@ class WK {
   static const panelArchive = Key("panelArchive");
   static const panelMinimize = Key("panelMinimize");
 
+  /// A panel's window: the pill that opens and puts it away, and the button on
+  /// the window itself that minimizes it.
+  static Key windowToggle(String id) => Key("windowToggle-$id");
+  static Key windowMinimize(String id) => Key("windowMinimize-$id");
+
+  /// The Save/Close a window standing on its own carries, and the close button
+  /// its sheet gets on a phone.
+  static const windowSave = Key("windowSave");
+  static const windowClose = Key("windowClose");
+
+  /// The Save a panel window carries in its own footer, where the draft it edits
+  /// is also the panel's.
+  static Key windowSaveFooter(String id) => Key("windowSaveFooter-$id");
+
+  /// The Close a standalone window carries in its header, where a panel's window
+  /// has its minimize.
+  static const windowHeaderClose = Key("windowHeaderClose");
+
+  /// The header button that leaves a standalone window for the panel holding
+  /// its record.
+  static const windowOpenRecord = Key("windowOpenRecord");
+
+  /// The dot beside a window's title, and above the record's kind in a panel's
+  /// header, while the work in it has not been stored.
+  static const unsavedDot = Key("unsavedDot");
+
   /// List screens (patients, labworks, expenses, accounts, archived).
   static const listSearch = Key("listSearch");
   static const showMore = Key("showMore");
@@ -219,8 +253,18 @@ class WK {
   static const fieldOrderPaid = Key("fieldOrderPaid");
   static const orderMenu = Key("orderMenu");
 
+  /// The supplier panel's own body: the rename button beside the name, and the
+  /// figures it leads with.
+  static const editSupplierName = Key("editSupplierName");
+  static const expenseSummaryDue = Key("expenseSummaryDue");
+  static const expenseSummaryPaid = Key("expenseSummaryPaid");
+
   /// The expenses screen's primary action (it opens the supplier dialog).
   static const btnNewSupplier = Key("btnNewSupplier");
+
+  /// The appointment's labwork: the "add labwork for this appointment" link, and
+  /// the delete inside the order itself.
+  static const btnAddLabwork = Key("btnAddLabwork");
 
   /// The X-ray link (DICOM) screen.
   ///

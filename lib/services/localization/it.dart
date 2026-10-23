@@ -17,6 +17,7 @@ class It implements En {
     "invalidEmail": "Inserisci un indirizzo email valido.",
     "patientPageAccess": "Accesso alla pagina del paziente",
     "close": "Chiudi",
+    "closeAllWindows": "Chiudi tutte le finestre",
     "minimize": "Riduci",
     "xRayViewer": "Visualizzatore radiografie",
     "showOrders": "Mostra gli ordini",
@@ -146,8 +147,6 @@ class It implements En {
     "doctor": "Medico",
     "pastAppointments": "Appuntamenti passati",
     "upcomingAppointments": "Prossimi appuntamenti",
-    "viewAllAppointments": "Vedi tutti gli appuntamenti",
-    "otherAppointments": "Altri appuntamenti",
     "addAppointment": "Aggiungi appuntamento",
 
     // days and months

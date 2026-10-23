@@ -17,6 +17,7 @@ class Ur implements En {
     "invalidEmail": "درست ای میل ایڈریس درج کریں۔",
     "patientPageAccess": "مریض کے صفحے تک رسائی",
     "close": "بند کریں",
+    "closeAllWindows": "تمام ونڈوز بند کریں",
     "minimize": "چھوٹا کریں",
     "xRayViewer": "ایکس رے ویور",
     "showOrders": "آرڈرز دکھائیں",
@@ -144,8 +145,6 @@ class Ur implements En {
     "doctor": "ڈاکٹر",
     "pastAppointments": "پچھلی اپائنٹمنٹس",
     "upcomingAppointments": "آنے والی اپائنٹمنٹس",
-    "viewAllAppointments": "تمام اپائنٹمنٹس دیکھیں",
-    "otherAppointments": "دیگر اپائنٹمنٹس",
     "addAppointment": "اپائنٹمنٹ شامل کریں",
 
     // days and months

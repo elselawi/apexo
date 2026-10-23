@@ -230,6 +230,10 @@ class WK {
   /// header, while the work in it has not been stored.
   static const unsavedDot = Key("unsavedDot");
 
+  /// The command that puts every panel and every floating window away — out
+  /// only while there is something to close and nothing unsaved.
+  static const closeAllWindows = Key("closeAllWindows");
+
   /// List screens (patients, labworks, expenses, accounts, archived).
   static const listSearch = Key("listSearch");
   static const showMore = Key("showMore");

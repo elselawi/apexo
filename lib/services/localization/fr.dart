@@ -17,6 +17,7 @@ class Fr implements En {
     "invalidEmail": "Veuillez saisir une adresse e-mail valide.",
     "patientPageAccess": "Accès à la page patient",
     "close": "Fermer",
+    "closeAllWindows": "Fermer toutes les fenêtres",
     "minimize": "Réduire",
     "xRayViewer": "Visionneuse de radiographie",
     "showOrders": "Afficher les commandes",
@@ -146,8 +147,6 @@ class Fr implements En {
     "doctor": "Praticien",
     "pastAppointments": "Rendez-vous passés",
     "upcomingAppointments": "Rendez-vous à venir",
-    "viewAllAppointments": "Voir tous les rendez-vous",
-    "otherAppointments": "Autres rendez-vous",
     "addAppointment": "Ajouter un rendez-vous",
 
     // days and months

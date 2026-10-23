@@ -17,6 +17,7 @@ class Ar implements En {
     "invalidEmail": "أدخل عنوان بريد إلكتروني صالحاً.",
     "patientPageAccess": "الوصول إلى صفحة المريض",
     "close": "غلق",
+    "closeAllWindows": "إغلاق جميع النوافذ",
     "minimize": "تصغير",
     "openRecord": "فتح السجل",
     "openPatientRecord": "فتح سجل {name}",
@@ -143,8 +144,6 @@ class Ar implements En {
     "doctor": "طبيب",
     "pastAppointments": "المواعيد السابقة",
     "upcomingAppointments": "المواعيد القادمة",
-    "viewAllAppointments": "عرض جميع المواعيد",
-    "otherAppointments": "مواعيد أخرى",
     "addAppointment": "إضافة موعد",
 
     // days and months

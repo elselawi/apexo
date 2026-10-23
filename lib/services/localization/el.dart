@@ -19,6 +19,7 @@ class El implements En {
     "invalidEmail": "Εισαγάγετε έγκυρη διεύθυνση email.",
     "patientPageAccess": "Πρόσβαση στη σελίδα ασθενούς",
     "close": "Κλείσιμο",
+    "closeAllWindows": "Κλείσιμο όλων των παραθύρων",
     "minimize": "Ελαχιστοποίηση",
     "openRecord": "Άνοιγμα καρτέλας",
     "openPatientRecord": "Άνοιγμα καρτέλας {name}",
@@ -148,8 +149,6 @@ class El implements En {
     "doctor": "Ιατρός",
     "pastAppointments": "Προηγούμενα ραντεβού",
     "upcomingAppointments": "Επερχόμενα ραντεβού",
-    "viewAllAppointments": "Προβολή όλων των ραντεβού",
-    "otherAppointments": "Άλλα ραντεβού",
     "addAppointment": "Προσθήκη ραντεβού",
 
     // days and months

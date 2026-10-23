@@ -17,6 +17,7 @@ class Tr implements En {
     "invalidEmail": "Geçerli bir e-posta adresi girin.",
     "patientPageAccess": "Hasta sayfası erişimi",
     "close": "Kapat",
+    "closeAllWindows": "Tüm pencereleri kapat",
     "minimize": "Küçült",
     "xRayViewer": "Röntgen görüntüleyici",
     "showOrders": "Siparişleri göster",
@@ -146,8 +147,6 @@ class Tr implements En {
     "doctor": "Hekim",
     "pastAppointments": "Geçmiş randevular",
     "upcomingAppointments": "Yaklaşan randevular",
-    "viewAllAppointments": "Tüm randevuları görüntüle",
-    "otherAppointments": "Diğer randevular",
     "addAppointment": "Randevu Ekle",
 
     // days and months

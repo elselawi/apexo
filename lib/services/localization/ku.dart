@@ -17,6 +17,7 @@ class Ku implements En {
     "invalidEmail": "ئیمەیڵێکی دروست بنووسە.",
     "patientPageAccess": "دەستگەیشتن بە پەڕەی نەخۆش",
     "close": "داخستن",
+    "closeAllWindows": "داخستنی هەموو پەنجەرەکان",
     "minimize": "بچووککردنەوە",
     "xRayViewer": "بینەری تیشک",
     "showOrders": "پیشاندانی داواکارییەکان",
@@ -146,8 +147,6 @@ class Ku implements En {
     "doctor": "پزیشک",
     "pastAppointments": "مەوعیدەکانی پێشوو",
     "upcomingAppointments": "مەوعیدەکانی داهاتوو",
-    "viewAllAppointments": "بینینی هەموو مەوعیدەکان",
-    "otherAppointments": "مەوعیدەکانی تر",
     "addAppointment": "زیادکردنی مەوعید",
 
     // days and months

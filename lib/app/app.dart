@@ -7,6 +7,7 @@ import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/ui/workspace/panel_screen.dart';
 import 'package:apexo/ui/workspace/panel_width.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
+import 'package:apexo/ui/workspace/close_all_button.dart';
 import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:apexo/ui/workspace/window_defaults.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
@@ -219,8 +220,7 @@ class ApexoApp extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                _buildPositionedMainScreen(
-                    constraints, hideSidePanel, context),
+                _buildPositionedMainScreen(constraints, hideSidePanel, context),
                 if (PanelsManager.active().isNotEmpty &&
                     PanelsManager.minimize() == false &&
                     constraints.maxWidth < kWindowsBreakpoint)
@@ -246,6 +246,14 @@ class ApexoApp extends StatelessWidget {
                     },
                   ),
                 ),
+                // The way out of a clean workspace: every panel and window,
+                // closed at once — beside the panel, never over it.
+                if (launch.open() == Open.staff)
+                  CloseAllButton(
+                    screenWidth: constraints.maxWidth,
+                    panelWidth:
+                        hideSidePanel ? 0 : _activePanelWidth(constraints),
+                  ),
               ],
             ),
           );

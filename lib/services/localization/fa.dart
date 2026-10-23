@@ -17,6 +17,7 @@ class Fa implements En {
     "invalidEmail": "یک نشانی ایمیل معتبر وارد کنید.",
     "patientPageAccess": "دسترسی به صفحه بیمار",
     "close": "بستن",
+    "closeAllWindows": "بستن همه پنجره‌ها",
     "minimize": "کوچک کردن",
     "openRecord": "باز کردن پرونده",
     "openPatientRecord": "باز کردن پرونده {name}",
@@ -144,8 +145,6 @@ class Fa implements En {
     "doctor": "پزشک",
     "pastAppointments": "نوبت‌های گذشته",
     "upcomingAppointments": "نوبت‌های آینده",
-    "viewAllAppointments": "مشاهده همه نوبت‌ها",
-    "otherAppointments": "نوبت‌های دیگر",
     "addAppointment": "افزودن نوبت",
 
     // days and months

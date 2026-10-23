@@ -18,6 +18,7 @@ class En {
     "invalidEmail": "Enter a valid email address.",
     "patientPageAccess": "Patient page access",
     "close": "Close",
+    "closeAllWindows": "Close all windows",
     "minimize": "Minimize",
     "openRecord": "Open record",
     "openPatientRecord": "Open {name}'s record",
@@ -146,8 +147,6 @@ class En {
     "doctor": "Doctor",
     "pastAppointments": "Past appointments",
     "upcomingAppointments": "Upcoming appointments",
-    "viewAllAppointments": "View all appointments",
-    "otherAppointments": "Other appointments",
     "addAppointment": "Add Appointment",
 
     // days and months

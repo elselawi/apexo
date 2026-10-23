@@ -19,6 +19,7 @@ class Es implements En {
     "invalidEmail": "Introduce una dirección de correo válida.",
     "patientPageAccess": "Acceso a la página del paciente",
     "close": "Cerrar",
+    "closeAllWindows": "Cerrar todas las ventanas",
     "minimize": "Minimizar",
     "openRecord": "Abrir ficha",
     "openPatientRecord": "Abrir ficha de {name}",
@@ -148,8 +149,6 @@ class Es implements En {
     "doctor": "Doctor",
     "pastAppointments": "Citas pasadas",
     "upcomingAppointments": "Próximas citas",
-    "viewAllAppointments": "Ver todas las citas",
-    "otherAppointments": "Otras citas",
     "addAppointment": "Añadir cita",
 
     // days and months

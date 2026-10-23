@@ -4,6 +4,7 @@ library;
 import 'dart:async';
 
 import 'package:apexo/services/patient_side.dart';
+import 'package:apexo/services/notifications/notification_session.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -30,6 +31,7 @@ void main() {
     patientSide.appointments.clear();
     patientSide.imgLinks.clear();
     patientSide.collectionId = '';
+    notificationSessions.invalidate();
   });
 
   group('PatientAppointment.fromJson', () {
@@ -346,6 +348,9 @@ void main() {
       ]);
       expect(identifyCalls, 2);
       expect(loginCtrl.loadingPatientSide(), isFalse);
+      expect(notificationSessions.phase, NotificationSessionPhase.active);
+      expect(notificationSessions.active?.accountId, 'patient-id');
+      expect(notificationSessions.active?.isPatient, isTrue);
     });
 
     test('HTTP or payload failure clears loading and exposes error', () async {
@@ -379,6 +384,7 @@ void main() {
 
       expect(side.patientID, isEmpty);
       expect(side.server, isEmpty);
+      expect(notificationSessions.phase, NotificationSessionPhase.absent);
     });
   });
 }

@@ -146,6 +146,10 @@ if (Platform.isAndroid || Platform.isIOS) {
 } else if (Platform.isWindows) {
   // Windows-specific (ding sound)
 }
+
+// Prefer a single named value over scattered checks when the same distinction
+// is needed in more than one place (see `lib/services/notifications/push_platform.dart`)
+final pushPlatform = PushPlatform.current; // wns / ios / macos / android / web / null
 ```
 
 ### Where Platform Checks Appear
@@ -154,7 +158,9 @@ if (Platform.isAndroid || Platform.isIOS) {
 |------|-------|--------|
 | `main.dart` | `kIsWeb == false` → init notifications | Web uses service worker, not Flutter FCM plugin |
 | `main.dart` | `kIsWeb` → clear Canvaskit | Web-specific Flutter rendering workaround |
-| `core_notifications_initializer.dart` | `Platform.isAndroid \|\| Platform.isIOS` | Only mobile has Firebase+FCM native plugins |
+| `core_notifications_initializer.dart` | `PushPlatform.current` (`wns` vs the FCM platforms) | Windows has no Firebase; Android/iOS/macOS do |
+| `core_notifications_initializer.dart` | `Platform.isAndroid \|\| Platform.isIOS \|\| Platform.isMacOS` | The platforms with Firebase+FCM native plugins |
+| `windows_push_platform_io.dart` | `Platform.isWindows` behind a conditional import | Keeps the Windows channel code out of web and other native builds |
 | `static_notifications.dart` | `kIsWeb \|\| Platform.isWindows == false` | Sound + toast only on Windows desktop |
 | `imgs.dart` | `!kIsWeb` → local file operations | Web has no filesystem access |
 | `app.dart` | `!kIsWeb && Platform.isAndroid` → bottom padding | Android system nav bar insets |

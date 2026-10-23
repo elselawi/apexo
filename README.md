@@ -123,10 +123,14 @@ Live-backend tests are separate and must be explicitly requested/configured. The
       - `xcodebuild: error: Could not resolve package dependencies`: a dropped GitHub clone leaves a half-cloned repository in `build/macos/SourcePackages`. Re-run the build (repositories are cached in `~/Library/Caches/org.swift.swiftpm`), and if the big clones keep failing, set `git config --global http.version HTTP/1.1`.
       - after moving/renaming the project folder, Xcode keeps state pointing at the old location: delete the project's stale `~/Library/Developer/Xcode/DerivedData/Runner-*` folders and reopen the workspace (a build folder clean from Xcode is enough for the app products).
 
-- For windows: (On a windows machine)
-   - build with `shorebird release --platforms windows`
-   - build msix: `dart run msix:create --store`
-   - upload to ms store through microsoft partner
+- For windows: (On a Windows x64 machine)
+   - build with `shorebird release windows`
+   - package with `powershell -ExecutionPolicy Bypass -File tools/patch_msix_manifest.ps1 -SkipFlutterBuild -Store`
+     - `-SkipFlutterBuild` is required after a Shorebird release: it regenerates the manifest and packs the existing Shorebird output without rebuilding it with the local Flutter SDK.
+     - `-Store` passes `--store` to the msix tool (unsigned package with the Partner Center identity).
+     - the script adds the Windows App Runtime dependency and the WNS push COM activation server, then verifies the patched and packaged manifests.
+   - do **not** use `dart run msix:create --store` for a push-capable package: it regenerates the manifest and packs in one step, so the push activation contract never reaches the MSIX.
+   - upload the resulting `.msix` to the Microsoft Store through Partner Center.
    
 - For iOS:
    - build with `flutter build ipa --release --export-method app-store`

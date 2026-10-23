@@ -45,6 +45,38 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
 
+# === Native packages =========================================================
+#
+# NuGet packages are build inputs for the runner (Windows App SDK push
+# projections), but a plain CMake/MSBuild build has no NuGet restore step. CMake
+# owns the restore so a direct `flutter build windows` works too, not just the
+# packaging script. A valid local restore is a fast, network-free no-op.
+find_program(APEXO_POWERSHELL NAMES powershell.exe pwsh.exe)
+if(NOT APEXO_POWERSHELL)
+  message(FATAL_ERROR
+    "PowerShell is required to restore the Windows native packages.")
+endif()
+
+set(APEXO_RESTORE_SCRIPT
+  "${CMAKE_CURRENT_SOURCE_DIR}/restore_windows_packages.ps1")
+set(APEXO_PACKAGES_CONFIG
+  "${CMAKE_CURRENT_SOURCE_DIR}/packages.config")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${APEXO_RESTORE_SCRIPT}"
+  "${APEXO_PACKAGES_CONFIG}")
+execute_process(
+  COMMAND "${APEXO_POWERSHELL}" -NoProfile -NonInteractive
+    -ExecutionPolicy Bypass -File "${APEXO_RESTORE_SCRIPT}"
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  RESULT_VARIABLE APEXO_RESTORE_RESULT
+  OUTPUT_VARIABLE APEXO_RESTORE_OUTPUT
+  ERROR_VARIABLE APEXO_RESTORE_ERROR)
+if(NOT "${APEXO_RESTORE_RESULT}" STREQUAL "0")
+  message(FATAL_ERROR
+    "Windows native package restore failed.\n"
+    "${APEXO_RESTORE_OUTPUT}\n${APEXO_RESTORE_ERROR}")
+endif()
+
 # Flutter library and tool build rules.
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})

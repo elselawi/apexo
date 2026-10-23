@@ -36,6 +36,23 @@ class Win32Window {
   // |Show| is called. Returns true if the window was created successfully.
   bool Create(const std::wstring& title, const Point& origin, const Size& size);
 
+  // Claims the process-wide single-instance event. Returns false when another
+  // instance already holds it. Kept separate from Create so an ordinary
+  // duplicate launch can be forwarded before any notification registration.
+  static bool ClaimSingleInstance();
+
+  // Allows a notification activation-server process to create its window even
+  // when another instance exists: COM activation must still be accepted.
+  static void AllowNotificationActivationServer();
+
+  // Finds the primary window and asks it to reveal/restore itself. The message
+  // is acknowledged only after the primary handled it; a bounded retry covers
+  // the interval between event creation and HWND creation.
+  static bool ForwardLaunchToPrimaryInstance();
+
+  // The registered message a duplicate launch uses to promote the primary.
+  static UINT PromoteMessage();
+
   // Show the current window. Returns true if the window was successfully shown.
   bool Show();
 

@@ -120,28 +120,80 @@ Win32Window::~Win32Window() {
   Destroy();
 }
 
-bool CheckOneInstance()
-{
+namespace {
 
-    HANDLE  m_hStartEvent = CreateEventW( NULL, FALSE, FALSE, L"Global\\app.apexo.app" );
+HANDLE g_instance_event = nullptr;
+bool g_allow_duplicate_instance = false;
 
-    if(m_hStartEvent == NULL)
-    {
-        CloseHandle( m_hStartEvent );
-        return false;
-    }
+}  // namespace
 
-
-    if (GetLastError() == ERROR_ALREADY_EXISTS) {
-
-        CloseHandle( m_hStartEvent );
-        m_hStartEvent = NULL;
-        // already exist
-        // send message from here to existing copy of the application
-        return false;
-    }
-    // the only instance, start in a usual way
+bool Win32Window::ClaimSingleInstance() {
+  if (g_instance_event != nullptr) {
     return true;
+  }
+  HANDLE event =
+      CreateEventW(nullptr, FALSE, FALSE, L"Global\\app.apexo.app");
+  if (event == nullptr) {
+    return false;
+  }
+  if (GetLastError() == ERROR_ALREADY_EXISTS) {
+    CloseHandle(event);
+    return false;
+  }
+  // Held for the lifetime of the process; closing it would release the name
+  // while this instance is still running.
+  g_instance_event = event;
+  return true;
+}
+
+void Win32Window::AllowNotificationActivationServer() {
+  g_allow_duplicate_instance = true;
+}
+
+UINT Win32Window::PromoteMessage() {
+  static const UINT message =
+      ::RegisterWindowMessageW(L"apexo.promote-instance");
+  return message;
+}
+
+bool Win32Window::ForwardLaunchToPrimaryInstance() {
+  const UINT promote = PromoteMessage();
+  const ULONGLONG deadline = ::GetTickCount64() + 10000;
+  // The primary creates the event before the HWND. Give it a short, bounded
+  // window to finish creating the window instead of reporting "already running".
+  for (int attempt = 0; attempt < 100; ++attempt) {
+    if (::GetTickCount64() >= deadline) {
+      return false;
+    }
+    HWND primary = ::FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", L"apexo");
+    if (primary != nullptr) {
+      DWORD_PTR result = 0;
+      // The duplicate was launched by the user, so it may pass foreground
+      // permission to the instance that will now reveal itself.
+      ::AllowSetForegroundWindow(ASFW_ANY);
+      const LRESULT acknowledged = ::SendMessageTimeoutW(
+          primary, promote, 1, 0,
+          SMTO_ABORTIFHUNG | SMTO_BLOCK, 2000, &result);
+      if (acknowledged != 0 && result == 1) {
+        return true;
+      }
+      // The window may have been destroyed between the two calls. Retry the
+      // normal acquisition path in the caller rather than swallowing the
+      // user's launch.
+      if (!::IsWindow(primary)) {
+        return false;
+      }
+    }
+    ::Sleep(100);
+  }
+  return false;
+}
+
+bool CheckOneInstance() {
+  if (g_allow_duplicate_instance) {
+    return true;
+  }
+  return Win32Window::ClaimSingleInstance();
 }
 
 bool Win32Window::Create(const std::wstring& title,

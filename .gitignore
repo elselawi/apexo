@@ -52,3 +52,6 @@ app.*.map.json
 /android/app/release
 docs-video-generation/
 
+
+# Windows native packages restored by windows/restore_windows_packages.ps1
+/windows/packages/

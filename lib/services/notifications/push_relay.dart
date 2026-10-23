@@ -2,14 +2,16 @@ import 'dart:convert';
 
 import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/notifications/notification_session.dart';
 import 'package:apexo/services/notifications/push_interpretation.dart';
+import 'package:apexo/services/notifications/push_platform.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/hash.dart';
 import 'package:apexo/utils/logger.dart';
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
+import 'package:pocketbase/pocketbase.dart';
 
 class PushRelay {
   static bool deviceIsPut = false;
@@ -23,32 +25,24 @@ class PushRelay {
       "https://apexo-notifications-relay.alisaleem.workers.dev";
   static const relayKeyIDInCollection = "notifications_k";
 
-  /// The platform this device runs on, recorded with the device so the relay
-  /// can shape its pushes: an iOS alert the system displays, or a silent data
-  /// message the app renders itself.
-  static String get _platform {
-    if (kIsWeb) return "web";
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.iOS:
-        return "ios";
-      case TargetPlatform.android:
-        return "android";
-      case TargetPlatform.macOS:
-        return "macos";
-      case TargetPlatform.windows:
-        return "windows";
-      case TargetPlatform.linux:
-        return "linux";
-      case TargetPlatform.fuchsia:
-        return "fuchsia";
-    }
-  }
+  /// A background registration must not monopolize a refresh forever. The
+  /// server may still finish an accepted request after this local timeout; the
+  /// next bounded refresh is what reconciles that.
+  @visibleForTesting
+  static Duration registrationRequestTimeout = const Duration(seconds: 20);
 
   static Future<String?> _getRelayKey() async {
+    final pb = login.pb;
+    if (pb == null) return null;
+    return _getRelayKeyFrom(pb);
+  }
+
+  static Future<String?> _getRelayKeyFrom(PocketBase pb) async {
     try {
-      final keyRecord = await login.pb!
+      final keyRecord = await pb
           .collection(dataCollectionName)
-          .getOne(relayKeyIDInCollection);
+          .getOne(relayKeyIDInCollection)
+          .timeout(registrationRequestTimeout);
       return keyRecord.get<String>("data.key");
     } catch (e) {
       return null;
@@ -59,49 +53,131 @@ class PushRelay {
   /// it tries to fetch it from the database, and if it doesn't exist, it creates it
   /// this function must be called right after a successful login occured
   static Future<String> ensureKey() async {
-    final key = await _getRelayKey();
-    if (key == null) {
-      final String newKey = secureHash(
-          "${login.url} ${login.token} ${login.email} ${DateTime.now().millisecondsSinceEpoch.toString()}");
-      await login.pb!.collection(dataCollectionName).create(body: {
+    final pb = login.pb;
+    if (pb == null) {
+      throw StateError(
+          'No PocketBase connection is available for the relay key.');
+    }
+    final key = await _getRelayKeyFrom(pb);
+    if (key != null && key.isNotEmpty) return key;
+    return _createRelayKey(
+      pb: pb,
+      server: login.url,
+      authToken: login.token,
+      email: login.email,
+    );
+  }
+
+  /// Resolves the relay key using only values captured for [snapshot].
+  ///
+  /// This is deliberately not [ensureKey]: that method reads the mutable
+  /// `login` globals, which can already describe the next account by the time a
+  /// background registration resumes.
+  static Future<String?> ensureKeyForSnapshot(
+    NotificationSessionSnapshot snapshot,
+  ) async {
+    if (snapshot.isPatient) {
+      final key = snapshot.clinicKey;
+      return key == null || key.isEmpty ? null : key;
+    }
+    final pb = snapshot.pocketBase;
+    if (pb == null || snapshot.authToken.isEmpty) return null;
+    final existing = await _getRelayKeyFrom(pb);
+    if (existing != null && existing.isNotEmpty) return existing;
+    return _createRelayKey(
+      pb: pb,
+      server: snapshot.server,
+      authToken: snapshot.authToken,
+      email: snapshot.email,
+    );
+  }
+
+  static Future<String> _createRelayKey({
+    required PocketBase pb,
+    required String server,
+    required String authToken,
+    required String email,
+  }) async {
+    final String newKey = secureHash(
+        "$server $authToken $email ${DateTime.now().millisecondsSinceEpoch.toString()}");
+    try {
+      await pb.collection(dataCollectionName).create(body: {
         "id": relayKeyIDInCollection,
         "data": jsonEncode({"key": newKey}),
-      });
+      }).timeout(registrationRequestTimeout);
       return newKey;
-    } else {
-      return key;
+    } catch (_) {
+      // Another bounded attempt may have created it between the read and the
+      // create. Re-read once rather than replacing a key that already exists.
+      final raced = await _getRelayKeyFrom(pb);
+      if (raced != null && raced.isNotEmpty) return raced;
+      rethrow;
     }
   }
 
   /// This function puts a new device into the relay database
   /// The server would add the token only if it doesn't exist
-  static Future<void> putDevice({bool isPatient = false}) async {
+  ///
+  /// [platform] is the [PushPlatform] value recorded with the device, so the
+  /// relay knows which transport to use and which OS to shape a push for. It
+  /// defaults to the relay's backward-compatible [PushPlatform.fcm]; passing
+  /// `null` (or an empty string) omits the field entirely rather than claiming
+  /// a platform this build could not identify.
+  ///
+  /// Returns whether the relay accepted the device. A missing key, a rejected
+  /// registration (`400`) or an unexpected reply all return `false` so the
+  /// caller can retry: the relay answers `200 ok` only when the device is
+  /// stored. Network failures still throw, as before.
+  static Future<bool> putDevice({
+    bool isPatient = false,
+    String? platform = PushPlatform.fcm,
+  }) async {
     final relayKey = isPatient ? patientSide.relayKey : await _getRelayKey();
     final server = isPatient ? patientSide.server : login.url;
     final accountId =
         isPatient ? patientSide.patientID : login.currentAccountID;
     final token = login.pushNotificationsToken;
-    if (relayKey == null ||
-        relayKey.isEmpty ||
-        server.isEmpty ||
-        accountId.isEmpty ||
-        token.isEmpty) {
-      return;
-    }
-
-    final res = await client.post(
-      Uri.parse('$relayServer/put-device'),
-      body: jsonEncode({
-        "clinicServer": server,
-        "clinicKey": relayKey,
-        "deviceToken": token,
-        "accountId": accountId,
-        "platform": _platform,
-      }),
+    final accepted = await registerDeviceSnapshot(
+      clinicServer: server,
+      clinicKey: relayKey ?? '',
+      deviceToken: token,
+      accountId: accountId,
+      platform: platform,
     );
-    if (res.body == "ok") {
-      deviceIsPut = true;
+    if (accepted) deviceIsPut = true;
+    return accepted;
+  }
+
+  /// Registers one immutable device tuple.
+  ///
+  /// Unlike [putDevice], this helper never reads mutable login/patient globals
+  /// and never changes [deviceIsPut]. The Windows service checks its snapshot
+  /// before recording the result, so a request that belonged to a previous
+  /// account cannot mutate the current one.
+  static Future<bool> registerDeviceSnapshot({
+    required String clinicServer,
+    required String clinicKey,
+    required String deviceToken,
+    required String accountId,
+    required String? platform,
+  }) async {
+    if ([clinicServer, clinicKey, deviceToken, accountId]
+        .any((value) => value.isEmpty)) {
+      return false;
     }
+    final response = await client
+        .post(
+          Uri.parse('$relayServer/put-device'),
+          body: jsonEncode({
+            "clinicServer": clinicServer,
+            "clinicKey": clinicKey,
+            "deviceToken": deviceToken,
+            "accountId": accountId,
+            if (platform != null && platform.isNotEmpty) "platform": platform,
+          }),
+        )
+        .timeout(registrationRequestTimeout);
+    return response.statusCode == 200 && response.body == "ok";
   }
 
   /// This function replaces an old token with a new one
@@ -113,7 +189,9 @@ class PushRelay {
     final server = isPatient ? patientSide.server : login.url;
     if (relayKey == null || relayKey.isEmpty || server.isEmpty) return;
     if (oldToken.isEmpty) {
-      await putDevice(isPatient: isPatient);
+      // The first registration of this device: keep recording the OS, which
+      // is what the relay uses to shape the push for this device.
+      await putDevice(isPatient: isPatient, platform: PushPlatform.current);
       return;
     }
 

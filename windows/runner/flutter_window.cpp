@@ -3,6 +3,7 @@
 #include <optional>
 
 #include "flutter/generated_plugin_registrant.h"
+#include "push_notifications.h"
 
 FlutterWindow::FlutterWindow(const flutter::DartProject& project)
     : project_(project) {}
@@ -27,9 +28,20 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
 
-  flutter_controller_->engine()->SetNextFrameCallback([&]() {
-    this->Show();
-  });
+  apexo::PushNotifications& push = apexo::PushNotifications::Instance();
+  push.Attach(flutter_controller_->engine()->messenger());
+  push.SetWindow(GetHandle());
+
+  if (push.IsHiddenPushActivation()) {
+    // A push started this process. Dart still runs and posts the localized
+    // toast, but the window must never be shown: the user did not launch the
+    // app, and the process exits once Dart has handled the payload.
+    push.ArmActivationTimers();
+  } else {
+    flutter_controller_->engine()->SetNextFrameCallback([&]() {
+      this->Show();
+    });
+  }
 
   // Flutter can complete the first frame before the "show window" callback is
   // registered. The following call ensures a frame is pending to ensure the
@@ -40,7 +52,14 @@ bool FlutterWindow::OnCreate() {
 }
 
 void FlutterWindow::OnDestroy() {
+  apexo::PushNotifications& push = apexo::PushNotifications::Instance();
+  // Tear the native service down while the HWND and the Flutter controller are
+  // still alive: channels, timers and the owned worker must not outlive them.
+  // This also runs from Win32Window::Create's pre-create Destroy(), where no
+  // controller or channel exists yet; do not shut the service down there.
   if (flutter_controller_) {
+    push.Shutdown();
+    push.SetWindow(nullptr);
     flutter_controller_ = nullptr;
   }
 
@@ -51,6 +70,23 @@ LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
                               LPARAM const lparam) noexcept {
+  // An ordinary second launch forwards here. Reveal/restore the primary and
+  // acknowledge only after the promotion has actually been applied.
+  if (message == Win32Window::PromoteMessage()) {
+    apexo::PushNotifications& push = apexo::PushNotifications::Instance();
+    push.PromoteToInteractive();
+    Show();
+    ::SetForegroundWindow(hwnd);
+    return 1;
+  }
+
+  // Push messages, activation timers and the exit request belong to the
+  // notification service. It only claims its own messages.
+  if (apexo::PushNotifications::Instance().HandleWindowMessage(message, wparam,
+                                                               lparam)) {
+    return 0;
+  }
+
   // Give Flutter, including plugins, an opportunity to handle window messages.
   if (flutter_controller_) {
     std::optional<LRESULT> result =

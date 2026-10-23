@@ -76,6 +76,15 @@ msix_config:
   publisher: "CN=275027E7-AE47-4DEE-B3D6-0BE5AF8D773E"
   publisher_display_name: "alisaleem"
   capabilities: internetClient
+  # Local toast clicks are routed back to the app through this COM server. The
+  # CLSID is the one in lib/services/notifications/windows_notification_identity.dart
+  # (WindowsNotificationIdentity.activationGuid) — it is NOT the push activator
+  # class id, which is the Azure application id added by
+  # tools/patch_push_manifest.dart.
+  toast_activator:
+    clsid: 51fc2ec1-f21e-4b3c-9f2b-71c28c7b0f7e
+    display_name: Apexo notifications
+    arguments: ----AppNotificationActivationServer
 
 flutter:
   fonts:

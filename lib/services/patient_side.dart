@@ -4,6 +4,7 @@ import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/services/notifications/listeners.dart';
+import 'package:apexo/services/notifications/notification_session.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/href/href_service.dart';
@@ -136,6 +137,7 @@ class PatientSide extends ObservablePersistingObject {
 
   void logoutPatientSide() {
     _activationGeneration++;
+    notificationSessions.invalidate();
     launch.open(Open.login);
     server = "";
     name = "";
@@ -175,6 +177,8 @@ class PatientSide extends ObservablePersistingObject {
       return;
     }
 
+    notificationSessions.beginRestoring();
+
     try {
       // Initialize deferred push storage early so stores can safely
       // defer push notifications throughout the rest of activate().
@@ -186,14 +190,16 @@ class PatientSide extends ObservablePersistingObject {
       if (activation != _activationGeneration) return;
 
       final settingsJson = jsonDecode(settingsRes.body) as Map<String, dynamic>;
-      final settings = (settingsJson['items'] as List<dynamic>)
-          .cast<Map<String, dynamic>>();
+      final settings =
+          (settingsJson['items'] as List<dynamic>).cast<Map<String, dynamic>>();
       String settingValue(String prefix) {
-        final row = settings.where((item) =>
-            (item['id'] as String).startsWith(prefix)).firstOrNull;
+        final row = settings
+            .where((item) => (item['id'] as String).startsWith(prefix))
+            .firstOrNull;
         final data = row?['data'] as Map<String, dynamic>?;
         return data?['value'] as String? ?? '';
       }
+
       currency = settingValue('currency');
       phone = settingValue('phone');
       countryCode = settingValue('country');
@@ -204,7 +210,8 @@ class PatientSide extends ObservablePersistingObject {
           "$server/api/collections/public/records?page=1&perPage=9999&filter=pid%3D%22$patientID%22&pid=$patientID"));
       if (activation != _activationGeneration) return;
 
-      final appointmentsJson = jsonDecode(appointmentsRes.body) as Map<String, dynamic>;
+      final appointmentsJson =
+          jsonDecode(appointmentsRes.body) as Map<String, dynamic>;
 
       final items = (appointmentsJson["items"] as List<dynamic>)
           .cast<Map<String, dynamic>>();
@@ -216,8 +223,7 @@ class PatientSide extends ObservablePersistingObject {
       appointments.clear();
       imgLinks.clear();
       for (final item in items) {
-        appointments
-            .add(PatientAppointment.fromJson(item));
+        appointments.add(PatientAppointment.fromJson(item));
       }
 
       for (final appointment in appointments) {
@@ -232,6 +238,14 @@ class PatientSide extends ObservablePersistingObject {
 
       launch.open(Open.patient);
 
+      // The patient data is loaded, persisted and the patient screen is open.
+      // Only now is this session usable for notification dispatch/registration.
+      notificationSessions.publishPatient(
+        server: server,
+        accountId: patientID,
+        clinicKey: relayKey,
+      );
+
       // Patient data has loaded and the patient screen is open at this point.
       // Device registration is useful for push notifications but is not a
       // prerequisite for using patient-side, so a registration failure must
@@ -243,6 +257,9 @@ class PatientSide extends ObservablePersistingObject {
         logger("Error while registering patient device: $e", stackTrace);
       }
     } catch (e) {
+      if (activation == _activationGeneration) {
+        notificationSessions.markAbsent();
+      }
       loginCtrl.loginError(e.toString());
       rethrow;
     } finally {

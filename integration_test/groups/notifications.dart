@@ -16,13 +16,13 @@ import 'package:apexo/services/notifications/core_notifications_initializer.dart
 import 'package:apexo/services/notifications/listeners.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/services/notifications/push_interpretation.dart';
+import 'package:apexo/services/notifications/push_platform.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/constants.dart' show dataCollectionName;
 import 'package:apexo/utils/hash.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -273,13 +273,14 @@ void registerNotificationsTests() {
       login.pushNotificationsToken = _fakeFcmToken();
 
       // The real relay: this proves the Worker accepts a device carrying the
-      // `platform` field, and that it stored the clinic record.
+      // `platform` field, and that it stored the clinic record. The default
+      // (`fcm`) is used on purpose: the token is a synthetic FCM one, and a
+      // `wns` registration would be rejected for not being a Windows channel.
       await PushRelay.putDevice();
       expect(
         PushRelay.deviceIsPut,
         isTrue,
-        reason: 'The relay did not accept this device registration '
-            '(platform "${_expectedPlatform()}").',
+        reason: 'The relay did not accept this device registration.',
       );
 
       final relayKey = await PushRelay.ensureKey();
@@ -335,7 +336,7 @@ void registerNotificationsTests() {
       login.pushNotificationsToken = 'e2e-${_id('token')}'.replaceAll('-', '');
 
       // 1. This device registers with the platform the relay shapes with.
-      await PushRelay.putDevice();
+      await PushRelay.putDevice(platform: _expectedPlatform());
       final registration =
           jsonDecode(requests.single.body) as Map<String, dynamic>;
       expect(registration['platform'], _expectedPlatform(),
@@ -417,24 +418,9 @@ void registerNotificationsTests() {
   });
 }
 
-/// The `platform` this build registers with the relay.
-String _expectedPlatform() {
-  if (kIsWeb) return 'web';
-  switch (defaultTargetPlatform) {
-    case TargetPlatform.iOS:
-      return 'ios';
-    case TargetPlatform.android:
-      return 'android';
-    case TargetPlatform.macOS:
-      return 'macos';
-    case TargetPlatform.windows:
-      return 'windows';
-    case TargetPlatform.linux:
-      return 'linux';
-    case TargetPlatform.fuchsia:
-      return 'fuchsia';
-  }
-}
+/// The `platform` this build registers with the relay, or `null` when the app
+/// cannot name it (the relay then keeps its `fcm` default).
+String? _expectedPlatform() => PushPlatform.current;
 
 /// A synthetic FCM token: long and opaque, the shape FCM uses, so the relay's
 /// delivery attempt is answered by FCM ("unregistered") rather than rejected as

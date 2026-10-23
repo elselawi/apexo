@@ -16,6 +16,7 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/encode.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/services/notifications/listeners.dart';
+import 'package:apexo/services/notifications/notification_session.dart';
 import 'package:apexo/services/notifications/push_deferring.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
@@ -153,6 +154,9 @@ class _LoginService extends ObservablePersistingObject {
   }
 
   void logout([bool cleanCredentials = true]) {
+    // Invalidate notification work before any state is cleared or a new session
+    // can be published. This resolves waiters and stops registration retries.
+    notificationSessions.invalidate();
     launch.open(Open.login);
     if (cleanCredentials) {
       url = "";
@@ -218,6 +222,7 @@ class _LoginService extends ObservablePersistingObject {
   /// run a series of callbacks that would require the login credentials to be active
   Future<void> activate(
       String inputURL, List<String> credentials, bool online) async {
+    notificationSessions.beginRestoring();
     if ((pb == null || pb?.baseURL.isEmpty == true) ||
         launch.open() == Open.login) {
       pb = PocketBase(inputURL);
@@ -339,6 +344,7 @@ class _LoginService extends ObservablePersistingObject {
               .loginError("Unknown client exception while authenticating: $e.");
         }
         logger("Could not login due to the following error: $e", s, 2);
+        notificationSessions.markAbsent();
         return loginCtrl.finishedLoginProcess(loginCtrl.loginError());
       }
 
@@ -369,6 +375,25 @@ class _LoginService extends ObservablePersistingObject {
 
     didAskForLoginAgain = false;
     launch.open(Open.staff);
+    // Announce notification readiness only after every store activator has run.
+    // A token is assigned before this point, so it cannot stand in for a usable
+    // session; this publication is the boundary pushes wait on.
+    final staffAccountId = currentAccountID;
+    if (staffAccountId.isEmpty || pb == null || token.isEmpty || url.isEmpty) {
+      notificationSessions.markAbsent();
+    } else {
+      // The snapshot must not share the mutable auth store of `login.pb`: a
+      // background registration that resumes after an account switch would
+      // otherwise send the next account's credentials with this snapshot.
+      final notificationPb = PocketBase(url)..authStore.save(token, null);
+      notificationSessions.publishStaff(
+        server: url,
+        accountId: staffAccountId,
+        pocketBase: notificationPb,
+        authToken: token,
+        email: email,
+      );
+    }
     // The startup check runs from a one-second timer in `ApexoApp.createElement`
     // — *before* the login that creates a clinic can set `launch.isFirstLaunch`,
     // so the welcome dialog was unreachable (`login 12`). The check is idempotent:
@@ -400,9 +425,25 @@ class _LoginService extends ObservablePersistingObject {
           json["pushNotificationsToken"] as String? ?? pushNotificationsToken;
     }
     if (token.isNotEmpty) {
-      await activate(url, [token], true);
+      try {
+        await activate(url, [token], true);
+      } catch (_) {
+        notificationSessions.markAbsent();
+        rethrow;
+      }
     } else {
       launch.open(Open.login);
+      // A patient link can restore after the staff token was found absent. Give
+      // that activation a short window to publish before resolving an early
+      // launch/click waiter as absent; the capture below also makes sure a
+      // login that starts in the meantime is not overwritten.
+      final absentRevision = notificationSessions.revision;
+      unawaited(Future<void>.delayed(const Duration(seconds: 10), () {
+        if (notificationSessions.phase == NotificationSessionPhase.restoring &&
+            notificationSessions.revision == absentRevision) {
+          notificationSessions.markAbsent();
+        }
+      }));
     }
   }
 

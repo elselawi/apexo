@@ -392,8 +392,15 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
                 },
               ),
             ),
-            if ((widget.appointment.patient?.allAppointments.length ?? 0) > 1)
-              _buildOtherAppointmentsFlyout(context),
+            if (patient != null && login.perm(Perm.appointments).some)
+              FilledButton(
+                style: filledButtonStyle(Colors.grey),
+                onPressed: () => unawaited(
+                  openPatient(patient, PatientWindow.appointments),
+                ),
+                child: ButtonContent(
+                    WindowsIcons.calendar, txt("allAppointments")),
+              ),
           ],
         ),
         InfoLabel(
@@ -520,17 +527,6 @@ class _OperativeDetailsState extends State<_OperativeDetails> {
           content: Txt(txt("isDone")),
         ),
       ].map((e) => [e, const SizedBox(height: 10)]).expand((e) => e).toList(),
-    );
-  }
-
-  Widget _buildOtherAppointmentsFlyout(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsetsDirectional.only(end: 2),
-      child: AppointmentsHistoryFlyout(
-        title: txt("otherAppointments"),
-        exclude: widget.appointment,
-        patient: widget.appointment.patient!,
-      ),
     );
   }
 }

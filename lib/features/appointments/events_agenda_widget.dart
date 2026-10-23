@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/features/appointments/appointment_indicators.dart';
 import 'package:apexo/features/appointments/appointment_menu_items.dart';
+import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/item_title.dart';
@@ -204,9 +208,20 @@ class AppointmentCalendarTile<Item extends Appointment>
                       if ((item.patient?.email ?? '').isNotEmpty)
                         EmailButton(email: item.patient!.email),
                       if ((item.patient?.allAppointments ?? []).length > 1)
-                        AppointmentsHistoryFlyout(
-                          patient: item.patient!,
-                          exclude: item,
+                        Tooltip(
+                          message: txt("allAppointments"),
+                          child: IconButton(
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStatePropertyAll(
+                                FluentTheme.of(context)
+                                    .inactiveColor
+                                    .withAlpha(30),
+                              ),
+                            ),
+                            onPressed: () => unawaited(openPatient(
+                                item.patient!, PatientWindow.appointments)),
+                            icon: const Icon(WindowsIcons.calendar),
+                          ),
                         ),
                     ],
                   ),

@@ -2060,25 +2060,6 @@ abstract final class Fixtures {
     await E2E.settle(tester, frames: 20);
   }
 
-  /// Opens the open appointment panel's "other appointments" history flyout.
-  ///
-  /// The button has no key: it is the `IconButton` around the history icon (the
-  /// dental-notes expander draws the same icon, but not inside a button, so the
-  /// ancestor lookup is what identifies it).
-  static Future<void> openAppointmentHistory(WidgetTester tester) async {
-    await E2E.tap(
-      tester,
-      find
-          .ancestor(
-            of: find.byIcon(WindowsIcons.history),
-            matching: find.byType(IconButton),
-          )
-          .first,
-      description: 'the appointment history button',
-    );
-    await E2E.settle(tester, frames: 15);
-  }
-
   /// Opens the insights (charts) screen.
   static Future<void> openInsights(WidgetTester tester) => openRoute(
         tester,

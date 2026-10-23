@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/services/login.dart' show login;
+import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -239,25 +240,33 @@ void registerAppointmentsTests() {
       expect(find.byType(FlyoutContent), findsNothing,
           reason: 'closing after a delete asked about unsaved changes');
     });
-    testWidgets("12: the history flyout lists the patient's earlier visits",
+    testWidgets(
+        "12: the button below the post-op notes opens the visits window",
         (tester) async {
       await E2E.signIn(tester);
       final patient = await Fixtures.createPatient(tester);
       // Two visits, both within the calendar's visible fortnight (a past day can
       // fall outside the two weeks it opens on) — the second is the one opened.
-      await Fixtures.createAppointment(tester,
+      final earlier = await Fixtures.seedAppointment(tester,
           patientName: patient, day: DateTime.now());
-      await Fixtures.createAppointment(tester,
+      final current = await Fixtures.seedAppointment(tester,
           patientName: patient, day: Fixtures.tomorrow());
 
       await Fixtures.openAppointmentTile(tester, patient: patient);
-      await Fixtures.openAppointmentHistory(tester);
+      await Fixtures.openPanelTab(tester, 'operativeDetails');
+      // The window outlives the panel, so the next test starts on a clean desk.
+      addTearDown(WindowsManager.closeAll);
+      await E2E.tap(tester, find.text(txt('allAppointments')),
+          description: 'the all appointments button');
+      await E2E.settle(tester, frames: 15);
 
-      // The flyout titles itself with the number of *other* visits.
-      expect(
-          find.textContaining('${txt('otherAppointments')} (1)'), findsWidgets,
-          reason:
-              "the history flyout does not list the patient's earlier visit");
+      // The same window the patient's screen opens: the whole history, this
+      // visit included.
+      expect(find.byKey(Key(earlier)), findsOneWidget,
+          reason: "the window does not list the patient's earlier visit");
+      expect(find.byKey(Key(current)), findsOneWidget,
+          reason: 'the window does not list the visit it was opened from');
+      await Fixtures.closePanel(tester);
     });
 
     testWidgets("13: a previous visit's notes can be copied into this one",

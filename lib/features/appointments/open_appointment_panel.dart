@@ -23,7 +23,6 @@ import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
-import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
@@ -47,7 +46,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
 part 'appointment_windows.dart';
-part 'appointment_history_windows.dart';
+part 'appointment_labwork_widgets.dart';
 
 void closeAppointmentsPanels() {
   final List<String> toClose = [];

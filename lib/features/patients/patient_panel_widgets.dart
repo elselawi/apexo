@@ -132,14 +132,10 @@ class _PatientWebPage extends StatelessWidget {
 class PatientAppointments extends StatelessWidget {
   const PatientAppointments(this.patient,
       {super.key,
-      this.readOnly = false,
-      this.excludedAppointment,
       this.onOpenAppointment,
       this.hide = const [AppointmentSections.patient]});
   final Patient patient;
   final List<AppointmentSections> hide;
-  final Appointment? excludedAppointment;
-  final bool readOnly;
 
   /// How a visit is opened from this list. A list that is a window of its own
   /// passes its own opener, so tapping a visit can make way for the visit instead
@@ -167,16 +163,12 @@ class PatientAppointments extends StatelessWidget {
                         difference =
                             "${txt("after")} ${Patient.formatDuration(appointment.date, apts[index + 1].date)}";
                       }
-                      if (appointment.id == excludedAppointment?.id) {
-                        return const SizedBox.shrink();
-                      }
                       return AppointmentCard(
                         key: Key(appointment.id),
                         appointment: appointment,
                         difference: difference,
                         hide: hide,
                         number: index + 1,
-                        readOnly: readOnly,
                         onOpen: onOpenAppointment,
                         onTapDcm: (context, rowId, name) =>
                             openDicomViewerWindow(rowId, name),

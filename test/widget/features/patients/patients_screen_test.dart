@@ -65,7 +65,6 @@ void main() {
           child: SingleChildScrollView(
             child: PatientAppointments(
               patient.copy(false),
-              readOnly: true,
               hide: AppointmentSections.values
                   .where((section) =>
                       section != AppointmentSections.paymentSummary)

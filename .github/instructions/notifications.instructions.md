@@ -337,8 +337,8 @@ manifest.
 - `-SkipPack` is a **read-only verification branch**: it never runs Flutter, `msix:build` or the
   patcher, never rewrites/deletes the package or its inputs, and never compares against a
   manifest time. It requires the existing package at the configured output path, extracts and
-  verifies the packaged manifest, and always reports `PARTIAL` because reuse does not prove the
-  artifact matches current sources.
+  verifies the packaged manifest, and reports that it reused the package because reuse does not
+  prove the artifact matches current sources.
 - `-SkipFlutterBuild` skips only the Flutter step; manifest generation and packing still run.
   This is the mode to use after `shorebird release windows`: it packages the Shorebird build
   output instead of overwriting it with the local Flutter SDK.

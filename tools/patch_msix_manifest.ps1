@@ -9,10 +9,10 @@
     `msix:build` and `msix:pack`. This script runs that order, checks every
     step, and verifies the package it produced in this very run.
 
-    `--sign-msix false` is deliberate: without it the msix tool replaces the
-    configured publisher with the subject of its bundled test certificate, which
-    changes the package family name the notification AUMID depends on. Release
-    signing is a separate concern.
+    In local mode, `--sign-msix false` is deliberate: without it the msix tool
+    replaces the configured publisher with the subject of its bundled test
+    certificate, which changes the package family name the notification AUMID
+    depends on. Release signing is a separate concern.
 
     What a green run proves: the manifest declares the expected identity,
     dependency and both activation contracts, and the package extracts with that
@@ -26,9 +26,9 @@
 .PARAMETER SkipPack
     Verify an existing .msix without building, generating or patching anything.
     The package must already exist at the configured output path. This branch is
-    read-only with respect to the package and its inputs, and always reports
-    PARTIAL because a reused package does not prove it corresponds to the
-    current sources.
+    read-only with respect to the package and its inputs; it reports that reuse
+    explicitly because it does not prove the package corresponds to the current
+    sources.
 
 .PARAMETER SkipFlutterBuild
     Do not run `flutter build windows` first, but still regenerate and patch the
@@ -70,7 +70,6 @@ $patchTool = Join-Path $repoRoot 'tools/patch_push_manifest.dart'
 $runStart = Get-Date
 $extractDir = $null
 $locationPushed = $false
-$skipped = New-Object System.Collections.Generic.List[string]
 
 function Write-Step {
     param([string]$Message)
@@ -208,10 +207,6 @@ try {
     }
 
     if ($SkipPack) {
-        $skipped.Add('build (flutter build + msix:build)') | Out-Null
-        $skipped.Add('patch (existing package is verification-only)') | Out-Null
-        $skipped.Add('pack (msix:pack)') | Out-Null
-
         # Read-only reuse: do not build, regenerate, patch, delete or compare
         # against a manifest this branch never creates. When the package lives
         # outside the default output folder, the build folder is irrelevant.
@@ -240,9 +235,6 @@ try {
                         'build', 'windows', $flutterMode
                     )
             }
-            else {
-                $skipped.Add('flutter build') | Out-Null
-            }
 
             $buildArguments = @(
                 'run', 'msix:build'
@@ -259,7 +251,6 @@ try {
                 -FilePath 'dart' -Arguments $buildArguments
         }
         else {
-            $skipped.Add('build (flutter build + msix:build)') | Out-Null
             Write-Step 'Reusing the existing build folder'
         }
 
@@ -381,13 +372,19 @@ try {
     }
 
     Write-Host ''
-    if ($skipped.Count -eq 0) {
-        Write-Host 'Pipeline succeeded: manifest, package and packaged manifest verified.' -ForegroundColor Green
+    if ($SkipPack) {
+        Write-Host 'Verification complete: existing package reused; no build, patch, or pack was performed.' -ForegroundColor Green
+    }
+    elseif ($SkipBuild) {
+        Write-Host 'Package complete: existing build and manifest reused; patched, packed, and verified.' -ForegroundColor Green
+    }
+    elseif ($SkipFlutterBuild) {
+        Write-Host 'Package complete: existing Flutter build reused (-SkipFlutterBuild); patched, packed, and verified.' -ForegroundColor Green
     }
     else {
-        Write-Host "PARTIAL pipeline: skipped $($skipped -join ', '). Only the stages that ran were verified." -ForegroundColor Yellow
+        Write-Host 'Package complete: built, patched, packed, and verified.' -ForegroundColor Green
     }
-    Write-Host 'Manifest consistency and packaging integrity only - install the MSIX and test real WNS delivery separately.'
+    Write-Verbose 'Manifest consistency and packaging integrity only; installed-app WNS delivery is a separate acceptance step.'
 }
 finally {
     try {

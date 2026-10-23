@@ -100,12 +100,11 @@ class AppointmentCalendarTile<Item extends Appointment>
 
   @override
   Widget build(BuildContext context) {
-    // What the visit carries rides under the title, on the line its note is on
-    // — the same line the timeline chip gives it. The title itself has only
-    // the room its patient's name needs; the badges never take from it.
+    final note = '${item.isDone ? "✔️ " : ""}'
+        '${item.postOpNotes.isEmpty ? item.preOpNotes : item.postOpNotes}';
     final hasInfo =
         AppointmentIndicators.hasAny(item, showDentalNotes: false) ||
-            item.subtitleLine1.isNotEmpty;
+            note.isNotEmpty;
     return ContextMenuRegion(
       items: (context, controller) => [
         // The visit's windows and its own actions, shared with the timeline.
@@ -158,7 +157,8 @@ class AppointmentCalendarTile<Item extends Appointment>
           subtitle: hasInfo
               ? AppointmentInfoLine(
                   item: item,
-                  note: item.subtitleLine1,
+                  note: note,
+                  onOpenWindow: (window) => onSelect(item, window),
                   iconSize: 18,
                   // The chips above already say which teeth were treated.
                   showDentalNotes: false,

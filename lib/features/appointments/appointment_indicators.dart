@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/open_appointment_panel.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/widget_keys.dart';
@@ -24,21 +25,21 @@ enum AppointmentIndicator {
 
   /// The tooltip's heading — the same key the card's section is titled with.
   final String labelKey;
+
+  AppointmentWindow get window => switch (this) {
+        dentalNotes => AppointmentWindow.dentalChart,
+        prescriptions => AppointmentWindow.operative,
+        labwork => AppointmentWindow.labwork,
+        gallery => AppointmentWindow.gallery,
+      };
 }
 
-/// What a visit carries, as a small pile of circular badges: the dental
-/// chart's notes, its prescriptions, its labwork order and its gallery.
-///
-/// Each badge is a Fluent circle — the app's solid surface, a crisp definition
-/// stroke and compound elevation shadows — with the icon large enough (18px floor)
-/// to be instantly recognized without reading; the pile overlaps by [overlap]
-/// so badges read as a cohesive stack. The badge under the pointer lifts 2px
-/// to the front of the pile, displays an accent halo and tint, revealing its
-/// full silhouette.
-///
-/// Hovering any badge opens **one card** listing every kind, each with its
-/// icon, its name and the whole of its information. One hover answers the
-/// whole question; a tooltip per badge would make the visitor hunt.
+/// Visit attachments in a bounded Fluent accessory strip, shared by the
+/// agenda and timeline. Every category and gallery preview stays visible,
+/// sharing the available width without collapsing into an overflow menu.
+/// Each segment uses the operator tint, opens its window, and shares one
+/// complete hover card.
+/// Set [embedded] to false for the legacy overlapping circular badges.
 class AppointmentIndicators extends StatefulWidget {
   const AppointmentIndicators({
     super.key,
@@ -47,6 +48,9 @@ class AppointmentIndicators extends StatefulWidget {
     this.overlap = 8,
     this.showDentalNotes = true,
     this.showGalleryThumbnail = true,
+    this.embedded = true,
+    this.color,
+    this.onOpenWindow,
   });
 
   final Appointment item;
@@ -65,6 +69,16 @@ class AppointmentIndicators extends StatefulWidget {
   /// A picture says more than a camera icon: the gallery badge is the visit's
   /// first picture when there is one.
   final bool showGalleryThumbnail;
+
+  /// A flat, bounded Fluent accessory strip. Narrow strips drop labels and
+  /// compact their cells, but never hide a category.
+  final bool embedded;
+
+  /// The operator's chip color, used for a stronger fill.
+  final Color? color;
+
+  /// Uses the existing standalone-window opener when no callback is supplied.
+  final ValueChanged<AppointmentWindow>? onOpenWindow;
 
   /// The circle a badge of [iconSize] glyphs is drawn in.
   static double sizeFor(double iconSize) => iconSize + 10;
@@ -85,11 +99,51 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
   /// The badge the pointer is over: brought to the front of the pile and
   /// tinted, so the part its neighbour covers is read in full.
   int? _hovered;
+  bool _canOpen(AppointmentIndicator kind) =>
+      appointmentWindows(widget.item).contains(kind.window);
+
+  void _open(AppointmentIndicator kind) {
+    if (!_canOpen(kind)) return;
+    if (widget.onOpenWindow case final open?) {
+      open(kind.window);
+    } else {
+      openAppointmentWindow(widget.item, kind.window);
+    }
+  }
+
+  Color get _baseColor => widget.color ?? FluentTheme.of(context).accentColor;
+
+  Color get _inkColor => Color.lerp(
+        _baseColor,
+        FluentTheme.of(context).brightness.isDark ? Colors.white : Colors.black,
+        FluentTheme.of(context).brightness.isDark ? 0.55 : 0.28,
+      )!;
+
+  ButtonStyle get _buttonStyle => ButtonStyle(
+        padding: const WidgetStatePropertyAll(EdgeInsets.zero),
+        backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.hovered) ||
+                    states.contains(WidgetState.pressed)
+                ? (widget.color ?? FluentTheme.of(context).accentColor)
+                    .withValues(alpha: 0.12)
+                : Colors.transparent),
+        shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+      );
+
+  Widget _indicatorButton(_Badge badge, Widget child) => Semantics(
+        label: txt(badge.kind.labelKey),
+        child: Button(
+          onPressed: _canOpen(badge.kind) ? () => _open(badge.kind) : null,
+          style: _buttonStyle,
+          child: SizedBox.expand(child: child),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
     final badges = _collect();
     if (badges.isEmpty) return const SizedBox.shrink();
+    if (widget.embedded) return _embeddedStrip(context, badges);
 
     final double size = AppointmentIndicators.sizeFor(widget.iconSize);
     final double step = size - widget.overlap;
@@ -131,7 +185,10 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
                 child: MouseRegion(
                   onEnter: (_) => _setHovered(i),
                   onExit: (_) => _clearHovered(i),
-                  child: _badge(context, badges[i], hovered: hovered == i),
+                  child: _indicatorButton(
+                    badges[i],
+                    _badge(context, badges[i], hovered: hovered == i),
+                  ),
                 ),
               ),
           ],
@@ -140,11 +197,105 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
     );
   }
 
+  Widget _embeddedStrip(BuildContext context, List<_Badge> badges) {
+    final theme = FluentTheme.of(context);
+    final color = _baseColor;
+    final dark = theme.brightness.isDark;
+    return Tooltip(
+      triggerMode: TooltipTriggerMode.manual,
+      style: _tooltipStyle,
+      richMessage: _card(context, badges),
+      child: LayoutBuilder(builder: (context, room) {
+        final showLabels =
+            room.maxWidth.isFinite && room.maxWidth >= badges.length * 88;
+        final cellWidth = showLabels ? 88.0 : 28.0;
+        final displayed = badges;
+        return Semantics(
+          label: badges.map((badge) => txt(badge.kind.labelKey)).join(', '),
+          child: MouseRegion(
+            onEnter: (_) => _setHovered(0),
+            onExit: (_) => _setHovered(null),
+            child: AnimatedContainer(
+              key: WK.appointmentInfoBadges,
+              duration: const Duration(milliseconds: 120),
+              constraints: BoxConstraints(maxWidth: badges.length * cellWidth),
+              height: 24,
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: color.withValues(
+                    alpha: _hovered != null
+                        ? (dark ? 0.32 : 0.25)
+                        : (dark ? 0.24 : 0.18)),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: color.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (var i = 0; i < badges.length; i++)
+                    Expanded(
+                      child: Container(
+                        key: WK.appointmentIndicator(displayed[i].kind.name),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          border: i == 0
+                              ? null
+                              : BorderDirectional(
+                                  start: BorderSide(
+                                    color: color.withValues(alpha: 0.22),
+                                  ),
+                                ),
+                        ),
+                        child: _indicatorButton(
+                            displayed[i],
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: showLabels ? 6 : 0),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: displayed[i].media ??
+                                          Icon(
+                                            displayed[i].kind.icon,
+                                            size: 14,
+                                            color: _inkColor,
+                                          ),
+                                    ),
+                                  ),
+                                  if (showLabels) ...[
+                                    const SizedBox(width: 5),
+                                    Expanded(
+                                      child: Txt(
+                                        txt(displayed[i].kind.labelKey),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: theme.typography.caption
+                                            ?.copyWith(color: _inkColor),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            )),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   /// One circle of the pile: the glyph on the app's own surface, ringed and
   /// lifted a little, so overlapping circles still read as separate tokens.
   Widget _badge(BuildContext context, _Badge badge, {required bool hovered}) {
     final theme = FluentTheme.of(context);
-    final accent = theme.accentColor;
+    final accent = widget.color ?? theme.accentColor;
     final double size = AppointmentIndicators.sizeFor(widget.iconSize);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 120),
@@ -161,7 +312,8 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
         border: Border.all(
           color: hovered
               ? accent.withValues(alpha: 0.90)
-              : theme.resources.controlStrokeColorDefault.withValues(alpha: 0.75),
+              : theme.resources.controlStrokeColorDefault
+                  .withValues(alpha: 0.75),
           width: hovered ? 1.5 : 1.2,
         ),
         boxShadow: [
@@ -188,7 +340,7 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
           Icon(
             badge.kind.icon,
             size: widget.iconSize,
-            color: hovered ? accent : theme.resources.textFillColorPrimary,
+            color: accent,
           ),
     );
   }
@@ -216,7 +368,8 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
       add(AppointmentIndicator.labwork, _labworkLines(widget.item));
     }
     if (_hasGallery(widget.item)) {
-      final double size = AppointmentIndicators.sizeFor(widget.iconSize);
+      final double size =
+          widget.embedded ? 20 : AppointmentIndicators.sizeFor(widget.iconSize);
       add(
         AppointmentIndicator.gallery,
         _galleryLines(widget.item),
@@ -226,6 +379,7 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
                 circleSize: size,
                 iconSize: widget.iconSize,
                 fallbackIcon: AppointmentIndicator.gallery.icon,
+                color: _inkColor,
               )
             : null,
       );
@@ -244,12 +398,8 @@ class _Badge {
   final Widget? media;
 }
 
-/// The note line under a visit's title (and the badge pile, when the caller
-/// keeps it here rather than floating it over the card).
-///
-/// The note gives the pile room before itself: text is what ellipsizes, and a
-/// pile that still does not fit is scaled down rather than allowed to break
-/// the row.
+/// Shared agenda/timeline detail line: notes retain a reserved leading area,
+/// while all accessory cells share the remaining width.
 class AppointmentInfoLine extends StatelessWidget {
   const AppointmentInfoLine({
     super.key,
@@ -259,6 +409,8 @@ class AppointmentInfoLine extends StatelessWidget {
     this.showDentalNotes = true,
     this.showIndicators = true,
     this.noteStyle,
+    this.color,
+    this.onOpenWindow,
   });
 
   final Appointment item;
@@ -266,15 +418,12 @@ class AppointmentInfoLine extends StatelessWidget {
   final double iconSize;
   final bool showDentalNotes;
 
-  /// False where the pile is drawn somewhere else — the timeline floats it
-  /// over the card, and the line keeps the note alone.
+  /// False where indicators have their own space, such as the timeline's
+  /// embedded strip; this line then keeps the note alone.
   final bool showIndicators;
   final TextStyle? noteStyle;
-
-  /// What the note keeps even when the pile would rather have it all — and no
-  /// more than this share of a line too narrow to spare it.
-  static const double _noteRoom = 46;
-  static const double _noteShare = 0.45;
+  final Color? color;
+  final ValueChanged<AppointmentWindow>? onOpenWindow;
 
   @override
   Widget build(BuildContext context) {
@@ -284,43 +433,53 @@ class AppointmentInfoLine extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final noteRoom = note.isEmpty
-            ? 0.0
-            : math.min(_noteRoom, constraints.maxWidth * _noteShare);
-        final room = math.max(0.0, constraints.maxWidth - noteRoom);
-        final pile = !badges
-            ? null
-            : ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: room),
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: AlignmentDirectional.centerStart,
-                  child: AppointmentIndicators(
-                    item: item,
-                    iconSize: iconSize,
-                    showDentalNotes: showDentalNotes,
-                  ),
-                ),
-              );
-
-        if (note.isEmpty) return pile ?? const SizedBox.shrink();
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (pile != null) ...[pile, const SizedBox(width: 6)],
-            Expanded(
-              child: Tooltip(
-                message: note,
-                triggerMode: TooltipTriggerMode.manual,
-                child: Txt(
-                  note,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: noteStyle,
+        final stripWidth = note.isEmpty
+            ? constraints.maxWidth
+            : math.min(112.0, math.max(0.0,
+                constraints.maxWidth - math.min(64.0, constraints.maxWidth * 0.4) - 6));
+        final strip = AppointmentIndicators(
+          item: item,
+          iconSize: iconSize,
+          showDentalNotes: showDentalNotes,
+          color: color,
+          onOpenWindow: onOpenWindow,
+        );
+        if (note.isEmpty) return strip;
+        return SizedBox(
+          height: 24,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Tooltip(
+                  message: note,
+                  triggerMode: TooltipTriggerMode.manual,
+                  child: LayoutBuilder(
+                      builder: (context, room) => FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: AlignmentDirectional.centerStart,
+                            child: ConstrainedBox(
+                              constraints:
+                                  BoxConstraints(maxWidth: room.maxWidth),
+                              child: Txt(
+                                note,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: noteStyle,
+                              ),
+                            ),
+                          )),
                 ),
               ),
-            ),
-          ],
+              if (badges) ...[
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: stripWidth),
+                  child: strip,
+                ),
+              ],
+            ],
+          ),
         );
       },
     );
@@ -432,6 +591,7 @@ class _GalleryThumb extends StatefulWidget {
     required this.circleSize,
     required this.iconSize,
     required this.fallbackIcon,
+    required this.color,
   });
 
   final Appointment item;
@@ -441,6 +601,7 @@ class _GalleryThumb extends StatefulWidget {
   /// What the badge shows until the picture lands — the icon the gallery
   /// badge would have drawn on its own.
   final IconData fallbackIcon;
+  final Color color;
 
   @override
   State<_GalleryThumb> createState() => _GalleryThumbState();
@@ -479,14 +640,15 @@ class _GalleryThumbState extends State<_GalleryThumb> {
     final fallback = Icon(
       widget.fallbackIcon,
       size: widget.iconSize,
-      color: FluentTheme.of(context).resources.textFillColorPrimary,
+      color: widget.color,
     );
     return FutureBuilder<ImageProvider?>(
       future: _image,
       builder: (context, snapshot) {
         final image = snapshot.data;
         if (image == null) return fallback;
-        return ClipOval(
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(3),
           child: SizedBox(
             width: widget.circleSize,
             height: widget.circleSize,

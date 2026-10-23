@@ -776,11 +776,6 @@ class TimelineChip extends StatefulWidget {
 }
 
 class _TimelineChipState extends State<TimelineChip> {
-  /// The glyph size of the badges that float on the card, and how far the pile
-  /// hangs into its top edge.
-  static const double _pileIconSize = 18;
-  static const double _pileInside = 14;
-
   final _operatorsFlyout = FlyoutController();
 
   @override
@@ -812,114 +807,133 @@ class _TimelineChipState extends State<TimelineChip> {
     final String note = widget.item.postOpNotes.isEmpty
         ? widget.item.preOpNotes
         : widget.item.postOpNotes;
-    // What the visit carries is piled **on** the card, over its top corner,
-    // rather than taking a line inside it: a fifteen-minute card is shorter
-    // than two lines of text, and the pile still has to be readable there.
     final carries = AppointmentIndicators.hasAny(widget.item);
+    // The payment is what the card never drops for want of room: a visit that
+    // took money says so even in its shortest slot.
+    final showsPayment = widget.showPayments && widget.item.paid > 0;
 
     return GestureDetector(
       onTap: widget.onTap,
       onLongPressStart: widget.onLongPressStart,
       onLongPressMoveUpdate: widget.onLongPressMove,
       onLongPressEnd: (_) => widget.onLongPressEnd(),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(5),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    widget.color.withValues(alpha: 0.10),
-                    widget.color.withValues(alpha: 0.04),
-                  ],
-                ),
-                border: BorderDirectional(
-                  start: BorderSide(color: widget.color, width: 4),
-                  bottom: BorderSide(
-                      color: widget.color.withValues(alpha: 0.15), width: 1),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.color.withValues(alpha: 0.08),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
-                  ),
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.04),
-                    blurRadius: 2,
-                    offset: const Offset(0, 1),
-                  ),
-                ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                widget.color.withValues(alpha: 0.10),
+                widget.color.withValues(alpha: 0.04),
+              ],
+            ),
+            border: BorderDirectional(
+              start: BorderSide(color: widget.color, width: 4),
+              bottom: BorderSide(
+                  color: widget.color.withValues(alpha: 0.15), width: 1),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(alpha: 0.08),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
               ),
-              padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                spacing: 5,
-                children: [
-                  isCurrentlyOpenInAPanel
-                      ? OpenInPanelButton(panelIndex: panelIndex)
-                      : _buildDoneCheckBox(context),
-                  const Divider(direction: Axis.vertical),
-                  Flexible(
-                    child: LayoutBuilder(
-                        builder: (context, room) => Column(
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.fromLTRB(8, 6, 10, 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: 5,
+            children: [
+              isCurrentlyOpenInAPanel
+                  ? OpenInPanelButton(panelIndex: panelIndex)
+                  : _buildDoneCheckBox(context),
+              const Divider(direction: Axis.vertical),
+              Flexible(
+                child: LayoutBuilder(
+                    builder: (context, room) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              widget.item.title,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: FluentTheme.of(context)
-                                                  .typography
-                                                  .bodyStrong
-                                                  ?.copyWith(fontSize: 15),
-                                            ),
-                                            // The chip and the note share the line under
-                                            // the title, as they do in the agenda row —
-                                            // when the slot is tall enough to hold them.
-                                            // A fifteen-minute card at a large text size
-                                            // is not, and the title is the line that
-                                            // stays rather than a line that overflows.
-                                            if (_fitsInfoLine(
-                                                context, room.maxHeight, note))
-                                              AppointmentInfoLine(
-                                                item: widget.item,
-                                                note: note,
-                                                // The pile rides on the card's
-                                                // corner; this line keeps the note.
-                                                showIndicators: false,
-                                                noteStyle: TextStyle(
-                                                  fontSize: 12,
-                                                  color: FluentTheme.of(context)
-                                                      .inactiveColor,
-                                                ),
+                                  Expanded(
+                                    child: LayoutBuilder(
+                                        builder: (context, textRoom) =>
+                                            SizedBox(
+                                              height: room.maxHeight,
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Flexible(
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      alignment:
+                                                          AlignmentDirectional
+                                                              .centerStart,
+                                                      child: ConstrainedBox(
+                                                        constraints:
+                                                            BoxConstraints(
+                                                                maxWidth: textRoom
+                                                                    .maxWidth),
+                                                        child: Text(
+                                                          widget.item.title,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: FluentTheme.of(
+                                                                  context)
+                                                              .typography
+                                                              .bodyStrong
+                                                              ?.copyWith(
+                                                                  fontSize: 15),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  if (note.isNotEmpty || carries)
+                                                    AppointmentInfoLine(
+                                                      item: widget.item,
+                                                      note: note,
+                                                      color: widget.color,
+                                                      onOpenWindow: widget.onSelect,
+                                                      noteStyle: TextStyle(
+                                                        fontSize: 12,
+                                                        color: FluentTheme.of(context).inactiveColor,
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Padding(
-                                        // Room for the pile that hangs over the
-                                        // card's corner, so it never covers the
-                                        // duration pill.
-                                        padding: EdgeInsetsDirectional.only(
-                                            top: carries ? _pileInside : 0),
+                                            )),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // The pill and the money stack taller
+                                  // than a fifteen-minute card. Rather
+                                  // than dropping the money, the whole
+                                  // column gives way a little: everything
+                                  // stays, a hair smaller.
+                                  ConstrainedBox(
+                                    // The row leaves its children room
+                                    // they cannot have: the card's height.
+                                    constraints: BoxConstraints(
+                                        maxWidth: room.maxWidth * 0.4,
+                                        maxHeight: room.maxHeight),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Padding(
+                                        padding: EdgeInsets.zero,
                                         child: Column(
                                           spacing: 2,
                                           crossAxisAlignment:
@@ -933,120 +947,44 @@ class _TimelineChipState extends State<TimelineChip> {
                                                   appointments.set(widget.item
                                                     ..duration = duration),
                                             ),
-                                            if (_fitsSecondRow(
+                                            if (showsPayment)
+                                              _buildPaymentChip(context)
+                                            else if (_fitsSecondRow(
                                                 context, room.maxHeight))
-                                              Row(
-                                                spacing: 2,
-                                                children: [
-                                                  if (widget.showPayments &&
-                                                      widget.item.paid > 0)
-                                                    // A long amount must not take the title's
-                                                    // room: past ~90px it scales down instead.
-                                                    ConstrainedBox(
-                                                      constraints:
-                                                          const BoxConstraints(
-                                                              maxWidth: 90),
-                                                      child: FittedBox(
-                                                        fit: BoxFit.scaleDown,
-                                                        alignment:
-                                                            AlignmentDirectional
-                                                                .centerEnd,
-                                                        child: Container(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .symmetric(
-                                                                  horizontal:
-                                                                      0),
-                                                          decoration:
-                                                              BoxDecoration(
-                                                            color: Colors.green
-                                                                .withValues(
-                                                                    alpha: 0.1),
-                                                            borderRadius:
-                                                                BorderRadius
-                                                                    .circular(
-                                                                        5),
-                                                          ),
-                                                          child: MoneyDisplay(
-                                                              "💵 ${widget.item.paid.toStringAsFixed(0)} ${globalSettings.currency}",
-                                                              style: TextStyle(
-                                                                  fontSize: 13,
-                                                                  color: FluentTheme.of(
-                                                                          context)
-                                                                      .inactiveColor)),
-                                                        ),
-                                                      ),
-                                                    )
-                                                  else
-                                                    _buildOperatorsPill(
-                                                        isCurrentlyOpenInAPanel)
-                                                ],
-                                              ),
+                                              _buildOperatorsPill(
+                                                  isCurrentlyOpenInAPanel),
                                           ],
                                         ),
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ])),
-                  ),
-                ],
+                                ],
+                              ),
+                            ])),
               ),
-            ),
+            ],
           ),
-          if (carries)
-            PositionedDirectional(
-              end: 8,
-              top: -12,
-              child: AppointmentIndicators(
-                item: widget.item,
-                iconSize: _pileIconSize,
-              ),
-            ),
-        ],
+        ),
       ),
     );
   }
 
-  /// Whether the card is tall enough for the note under the title.
+  /// Whether the card is tall enough for the operators under the duration
+  /// pill — the shortest card drops them rather than overflowing, and the pill
+  /// alone still says how long the visit is.
   ///
-  /// A card is as tall as the visit is long, so a fifteen-minute visit at a
-  /// large text size has room for the title alone. Two lines there are an
-  /// overflow rather than information, and the title is the one that matters:
-  /// whose visit it is, and when — the note is in the visit, one click away.
-  bool _fitsInfoLine(BuildContext context, double available, String note) {
-    if (!available.isFinite || note.isEmpty) return true;
-    final typography = FluentTheme.of(context).typography;
-    final title = _lineHeight(
-      context,
-      typography.bodyStrong?.copyWith(fontSize: 15),
-    );
-    final second = _lineHeight(
-      context,
-      typography.body?.copyWith(fontSize: 12),
-    );
-    return title + second <= available;
-  }
-
-  /// Whether the card is tall enough for the money (or the operators) under
-  /// the duration pill — the shortest card drops it rather than overflowing,
-  /// and the pill alone still says how long the visit is. The pile floating
-  /// over the corner takes its own share of the column first.
+  /// The payment is never asked: it is drawn whether or not it fits, giving
+  /// the whole column a little less room instead (see [_buildChip]).
   bool _fitsSecondRow(BuildContext context, double available) {
     if (!available.isFinite) return true;
     final body = FluentTheme.of(context).typography.body;
-    final pile = AppointmentIndicators.hasAny(widget.item) ? _pileInside : 0.0;
     final pill = _lineHeight(
           context,
           body?.copyWith(fontSize: 12, fontWeight: FontWeight.bold),
         ) +
         4;
-    final paid = widget.showPayments && widget.item.paid > 0;
-    final second = _lineHeight(
-      context,
-      // The money's integer part is drawn a little larger than its style.
-      body?.copyWith(fontSize: paid ? 13 * 1.05 : 9.5),
-    );
-    return pile + pill + 2 + second <= available;
+    final second = _lineHeight(context, body?.copyWith(fontSize: 9.5));
+    return pill + 2 + second <= available;
   }
 
   /// The height one line of [style] takes as drawn: same font, same scaler.
@@ -1077,6 +1015,31 @@ class _TimelineChipState extends State<TimelineChip> {
           widget.item.isDone = checked == true;
           appointments.set(widget.item);
         },
+      ),
+    );
+  }
+
+  /// The money the visit took. A long amount must not take the title's room:
+  /// past ~90px it scales down instead.
+  Widget _buildPaymentChip(BuildContext context) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 90),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        alignment: AlignmentDirectional.centerEnd,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.green.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(5),
+          ),
+          child: MoneyDisplay(
+            "💵 ${widget.item.paid.toStringAsFixed(0)} ${globalSettings.currency}",
+            style: TextStyle(
+              fontSize: 13,
+              color: FluentTheme.of(context).inactiveColor,
+            ),
+          ),
+        ),
       ),
     );
   }

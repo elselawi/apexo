@@ -130,7 +130,7 @@ Live-backend tests are separate and must be explicitly requested/configured. The
      - `-Store` passes `--store` to the msix tool (unsigned package with the Partner Center identity).
      - the script adds the Windows App Runtime dependency and the WNS push COM activation server, then verifies the patched and packaged manifests.
    - do **not** use `dart run msix:create --store` for a push-capable package: it regenerates the manifest and packs in one step, so the push activation contract never reaches the MSIX.
-   - upload the resulting `.msix` to the Microsoft Store through Partner Center.
+   - upload the path printed by the script (normally `build\windows\x64\runner\Release\apexo.msix`) to the Microsoft Store through Partner Center.
    
 - For iOS:
    - build with `flutter build ipa --release --export-method app-store`

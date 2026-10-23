@@ -384,6 +384,7 @@ try {
     else {
         Write-Host 'Package complete: built, patched, packed, and verified.' -ForegroundColor Green
     }
+    Write-Host "MSIX: $msixPath" -ForegroundColor Green
     Write-Verbose 'Manifest consistency and packaging integrity only; installed-app WNS delivery is a separate acceptance step.'
 }
 finally {

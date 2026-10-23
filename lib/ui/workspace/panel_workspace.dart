@@ -142,6 +142,10 @@ final class PanelWorkspace {
         _makeRoom();
       }
       _open.add(id);
+      // The user asked for this window by name: it is the one to bring forward —
+      // and on a phone it is the sheet to put on screen, over whatever the app
+      // last opened.
+      _focus = id;
     }
     _notify(byUser: true);
   }

@@ -853,6 +853,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('on a phone a window asked for comes over the panel\'s own',
+      (tester) async {
+    setViewport(tester, const Size(600, 800));
+    final panel = panelWith([window('a'), window('b')]);
+    await pumpShell(tester, panel, 600);
+    await tester.pumpAndSettle();
+
+    // The panel's own window is the sheet on screen.
+    await tester.tap(find.byKey(WK.windowToggle('b')));
+    await tester.pumpAndSettle();
+    expect(find.text('b'), findsOneWidget);
+
+    // A window asked for from the app — a patient's visits, opened from a visit
+    // — comes over it, rather than waiting behind it in the list a phone draws
+    // one entry of.
+    WindowsManager.showStandalone(window('visits'));
+    await tester.pumpAndSettle();
+    expect(find.text('visits'), findsOneWidget,
+        reason: 'the window the app asked for never reached the screen');
+    expect(find.text('b'), findsNothing,
+        reason: 'a phone shows one window at a time');
+
+    // Closing it gives the panel's own window the screen back.
+    await tester.tap(find.byKey(WK.windowHeaderClose));
+    await tester.pumpAndSettle();
+    expect(find.text('b'), findsOneWidget);
+    expect(find.text('visits'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a floating window gives a space-filling body a height',
       (tester) async {
     setViewport(tester, const Size(2400, 1200));

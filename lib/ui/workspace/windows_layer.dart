@@ -117,6 +117,15 @@ class _WindowsAreaState extends State<_WindowsArea> {
   /// exit animation for.
   String? _shown;
 
+  /// The window the app last asked for while a phone is drawing sheets: a phone
+  /// shows one window at a time, and the one just asked for is the one to show.
+  ///
+  /// It survives the list being rebuilt, because that list puts a panel's own
+  /// windows *after* the standing ones — the order the wide screen stacks them
+  /// in, where the panel's sit above — so "the newest entry" would keep showing
+  /// the panel's window and leave a window asked for over it behind.
+  String? _sheetFocus;
+
   /// Where each window sits, by key, and the order they stack in — bottom first.
   ///
   /// A placement outlives the window being put away: a window you minimize comes
@@ -257,7 +266,13 @@ class _WindowsAreaState extends State<_WindowsArea> {
   void _bringFocusedForward() {
     final focus = WindowsManager.takeFocus() ?? _workspace?.takeFocus();
     if (focus == null) return;
-    if (widget.screenWidth < kWindowsBreakpoint) return;
+    if (widget.screenWidth < kWindowsBreakpoint) {
+      // A phone draws one window at a time, so "in front" means "on screen":
+      // the window the app just asked for is the sheet, even though the panel's
+      // own windows come after it in the list they are drawn from.
+      _sheetFocus = focus;
+      return;
+    }
     if (!_stack.contains(focus) || _stack.last == focus) return;
     _stack
       ..remove(focus)
@@ -398,13 +413,25 @@ class _WindowsAreaState extends State<_WindowsArea> {
       return const SizedBox.shrink();
     }
     if (widget.screenWidth < kWindowsBreakpoint) {
-      // One window at a time: the newest, or the one still folding away.
-      final shown = _live.isNotEmpty ? _live.last : _closing.values.lastOrNull;
+      // One window at a time: the one the app last asked for, else the newest,
+      // or the one still folding away.
+      final shown = _entryFor(_sheetFocus) ??
+          (_live.isNotEmpty ? _live.last : _closing.values.lastOrNull);
       _shown = shown?.key;
       return shown == null ? const SizedBox.shrink() : _buildSheet(shown);
     }
+    _sheetFocus = null;
     _shown = null;
     return _buildStack();
+  }
+
+  /// The entry [key] names, on screen or still folding away.
+  _WindowEntry? _entryFor(String? key) {
+    if (key == null) return null;
+    for (final entry in _live) {
+      if (entry.key == key) return entry;
+    }
+    return _closing[key];
   }
 
   /// The room windows have, asked where they are drawn: beside the panel when

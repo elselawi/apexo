@@ -443,6 +443,7 @@ On web, instead of using the Flutter FCM plugin directly, notifications go throu
 
 | Mistake | Fix |
 |---------|-----|
+| Assigning `window.lang` (or `self.lang`, same object) from inside the `lang` setter in `web/fcm/fcm.js` | The accessor lives on `window`, so the write re-enters the setter until the call stack overflows (Sentry: `StackOverflowError` in `fcm.js`). Store the value in `this.config.lang`; the getter already serves `self.lang` to `push_data.js` |
 | Forgetting to call `Messaging.initializeReceiving()` | Must be called before `runApp()` in `main.dart` |
 | Not calling `Messaging.identifyDevice()` after login | Device won't be registered with the relay server |
 | Editing `lib/core/synchronization/push_data.dart` or `lib/services/notifications/push_interpretation.dart` without syncing `web/fcm/push_data.js` | Web push display will break — the JS file mirrors the Dart wire model, interpretations, and all 10 locale translations |

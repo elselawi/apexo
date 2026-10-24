@@ -120,8 +120,10 @@ class FCMManager {
         Object.defineProperty(window, 'lang', {
             get: () => this.config.lang,
             set: (value) => {
+                // `self` is `window` here, so assigning `self.lang` would
+                // re-enter this setter forever. The getter above is the only
+                // reader; `push_data.js` sees the same value through it.
                 this.config.lang = value || "en";
-                self.lang = this.config.lang;
                 this.postToServiceWorker({
                     type: "LANG_CHANGED",
                     lang: this.config.lang,
@@ -165,7 +167,6 @@ class FCMManager {
                     // set current account id (push_data access from window)
                     window.currentAccountID = this.config.accountId;
                     self.currentAccountID = this.config.accountId;
-                    self.lang = this.config.lang;
 
                     // send current account id & lang to service worker
                     this.syncStateToServiceWorker();

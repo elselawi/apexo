@@ -154,6 +154,21 @@ void main() {
         reason: 'web/fcm/fcm.js does not send platform: "web" to the relay',
       );
     });
+
+    test('web/fcm/fcm.js never assigns self.lang', () {
+      final fcmSource = File('web/fcm/fcm.js').readAsStringSync();
+
+      // `window.lang` is an accessor defined in this file, and `self` is
+      // `window` in the page, so writing `self.lang` re-enters that same
+      // setter until the call stack overflows. Reading it is fine — the getter
+      // serves `push_data.js` — but writing it is always a bug.
+      expect(
+        RegExp(r'\bself\.lang\s*=').hasMatch(fcmSource),
+        isFalse,
+        reason: 'web/fcm/fcm.js assigns self.lang, which re-enters its own '
+            'window.lang setter and overflows the stack',
+      );
+    });
   });
 
   group('interpret() & displayTuple()', () {

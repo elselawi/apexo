@@ -1,6 +1,7 @@
 import 'package:apexo/utils/logger.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:logging/logging.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 void main() {
   group('logger', () {
@@ -27,6 +28,36 @@ void main() {
       expect(info.single.message, '\x1B[34minfo\x1B[0m');
       expect(fallback.single.level, Level.SEVERE);
       expect(fallback.single.message, '\x1B[31mfallback\x1B[0m');
+    });
+
+    test('records app breadcrumbs with the matching severity', () async {
+      await Sentry.init((options) {
+        options.dsn = 'https://public@localhost/1';
+        for (final integration in options.integrations) {
+          options.removeIntegration(integration);
+        }
+        options.beforeSend = (event, hint) => null;
+        options.sendClientReports = false;
+      });
+      addTearDown(Sentry.close);
+
+      logger('critical', null, 1);
+      logger('warning', null, 2);
+      logger('info', null, 3);
+      logger('fallback', null);
+
+      await Sentry.configureScope((scope) {
+        expect(scope.breadcrumbs.map((crumb) => crumb.category),
+            everyElement('app'));
+        expect(scope.breadcrumbs.map((crumb) => crumb.message),
+            ['critical', 'warning', 'info', 'fallback']);
+        expect(scope.breadcrumbs.map((crumb) => crumb.level), [
+          SentryLevel.error,
+          SentryLevel.warning,
+          SentryLevel.info,
+          SentryLevel.error,
+        ]);
+      });
     });
 
     test('emits a separate purple stack-trace record', () async {

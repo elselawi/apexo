@@ -139,6 +139,21 @@ Live-backend tests are separate and must be explicitly requested/configured. The
    - continue on appstoreconnect `https://appstoreconnect.apple.com/apps/6767690393/distribution/ios/version/inflight`
 
 
+## Crash reports (Sentry)
+
+**Profile and release** builds initialize Sentry in [lib/main.dart](./lib/main.dart). A default debug `flutter run` session does not send reports.
+
+Each report carries, besides the exception:
+
+- breadcrumbs for `logger()` lines (`category: app`) and framework errors (`category: flutter.error`), including readable exception text and available framework diagnostics;
+- a `last framework error` context set before Sentry's existing handler runs, also retained for later events. This can help connect a layout failure with a subsequent hit-test error, but is not necessarily the cause of that later error.
+
+The breadcrumb buffer holds up to 300 entries. `BreadcrumbLimiter` in [lib/utils/error_reporting.dart](./lib/utils/error_reporting.dart) suppresses identical app/framework/console messages at the same severity for two seconds and includes the suppressed count on the next matching entry. Other SDK breadcrumbs, such as navigation, are left untouched.
+
+Widget source locations and creator chains are debug/inspector-dependent and generally unavailable in release builds; framework context may still name the widget. App stack frames depend on the error and available symbols — this enrichment does not restore missing frames or replace symbol uploads.
+
+To hand a report over, copy its **event JSON** (issue page → `⋯` → *Copy event JSON*) into a file and give the path; that keeps the stack, breadcrumbs, tags and contexts intact.
+
 ## Support
 
 Currently I'm not accepting any financial support for the development of this project. I'm developing it on my free time and using it in my own clinic.

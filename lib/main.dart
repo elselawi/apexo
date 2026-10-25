@@ -9,6 +9,7 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/services/localization/intl_data.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/error_reporting.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/app/app.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
@@ -94,8 +95,17 @@ void main() async {
     await SentryFlutter.init(
       (options) {
         options.dsn = sentryDSN;
+        // A widget that fails every frame or on every pointer move would fill a
+        // default-sized buffer with one repeated line before the error worth
+        // reading is reported.
+        options.maxBreadcrumbs = 300;
+        options.beforeBreadcrumb = breadcrumbLimiter.limit;
       },
-      appRunner: () => runApp(const ApexoApp()),
+      appRunner: () {
+        // Enrich the scope before Sentry's framework handler captures the event.
+        installFlutterErrorReporting();
+        runApp(const ApexoApp());
+      },
     );
   }
 }

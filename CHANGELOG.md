@@ -1,3 +1,7 @@
+### ____0.16.1____
+
+- Improved crash reports with readable framework diagnostics, app breadcrumbs, and repeated-message suppression that preserves navigation history.
+
 ### ____0.16.0____
 
 - New Features & Improvements

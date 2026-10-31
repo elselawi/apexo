@@ -20,6 +20,40 @@ import '../../../integration_test/support/store_ext.dart';
 
 void main() {
   group('integration support helpers', () {
+    test('the known issue filter does not hide application callback errors', () {
+      final previous = FlutterError.onError;
+      addTearDown(() => FlutterError.onError = previous);
+      final forwarded = <FlutterErrorDetails>[];
+      FlutterError.onError = forwarded.add;
+      E2E.installKnownFlutterIssueFilters();
+
+      final packageStack = StackTrace.fromString(
+          '#0 _AutoSuggestBoxState._updateLocalItems '
+          '(package:fluent_ui/src/controls/form/auto_suggest_box.dart:436)');
+      FlutterError.reportError(FlutterErrorDetails(
+        exception: FlutterError(
+            "Failed assertion: '_lifecycleState != _ElementLifecycle.defunct'"),
+        stack: packageStack,
+      ));
+      expect(forwarded, isEmpty);
+
+      final applicationError = FlutterErrorDetails(
+        exception: StateError('application callback failed'),
+        stack: packageStack,
+      );
+      FlutterError.reportError(applicationError);
+      final unrelatedLifecycleError = FlutterErrorDetails(
+        exception: FlutterError('setState() called after dispose()'),
+        stack: StackTrace.fromString(
+            '#0 _TagInputWidgetState.callback '
+            '(package:apexo/common_widgets/tag_input.dart:10)\n'
+            '#1 _AutoSuggestBoxState._unselectAll '
+            '(package:fluent_ui/src/controls/form/auto_suggest_box.dart:400)'),
+      );
+      FlutterError.reportError(unrelatedLifecycleError);
+      expect(forwarded, [applicationError, unrelatedLifecycleError]);
+    });
+
     testWidgets('readText reads rendered and editable text', (tester) async {
       await tester.pumpWidget(
         const FluentApp(

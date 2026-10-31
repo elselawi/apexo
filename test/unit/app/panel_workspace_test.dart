@@ -5,6 +5,7 @@ library;
 import 'dart:async';
 
 import 'package:apexo/ui/workspace/panel_workspace.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
 import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -213,7 +214,7 @@ void main() {
 
     test('the memory is reported when the user is the one who changes it', () {
       final reported = <List<String>>[];
-      final workspace = PanelWorkspace(onUserChange: reported.add)
+      final workspace = PanelWorkspace(onUserChange: (_, open) => reported.add(open))
         ..arrange(layout: wide, candidates: ['a', 'b']);
 
       // The screen deciding is not the user: nothing is reported for it.
@@ -229,7 +230,7 @@ void main() {
 
     test('a no-op toggle reports nothing', () {
       final reported = <List<String>>[];
-      final workspace = PanelWorkspace(onUserChange: reported.add);
+      final workspace = PanelWorkspace(onUserChange: (_, open) => reported.add(open));
       workspace.minimize('a');
 
       expect(reported, isEmpty);
@@ -251,6 +252,118 @@ void main() {
       workspace.toggle('b');
 
       expect(workspace.open, ['b']);
+    });
+  });
+
+  group('two records in one row', () {
+    /// A plan whose row shows exactly [keys], in that order.
+    WindowsPlan planOf(
+      List<String> keys, {
+      bool compact = false,
+      Map<String, double>? widths,
+      double available = 1550,
+    }) {
+      final measured = widths ??
+          <String, double>{
+            for (final key in keys) key: 350,
+          };
+      var used = 0.0;
+      for (final key in keys) {
+        used += (used == 0 ? 0 : 12) + (measured[key] ?? 350);
+      }
+      return WindowsPlan(
+        compact: compact,
+        selected: keys,
+        widths: measured,
+        used: used,
+        available: available,
+        room: 984,
+      );
+    }
+
+    test('the plan puts both records\' windows on screen, per slot', () {
+      final workspace = PanelWorkspace()
+        ..applyPlan(planOf(['attached/operative', 'host/appointments']));
+
+      expect(workspace.isOpen('operative', slot: kAttachedSlot), isTrue);
+      expect(workspace.isOpen('appointments', slot: kHostSlot), isTrue);
+      expect(workspace.isOpen('operative', slot: kHostSlot), isFalse,
+          reason: 'the same window id in the other slot is a different window');
+      expect(workspace.openIn(kAttachedSlot), ['operative']);
+      expect(workspace.openIn(kHostSlot), ['appointments']);
+    });
+
+    test('row order is the visit nearest the panel, then the panel\'s record',
+        () {
+      final workspace = PanelWorkspace()
+        ..applyPlan(planOf(['host/appointments', 'attached/operative']));
+
+      expect(workspace.open, ['operative', 'appointments']);
+    });
+
+    test('what the user changes is reported with the slot it happened in', () {
+      final reported = <String>[];
+      final workspace = PanelWorkspace(
+        onUserChange: (slot, open) => reported.add('$slot:${open.join(",")}'),
+      )..applyPlan(planOf(
+          ['attached/operative', 'host/appointments'],
+          widths: const {
+            'attached/operative': 350,
+            'attached/labwork': 350,
+            'host/appointments': 350,
+          },
+        ));
+
+      workspace.toggle('labwork', slot: kAttachedSlot);
+      workspace.minimize('appointments');
+
+      expect(reported, [
+        'attached:operative,labwork',
+        'host:',
+      ]);
+    });
+
+    test('detaching a record takes its windows away and keeps the rest', () {
+      final workspace = PanelWorkspace()
+        ..applyPlan(planOf(['attached/operative', 'host/appointments']));
+
+      workspace.clearSlot(kAttachedSlot);
+
+      expect(workspace.open, ['appointments']);
+      expect(workspace.openIn(kAttachedSlot), isEmpty);
+    });
+
+    test('a phone shows one window of either record', () {
+      final workspace = PanelWorkspace()
+        ..applyPlan(planOf(const [], compact: true));
+
+      workspace.toggle('appointments');
+      workspace.toggle('operative', slot: kAttachedSlot);
+
+      expect(workspace.open, ['operative']);
+    });
+
+    test('opening from the dock moves the row over to make room by width', () {
+      // A 350 tool and a 960 chart take 1322 of 1550; one more 350 tool does
+      // not fit, so the window at the row's far end gives way — never the one
+      // just asked for.
+      final workspace = PanelWorkspace()
+        ..applyPlan(planOf(
+          ['host/appointments', 'host/dentalChart'],
+          widths: const {
+            'host/appointments': 350,
+            'host/dentalChart': 960,
+            'host/gallery': 350,
+          },
+        ));
+
+      workspace.toggle('gallery');
+
+      expect(workspace.isOpen('gallery'), isTrue);
+      expect(workspace.isOpen('dentalChart'), isFalse,
+          reason: 'the row gave up the window at its far end');
+      expect(workspace.isOpen('appointments'), isTrue,
+          reason: 'the window nearer the panel kept its place');
     });
   });
 }

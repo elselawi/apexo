@@ -1,14 +1,20 @@
+@Tags(['serial'])
+library;
+
 import 'dart:async';
 
+import 'package:apexo/features/appointments/appointment_sessions.dart';
+import 'package:apexo/ui/workspace/panel_screen.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/window_defaults.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/window_origin.dart';
 import 'package:apexo/ui/workspace/windows_layer.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_body.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
@@ -19,6 +25,7 @@ import 'package:apexo/core/model.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/localization/en.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -102,44 +109,84 @@ void main() {
     );
   });
 
-  testWidgets('the appointment panel offers the windows its menus offer',
-      (tester) async {
-    final appointment = testAppointment(id: 'windows-appointment');
+  testWidgets('a visit offers its windows beside its patient', (tester) async {
+    final patient = Patient.fromJson({
+      'id': 'windows-visit-patient',
+      'title': 'Visit Patient',
+    });
+    patients.set(patient);
+    final appointment = testAppointment(
+      id: 'windows-appointment',
+      patientID: patient.id,
+    );
+    appointments.set(appointment);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
-    openAppointment(appointment);
+    unawaited(openAppointment(appointment));
     await tester.pumpAndSettle();
 
+    final panel = PanelsManager.active().single;
+    expect(panel.itemId, patient.id,
+        reason: 'the patient is the panel; the visit is carried beside it');
+    final visitWindows = panel.attached!.windows;
     expect(
-      windowsOf('windows-appointment'),
-      appointmentWindows(appointment).map((window) => window.id).toList(),
+      visitWindows.map((window) => window.id).toList(),
+      [
+        AppointmentWindow.dentalChart.id,
+        AppointmentWindow.labwork.id,
+        AppointmentWindow.gallery.id,
+      ],
+      reason: 'the chart, and the two editors the visit band offers',
+    );
+    expect(
+      visitWindows.where((window) => window.attachedTo == null).length,
+      1,
+      reason: 'one row window: the visit\'s chart is its workspace',
+    );
+    expect(
+      visitWindows
+          .where((window) => window.attachedTo == PanelWindow.bandAttachment)
+          .map((window) => window.id),
+      [AppointmentWindow.labwork.id, AppointmentWindow.gallery.id],
+      reason: 'labwork and photos hang off the band, which is always visible',
     );
   });
 
-  testWidgets('a window of a visit whose panel is open is that panel\'s window',
+  testWidgets('a window of an attached visit is that visit\'s window',
       (tester) async {
-    final appointment = testAppointment(id: 'windows-appointment-open');
+    final patient = Patient.fromJson({
+      'id': 'windows-open-patient',
+      'title': 'Open Patient',
+    });
+    patients.set(patient);
+    final appointment = testAppointment(
+      id: 'windows-appointment-open',
+      patientID: patient.id,
+    );
+    appointments.set(appointment);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
-    openAppointment(appointment);
+    unawaited(openAppointment(appointment));
     await tester.pumpAndSettle();
 
     // Asking for one of its windows must not start a second draft of the visit:
-    // the panel already holds it, and the two would overwrite each other.
-    openAppointment(appointment, AppointmentWindow.labwork);
+    // the session already holds it, and the two would overwrite each other.
+    unawaited(openAppointment(appointment, AppointmentWindow.labwork));
     await tester.pumpAndSettle();
 
     expect(
       WindowsManager.open(),
       isEmpty,
-      reason: 'the open panel holds the visit; nothing stands on its own',
+      reason: 'the panel holds the visit; nothing stands on its own',
     );
     expect(PanelsManager.active(), hasLength(1));
     expect(
-      PanelsManager.active().single.workspace
-          .isOpen(AppointmentWindow.labwork.id),
+      PanelsManager.active()
+          .single
+          .workspace
+          .isOpen(AppointmentWindow.labwork.id, slot: kAttachedSlot),
       isTrue,
-      reason: 'the panel was asked for the window, and opened it',
+      reason: 'the visit was asked for the window, and opened it',
     );
   });
 
@@ -169,8 +216,9 @@ void main() {
     expect(panel.hasPendingEdits, isTrue,
         reason: 'the panel opens dirty on the work it adopted');
     expect(
-      (panel.windows.firstWhere((w) => w.id == PatientWindow.dentalChart.id).body
-              as DentalChartBody)
+      (panel.windows
+              .firstWhere((w) => w.id == PatientWindow.dentalChart.id)
+              .body as DentalChartBody)
           .session
           .teeth['11'],
       'crown',
@@ -180,28 +228,31 @@ void main() {
         reason: 'nothing is written until the panel saves');
   });
 
-  testWidgets('a labwork window moves into the visit panel', (tester) async {
+  testWidgets('a labwork window\'s work stays the visit\'s one draft',
+      (tester) async {
+    // No patient the account may see: the visit's windows stand on their own.
     final appointment = testAppointment(id: 'a-carried');
     appointments.set(appointment);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
-    openAppointment(appointment, AppointmentWindow.labwork);
+    unawaited(openAppointment(appointment, AppointmentWindow.labwork));
     await tester.pumpAndSettle();
 
     final floating = WindowsManager.open().single;
-    (floating.window.body as AppointmentLabworkSection)
-        .appointment
-        .hasLabwork = true;
+    (floating.window.body as AppointmentLabworkSection).appointment.hasLabwork =
+        true;
 
-    openAppointment(appointment);
+    // Opening the visit again reaches the same session: there is one draft, so
+    // the order typed in the window is the visit's, and nothing was written.
+    unawaited(openAppointment(appointment));
     await tester.pumpAndSettle();
 
-    expect(WindowsManager.open(), isEmpty,
-        reason: 'the window moved into the panel');
-    expect(PanelsManager.active().single.hasPendingEdits, isTrue,
-        reason: 'the visit panel opens dirty on the order it adopted');
+    final session = appointmentSessions.get('a-carried')!;
+    expect(session.hasPendingEdits, isTrue,
+        reason: 'the visit is dirty on the order typed in its window');
     expect(appointments.get('a-carried')!.hasLabwork, isFalse,
-        reason: 'nothing is written until the panel saves');
+        reason: 'nothing is written until the visit\'s Save runs');
+    expect(WindowsManager.open().single.hasChanges!(), isTrue);
   });
 
   testWidgets('the orders panel offers the windows its menus offer',
@@ -485,14 +536,13 @@ void main() {
     await pumpApexoApp(tester, layer);
     await tester.pumpAndSettle();
 
-    // The panel opens a screenful by itself; the user keeps one of them and
-    // closes the record.
+    // The panel opens its own first pick — the chart — and the user makes the
+    // arrangement they want: the chart away, the visits list on.
     final workspace = PanelsManager.active().single.workspace;
-    expect(workspace.open, hasLength(greaterThan(1)));
-    for (final id in workspace.open.toList()) {
-      workspace.minimize(id);
-    }
+    expect(workspace.open, [PatientWindow.dentalChart.id],
+        reason: 'a record opens on its workspace, and nothing else');
     workspace.toggle(PatientWindow.appointments.id);
+    workspace.minimize(PatientWindow.dentalChart.id);
     PanelsManager.closeAll();
 
     unawaited(openPatient(second));
@@ -593,5 +643,106 @@ void main() {
     );
 
     expect(find.byKey(WK.windowOpenRecord), findsNothing);
+  });
+
+  testWidgets('a panel dirty only in its own record offers to discard it',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final patient = Patient.fromJson({
+      'id': 'discard-own-record-patient',
+      'title': 'Discard Own Record',
+    });
+    patients.set(patient);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+
+    PanelsManager.active([panel]);
+    await pumpApexoApp(
+      tester,
+      Stack(
+        children: [
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: SizedBox(
+              width: 350,
+              height: double.infinity,
+              child: PanelScreen(panel: panel, layoutWidth: 1600),
+            ),
+          ),
+          const WindowsLayer(visible: true, screenWidth: 1600),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    // No visit is carried here: the panel's own record is the only draft, so
+    // nothing but the record itself could be named in the prompt.
+    expect(panel.owned, isEmpty);
+    await tester.enterText(find.byKey(WK.fieldPatientYOB), '1990');
+    await tester.pumpAndSettle();
+    expect(panel.hasPendingEdits, isTrue);
+
+    await tester.tap(find.byKey(WK.panelClose));
+    await tester.pumpAndSettle();
+
+    final prompt = find.byType(FlyoutContent);
+    expect(prompt, findsOneWidget);
+    final discard = find.descendant(
+      of: prompt,
+      matching: find.widgetWithText(
+        FilledButton,
+        txt('closePromptDiscardAll'),
+      ),
+    );
+    expect(discard, findsWidgets,
+        reason: 'a record dirty only in its own fields must still be '
+            'dismissible without saving');
+
+    await tester.tap(discard.first);
+    await tester.pumpAndSettle();
+
+    expect(PanelsManager.active(), isEmpty);
+    expect(patients.get('discard-own-record-patient')!.birth, isNot(1990),
+        reason: 'discard loses the draft rather than writing it');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a labwork order opens only its own window, not the visit panel',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final patient = testPatient(id: 'labwork-only-patient', name: 'Lab Only');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'labwork-only-visit',
+      patientID: patient.id,
+      hasLabwork: true,
+      labName: 'Acme Dental Lab',
+      labworkNotes: 'Zirconia crown',
+    );
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+
+    // What a row in the labwork table means: the order is the task, so its
+    // window opens on its own — no patient panel and no chart beside it.
+    await openAppointmentWindowOnItsOwn(visit, AppointmentWindow.labwork);
+    await tester.pumpAndSettle();
+
+    expect(PanelsManager.active(), isEmpty,
+        reason: 'the patient record is not the labwork order');
+    final floating = WindowsManager.open().single;
+    expect(floating.window.id, AppointmentWindow.labwork.id);
+    expect(floating.window.id, isNot(AppointmentWindow.dentalChart.id));
+    expect(tester.takeException(), isNull);
   });
 }

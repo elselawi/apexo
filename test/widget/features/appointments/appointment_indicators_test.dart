@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'dart:convert';
 
 import 'package:apexo/common_widgets/money_display.dart';
@@ -6,7 +9,7 @@ import 'package:apexo/features/appointments/appointment_indicators.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/events_agenda_widget.dart';
 import 'package:apexo/features/appointments/events_timeline_widget.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/patients/patients_store.dart';

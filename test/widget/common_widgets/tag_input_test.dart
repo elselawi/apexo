@@ -98,6 +98,50 @@ void main() {
     expect(changes.last.map((t) => t.label), ['Dr. Smith']);
   });
 
+  testWidgets('a full field keeps its one chip instead of folding it away',
+      (tester) async {
+    // The appointment sheet's patient selector is `limit: 1`. Picking a
+    // patient left the box focused, and a focused box folded every chip of
+    // the row to "+N" — so the name just picked became "+1" and stayed that
+    // way until focus moved. A full field has no input left to make room for.
+    final changes = await pumpTagInput(
+      tester,
+      strict: true,
+      suggestions: [
+        TagInputItem(value: 'p1', label: 'Ada Lovelace'),
+        TagInputItem(value: 'p2', label: 'Grace Hopper'),
+      ],
+      limit: 1,
+    );
+
+    await tester.tap(find.byType(EditableText));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(EditableText), 'Ada Lovelace');
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(changes.last.map((t) => t.value), ['p1']);
+    expect(find.text('+1'), findsNothing);
+    expect(find.text('Ada Lovelace'), findsWidgets);
+  });
+
+  testWidgets('a focused field that can still take tags folds its chips',
+      (tester) async {
+    await pumpTagInput(
+      tester,
+      suggestions: [TagInputItem(value: 'a', label: 'alpha')],
+      initial: [TagInputItem(value: 'a', label: 'alpha')],
+      limit: 5,
+    );
+
+    await tester.tap(find.byType(EditableText));
+    await tester.pumpAndSettle();
+
+    expect(find.text('+1'), findsOneWidget,
+        reason: 'the input needs the room the chips would take');
+  });
+
   testWidgets('an empty box ignores Enter', (tester) async {
     final changes = await pumpTagInput(tester);
 
@@ -107,5 +151,61 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(changes, isEmpty);
+  });
+
+  testWidgets('closing the dialog that holds it disposes without a rebuild',
+      (tester) async {
+    // `AutoSuggestBoxState.dispose()` runs `_unselectAll()`, which fires every
+    // item's `onFocusChange(false)` — this widget's callback among them — while
+    // the framework is locked. Rebuilding there asserts; the box must survive
+    // being torn down with a suggestion still highlighted.
+    await pumpApexoApp(
+      tester,
+      Builder(
+        builder: (context) => FilledButton(
+          key: const Key('openTagDialog'),
+          onPressed: () => showDialog<void>(
+            context: context,
+            builder: (_) => ContentDialog(
+              title: const Text('tags'),
+              content: SizedBox(
+                width: 320,
+                child: TagInputWidget(
+                  suggestions: [
+                    TagInputItem(value: 'a', label: 'alpha'),
+                    TagInputItem(value: 'b', label: 'bravo'),
+                  ],
+                  initialValue: const [],
+                  strict: true,
+                  limit: 5,
+                  placeholder: 'tag',
+                  onChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+          child: const Text('open'),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const Key('openTagDialog')));
+    await tester.pumpAndSettle();
+
+    // Put the keyboard highlight on a suggestion: that is the state whose blur
+    // the dispose path fires.
+    await tester.enterText(find.byType(EditableText), 'a');
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pumpAndSettle();
+
+    // Popped directly: the dropdown covers the dialog's own button, and this
+    // test is about the teardown, not about how the user gets there.
+    Navigator.of(tester.element(find.byType(ContentDialog))).pop();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(TagInputWidget), findsNothing,
+        reason: 'the box has to be gone for its dispose to be under test');
+    expect(tester.takeException(), isNull);
   });
 }

@@ -77,23 +77,26 @@ abstract final class E2E {
 
   /// Installs the one filter the harness applies to framework errors.
   ///
-  /// **fluent_ui 4.13.0, `AutoSuggestBox`.** It schedules a post-frame
-  /// `_updateLocalItems()` from its text listener (`auto_suggest_box.dart:436`)
-  /// and calls `setState` from it, and its `dispose()` runs `_unselectAll()`,
-  /// which fires every item's `onFocusChange` — the app's own callback among
-  /// them (`tag_input.dart`). Both land on an element that is already defunct,
-  /// asserting `'_lifecycleState != _ElementLifecycle.defunct'` or "setState()
-  /// … called when widget tree was locked". Neither `State.mounted` nor
-  /// `context.mounted` can tell: both are still true in that window (`_element` /
-  /// `_parent` are cleared only after `dispose()`/`unmount()` return).
+  /// **fluent_ui 4.13.0, `AutoSuggestBox`.** Its text listener schedules a
+  /// post-frame `_updateLocalItems()` (`auto_suggest_box.dart:436`) and calls
+  /// `setState` from it, on an element that may already be defunct — asserting
+  /// `'_lifecycleState != _ElementLifecycle.defunct'`. Neither `State.mounted`
+  /// nor `context.mounted` can tell: both are still true in that window
+  /// (`_element` / `_parent` are cleared only after `dispose()`/`unmount()`
+  /// return).
+  ///
+  /// The app-side half of this — `dispose()` running `_unselectAll()`, which
+  /// fires every item's `onFocusChange`, the app's own callback among them — is
+  /// handled where it belongs now: `tag_input.dart` defers its rebuild when the
+  /// scheduler phase is locked, rather than relying on this filter.
   ///
   /// The callback fires during whichever frame runs next, so the test framework
   /// used to blame the *following* test — every labworks test reported "This
   /// test failed after it had already completed".
   ///
-  /// The filter matches the **stack**, because the message carries only the
-  /// assertion text: any error passing through fluent's `auto_suggest_box.dart`
-  /// is dropped, and nothing else is. The app's own bugs still fail the suite.
+  /// Match both the known lifecycle assertion and `_updateLocalItems` in the
+  /// package stack. An app callback can also pass through AutoSuggestBox;
+  /// unrelated errors on that stack must still fail the suite.
   ///
   /// [boot] calls this for every test: the test binding installs its own
   /// `FlutterError.onError` per test, which would otherwise sit above this
@@ -102,7 +105,15 @@ abstract final class E2E {
     final inherited = FlutterError.onError;
     FlutterError.onError = (details) {
       final stack = details.stack?.toString() ?? '';
-      if (stack.contains('auto_suggest_box.dart')) return;
+      final message = details.exceptionAsString();
+      final knownLifecycleFailure =
+          message.contains('_lifecycleState != _ElementLifecycle.defunct') ||
+              message.contains('setState() called after dispose()');
+      if (knownLifecycleFailure &&
+          stack.contains('auto_suggest_box.dart') &&
+          stack.contains('_updateLocalItems')) {
+        return;
+      }
       if (inherited != null) {
         inherited(details);
       } else {

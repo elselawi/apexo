@@ -1,3 +1,6 @@
+@Tags(['serial'])
+library;
+
 import 'package:apexo/ui/workspace/delegated_panel.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -5,7 +8,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/events_agenda_widget.dart';
 import 'package:apexo/features/appointments/events_timeline_widget.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';

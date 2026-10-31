@@ -8,6 +8,7 @@ library;
 import 'dart:convert';
 
 import 'package:apexo/ui/workspace/window_defaults.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -57,15 +58,42 @@ void main() {
     expect(stored, first);
   });
 
-  test('what is remembered is the stored JSON, one entry per kind', () {
+  test('what is remembered is keyed by kind and slot, never by record', () {
     defaults.remember('patient', ['appointments']);
+    defaults.remember('appointment', ['operative'], slot: kAttachedSlot);
 
     expect(
       jsonDecode(stored),
       {
-        'patient': ['appointments']
+        'patient/host': ['appointments'],
+        'appointment/attached': ['operative'],
       },
+      reason: 'the visit\'s own id never reaches the memory: every visit of '
+          'every patient opens the same way',
     );
+  });
+
+  test('a memory written before slots existed is the host slot\'s', () {
+    // An upgrade must not rearrange anybody's screen: the entries written by an
+    // older build are read as the panel's own slot, and moved on the next write.
+    stored = jsonEncode({
+      'patient': ['appointments'],
+    });
+
+    expect(defaults.of('patient'), ['appointments']);
+    expect(defaults.of('patient', kAttachedSlot), isNull);
+
+    defaults.remember('appointment', ['labwork'], slot: kAttachedSlot);
+    expect(defaults.of('patient'), ['appointments'],
+        reason: 'writing one slot does not drop the legacy one');
+  });
+
+  test('the two slots of one kind are remembered apart', () {
+    defaults.remember('appointment', ['operative']);
+    defaults.remember('appointment', const [], slot: kAttachedSlot);
+
+    expect(defaults.of('appointment'), ['operative']);
+    expect(defaults.of('appointment', kAttachedSlot), isEmpty);
   });
 
   test('remembering one kind keeps the others', () {

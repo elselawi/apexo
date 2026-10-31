@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:apexo/app/app_context.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/core/synchronization/push_data.dart';
@@ -16,6 +17,7 @@ import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -97,6 +99,50 @@ void main() {
     routes.reset();
     staticNotifications.clear();
     resetStaticNotificationDedupe();
+  });
+
+  Future<void> pumpNotificationHost(WidgetTester tester) async {
+    BuildContext? previous;
+    try {
+      previous = bContext;
+    } catch (_) {
+      // The first notification test can run before the application is built.
+    }
+    addTearDown(() {
+      if (previous != null) bContext = previous;
+    });
+    await tester.pumpWidget(FluentApp(
+      home: Builder(builder: (context) {
+        bContext = context;
+        return const SizedBox.shrink();
+      }),
+    ));
+  }
+
+  testWidgets('a missing notification visit shows exactly one dialog',
+      (tester) async {
+    await pumpNotificationHost(tester);
+
+    await tester.runAsync(() => PushListeners.handlePushData(
+          appointmentPush(id: 'missing-notification-visit'),
+          openedFromNotification: true,
+        ));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ContentDialog, skipOffstage: false), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a queued record open is cancelled when its session ends',
+      (tester) async {
+    await pumpNotificationHost(tester);
+
+    PushListeners.openAppointmentIfExist('missing-before-logout');
+    notificationSessions.invalidate();
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ContentDialog, skipOffstage: false), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   group('handlePushData', () {

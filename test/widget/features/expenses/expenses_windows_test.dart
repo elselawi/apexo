@@ -6,6 +6,7 @@ import 'dart:async';
 import 'package:apexo/ui/workspace/panel_screen.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/windows_layer.dart';
+import 'package:apexo/ui/workspace/window_dock.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/money_display.dart';
@@ -14,6 +15,7 @@ import 'package:apexo/features/expenses/expense_summary.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
+import 'package:apexo/features/expenses/order_row.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
@@ -265,6 +267,56 @@ void main() {
     );
   });
 
+  testWidgets('the panel\'s window switches are joined into one control',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final orders = supplierOrders('supplier-joined');
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openExpenses(orders, 'Acme Supplies', 'supplier-joined'));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, 1600);
+
+    final due = find.byKey(WK.windowToggle(ExpenseWindow.due.id));
+    final paid = find.byKey(WK.windowToggle(ExpenseWindow.paid.id));
+    final dueRect = tester.getRect(due);
+    final paidRect = tester.getRect(paid);
+    final dockRect = tester.getRect(find.byType(WindowDock));
+
+    // The switches fill the panel's width, one equal segment each, with no gap
+    // between them: the row is the panel's own bar, not a set of loose pills.
+    expect(dueRect.width, closeTo(paidRect.width, 0.5));
+    expect(dueRect.left - dockRect.left, closeTo(8, 0.5));
+    expect(dockRect.right - paidRect.right, closeTo(8, 0.5));
+    expect(dueRect.right, closeTo(paidRect.left, 0.5));
+    expect(dueRect.top, closeTo(paidRect.top, 0.5));
+
+    /// The style a switch is drawn with.
+    ButtonStyle styleOf(Finder finder) {
+      final button = tester.widget<Button>(finder);
+      return button.style!;
+    }
+
+    /// The corners a switch draws, resolved for a left-to-right language.
+    BorderRadius cornersOf(Finder finder) {
+      final shape = styleOf(finder).shape!.resolve({})!;
+      return (shape as RoundedRectangleBorder)
+          .borderRadius
+          .resolve(TextDirection.ltr);
+    }
+
+    // Only the corners facing out of the row are rounded: the edge the two
+    // share stays square, which is what makes them read as a single control.
+    const outer = Radius.circular(4);
+    expect(cornersOf(due), const BorderRadius.horizontal(left: outer));
+    expect(cornersOf(paid), const BorderRadius.horizontal(right: outer));
+
+    // The same size and padding as the record's own workspace buttons, so a
+    // panel's dock and its workspace bar are one design.
+    expect(styleOf(due).padding!.resolve({}),
+        const EdgeInsetsDirectional.fromSTEB(11, 8, 11, 8));
+  });
+
   testWidgets('a supplier row opens one window, not the supplier panel',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));
@@ -317,7 +369,8 @@ void main() {
     expect(
       WindowsManager.open(),
       isEmpty,
-      reason: 'the panel holds these orders now; the window has nothing to show',
+      reason:
+          'the panel holds these orders now; the window has nothing to show',
     );
   });
 
@@ -363,11 +416,42 @@ void main() {
     expect(
       window.hasChanges!(),
       isFalse,
-      reason: 'the order is written as it is added, so there is nothing to save',
+      reason:
+          'the order is written as it is added, so there is nothing to save',
     );
   });
 
-  testWidgets('a dirty orders window makes the panel open dirty', (tester) async {
+  testWidgets('an order added on the spot shows in the window at once',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final orders = supplierOrders('supplier-added-row');
+    final before = orders.map((order) => order.id).toSet();
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openExpenses(orders, 'Acme Supplies', 'supplier-added-row', null,
+        ExpenseWindow.due));
+    await tester.pumpAndSettle();
+
+    await pumpLayer(tester, 1600);
+    final rows = find.byType(OrderRow);
+    expect(tester.widgetList<OrderRow>(rows).first.order.id,
+        'supplier-added-row-due');
+
+    await tester.tap(find.byKey(WK.btnAddOrder));
+    await tester.pumpAndSettle();
+
+    // The order reaches the store as it is added, and the window's list with
+    // it: a list worked out once, when the window was built, would keep showing
+    // the row that was there before until the window was closed and reopened.
+    expect(
+      before.contains(tester.widgetList<OrderRow>(rows).first.order.id),
+      isFalse,
+      reason: 'the order just added is the one on top of the list',
+    );
+  });
+
+  testWidgets('a dirty orders window makes the panel open dirty',
+      (tester) async {
     setViewport(tester, const Size(1600, 1000));
     final orders = supplierOrders('supplier-carry');
 

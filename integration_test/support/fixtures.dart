@@ -4,7 +4,7 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart'
+import 'package:apexo/features/appointments/open_appointment.dart'
     show AppointmentWindow;
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart'
     show kDentalChartWindowId;

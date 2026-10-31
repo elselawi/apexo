@@ -6,6 +6,7 @@ library;
 
 import 'package:apexo/ui/workspace/panel_width.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
 import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -300,6 +301,57 @@ void main() {
       expect(nearTheEdge.left, area.right - 350);
       expect(nearTheEdge.top, area.top);
     });
+
+    test('a window opened low with its height known is lifted by that height',
+        () {
+      // A tap near the foot of the screen: the window's own height, not the
+      // least a window may be opened at, decides how far up it goes — so the
+      // whole of it sits on the screen and none of it has to be scrolled to.
+      final lifted = placementAt(
+        origin: Offset(700, area.bottom - 20),
+        width: 350,
+        bounds: area,
+        rtl: false,
+        height: 600,
+      );
+      expect(lifted.top, area.bottom - 600);
+      expect(lifted.left, 700);
+    });
+
+    test('a window that fits under the tap is not lifted by its height', () {
+      final atTheTap = placementAt(
+        origin: const Offset(700, 400),
+        width: 350,
+        bounds: area,
+        rtl: false,
+        height: 300,
+      );
+      expect(atTheTap.top, 400 - kWindowTapLift);
+    });
+
+    test('a window taller than the screen opens at the top of it', () {
+      final tooTall = placementAt(
+        origin: Offset(700, area.bottom - 20),
+        width: 350,
+        bounds: area,
+        rtl: false,
+        height: area.height + 200,
+      );
+      expect(tooTall.top, area.top,
+          reason: 'it cannot be lifted past the top, so it scrolls — and only '
+              'this window does');
+    });
+
+    test('before its height is known a window keeps the least room it needs',
+        () {
+      final unmeasured = placementAt(
+        origin: Offset(700, area.bottom - 20),
+        width: 350,
+        bounds: area,
+        rtl: false,
+      );
+      expect(unmeasured.top, area.bottom - kWindowMinOpeningHeight);
+    });
   });
 
   group('WindowPlacement.moved', () {
@@ -310,5 +362,383 @@ void main() {
         const WindowPlacement(left: 130, top: 110),
       );
     });
+  });
+
+  // ── The plan: what one row holds when its windows are not all the same width
+  //
+  // The chart asks for 960, a pre-op form for 560 and a tool for the panel's own
+  // 350, so a count of fitting windows describes one selection and says nothing
+  // about the next. These are the six screen profiles §1 priced the design from
+  // (plan §1, §4.3, §6.2-5).
+
+  /// A window that asks for its own [width] and needs [minHeight] to be whole.
+  PanelWindow sized(
+    String id,
+    double width, {
+    double minHeight = 300,
+  }) =>
+      PanelWindow(
+        id: id,
+        title: id,
+        icon: const IconData(0),
+        body: const SizedBox.shrink(),
+        matchesPanelWidth: false,
+        preferredWidth: width,
+        minHeight: minHeight,
+      );
+
+  WindowGroupDemand hostWindows(
+    List<PanelWindow> windows, {
+    List<String>? remembered,
+  }) =>
+      WindowGroupDemand(
+        slot: kHostSlot,
+        windows: windows,
+        remembered: remembered,
+      );
+
+  WindowGroupDemand visitWindows(
+    List<PanelWindow> windows, {
+    List<String>? remembered,
+  }) =>
+      WindowGroupDemand(
+        slot: kAttachedSlot,
+        windows: windows,
+        remembered: remembered,
+      );
+
+  WindowsPlan planAt(
+    double screenWidth,
+    List<WindowGroupDemand> groups, {
+    String? focus,
+    double screenHeight = 1000,
+  }) =>
+      computeWindowsPlan(
+        screenWidth: screenWidth,
+        screenHeight: screenHeight,
+        panelWidth: 350,
+        groups: groups,
+        focus: focus,
+      );
+
+  group('the six profiles of §1', () {
+    test('1366: a 560 pre-op and one 350 tool fit, 922 of 996', () {
+      final plan = planAt(1366, [
+        visitWindows([
+          sized('preOperative', 560),
+          window('labwork'),
+        ]),
+      ]);
+
+      expect(plan.available, 996);
+      expect(plan.selected, ['attached/preOperative', 'attached/labwork']);
+      expect(plan.used, 922);
+    });
+
+    test('1366: the chart takes the row alone', () {
+      final plan = planAt(1366, [
+        visitWindows([sized('chart', chartWidth, minHeight: 520)]),
+      ]);
+
+      expect(plan.selected, ['attached/chart']);
+    });
+
+    test('1366: the chart and the pre-op form cannot both fit', () {
+      final plan = planAt(1366, [
+        visitWindows([
+          sized('preOperative', 560),
+          sized('chart', chartWidth, minHeight: 520),
+        ]),
+      ]);
+
+      // 560 + 12 + 960 = 1532 of 996: the chart stays in the dock, and the window
+      // that does fit keeps its place.
+      expect(plan.selected, ['attached/preOperative']);
+    });
+
+    test('1920: pre-op and the chart fit together, 1532 of 1550', () {
+      final plan = planAt(1920, [
+        visitWindows([
+          sized('preOperative', 560),
+          sized('chart', chartWidth, minHeight: 520),
+        ]),
+      ]);
+
+      expect(plan.available, 1550);
+      expect(plan.selected, ['attached/preOperative', 'attached/chart']);
+      expect(plan.used, 1532);
+    });
+
+    test('1920: pre-op and two 350 tools fit, 1284 of 1550', () {
+      final plan = planAt(1920, [
+        visitWindows([
+          sized('preOperative', 560),
+          window('labwork'),
+          window('gallery'),
+        ]),
+      ]);
+
+      expect(plan.selected, hasLength(3));
+      expect(plan.used, 1284);
+    });
+
+    test('1920: the chart and one 350 tool fit, 1322 of 1550', () {
+      final plan = planAt(1920, [
+        visitWindows([
+          sized('chart', chartWidth, minHeight: 520),
+          window('labwork'),
+        ]),
+      ]);
+
+      expect(plan.selected, ['attached/chart', 'attached/labwork']);
+      expect(plan.used, 1322);
+    });
+  });
+
+  group('the plan walks candidates instead of counting them', () {
+    test('a narrow window after a wide one that did not fit still opens', () {
+      // The whole point of `continue` rather than `break`: the chart is too wide
+      // for what is left of the row, and the tool behind it is not.
+      final plan = planAt(1366, [
+        visitWindows([
+          sized('preOperative', 560),
+          sized('chart', chartWidth, minHeight: 520),
+          window('labwork'),
+        ]),
+      ]);
+
+      expect(plan.selected, ['attached/preOperative', 'attached/labwork']);
+      expect(plan.selected, isNot(contains('attached/chart')));
+    });
+
+    test('a window the screen is too short for is skipped, not fatal', () {
+      final plan = planAt(
+        1920,
+        [
+          visitWindows([
+            sized('tallList', 350, minHeight: 900),
+            window('operative'),
+          ]),
+        ],
+        screenHeight: 600,
+      );
+
+      expect(plan.room, 600 - 2 * kWindowEdgeInset);
+      expect(plan.selected, ['attached/operative']);
+    });
+
+    test('an explicitly requested tall editor remains reachable', () {
+      final plan = planAt(
+        1092,
+        [
+          visitWindows([sized('chart', chartWidth, minHeight: 700)])
+        ],
+        screenHeight: 550,
+        focus: 'attached/chart',
+      );
+
+      expect(plan.selected, ['attached/chart']);
+      expect(plan.used, lessThanOrEqualTo(plan.available));
+    });
+
+    test('every candidate has a width, on screen or not — a dock has to know',
+        () {
+      final plan = planAt(1366, [
+        visitWindows([sized('chart', chartWidth, minHeight: 520)]),
+        hostWindows([window('appointments')]),
+      ]);
+
+      expect(plan.widthOf('attached/chart'), chartWidth);
+      expect(plan.widthOf('host/appointments'), 350,
+          reason: 'a window left in the dock still has to fit if asked for');
+    });
+
+    test('the row is drawn in the records\' own order, not the trying order',
+        () {
+      final plan = planAt(2200, [
+        visitWindows([window('operative')]),
+        hostWindows([window('appointments')]),
+      ]);
+
+      // The visit is nearest the panel, the patient's record further out.
+      expect(plan.selected, ['attached/operative', 'host/appointments']);
+    });
+
+    test('what is remembered comes up, and only what is remembered', () {
+      final plan = planAt(
+        2200,
+        [
+          hostWindows(
+            [sized('chart', chartWidth), window('appointments')],
+            remembered: ['appointments'],
+          ),
+        ],
+      );
+
+      expect(plan.selected, ['host/appointments'],
+          reason:
+              'the user left one window open; the panel does not reopen the '
+              'others');
+    });
+
+    test('a group the user never arranged opens its own first picks', () {
+      final plan = planAt(2200, [
+        hostWindows([sized('chart', chartWidth), window('appointments')]),
+      ]);
+
+      expect(plan.selected, ['host/chart', 'host/appointments']);
+    });
+
+    test('a remembered window the record no longer offers is dropped', () {
+      final plan = planAt(
+        2200,
+        [
+          hostWindows([window('appointments')], remembered: ['gone'])
+        ],
+      );
+
+      expect(plan.selected, isEmpty);
+    });
+
+    test('an empty memory is a choice: the group opens nothing', () {
+      final plan = planAt(
+        2200,
+        [
+          hostWindows([window('appointments')], remembered: const [])
+        ],
+      );
+
+      expect(plan.selected, isEmpty);
+    });
+  });
+
+  group('focus, in the plan', () {
+    test('the focused window is placed even when it is not remembered', () {
+      final plan = planAt(
+        2200,
+        [
+          hostWindows(
+            [sized('chart', chartWidth), window('appointments')],
+            remembered: ['appointments'],
+          ),
+        ],
+        focus: 'host/chart',
+      );
+
+      expect(plan.selected, containsAll(['host/chart', 'host/appointments']));
+    });
+
+    test('a phone draws the focused window, and nothing else', () {
+      final plan = planAt(
+        700,
+        [
+          hostWindows([sized('chart', chartWidth), window('appointments')])
+        ],
+        focus: 'host/appointments',
+      );
+
+      expect(plan.compact, isTrue);
+      expect(plan.selected, ['host/appointments']);
+    });
+
+    test('a phone opens nothing until it is asked', () {
+      final plan = planAt(700, [
+        hostWindows([window('appointments')])
+      ]);
+
+      expect(plan.compact, isTrue);
+      expect(plan.selected, isEmpty);
+    });
+
+    test('a focus that names no window is ignored', () {
+      final plan = planAt(
+        2200,
+        [
+          hostWindows([window('appointments')])
+        ],
+        focus: 'attached/operative',
+      );
+
+      expect(plan.selected, ['host/appointments']);
+    });
+  });
+
+  test('a panel with no windows at all plans nothing', () {
+    final plan = planAt(1920, const []);
+
+    expect(plan.selected, isEmpty);
+    expect(plan.widths, isEmpty);
+    expect(plan.compact, isFalse);
+  });
+
+  group('the chart threshold', () {
+    test('1902 is where the chart and the pre-op form first fit together', () {
+      // 560 + 12 + 960 = 1532 = 1902 − 350 − 12 − 8: the exact screen the
+      // threshold is derived from (plan §4.3).
+      final plan = planAt(1902, [
+        visitWindows([
+          sized('preOperative', 560),
+          sized('chart', chartWidth, minHeight: 520),
+        ]),
+      ]);
+
+      expect(plan.available, 1532);
+      expect(plan.selected, ['attached/preOperative', 'attached/chart']);
+    });
+
+    test('one pixel narrower, the pair no longer fit and the chart waits', () {
+      final plan = planAt(1901, [
+        visitWindows([
+          sized('preOperative', 560),
+          sized('chart', chartWidth, minHeight: 520),
+        ]),
+      ]);
+
+      expect(plan.available, 1531);
+      expect(plan.selected, ['attached/preOperative'],
+          reason: 'the pre-op form keeps the row; the chart stays in the dock');
+    });
+
+    test('the chart is placed first when it is the window asked for', () {
+      final plan = planAt(
+        1901,
+        [
+          visitWindows([
+            sized('preOperative', 560),
+            sized('chart', chartWidth, minHeight: 520),
+          ]),
+        ],
+        focus: 'attached/chart',
+      );
+
+      expect(plan.selected, ['attached/chart'],
+          reason: 'below the threshold the chart takes the row alone');
+    });
+  });
+
+  test('the same selection is recognised, so a rebuild is not a rearrange', () {
+    final one = planAt(1920, [
+      hostWindows([window('appointments')])
+    ]);
+    final two = planAt(1920, [
+      hostWindows([window('appointments')])
+    ]);
+
+    expect(one.sameSelection(two), isTrue);
+    expect(
+      one.sameSelection(planAt(1366, [
+        hostWindows([window('appointments')])
+      ])),
+      isTrue,
+      reason: 'a narrower screen that still holds the same window rearranges '
+          'nothing',
+    );
+    expect(
+      one.sameSelection(planAt(700, [
+        hostWindows([window('appointments')])
+      ])),
+      isFalse,
+      reason: 'a phone draws sheets, which is a different row',
+    );
   });
 }

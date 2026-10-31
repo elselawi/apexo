@@ -1,3 +1,4 @@
+import 'package:apexo/features/appointments/visit_scope_bar.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter_test/flutter_test.dart';
@@ -6,11 +7,17 @@ import 'package:flutter_test/flutter_test.dart';
 ///
 /// Wraps the widget in FluentApp + Directionality + FluentTheme so
 /// Fluent UI controls can render correctly.
+///
+/// The ring that radiates from the record a chart has open repeats for as long
+/// as the record stays open, so it is paused here unless [scopeRipple] asks for
+/// it; a test that wants it has to pump bounded frames instead of settling.
 Future<void> pumpApexoApp(
   WidgetTester tester,
   Widget child, {
   ThemeMode theme = ThemeMode.light,
+  bool scopeRipple = false,
 }) async {
+  debugPauseScopeRipple = !scopeRipple;
   await tester.pumpWidget(
     FluentApp(
       home: material.Directionality(
@@ -24,5 +31,10 @@ Future<void> pumpApexoApp(
       ),
     ),
   );
-  await tester.pumpAndSettle();
+  if (scopeRipple) {
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+  } else {
+    await tester.pumpAndSettle();
+  }
 }

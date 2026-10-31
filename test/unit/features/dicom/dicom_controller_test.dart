@@ -523,7 +523,7 @@ void main() {
       });
 
       expect(await controller.debugHealStaleDcmImgs(), isTrue);
-      expect(apptA.dcmImgs, isEmpty);
+      expect(appointments.get(apptA.id)!.dcmImgs, isEmpty);
       expect(apptB.dcmImgs, ['other.dcm']);
     });
 
@@ -575,7 +575,7 @@ void main() {
       controller.stopPeriodicScan();
 
       expect(await controller.debugHealStaleDcmImgs(), isTrue);
-      expect(appt.dcmImgs, isEmpty);
+      expect(appointments.get(appt.id)!.dcmImgs, isEmpty);
       expect(syncCalls, 2);
     });
 
@@ -601,7 +601,7 @@ void main() {
       controller.stopPeriodicScan();
 
       expect(await controller.debugHealStaleDcmImgs(), isFalse);
-      expect(appt.dcmImgs, isEmpty);
+      expect(appointments.get(appt.id)!.dcmImgs, isEmpty);
       expect(syncCalls, 2);
       expect(convergenceChecks, 2);
     });

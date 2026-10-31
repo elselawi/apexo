@@ -391,5 +391,37 @@ void main() {
       expect(after.length, initialCount + 1);
       expect(after.any((a) => a.id == appt.id), isTrue);
     });
+
+    test('a patient change rebuilds the lists that start from patients',
+        () async {
+      final p = testPatient(id: 'lab-pt-patient-change');
+      patients.set(p);
+      injectedPatientIds.add(p.id);
+      final received = testAppointment(
+        id: 'lab-patient-change-visit',
+        patientID: p.id,
+        date: DateTime(2025, 2, 2),
+        hasLabwork: true,
+        labworkReceived: true,
+      );
+      appointments.set(received);
+      injectedApptIds.add(received.id);
+
+      await flushObservers();
+      await flushObservers();
+      expect(labworks.notDeliveredPatients.map((patient) => patient.id),
+          contains(p.id));
+
+      // Nothing about the visit changed — the patient is what the list is
+      // filtered by, so their own record is what has to rebuild it.
+      patients.archive(p.id);
+      await flushObservers();
+      await flushObservers();
+
+      expect(labworks.notDeliveredPatients.map((patient) => patient.id),
+          isNot(contains(p.id)));
+      expect(labworks.notDelivered.map((appointment) => appointment.id),
+          isNot(contains(received.id)));
+    });
   });
 }

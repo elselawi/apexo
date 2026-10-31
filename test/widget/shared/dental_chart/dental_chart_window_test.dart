@@ -3,8 +3,15 @@ library;
 
 import 'dart:async';
 
+import 'package:apexo/app/app_context.dart';
+import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
+
 import 'package:apexo/ui/workspace/delegated_panel.dart';
 import 'package:apexo/ui/workspace/panel.dart';
+import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/ui/workspace/panel_screen.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
@@ -16,11 +23,19 @@ import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/appointment_labwork_widgets.dart';
+import 'package:apexo/features/appointments/appointment_session.dart';
+import 'package:apexo/features/appointments/new_appointment_dialog.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
+import 'package:apexo/features/appointments/visit_scope_bar.dart';
 import 'package:apexo/features/patients/patient_dental_chart.dart';
+import 'package:apexo/features/settings/settings_stores.dart' show DF;
 import 'package:apexo/shared/dental_chart/dental_chart_body.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
+import 'package:apexo/ui/workspace/window_actions.dart';
+import 'package:apexo/ui/workspace/window_close_button.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
@@ -79,6 +94,7 @@ void main() {
     String id = 'patient:window-test',
     Map<String, String>? teeth,
     Future<void> Function()? onSave,
+    Widget Function(DentalChartSession)? header,
   }) {
     return DentalChartSession(
       id: id,
@@ -90,6 +106,7 @@ void main() {
       history: () => const [],
       oldNotes: () => const {},
       historyTitle: 'toothAppointmentNotes',
+      header: header,
       onSave: onSave,
     );
   }
@@ -111,6 +128,15 @@ void main() {
         title: 'patientDetails',
         icon: FluentIcons.medication_admin,
         body: SizedBox(height: 40, child: Text(id)),
+      );
+
+  /// A window as tall as a form: taller than the room a window opened low on the
+  /// screen used to be given.
+  PanelWindow tallWindow(String id, double height) => PanelWindow(
+        id: id,
+        title: 'patientDetails',
+        icon: FluentIcons.medication_admin,
+        body: SizedBox(height: height, child: Text(id)),
       );
 
   /// A window that edits the record, so it carries the panel's Save.
@@ -144,23 +170,28 @@ void main() {
   Future<void> pumpShell(
     WidgetTester tester,
     Panel panel,
-    double width,
-  ) async {
-    PanelsManager.active([panel]);
+    double width, {
+    TextDirection direction = TextDirection.ltr,
+    List<Panel> backgroundPanels = const [],
+  }) async {
+    PanelsManager.active([...backgroundPanels, panel]);
     await pumpApexoApp(
       tester,
-      Stack(
-        children: [
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: SizedBox(
-              width: width < 490 ? width : 350,
-              height: double.infinity,
-              child: PanelScreen(panel: panel, layoutWidth: width),
+      Directionality(
+        textDirection: direction,
+        child: Stack(
+          children: [
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: SizedBox(
+                width: width < 490 ? width : 350,
+                height: double.infinity,
+                child: PanelScreen(panel: panel, layoutWidth: width),
+              ),
             ),
-          ),
-          WindowsLayer(visible: true, screenWidth: width),
-        ],
+            WindowsLayer(visible: true, screenWidth: width),
+          ],
+        ),
       ),
     );
   }
@@ -172,7 +203,10 @@ void main() {
             in tester.widgetList<ValueListenableBuilder<WindowPlacement>>(
           find.byType(ValueListenableBuilder<WindowPlacement>),
         ))
-          ((builder.key! as ValueKey<String>).value).replaceFirst('place-', ''),
+          // A row key is `slot/windowId`; a test asks after the window.
+          windowIdOfRowKey((builder.key! as ValueKey<String>)
+              .value
+              .replaceFirst('place-', '')),
       ];
 
   testWidgets('a panel opens only the windows its row holds', (tester) async {
@@ -351,25 +385,159 @@ void main() {
     // A visit with no order offers to start one.
     expect(find.byKey(WK.btnAddLabwork), findsOneWidget);
     expect(find.byType(LabWorkEditor), findsNothing);
+    expect(find.byKey(WK.btnRemoveLabwork), findsNothing,
+        reason: 'there is no order for the footer to take away');
 
     await tester.tap(find.byKey(WK.btnAddLabwork));
     await tester.pumpAndSettle();
     expect(find.byType(LabWorkEditor), findsOneWidget);
     expect(find.byKey(WK.btnAddLabwork), findsNothing);
+    expect(find.byKey(WK.btnRemoveLabwork), findsOneWidget,
+        reason: 'starting the order brings the footer\'s remove out at once');
 
-    // The order is part of the visit: saving the window writes it.
-    await tester.tap(find.byKey(WK.windowSave));
+    // The order is part of the visit: saving the window writes it. The band's
+    // other window is up beside it, so the Save is named by its window.
+    Finder labworkSave() => find.descendant(
+          of: find.byKey(WK.windowSaveFooter('labwork')),
+          matching: find.byKey(WK.windowSave),
+        );
+    await tester.tap(labworkSave());
     await tester.pumpAndSettle();
     expect(appointments.get(appointment.id)!.hasLabwork, isTrue);
 
-    // And it can be taken away again, which is a change to save.
-    await tester.tap(find.byIcon(WindowsIcons.delete));
+    // And it can be taken away again — from the window's own footer, beside
+    // Save and Close, and only after the standard delete question, like every
+    // other delete in the app — and that is a change to save.
+    expect(
+      find.ancestor(
+        of: find.byKey(WK.btnRemoveLabwork),
+        matching: find.byType(WindowActions),
+      ),
+      findsOneWidget,
+      reason: 'the remove is the footer\'s, not a glyph inside the order',
+    );
+    await tester.tap(find.byKey(WK.btnRemoveLabwork));
+    await tester.pumpAndSettle();
+    expect(find.byType(LabWorkEditor), findsOneWidget,
+        reason: 'the order stays until the question is answered');
+    await tester.tap(find.text(txt('removeLabwork')).last);
     await tester.pumpAndSettle();
     expect(find.byKey(WK.btnAddLabwork), findsOneWidget);
-    await tester.tap(find.byKey(WK.windowSave));
+    expect(find.byKey(WK.btnRemoveLabwork), findsNothing,
+        reason: 'the footer offers nothing to remove once the order is gone');
+    await tester.tap(labworkSave());
     await tester.pumpAndSettle();
     expect(appointments.get(appointment.id)!.hasLabwork, isFalse);
     expect(tester.takeException(), isNull);
+  });
+
+  for (final width in [350.0, 960.0]) {
+    testWidgets('operative card shares the chart surface at width $width',
+        (tester) async {
+      setViewport(tester, Size(width, 800));
+      final session = sessionFor(id: 'appointment:overlay-test');
+      const cardKey = ValueKey('operative-overlay-test');
+      final spec = dentalChartWindow(
+        session,
+        overlayFooter: true,
+        footer: const SizedBox(key: cardKey, height: 140),
+      );
+      expect(spec.footer, isNull);
+      expect(spec.scrollable, isFalse);
+
+      await pumpApexoApp(
+        tester,
+        SizedBox(width: width, height: 620, child: spec.body),
+      );
+      await tester.pumpAndSettle();
+
+      final chartRect =
+          tester.getRect(find.byKey(const ValueKey('opg-dental-chart')));
+      final cardRect = tester.getRect(find.byKey(cardKey));
+      if (width < kOpgViewportMinWidth) {
+        expect(chartRect.overlaps(cardRect), isTrue,
+            reason: 'the bubble floats over the chart, not a gray footer');
+        final cardPosition = cardRect.topLeft;
+        await tester.drag(
+            find.byType(SingleChildScrollView).first, const Offset(0, -200));
+        await tester.pumpAndSettle();
+        expect(tester.getTopLeft(find.byKey(cardKey)), cardPosition,
+            reason: 'scrolling the teeth keeps the bubble pinned');
+      } else {
+        expect(chartRect.bottom, lessThanOrEqualTo(cardRect.top),
+            reason: 'wide charts keep their existing footer layout');
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('a wide chart with a scope header hugs its content',
+      (tester) async {
+    setViewport(tester, const Size(1200, 1200));
+    final session = sessionFor(
+      header: (_) => const SizedBox(height: 40),
+    );
+    const cardKey = ValueKey('wide-operative-card');
+    await pumpApexoApp(
+      tester,
+      Align(
+        alignment: Alignment.topLeft,
+        child: SizedBox(
+          width: 960,
+          child: DentalChartBody(
+            session: session,
+            overlay: const SizedBox(key: cardKey, height: 140),
+          ),
+        ),
+      ),
+    );
+    expect(tester.getBottomLeft(find.byType(DentalChartBody)).dy,
+        tester.getBottomLeft(find.byKey(cardKey)).dy);
+    expect(tester.getSize(find.byType(DentalChartBody)).height, lessThan(1000));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a narrow visit floats its operative form over the teeth',
+      (tester) async {
+    setViewport(tester, const Size(350, 675));
+    final patient = testPatient(id: 'overlay-patient');
+    patients.set(patient);
+    final appointment = testAppointment(
+      id: 'overlay-appointment',
+      patientID: patient.id,
+    );
+    appointments.set(appointment);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openAppointment(appointment));
+    await tester.pumpAndSettle();
+    for (final theme in [ThemeMode.light, ThemeMode.dark]) {
+      await pumpApexoApp(
+        tester,
+        const Stack(children: [WindowsLayer(visible: true, screenWidth: 350)]),
+        theme: theme,
+      );
+      await tester.pumpAndSettle();
+
+      final chartRect =
+          tester.getRect(find.byKey(const ValueKey('opg-dental-chart')));
+      final formRect = tester.getRect(
+          find.byKey(const ValueKey('visit-operative-overlay-appointment')));
+      expect(chartRect.overlaps(formRect), isTrue);
+      final bubble = tester.widget<Container>(find.descendant(
+        of: find.byKey(const ValueKey('chart-footer-overlay-appointment')),
+        matching: find.byWidgetPredicate((widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            (widget.decoration! as BoxDecoration).borderRadius ==
+                BorderRadius.circular(9)),
+      ));
+      final background = (bubble.decoration! as BoxDecoration).color!;
+      expect(background.a, closeTo(0.96, 0.005),
+          reason: 'the $theme bubble should be almost opaque');
+      expect(find.byKey(WK.chartDeleteVisit), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('the operative window leaves labwork to its own window',
@@ -394,6 +562,104 @@ void main() {
 
     expect(find.byKey(WK.btnAddLabwork), findsNothing);
     expect(find.byType(LabWorkEditor), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final width in [1400.0, 600.0]) {
+    testWidgets(
+        'the operative window deletes its visit once it is confirmed '
+        '(${width.toInt()}px wide)', (tester) async {
+      setViewport(tester, Size(width, 900));
+      // A visit whose patient is not on this device: its windows stand on their
+      // own, and its operative one carries the visit's delete.
+      final appointment = testAppointment(
+        id: 'operative-delete-appointment',
+        patientID: 'operative-delete-patient-missing',
+      );
+      appointments.set(appointment);
+
+      await pumpApexoApp(tester, const SizedBox.shrink());
+      openAppointmentWindow(appointment, AppointmentWindow.operative);
+      await tester.pumpAndSettle();
+      await pumpApexoApp(
+        tester,
+        Stack(children: [WindowsLayer(visible: true, screenWidth: width)]),
+      );
+      await tester.pumpAndSettle();
+
+      // The window's own footer is where it lives, beside Save and Close.
+      final footer = find.ancestor(
+        of: find.byKey(WK.operativeDeleteVisit),
+        matching: find.byType(WindowActions),
+      );
+      expect(footer, findsOneWidget);
+      expect(
+        find.descendant(of: footer, matching: find.byType(WindowCloseButton)),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull,
+          reason: 'the three actions fit the window at this width');
+
+      await tester.tap(find.byKey(WK.operativeDeleteVisit));
+      await tester.pumpAndSettle();
+      expect(appointments.get(appointment.id)!.archived, isNot(isTrue),
+          reason: 'nothing is deleted until the question is answered');
+
+      await tester.tap(find.text(txt('deleteVisit')).last);
+      await tester.pumpAndSettle();
+      expect(appointments.get(appointment.id)!.archived, isTrue);
+      expect(WindowsManager.open(), isEmpty,
+          reason: 'the visit it showed is gone, and its window with it');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'a visit beside its patient keeps delete visit in the chart window footer',
+      (tester) async {
+    setViewport(tester, const Size(1400, 900));
+    // The operative record lives at the foot of the visit's chart beside a
+    // patient, so that window's footer is the one that carries its delete.
+    final patient = testPatient(id: 'chart-delete-patient');
+    patients.set(patient);
+    final appointment = testAppointment(
+      id: 'chart-delete-appointment',
+      patientID: patient.id,
+    );
+    appointments.set(appointment);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openAppointment(appointment));
+    await tester.pumpAndSettle();
+    await pumpApexoApp(
+      tester,
+      const Stack(children: [WindowsLayer(visible: true, screenWidth: 1400)]),
+    );
+    await tester.pumpAndSettle();
+
+    final panel = PanelsManager.active().single;
+    expect(panel.attached?.itemId, appointment.id);
+
+    expect(
+      find.ancestor(
+        of: find.byKey(WK.chartDeleteVisit),
+        matching: find.byType(WindowActions),
+      ),
+      findsOneWidget,
+      reason: 'the delete sits with the chart window\'s Save and Close',
+    );
+    expect(find.byKey(WK.operativeDeleteVisit), findsNothing,
+        reason: 'the visit is beside its patient, not in an operative window');
+
+    await tester.tap(find.byKey(WK.chartDeleteVisit));
+    await tester.pumpAndSettle();
+    expect(appointments.get(appointment.id)!.archived, isNot(isTrue));
+    await tester.tap(find.text(txt('deleteVisit')).last);
+    await tester.pumpAndSettle();
+
+    expect(appointments.get(appointment.id)!.archived, isTrue);
+    expect(panel.attached, isNull,
+        reason: 'the visit it deleted leaves the panel it was carried by');
     expect(tester.takeException(), isNull);
   });
 
@@ -447,7 +713,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a patient panel opens the chart beside its list',
+  testWidgets('a patient panel opens its chart, and its list sits beside it',
       (tester) async {
     setViewport(tester, const Size(1800, 1000));
     final patient = testPatient(id: 'grid-patient');
@@ -463,7 +729,17 @@ void main() {
     expect(
       workspace.isOpen(PatientWindow.dentalChart.id),
       isTrue,
+      reason: 'a record opens on its workspace',
     );
+    expect(
+      workspace.isOpen(PatientWindow.appointments.id),
+      isFalse,
+      reason: 'the list is one button in the header, not a first pick',
+    );
+    // The header's button opens it — beside the chart, in the same row.
+    await tester.tap(
+        find.byKey(WK.workspaceWindowToggle(PatientWindow.appointments.id)));
+    await tester.pumpAndSettle();
     expect(
       workspace.isOpen(PatientWindow.appointments.id),
       isTrue,
@@ -527,7 +803,11 @@ void main() {
       isEmpty,
       reason: 'the list was a way in, not a window to keep behind the visit',
     );
-    expect(PanelsManager.active().single.itemId, appointment.id);
+    // The visit is carried by its patient's panel — the panel the list belonged
+    // to (plan §0).
+    final panel = PanelsManager.active().single;
+    expect(panel.itemId, patient.id);
+    expect(panel.attached!.itemId, appointment.id);
   });
 
   testWidgets('starting a visit from the list window closes the list',
@@ -555,16 +835,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // "Add appointment" in the list's own footer: the same rule as tapping a
-    // visit — the list was a way in, so it makes way for the new visit.
+    // "Add appointment" in the list's own footer asks for the visit in a sheet
+    // first, so the list it was started from stays behind it until the visit
+    // exists.
     await tester.tap(find.byIcon(FluentIcons.add_event));
     await tester.pumpAndSettle();
+    expect(find.byKey(WK.fieldNewAppointmentPatient), findsOneWidget);
+    expect(WindowsManager.open(), hasLength(1));
 
+    await tester.tap(find.byKey(WK.btnCreateAppointment));
+    await tester.pumpAndSettle();
+
+    // Now the list was a way in: it makes way for the visit, which is stored
+    // rather than a draft.
     expect(WindowsManager.open(), isEmpty);
+    final panel = PanelsManager.active().single;
+    expect(panel.isNew, isFalse,
+        reason: 'the sheet stored the visit before its record opened');
     expect(
-      PanelsManager.active().single.isNew,
-      isTrue,
-      reason: 'the new visit is up, ready to fill in',
+      appointments.docs.values.where((a) => a.patientID == patient.id),
+      hasLength(1),
     );
   });
 
@@ -642,7 +932,9 @@ void main() {
   });
 
   testWidgets('a window opened again comes to the front', (tester) async {
-    setViewport(tester, const Size(1400, 900));
+    // Wide enough for the visit's chart and one attachment beside it, so both
+    // stay in the row and the question is only which is in front.
+    setViewport(tester, const Size(1920, 1080));
     final patient = testPatient(id: 'raise-patient');
     patients.set(patient);
     final appointment = testAppointment(
@@ -652,26 +944,25 @@ void main() {
     appointments.set(appointment);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
-    openAppointmentWindow(appointment, AppointmentWindow.labwork);
-    await tester.pumpAndSettle();
-    openAppointmentWindow(appointment, AppointmentWindow.operative);
-    await tester.pumpAndSettle();
+    await openAppointment(appointment, AppointmentWindow.dentalChart);
+    await openAppointment(appointment, AppointmentWindow.gallery);
     await pumpApexoApp(
         tester,
         const Stack(
-            children: [WindowsLayer(visible: true, screenWidth: 1400)]));
+            children: [WindowsLayer(visible: true, screenWidth: 1920)]));
     await tester.pumpAndSettle();
 
-    // Standalone keys are `scope#id`: the editor is the part after the hash.
     List<String> names() =>
         stackingOrder(tester).map((key) => key.split('#').last).toList();
-    expect(names(), ['labwork', 'operative']);
+    expect(names(), containsAll(['dentalChart', 'gallery']));
+    expect(names().last, 'gallery',
+        reason: 'the window asked for last is the one in front');
 
-    // Asking for the labwork again must not rebuild it — and must not leave it
+    // Asking for the chart again must not rebuild it — and must not leave it
     // underneath the window opened after it.
-    openAppointmentWindow(appointment, AppointmentWindow.labwork);
+    await openAppointment(appointment, AppointmentWindow.dentalChart);
     await tester.pumpAndSettle();
-    expect(names(), ['operative', 'labwork']);
+    expect(names().last, 'dentalChart');
     expect(tester.takeException(), isNull);
   });
 
@@ -684,6 +975,11 @@ void main() {
       patientID: patient.id,
     );
     appointments.set(appointment);
+    // A visit's windows are the panel's, not the app's: a window that appears at
+    // the tap is one that stands on its own. A visit whose patient the account
+    // may not see is the case that still does (plan §0.1).
+    login.savedPermissions = List.of(Perm.full)..[Perm.patients] = 1;
+    addTearDown(() => login.savedPermissions = Perm.full);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
     // What the app's pointer listener records: the tap that asked for it.
@@ -704,6 +1000,36 @@ void main() {
       reason: 'it opens where the tap was, not at the panel side',
     );
     expect(card.top, 500 - kWindowTapLift);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a window opened from the foot of the screen is opened whole',
+      (tester) async {
+    setViewport(tester, const Size(1400, 900));
+    await pumpApexoApp(
+      tester,
+      const Stack(children: [WindowsLayer(visible: true, screenWidth: 1400)]),
+    );
+    final card = find.byKey(const ValueKey('window-card-row:low#low'));
+
+    // A row's button near the bottom edge of the screen.
+    WindowOrigin.record(const Offset(300, 880));
+    WindowsManager.showStandalone(tallWindow('low', 640), scope: 'row:low');
+    await tester.pumpAndSettle();
+
+    final rect = tester.getRect(card);
+    expect(
+      rect.bottom,
+      lessThanOrEqualTo(900),
+      reason: 'no part of it hangs off the screen',
+    );
+    expect(
+      rect.height,
+      greaterThan(640),
+      reason:
+          'it is as tall as it asked to be, not shortened to the room a tap '
+          'near the bottom used to leave — which opened it scrolled',
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -1093,6 +1419,58 @@ void main() {
     expect(chart.isCompactArch, isTrue);
   });
 
+  testWidgets('the chart is washed in the colour of the record it edits',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'tinted-chart-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'tinted-chart-visit', patientID: patient.id);
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    Color? tint() =>
+        tester.widget<OpgDentalChart>(find.byType(OpgDentalChart)).tint;
+
+    /// The wash the arches sit in — the chart's background, never the teeth.
+    Color wash() {
+      final decoration = tester
+          .widgetList<Container>(find.descendant(
+            of: find.byType(OpgDentalChart),
+            matching: find.byType(Container),
+          ))
+          .map((container) => container.decoration)
+          .whereType<BoxDecoration>()
+          .firstWhere((decoration) => decoration.gradient != null);
+      return decoration.gradient!.colors.first;
+    }
+
+    expect(tint(), PanelAccents.patient,
+        reason: 'the plan is the patient record, and blue is its colour');
+    final patientWash = wash();
+
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${visit.id}')));
+    await tester.pumpAndSettle();
+
+    expect(tint(), PanelAccents.appointment,
+        reason: 'the visit is the appointment, and violet is its colour');
+    final visitWash = wash();
+
+    expect(visitWash, isNot(patientWash),
+        reason: 'the two scopes cannot look like the same chart');
+    expect(
+      visitWash.r,
+      greaterThan(patientWash.r),
+      reason: 'violet is the redder of the two washes',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a window that scrolls itself is not put in a scroll view',
       (tester) async {
     setViewport(tester, const Size(1400, 900));
@@ -1180,7 +1558,7 @@ void main() {
     expect(patients.get(patient.id)!.teeth['11'], 'filling');
   });
 
-  testWidgets('the appointment panel carries its chart window too',
+  testWidgets('the visit\'s chart is one of the visit\'s windows, not a panel',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));
     final patient = testPatient(id: 'chart-appointment-patient');
@@ -1192,17 +1570,19 @@ void main() {
     appointments.set(appointment);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
-    openAppointment(appointment);
+    unawaited(openAppointment(appointment));
     await tester.pumpAndSettle();
 
-    final panel = PanelsManager.active().last;
+    final panel = PanelsManager.active().single;
+    expect(panel.itemId, patient.id,
+        reason: 'the patient is the panel; the visit is carried beside it');
     expect(
-      panel.windows.map((window) => window.id),
+      panel.attached!.windows.map((window) => window.id),
       contains('dentalChart'),
     );
 
-    final chartWindow =
-        panel.windows.firstWhere((window) => window.id == 'dentalChart');
+    final chartWindow = panel.attached!.windows
+        .firstWhere((window) => window.id == 'dentalChart');
     await pumpApexoApp(
       tester,
       SizedBox(
@@ -1215,9 +1595,10 @@ void main() {
     final chart = tester.widget<DentalChartBody>(
       find.byType(DentalChartBody),
     );
-    expect(chart.session.type, StateType.treatment);
+    expect(chart.session.type, StateType.treatment,
+        reason: 'it writes the visit\'s treatments, not the patient\'s state');
     chart.session.teeth['36'] = 'crown';
-    await panel.save();
+    await panel.attached!.save();
     expect(appointments.get(appointment.id)!.teeth['36'], 'crown');
   });
 
@@ -1391,6 +1772,1611 @@ void main() {
     expect(WindowsManager.open(), isEmpty);
     expect(first, findsNothing);
     expect(second, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'the scope bar lists the plan and all visits newest-first and swaps charts while keeping the patient panel open',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'scope-patient', name: 'Nadia Hassan');
+    patients.set(patient);
+    final febVisit = testAppointment(
+      id: 'scope-visit-feb',
+      patientID: patient.id,
+      date: DateTime(2026, 2, 4, 10),
+    );
+    final marVisit = testAppointment(
+      id: 'scope-visit-mar',
+      patientID: patient.id,
+      date: DateTime(2026, 3, 12, 14),
+    );
+    appointments.setAll([febVisit, marVisit]);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(VisitScopeBar), findsOneWidget);
+    expect(
+      tester.getRect(find.byType(VisitScopeBar)).bottom,
+      lessThanOrEqualTo(tester.getRect(find.byType(OpgDentalChart)).top),
+      reason: 'the scope bar sits above the arches',
+    );
+    expect(
+      find.byKey(const ValueKey('scope-timeline-track')),
+      findsOneWidget,
+      reason: 'visits are drawn as dots on a horizontal timeline',
+    );
+
+    final febDot = find.byKey(ValueKey('scope-appointment:${febVisit.id}'));
+    final marDot = find.byKey(ValueKey('scope-appointment:${marVisit.id}'));
+    expect(febDot, findsOneWidget);
+    expect(marDot, findsOneWidget);
+    expect(
+      tester.getCenter(febDot).dx,
+      lessThan(tester.getCenter(marDot).dx),
+      reason:
+          'the first dot on the timeline is the first appointment and the last dot is the last appointment',
+    );
+    expect(
+      find.descendant(
+        of: find.byType(VisitScopeBar),
+        matching: find.text(DF.allNumbers(febVisit.date)),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byType(VisitScopeBar),
+        matching: find.text(DF.allNumbers(marVisit.date)),
+      ),
+      findsOneWidget,
+    );
+
+    DentalChartSession activeSession() =>
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'patient:${patient.id}');
+    expect(activeSession().titleKey, kDentalChartTitleKey);
+
+    // Choosing a visit when clean swaps the chart in place without duplicating
+    // it and without moving the patient panel.
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${marVisit.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(txt('sureClosePanel')), findsNothing);
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'appointment:${marVisit.id}');
+    expect(activeSession().titleKey, kTreatmentsTitleKey);
+    expect(PanelsManager.active().single.itemId, patient.id);
+
+    // Each chart keeps its own Save and writes its own record.
+    activeSession().teeth['36'] = 'crown';
+    activeSession().changed();
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(WK.windowSave));
+    await tester.pumpAndSettle();
+    expect(appointments.get(marVisit.id)!.teeth['36'], 'crown');
+
+    // Swapping to another visit replaces the chart again.
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${febVisit.id}')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'appointment:${febVisit.id}');
+    expect(PanelsManager.active().single.itemId, patient.id);
+
+    // Choosing the plan swaps back to the patient's chart.
+    await tester.tap(find.byKey(ValueKey('scope-patient:${patient.id}')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'patient:${patient.id}');
+    expect(activeSession().titleKey, kDentalChartTitleKey);
+    expect(WindowsManager.open(), isEmpty);
+    expect(PanelsManager.active().single.itemId, patient.id);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('choosing another scope asks when dirty and swaps on confirm',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient =
+        testPatient(id: 'dirty-scope-patient', name: 'Nadia Hassan');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'dirty-scope-visit',
+      patientID: patient.id,
+      date: DateTime(2026, 3, 12, 14),
+    );
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    DentalChartSession activeSession() =>
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+
+    activeSession().teeth['11'] = 'caries';
+    activeSession().changed();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${visit.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsWidgets);
+    expect(activeSession().id, 'patient:${patient.id}');
+
+    // Backing out keeps the current chart and its unsaved work.
+    await tester.tap(find.text(txt('back')).last);
+    await tester.pumpAndSettle();
+    expect(activeSession().id, 'patient:${patient.id}');
+    expect(activeSession().teeth['11'], 'caries');
+
+    // Confirming discards the unsaved work and swaps to the visit's chart.
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${visit.id}')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(txt('sure')).last);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'appointment:${visit.id}');
+    expect(PanelsManager.active().single.itemId, patient.id);
+
+    // Dirty on the visit's chart also survives a switch back to the plan:
+    // pressing the plan closes the visit from the panel and keeps its draft, so
+    // there is nothing to ask and nothing to discard.
+    activeSession().teeth['26'] = 'filling';
+    activeSession().changed();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('scope-patient:${patient.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing,
+        reason: 'closing the visit keeps its draft; it is not a discard');
+    expect(find.byKey(WK.visitBand), findsNothing);
+    expect(PanelsManager.active().single.attached, isNull);
+    final retained = PanelsManager.active()
+        .single
+        .owned
+        .whereType<AppointmentSession>()
+        .single;
+    expect(retained.chart.teeth['26'], 'filling',
+        reason: 'the visit draft is still owned by its panel');
+
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'patient:${patient.id}');
+    expect(
+      activeSession().teeth,
+      isEmpty,
+      reason: 'the discarded plan edit does not reappear on return',
+    );
+
+    // Reopening the visit restores the same draft, dirty mark and all.
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${visit.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing);
+    expect(activeSession().id, 'appointment:${visit.id}');
+    expect(activeSession().teeth['26'], 'filling');
+    expect(PanelsManager.active().single.itemId, patient.id);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'moving between visits keeps the chart and operative edits of the one left',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient =
+        testPatient(id: 'carried-draft-patient', name: 'Nadia Hassan');
+    patients.set(patient);
+    final first = testAppointment(
+      id: 'carried-draft-first',
+      patientID: patient.id,
+      date: DateTime(2026, 3, 12, 14),
+    );
+    final second = testAppointment(
+      id: 'carried-draft-second',
+      patientID: patient.id,
+      date: DateTime(2026, 4, 2, 10),
+    );
+    appointments.setAll([first, second]);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    DentalChartSession activeSession() =>
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${first.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing);
+    expect(activeSession().id, 'appointment:${first.id}');
+
+    // Both halves of the visit's surface hold work: the teeth in its chart and
+    // the post-op record under it.
+    final panel = PanelsManager.active().single;
+    final session = panel.owned
+        .whereType<AppointmentSession>()
+        .firstWhere((owned) => owned.item.id == first.id);
+    session.chart.teeth['11'] = 'caries';
+    session.chart.changed();
+    session.item.postOpNotes = 'Access and canal prep';
+    session.refreshDirty();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${second.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing,
+        reason: 'the visit left behind keeps its draft; nothing is discarded');
+    expect(activeSession().id, 'appointment:${second.id}');
+    expect(session.chart.teeth['11'], 'caries');
+    expect(session.item.postOpNotes, 'Access and canal prep');
+
+    // Coming back is the same draft, dirty mark and all.
+    await tester.tap(find.byKey(ValueKey('scope-appointment:${first.id}')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing);
+    expect(activeSession(), same(session.chart));
+    expect(activeSession().teeth['11'], 'caries');
+    expect(session.hasPendingEdits, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'tooth history opens the visit chart while Open record reaches the full visit',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient =
+        testPatient(id: 'history-scope-patient', name: 'Nadia Hassan');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'history-scope-visit',
+      patientID: patient.id,
+      date: DateTime(2026, 3, 12, 14),
+      teeth: {'16': 'rCT'},
+    );
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(WK.tooth('16', selected: false)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(ValueKey('open-appointment-${visit.id}')));
+    await tester.pumpAndSettle();
+
+    DentalChartSession activeSession() =>
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+
+    expect(find.byType(DentalChartBody), findsOneWidget);
+    expect(activeSession().id, 'appointment:${visit.id}');
+    expect(
+      PanelsManager.active().single.itemId,
+      patient.id,
+      reason:
+          'history opens the visit chart rather than replacing the patient panel',
+    );
+
+    // The record the chart belongs to is the panel already on screen — there is
+    // nowhere further to go, and no second window to go there in (plan §5.2 #24).
+    expect(WindowsManager.open(), isEmpty);
+    final panel = PanelsManager.active().single;
+    expect(panel.itemId, patient.id);
+    expect(panel.attached!.itemId, visit.id);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final direction in TextDirection.values) {
+    testWidgets(
+        'many visits stay on one row and reveal the selection in $direction',
+        (tester) async {
+      setViewport(tester, const Size(600, 800));
+      final patient = testPatient(id: 'crowded-patient');
+      patients.set(patient);
+      final visits = List.generate(
+          40,
+          (i) => testAppointment(
+              id: 'crowded-$i',
+              patientID: patient.id,
+              date: DateTime(2026, 1, 40 - i)));
+      appointments.setAll(visits);
+      final oldest = visits.last;
+      await pumpApexoApp(
+          tester,
+          Directionality(
+            textDirection: direction,
+            child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: 320,
+                  child: VisitScopeBar(
+                      patient: patient,
+                      session: appointmentDentalChart(oldest),
+                      currentAppointment: oldest),
+                )),
+          ));
+      await tester.pumpAndSettle();
+
+      final bar = find.byType(VisitScopeBar);
+      final strip = find.byKey(const ValueKey('scope-visit-scroll'));
+      final plan = find.byKey(ValueKey('scope-patient:${patient.id}'));
+      final selected = find.byKey(ValueKey('scope-appointment:${oldest.id}'));
+      final scroll = tester.widget<SingleChildScrollView>(strip).controller!;
+      expect(tester.getSize(bar).height, 40);
+      expect(scroll.offset, greaterThan(0));
+      final viewport = tester.getRect(strip);
+      final selectedRect = tester.getRect(selected);
+      expect(selectedRect.center.dx,
+          inInclusiveRange(viewport.left, viewport.right));
+      final planRect = tester.getRect(plan);
+      final offset = scroll.offset;
+      await tester.sendEventToBinding(PointerScrollEvent(
+          position: viewport.center, scrollDelta: const Offset(0, -100)));
+      await tester.pumpAndSettle();
+      expect(scroll.offset, lessThan(offset),
+          reason: 'mouse wheel scrolls the visit strip');
+      expect(tester.getRect(plan), planRect, reason: 'the plan stays pinned');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final direction in TextDirection.values) {
+    testWidgets(
+        'an interval says its duration once its segment can hold it in '
+        '$direction', (tester) async {
+      setViewport(tester, const Size(600, 800));
+      final patient = testPatient(id: 'interval-patient');
+      patients.set(patient);
+      // Quarterly visits: on a bar this wide each segment is about fifty
+      // pixels — room for "3m", which the old fixed 68 px rule refused to draw.
+      final visits = List.generate(
+          5,
+          (i) => testAppointment(
+              id: 'interval-$i',
+              patientID: patient.id,
+              date: DateTime(2025, 1, 1).add(Duration(days: 90 * i))));
+      appointments.setAll(visits);
+      await pumpApexoApp(
+          tester,
+          Directionality(
+            textDirection: direction,
+            child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: 480,
+                  child: VisitScopeBar(
+                      patient: patient,
+                      session: appointmentDentalChart(visits.first),
+                      currentAppointment: visits.first),
+                )),
+          ));
+      await tester.pumpAndSettle();
+
+      final track =
+          tester.getSize(find.byKey(const ValueKey('scope-timeline-track')));
+      final layout =
+          computeTimelineLayout(visits: visits, viewportWidth: track.width);
+      final gaps = [
+        for (var i = 0; i < visits.length - 1; i++)
+          layout.positions[i + 1] - layout.positions[i],
+      ];
+      expect(gaps.any((gap) => gap < 68), isTrue,
+          reason: 'the segments are narrower than the old fixed label width');
+      expect(find.text('3m'), findsWidgets,
+          reason: 'a segment that holds "3m" says it');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final direction in TextDirection.values) {
+    testWidgets('switching visits slides scopes in the same slot in $direction',
+        (tester) async {
+      setViewport(tester, const Size(1600, 1000));
+      final patient = testPatient(id: 'arrow-patient');
+      patients.set(patient);
+      final older = testAppointment(
+          id: 'arrow-older', patientID: patient.id, date: DateTime(2026, 1, 1));
+      final newer = testAppointment(
+          id: 'arrow-newer', patientID: patient.id, date: DateTime(2026, 2, 1));
+      appointments.setAll([older, newer]);
+      await pumpApexoApp(tester, const SizedBox.shrink());
+      unawaited(openPatient(patient));
+      await tester.pumpAndSettle();
+      await pumpShell(tester, PanelsManager.active().single, 1600,
+          direction: direction);
+      await tester.pumpAndSettle();
+
+      DentalChartSession session() =>
+          tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+      final olderDot = find.byKey(ValueKey('scope-appointment:${older.id}'));
+      final newerDot = find.byKey(ValueKey('scope-appointment:${newer.id}'));
+
+      await tester.tap(newerDot);
+      await tester.pumpAndSettle();
+      expect(session().id, 'appointment:${newer.id}');
+
+      final barRect = tester.getRect(find.byType(VisitScopeBar));
+      final saveRect = tester.getRect(find.byKey(WK.windowSave));
+      final windowRect =
+          tester.getRect(find.byKey(const ValueKey('window-card-dentalChart')));
+      await tester.tap(olderDot);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      expect(find.byType(DentalChartBody), findsOneWidget);
+      final slide = tester.widget<FractionalTranslation>(
+          find.byKey(const ValueKey('dental-chart-scope-slide')));
+      expect(slide.translation.dx,
+          direction == TextDirection.rtl ? lessThan(0) : greaterThan(0));
+      expect(tester.getRect(find.byType(VisitScopeBar)), barRect);
+      expect(tester.getRect(find.byKey(WK.windowSave)), saveRect);
+      expect(
+          tester.getRect(find.byKey(const ValueKey('window-card-dentalChart'))),
+          windowRect);
+      expect(
+          find.ancestor(
+              of: find.byType(VisitScopeBar),
+              matching: find.byType(FractionalTranslation)),
+          findsNothing);
+      for (final opacity in tester.widgetList<Opacity>(find.ancestor(
+          of: find.byType(VisitScopeBar), matching: find.byType(Opacity)))) {
+        expect(opacity.opacity, 1,
+            reason: 'only the chart fades, never its controls');
+      }
+      await tester.pumpAndSettle();
+      expect(session().id, 'appointment:${older.id}');
+
+      await tester.tap(newerDot);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final incomingSlide = tester.widget<FractionalTranslation>(
+          find.byKey(const ValueKey('dental-chart-scope-slide')));
+      expect(incomingSlide.translation.dx,
+          direction == TextDirection.rtl ? greaterThan(0) : lessThan(0));
+      await tester.pumpAndSettle();
+      expect(session().id, 'appointment:${newer.id}');
+      expect(PanelsManager.active().single.itemId, patient.id);
+
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+          tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await tester.tap(olderDot);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      final reducedSlide = tester.widget<FractionalTranslation>(
+          find.byKey(const ValueKey('dental-chart-scope-slide')));
+      expect(reducedSlide.translation, Offset.zero);
+      await tester.pumpAndSettle();
+      expect(find.byType(DentalChartBody), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'dirty history navigation and the dock cannot silently lose chart edits',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'guard-patient');
+    patients.set(patient);
+    final visit = testAppointment(id: 'guard-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+    bContext = tester.element(find.byType(VisitScopeBar));
+    DentalChartSession session() =>
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+    final plan = session();
+    plan.teeth['11'] = 'caries';
+    plan.changed();
+    plan.onOpenAppointment!(visit.id);
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsWidgets);
+    await tester.tap(find.text(txt('back')).last);
+    await tester.pumpAndSettle();
+    expect(session(), same(plan));
+    expect(plan.teeth['11'], 'caries');
+
+    plan.onOpenAppointment!(visit.id);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(txt('sure')).last);
+    await tester.pumpAndSettle();
+    expect(session().id, 'appointment:${visit.id}');
+    expect(plan.teeth, isEmpty);
+    final visitSession = session();
+    visitSession.teeth['26'] = 'filling';
+    visitSession.changed();
+    bContext = tester.element(find.byType(VisitScopeBar));
+    final panel = PanelsManager.active().single;
+    // Putting the chart away is a minimize, not a discard: the draft stays in the
+    // visit's session, so the band's chip closes it without a question — and
+    // nothing typed is lost (plan §4.6).
+    await tester.tap(find.byKey(WK.windowMinimize(kDentalChartWindowId)));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing);
+    expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+        isFalse);
+    expect(visitSession.teeth['26'], 'filling');
+
+    // And asking for it again is the same draft, not a re-read of the record.
+    panel.workspace.show(kDentalChartWindowId, slot: kAttachedSlot);
+    await tester.pumpAndSettle();
+    expect(session(), same(visitSession));
+    expect(session().teeth['26'], 'filling');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'the visit chart is the visit session\'s draft, and its Save writes the visit',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'shared-draft-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'shared-draft-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+
+    final panel = PanelsManager.active().single;
+    expect(panel.itemId, patient.id,
+        reason: 'the visit is carried by the patient, not a panel of its own');
+    final chart = panelDentalChart('appointment:${visit.id}')!;
+    expect(chart, same((panel.attached! as AppointmentSession).chart),
+        reason: 'one draft per visit: the chart belongs to the session');
+    expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+        isTrue);
+
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+    chart.teeth['36'] = 'crown';
+    chart.changed();
+    await tester.tap(find.byKey(WK.windowSave));
+    await tester.pumpAndSettle();
+
+    expect(appointments.get(visit.id)!.teeth['36'], 'crown');
+    expect(chart.hasChanges, isFalse);
+    expect(WindowsManager.open(), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('visit band tools open the visit\'s editors in its slot',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'tools-patient');
+    patients.set(patient);
+    final visit = testAppointment(id: 'tools-visit', patientID: patient.id);
+    final otherVisit = testAppointment(
+        id: 'tools-other-visit',
+        patientID: patient.id,
+        date: DateTime(2026, 3, 12));
+    appointments.setAll([visit, otherVisit]);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    // The visit, opened on its chart, beside its patient.
+    unawaited(openAppointment(visit, AppointmentWindow.dentalChart));
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    expect(panel.itemId, patient.id);
+    expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+        isTrue);
+
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+    // The visit's post-op record is part of the chart now, not a window: its
+    // fields are under the teeth, on the chart's own frame.
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('window-card-$kDentalChartWindowId')),
+        matching: find.byKey(WK.fieldAppointmentPostOpNotes),
+      ),
+      findsOneWidget,
+      reason: 'the operative details live at the foot of the chart',
+    );
+    // The band's dock carries one tool: the operative record, whose fields are
+    // pinned to the foot of the chart.
+    expect(find.byKey(WK.visitBandWindow('operative')), findsOneWidget);
+    for (final id in ['labwork', 'gallery']) {
+      expect(find.byKey(WK.visitBandWindow(id)), findsNothing,
+          reason: 'labwork and photos are not tools in the band\'s dock');
+    }
+    // They hang off the band as attachments — the same tray the patient panel
+    // draws under itself — and off the post-op card inside the visit's chart.
+    Finder bandChip(String id) => find.descendant(
+          of: find.byKey(WK.visitBandAttachments),
+          matching: find.byKey(
+              WK.attachmentToggle(id, owner: PanelWindow.bandAttachment)),
+        );
+    Finder chartChip(String id) => find.descendant(
+          of: find.byKey(WK.visitChartAttachments),
+          matching:
+              find.byKey(WK.attachmentToggle(id, owner: kDentalChartWindowId)),
+        );
+    for (final id in ['labwork', 'gallery']) {
+      expect(bandChip(id), findsOneWidget,
+          reason: 'the band offers $id beside the visit it belongs to');
+      expect(chartChip(id), findsOneWidget,
+          reason: 'the post-op card offers $id too');
+    }
+    for (final id in ['labwork', 'gallery']) {
+      // The chart takes the row alone below 1902: opening one of the visit's
+      // editors from its band puts the chart back in its dock and the editor on
+      // screen (plan §4.3). The band is the control that stays available.
+      panel.workspace.show(kDentalChartWindowId, slot: kAttachedSlot);
+      await tester.pumpAndSettle();
+      expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+          isTrue);
+      // One from the card inside the chart, one from the band's tray: both say
+      // the same thing about the same window.
+      final chip = id == 'labwork' ? chartChip(id) : bandChip(id);
+      await tester.ensureVisible(chip);
+      await tester.pumpAndSettle();
+      await tester.tap(chip);
+      await tester.pumpAndSettle();
+      expect(panel.workspace.isOpen(id, slot: kAttachedSlot), isTrue);
+      expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+          isFalse,
+          reason: 'one chart takes the row; a tool takes it from the chart');
+      expect(WindowsManager.open(), isEmpty,
+          reason: 'a visit window is the panel\'s, not the app\'s');
+      expect(PanelsManager.active().single, same(panel));
+    }
+    // Operative details are not a window of their own: their band button opens
+    // the chart whose foot they are pinned to.
+    await tester.tap(find.byKey(WK.visitBandWindow('operative')));
+    await tester.pumpAndSettle();
+    expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+        isTrue);
+    expect(find.byKey(WK.fieldAppointmentPostOpNotes), findsOneWidget);
+    // Selecting the other visit makes it the one in the row — the same call the
+    // Visits list makes (plan §4.8).
+    await selectVisit(patient.id, otherVisit.id, focus: kDentalChartWindowId);
+    await tester.pumpAndSettle();
+    expect((panel.attached! as AppointmentSession).item.id, otherVisit.id);
+    expect(PanelsManager.active().single, same(panel));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('every row of the visit band starts on one edge', (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'band-edge-patient');
+    patients.set(patient);
+    final visit = testAppointment(id: 'band-edge-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    Rect rectOf(Finder finder) {
+      final box = tester.renderObject<RenderBox>(finder);
+      return box.localToGlobal(Offset.zero) & box.size;
+    }
+
+    // The date opens its row; the operators, the note and the operative
+    // details button open theirs; the tray opens its own. Every one of them
+    // starts where the others do, and the glyphs that name them live inside
+    // their boxes rather than in a gutter ahead of them.
+    final date = rectOf(find.byKey(WK.fieldAppointmentDate));
+    final operators = rectOf(find.byKey(WK.fieldOperators));
+    final notes = rectOf(find.byKey(WK.fieldAppointmentPreOpNotes));
+    final dock = rectOf(find.byKey(WK.visitBandWindow('operative')));
+    final labwork = rectOf(find.byKey(
+        WK.attachmentToggle('labwork', owner: PanelWindow.bandAttachment)));
+    for (final entry in {
+      'operators': operators,
+      'pre-op notes': notes,
+      'operative details': dock,
+      'labwork': labwork,
+    }.entries) {
+      expect(entry.value.left, closeTo(date.left, 0.01),
+          reason: '${entry.key} starts on the edge the date starts on');
+    }
+    // The date takes the room the time and the duration leave it: a date that
+    // fits is never ellipsized for want of width the row has to spare.
+    expect(date.width, greaterThan(118),
+        reason: 'the date is not pinned to a width smaller than the row');
+    expect(
+      rectOf(find.byKey(WK.fieldAppointmentTime)).left,
+      greaterThan(date.right),
+    );
+    // One height for the fields of the form, so the band reads as one set.
+    expect(operators.height, date.height);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the chart and its post-op record share one draft and one save',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'borrowed-tools-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'borrowed-tools-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    final session = panel.attached! as AppointmentSession;
+    session.chart.teeth['26'] = 'crown';
+    session.chart.changed();
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    // The note is typed in the record the chart carries; the tooth was marked on
+    // the chart. Both are the same draft.
+    await tester.enterText(
+      find.byKey(WK.fieldAppointmentPostOpNotes),
+      'crown seated',
+    );
+    await tester.pumpAndSettle();
+    expect(session.item.postOpNotes, 'crown seated');
+
+    // One window, one Save, one write: the chart's Save writes both.
+    await tester.tap(find.descendant(
+      of: find.byKey(WK.windowSaveFooter(kDentalChartWindowId)),
+      matching: find.byKey(WK.windowSave),
+    ));
+    await tester.pumpAndSettle();
+    expect(appointments.get(visit.id)!.teeth['26'], 'crown');
+    expect(appointments.get(visit.id)!.postOpNotes, 'crown seated');
+    expect(session.hasPendingEdits, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('phone scope changes animate only teeth and keep controls usable',
+      (tester) async {
+    setViewport(tester, const Size(600, 900));
+    final patient = testPatient(id: 'phone-scope-patient');
+    patients.set(patient);
+    final older = testAppointment(
+        id: 'phone-scope-older',
+        patientID: patient.id,
+        date: DateTime(2026, 1, 1));
+    final newer = testAppointment(
+        id: 'phone-scope-newer',
+        patientID: patient.id,
+        date: DateTime(2026, 2, 1));
+    appointments.setAll([older, newer]);
+    await openAppointmentDentalChart(newer);
+    await pumpApexoApp(tester,
+        const Stack(children: [WindowsLayer(visible: true, screenWidth: 600)]));
+    await tester.pumpAndSettle();
+    final barRect = tester.getRect(find.byType(VisitScopeBar));
+    final saveRect = tester.getRect(find.byKey(WK.windowSave));
+    final olderDot = find.byKey(ValueKey('scope-appointment:${older.id}'));
+    final newerDot = find.byKey(ValueKey('scope-appointment:${newer.id}'));
+    await tester.tap(olderDot);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
+    expect(tester.getRect(find.byType(VisitScopeBar)), barRect);
+    expect(tester.getRect(find.byKey(WK.windowSave)), saveRect);
+    for (final translation in tester.widgetList<FractionalTranslation>(
+        find.ancestor(
+            of: find.byType(VisitScopeBar),
+            matching: find.byType(FractionalTranslation)))) {
+      expect(translation.translation, Offset.zero);
+    }
+    expect(
+        tester
+            .widget<FractionalTranslation>(
+                find.byKey(const ValueKey('dental-chart-scope-slide')))
+            .translation
+            .dx,
+        greaterThan(0));
+    await tester.tap(newerDot);
+    await tester.pumpAndSettle();
+    expect(
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session.id,
+        'appointment:${newer.id}');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'the visit chart offers a way to start another visit for the same patient',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'add-visit-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'add-visit-anchor', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    // One button beside the visits it will join: no trip to the calendar, and the
+    // patient is already known. It pairs the plus with the shorter of "Add" and
+    // "New" in every locale, now that the arrows no longer take that space.
+    expect(find.byKey(WK.chartAddAppointment), findsOneWidget);
+    expect(
+        find.descendant(
+            of: find.byKey(WK.chartAddAppointment),
+            matching: find.text(txt('new'))),
+        findsWidgets,
+        reason: 'the button carries a word, not just a plus icon');
+    expect(
+        find.descendant(
+            of: find.byKey(WK.chartAddAppointment),
+            matching: find.byIcon(FluentIcons.add)),
+        findsOneWidget,
+        reason: 'the plus still says what the word means');
+    expect(find.byKey(const ValueKey('scope-newer')), findsNothing);
+    expect(find.byKey(const ValueKey('scope-older')), findsNothing);
+    await tester.tap(find.byKey(WK.chartAddAppointment));
+    await tester.pumpAndSettle();
+    expect(find.byType(NewAppointmentDialog), findsOneWidget,
+        reason:
+            'the button starts a visit for the patient whose chart is open');
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final direction in TextDirection.values) {
+    testWidgets(
+        'a patient with no visits gets the whole add appointment label in $direction',
+        (tester) async {
+      setViewport(tester, const Size(600, 800));
+      final patient = testPatient(id: 'first-visit-patient');
+      patients.set(patient);
+      await pumpApexoApp(
+          tester,
+          Directionality(
+            textDirection: direction,
+            child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: 320,
+                  child: VisitScopeBar(
+                      patient: patient, session: patientDentalChart(patient)),
+                )),
+          ));
+      await tester.pumpAndSettle();
+
+      // No visits means no timeline eating the width, so the button can afford
+      // its whole name instead of the short "new" it uses beside the timeline.
+      expect(find.byKey(const ValueKey('scope-visit-scroll')), findsNothing);
+      expect(
+          find.descendant(
+              of: find.byKey(WK.chartAddAppointment),
+              matching: find.text(txt('addAppointment'))),
+          findsWidgets);
+      expect(
+          find.descendant(
+              of: find.byKey(WK.chartAddAppointment),
+              matching: find.byIcon(FluentIcons.add)),
+          findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets('the visit chart title opens the patient\'s whole list of visits',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'all-visits-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'all-visits-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WK.chartAllAppointments), findsOneWidget,
+        reason: 'the chart title carries the list, beside minimize');
+
+    await tester.tap(find.byKey(WK.chartAllAppointments));
+    await tester.pumpAndSettle();
+    // The list is the patient's own window, opened in the patient's row: the
+    // title leads to the record's whole history, not to one visit of it.
+    expect(
+      panel.workspace.isOpen(PatientWindow.appointments.id),
+      isTrue,
+      reason: 'the chart title leads to the list of every visit',
+    );
+    expect(
+      panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+      isFalse,
+      reason: 'at this width the list and the chart do not both fit, so the '
+          'list has the row and the chart steps aside, keeping its draft',
+    );
+    expect(WindowsManager.open(), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('switching scope replaces the band and the post-op record',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'scope-fields-patient');
+    patients.set(patient);
+    final first = testAppointment(
+      id: 'scope-fields-first',
+      patientID: patient.id,
+      date: DateTime(2026, 6, 1, 10, 0),
+      preOpNotes: 'first pre-op',
+      postOpNotes: 'first post-op',
+      price: 10,
+    );
+    final second = testAppointment(
+      id: 'scope-fields-second',
+      patientID: patient.id,
+      date: DateTime(2026, 6, 2, 11, 30),
+      preOpNotes: 'second pre-op',
+      postOpNotes: 'second post-op',
+      price: 20,
+    );
+    appointments.setAll([first, second]);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(first, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    String? bandNotes() => tester
+        .widget<LiveTranscribingTextField>(
+            find.byKey(WK.fieldAppointmentPreOpNotes))
+        .controller
+        ?.text;
+    String? postOpNotes() => tester
+        .widget<LiveTranscribingTextField>(
+            find.byKey(WK.fieldAppointmentPostOpNotes))
+        .controller
+        ?.text;
+    DateTime bandDate() => tester
+        .state<DateTimePickerState>(find.byKey(WK.fieldAppointmentDate))
+        .value;
+    DateTime bandTime() => tester
+        .state<DateTimePickerState>(find.byKey(WK.fieldAppointmentTime))
+        .value;
+
+    expect(bandDate(), first.date);
+    expect(bandTime(), first.date);
+    expect(bandNotes(), 'first pre-op');
+    expect(postOpNotes(), 'first post-op');
+
+    // Exactly what the scope bar's visit tab does: select the other visit's
+    // chart. The band and the post-op record under the chart must be that
+    // visit's from the first frame, not the previous visit's fields behind a
+    // new title.
+    await selectVisit(patient.id, second.id, focus: kDentalChartWindowId);
+    await tester.pumpAndSettle();
+
+    expect(bandDate(), second.date,
+        reason: 'the band date belongs to the visit whose title is shown');
+    expect(bandTime(), second.date,
+        reason: 'the time follows the same visit as the date');
+    expect(bandNotes(), 'second pre-op',
+        reason: 'the band form is a view of the selected visit');
+    expect(postOpNotes(), 'second post-op',
+        reason: 'the chart footer is a view of the selected visit');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'both patient workspaces stay visible; the plan leaves the visit and locks '
+      'the patient fields', (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'plan-button-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'plan-button-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    // The two workspaces are always drawn, one active and one inactive; the
+    // visit's chart is the chart on screen, so the chart button drives it.
+    expect(find.byKey(WK.workspaceWindowToggle('dentalChart')), findsOneWidget);
+    expect(
+        find.byKey(WK.workspaceWindowToggle('appointments')), findsOneWidget);
+    expect(
+      tester.widget(find.byKey(WK.workspaceWindowToggle('dentalChart'))),
+      isA<FilledButton>(),
+    );
+    expect(
+      panel.workspace.isOpen('dentalChart', slot: kAttachedSlot),
+      isTrue,
+    );
+    expect(panel.workspace.isOpen('dentalChart'), isFalse);
+
+    // The patient's fields stay visible but take no edits while the visit is
+    // the record being worked on.
+    expect(find.byKey(WK.patientReadOnly), findsOneWidget);
+    final absorbing = tester.widget<AbsorbPointer>(
+      find
+          .ancestor(
+            of: find.byKey(WK.fieldPatientName),
+            matching: find.byType(AbsorbPointer),
+          )
+          .first,
+    );
+    expect(absorbing.absorbing, isTrue);
+
+    // The plan tab is the way to the patient's own chart: it closes the visit
+    // (keeping its draft) and clears the band.
+    await tester.tap(find.byKey(ValueKey('scope-patient:${patient.id}')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WK.visitBand), findsNothing,
+        reason: 'asking for the plan leaves the visit');
+    expect(panel.attached, isNull);
+    expect(panel.workspace.isOpen('dentalChart'), isTrue);
+    expect(find.byKey(WK.patientReadOnly), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the band moves to the visit that still has unsaved work',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'move-visit-patient');
+    patients.set(patient);
+    final dirtyVisit = testAppointment(
+      id: 'move-visit-dirty',
+      patientID: patient.id,
+      date: DateTime(2026, 7, 1),
+    );
+    final otherVisit = testAppointment(
+      id: 'move-visit-other',
+      patientID: patient.id,
+      date: DateTime(2026, 7, 2),
+    );
+    appointments.setAll([dirtyVisit, otherVisit]);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(dirtyVisit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    final dirty = panel.owned.whereType<AppointmentSession>().single;
+    dirty.item.preOpNotes = 'typed but not saved';
+    dirty.refreshDirty();
+
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+    await selectVisit(patient.id, otherVisit.id, focus: kDentalChartWindowId);
+    await tester.pumpAndSettle();
+    expect((panel.attached! as AppointmentSession).item.id, otherVisit.id);
+    expect(find.byKey(WK.visitMoveToVisit), findsOneWidget);
+
+    await tester.tap(find.byKey(WK.visitMoveToVisit));
+    await tester.pumpAndSettle();
+
+    expect((panel.attached! as AppointmentSession).item.id, dirtyVisit.id,
+        reason: 'the footer hint is also the way back to that visit');
+    expect(find.byKey(WK.visitBand), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('on a phone opening a visit shows the band, not a chart sheet',
+      (tester) async {
+    setViewport(tester, const Size(420, 900));
+    final patient = testPatient(id: 'phone-band-patient');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'phone-band-visit',
+      patientID: patient.id,
+      date: DateTime(2026, 6, 3, 9, 0),
+    );
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    // The opener has no screen of its own to ask; the app root is the screen.
+    bContext = tester.element(find.byType(SizedBox).first);
+
+    await openAppointment(visit);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 420);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WK.visitBand), findsOneWidget,
+        reason: 'the visit is the band on a phone');
+    expect(panel.workspace.openIn(kAttachedSlot), isEmpty,
+        reason: 'a chart sheet would cover the date, time and duration');
+    expect(find.byType(DentalChartBody), findsNothing,
+        reason: 'the band is the surface the opener came for');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the plan chart keeps the all-visits action on its title',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'plan-action-patient');
+    patients.set(patient);
+    final visit =
+        testAppointment(id: 'plan-action-visit', patientID: patient.id);
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    final panel =
+        await ensurePatientPanel(patient, focus: PatientWindow.dentalChart.id);
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WK.chartAllAppointments), findsOneWidget,
+        reason: 'the plan tab and the visit chart answer the same question');
+    await tester.tap(find.byKey(WK.chartAllAppointments));
+    await tester.pumpAndSettle();
+    expect(panel.workspace.isOpen(PatientWindow.appointments.id), isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final direction in TextDirection.values) {
+    for (final kind in [PointerDeviceKind.touch, PointerDeviceKind.mouse]) {
+      testWidgets(
+          'scope slider snaps and previews before release in $direction with $kind',
+          (tester) async {
+        setViewport(tester, const Size(1600, 1000));
+        final patient = testPatient(id: 'scrub-patient');
+        patients.set(patient);
+        final visits = List.generate(
+            3,
+            (i) => testAppointment(
+                  id: 'scrub-$i',
+                  patientID: patient.id,
+                  date: DateTime(2026, 1, 1 + i * i * 5),
+                ));
+        appointments.setAll(visits);
+        await pumpApexoApp(tester, const SizedBox.shrink());
+        unawaited(openPatient(patient));
+        await tester.pumpAndSettle();
+        await pumpShell(tester, PanelsManager.active().single, 1600,
+            direction: direction);
+        await tester.pumpAndSettle();
+        Finder dot(int i) =>
+            find.byKey(ValueKey('scope-appointment:${visits[i].id}'));
+        Finder card(int i) =>
+            find.byKey(ValueKey('scope-hover-card-${visits[i].id}'));
+        bool selected(int i) => tester
+            .widgetList<Semantics>(
+              find.descendant(of: dot(i), matching: find.byType(Semantics)),
+            )
+            .any((s) => s.properties.selected == true);
+        String scope() => tester
+            .widget<DentalChartBody>(find.byType(DentalChartBody))
+            .session
+            .id;
+        await tester.tap(dot(2));
+        await tester.pumpAndSettle();
+        final barRect = tester.getRect(find.byType(VisitScopeBar));
+        final first = tester.getCenter(dot(0));
+        final middle = tester.getCenter(dot(1));
+        final last = tester.getCenter(dot(2));
+        final nearMiddle =
+            Offset(middle.dx + (last.dx - middle.dx) * 0.2, middle.dy);
+        var haptics = 0;
+        tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, (call) async {
+          if (call.method == 'HapticFeedback.vibrate') {
+            expect(call.arguments, 'HapticFeedbackType.selectionClick');
+            haptics++;
+          }
+          return null;
+        });
+        addTearDown(() => tester.binding.defaultBinaryMessenger
+            .setMockMethodCallHandler(SystemChannels.platform, null));
+
+        final drag = await tester.startGesture(last, kind: kind);
+        await drag.moveTo(nearMiddle);
+        await tester.pumpAndSettle();
+        expect(selected(1), isTrue);
+        expect(selected(2), isFalse);
+        expect(card(1), findsOneWidget);
+        expect(scope(), 'appointment:${visits[2].id}',
+            reason: 'scrubbing previews without opening intermediate charts');
+        expect(haptics, 1);
+        await drag.moveTo(nearMiddle + const Offset(2, 0));
+        await tester.pumpAndSettle();
+        expect(haptics, 1, reason: 'no repeated feedback within the same snap');
+        await drag.moveTo(first);
+        await tester.pumpAndSettle();
+        expect(card(0), findsOneWidget);
+        expect(card(1), findsNothing);
+        expect(selected(0), isTrue);
+        await drag.moveTo(nearMiddle);
+        await tester.pumpAndSettle();
+        expect(haptics, 3);
+        await drag.up();
+        await tester.pumpAndSettle();
+        expect(scope(), 'appointment:${visits[1].id}');
+        expect(card(1), findsNothing);
+        expect(tester.getRect(find.byType(VisitScopeBar)), barRect);
+        await tester
+            .tapAt(Offset(middle.dx + (last.dx - middle.dx) * 0.65, middle.dy));
+        await tester.pumpAndSettle();
+        expect(scope(), 'appointment:${visits[2].id}',
+            reason: 'tapping the line between dots selects the nearest visit');
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets('scope slider edge-scrolls and cancels in $direction',
+        (tester) async {
+      setViewport(tester, const Size(600, 800));
+      final patient = testPatient(id: 'edge-scrub-patient');
+      patients.set(patient);
+      final visits = List.generate(
+          40,
+          (i) => testAppointment(
+                id: 'edge-scrub-$i',
+                patientID: patient.id,
+                date: DateTime(2026, 1, 1 + i),
+              ));
+      appointments.setAll(visits);
+      await pumpApexoApp(
+          tester,
+          Directionality(
+            textDirection: direction,
+            child: Align(
+                alignment: Alignment.topCenter,
+                child: SizedBox(
+                  width: 320,
+                  child: VisitScopeBar(
+                      patient: patient,
+                      session: appointmentDentalChart(visits.last),
+                      currentAppointment: visits.last),
+                )),
+          ));
+      await tester.pumpAndSettle();
+      final strip = find.byKey(const ValueKey('scope-visit-scroll'));
+      final scroll = tester.widget<SingleChildScrollView>(strip).controller!;
+      final viewport = tester.getRect(strip);
+      final selected =
+          find.byKey(ValueKey('scope-appointment:${visits.last.id}'));
+      final edge = Offset(
+          direction == TextDirection.ltr
+              ? viewport.left + 1
+              : viewport.right - 1,
+          viewport.center.dy);
+      expect(PanelsManager.active(), isEmpty,
+          reason: 'before starting the drag');
+      final drag = await tester.startGesture(tester.getCenter(selected));
+      await drag.moveTo(edge);
+      await tester.pump(const Duration(milliseconds: 100));
+      final before = scroll.offset;
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 32));
+      }
+      expect(scroll.offset, greaterThan(before));
+      expect(
+          find.byWidgetPredicate((w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>)
+                  .value
+                  .startsWith('scope-hover-card-')),
+          findsOneWidget);
+      await drag.cancel();
+      await tester.pumpAndSettle();
+      final stopped = scroll.offset;
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(scroll.offset, stopped);
+      expect(PanelsManager.active(), isEmpty,
+          reason: 'cancelled scrubbing never opens a visit');
+      expect(
+          find.byWidgetPredicate((w) =>
+              w.key is ValueKey<String> &&
+              (w.key! as ValueKey<String>)
+                  .value
+                  .startsWith('scope-hover-card-')),
+          findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final direction in TextDirection.values) {
+    testWidgets(
+        'scope slider supports Escape and repeated keyboard selection in $direction',
+        (tester) async {
+      setViewport(tester, const Size(1600, 1000));
+      final patient = testPatient(id: 'keyboard-scrub-patient');
+      patients.set(patient);
+      final visits = List.generate(
+          3,
+          (i) => testAppointment(
+                id: 'keyboard-scrub-$i',
+                patientID: patient.id,
+                date: DateTime(2026, 1, 1 + i * 10),
+              ));
+      appointments.setAll(visits);
+      await pumpApexoApp(tester, const SizedBox.shrink());
+      unawaited(openPatient(patient));
+      await tester.pumpAndSettle();
+      await pumpShell(tester, PanelsManager.active().single, 1600,
+          direction: direction);
+      await tester.pumpAndSettle();
+      Finder dot(int i) =>
+          find.byKey(ValueKey('scope-appointment:${visits[i].id}'));
+      String scope() => tester
+          .widget<DentalChartBody>(find.byType(DentalChartBody))
+          .session
+          .id;
+      await tester.tap(dot(2));
+      await tester.pumpAndSettle();
+      final drag = await tester.startGesture(tester.getCenter(dot(2)));
+      await drag.moveTo(tester.getCenter(dot(1)));
+      await tester.pumpAndSettle();
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      await drag.up();
+      await tester.pumpAndSettle();
+      expect(scope(), 'appointment:${visits[2].id}');
+      expect(find.byKey(ValueKey('scope-hover-card-${visits[1].id}')),
+          findsNothing);
+      final previous = direction == TextDirection.rtl
+          ? LogicalKeyboardKey.arrowRight
+          : LogicalKeyboardKey.arrowLeft;
+      String? previewValue() => tester
+          .widget<Semantics>(find.byWidgetPredicate(
+              (w) => w is Semantics && w.properties.slider == true))
+          .properties
+          .value;
+      await tester.sendKeyEvent(previous);
+      await tester.pumpAndSettle();
+      expect(previewValue(), DF.full(visits[1].date));
+      expect(find.byKey(ValueKey('scope-hover-card-${visits[1].id}')),
+          findsOneWidget);
+      await tester.sendKeyEvent(previous);
+      await tester.pumpAndSettle();
+      expect(previewValue(), DF.full(visits[0].date));
+      await tester.sendKeyEvent(LogicalKeyboardKey.end);
+      await tester.pumpAndSettle();
+      expect(previewValue(), DF.full(visits[2].date));
+      await tester.sendKeyEvent(LogicalKeyboardKey.home);
+      await tester.pumpAndSettle();
+      expect(previewValue(), DF.full(visits[0].date));
+      expect(scope(), 'appointment:${visits[2].id}');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+      expect(scope(), 'appointment:${visits[0].id}');
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets(
+      'scope slider asks about unsaved work only on release and restores on refusal',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'dirty-scrub-patient');
+    patients.set(patient);
+    final visits = List.generate(
+        2,
+        (i) => testAppointment(
+              id: 'dirty-scrub-$i',
+              patientID: patient.id,
+              date: DateTime(2026, 1, 1 + i * 10),
+            ));
+    appointments.setAll(visits);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+    final session =
+        tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session;
+    session.teeth['11'] = 'caries';
+    session.changed();
+    await tester.pumpAndSettle();
+    Finder dot(int i) =>
+        find.byKey(ValueKey('scope-appointment:${visits[i].id}'));
+    final drag = await tester.startGesture(tester.getCenter(dot(0)));
+    await drag.moveTo(tester.getCenter(dot(1)));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsNothing);
+    expect(find.byKey(ValueKey('scope-hover-card-${visits[1].id}')),
+        findsOneWidget);
+    await drag.up();
+    await tester.pumpAndSettle();
+    expect(find.text(txt('sureClosePanel')), findsWidgets);
+    await tester.tap(find.text(txt('back')).last);
+    await tester.pumpAndSettle();
+    expect(tester.widget<DentalChartBody>(find.byType(DentalChartBody)).session,
+        same(session));
+    expect(session.teeth['11'], 'caries');
+    expect(find.byKey(ValueKey('scope-patient:${patient.id}')), findsOneWidget);
+    expect(
+        find.byKey(ValueKey('scope-hover-card-${visits[1].id}')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'timeline dot distances are proportional to duration between appointments, hover shows rich card, and transparency fade appears only when overflowing',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient =
+        testPatient(id: 'timeline-prop-patient', name: 'Layla Mansour');
+    patients.set(patient);
+
+    final firstVisit = testAppointment(
+      id: 'timeline-v1',
+      patientID: patient.id,
+      date: DateTime(2026, 1, 1, 10),
+      teeth: {'16': 'rCT'},
+      postOpNotes: 'Access and canal prep',
+      price: 150,
+      paid: 150,
+      isDone: true,
+    );
+    // 5 days after firstVisit
+    final secondVisit = testAppointment(
+      id: 'timeline-v2',
+      patientID: patient.id,
+      date: DateTime(2026, 1, 6, 11),
+      teeth: {'16': 'crown', '26': 'filling'},
+      teethExtraNotes: {'16': 'Zirconia shade A2'},
+      postOpNotes: 'Crown cemented',
+      prescriptions: ['Ibuprofen 400mg'],
+      price: 300,
+      paid: 200,
+      isDone: true,
+    );
+    // 55 days after secondVisit (11x longer interval than first->second)
+    final lastVisit = testAppointment(
+      id: 'timeline-v3',
+      patientID: patient.id,
+      date: DateTime(2026, 3, 2, 14),
+      preOpNotes: '6-week recall check',
+      price: 50,
+      paid: 0,
+      isDone: false,
+    );
+    appointments.setAll([firstVisit, secondVisit, lastVisit]);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openPatient(patient));
+    await tester.pumpAndSettle();
+    await pumpShell(tester, PanelsManager.active().single, 1600);
+    await tester.pumpAndSettle();
+
+    final dot1 = find.byKey(ValueKey('scope-appointment:${firstVisit.id}'));
+    final dot2 = find.byKey(ValueKey('scope-appointment:${secondVisit.id}'));
+    final dot3 = find.byKey(ValueKey('scope-appointment:${lastVisit.id}'));
+
+    final x1 = tester.getCenter(dot1).dx;
+    final x2 = tester.getCenter(dot2).dx;
+    final x3 = tester.getCenter(dot3).dx;
+
+    // 1. Chronological order: first dot is first appointment, last dot is last appointment
+    expect(x1, lessThan(x2));
+    expect(x2, lessThan(x3));
+
+    // 2. Distance between dots is proportional to duration between appointments
+    final gap12 = x2 - x1; // 5 days
+    final gap23 = x3 - x2; // 55 days
+    expect(
+      gap23,
+      greaterThan(gap12 * 3),
+      reason:
+          '55-day gap must be visually much wider than the 5-day gap on the timeline',
+    );
+
+    // 3. With 3 visits, all dots fit on the line without scrolling or fade mask
+    final strip = find.byKey(const ValueKey('scope-visit-scroll'));
+    final scroll = tester.widget<SingleChildScrollView>(strip).controller!;
+    expect(scroll.position.maxScrollExtent, 0.0);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('scope-timeline-fade')),
+        matching: find.byType(ShaderMask),
+      ),
+      findsNothing,
+      reason: 'no transparency fade when all visits fit without scrolling',
+    );
+
+    // 4. Hovering on a dot displays a rich card with date, interval, treatment, notes, price & payment
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+
+    await mouse.moveTo(tester.getCenter(dot2));
+    await tester.pumpAndSettle();
+
+    final hoverCard =
+        find.byKey(ValueKey('scope-hover-card-${secondVisit.id}'));
+    expect(hoverCard, findsOneWidget);
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.text(DF.full(secondVisit.date)),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.text(txt('crown')),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.text(txt('filling')),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.textContaining('Zirconia shade A2'),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.text('Crown cemented'),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.text('300'),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.text('200'),
+      ),
+      findsWidgets,
+    );
+    expect(
+      find.descendant(
+        of: hoverCard,
+        matching: find.textContaining(txt('underpaid')),
+      ),
+      findsWidgets,
+    );
+
+    // Moving pointer away hides the rich hover card
+    await mouse.moveTo(const Offset(5, 5));
+    await tester.pumpAndSettle();
+    expect(hoverCard, findsNothing);
+
+    // 5. When the number of visits goes too large, scrolling and transparency fade activate
+    final manyVisits = List.generate(
+      35,
+      (i) => testAppointment(
+        id: 'many-v-$i',
+        patientID: patient.id,
+        date: DateTime(2026, 4, 1).add(Duration(days: i * 2)),
+      ),
+    );
+    appointments.setAll(manyVisits);
+    await tester.pumpAndSettle();
+
+    expect(scroll.position.maxScrollExtent, greaterThan(0));
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('scope-timeline-fade')),
+        matching: find.byType(ShaderMask),
+      ),
+      findsOneWidget,
+      reason:
+          'when visits overflow the timeline, a ShaderMask transparency fade indicates scrollable content',
+    );
     expect(tester.takeException(), isNull);
   });
 }

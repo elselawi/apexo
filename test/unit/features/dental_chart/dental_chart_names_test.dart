@@ -1,6 +1,5 @@
 import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
-import 'package:apexo/features/appointments/appointment_dental_chart.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/patients/patient_dental_chart.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:apexo/features/patients/patient_model.dart';

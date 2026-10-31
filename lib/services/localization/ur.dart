@@ -18,6 +18,22 @@ class Ur implements En {
     "patientPageAccess": "مریض کے صفحے تک رسائی",
     "close": "بند کریں",
     "closeAllWindows": "تمام ونڈوز بند کریں",
+    "workspaceUnsavedCount": "{count} آئٹمز میں غیر محفوظ تبدیلیاں ہیں",
+    "workspaceClosePrompt":
+        "کیا ورک اسپیس بند کرنے سے پہلے تبدیلیاں محفوظ کی جائیں؟ مسترد کرنے سے درج ذیل آئٹمز محفوظ کیے بغیر سب کچھ بند ہو جائے گا۔",
+    "workspaceSaveAndClose": "سب محفوظ کریں اور بند کریں",
+    "workspaceDiscardAndClose": "سب مسترد کریں اور بند کریں",
+    "workspaceSaving": "تبدیلیاں محفوظ کی جا رہی ہیں…",
+    "workspaceSaveItemAndClose": "محفوظ کریں اور بند کریں",
+    "workspaceIgnoreItemAndClose": "تبدیلیاں نظر انداز کریں اور بند کریں",
+    "workspaceResolveVisitsFirst":
+        "اس پینل کو بند کرنے سے پہلے اس کی وزٹس کی غیر محفوظ تبدیلیاں محفوظ یا مسترد کریں۔",
+    "workspaceSaveFailed":
+        "{name} محفوظ نہیں ہو سکا۔ کچھ بھی بند نہیں کیا گیا۔ جائزے کے لیے منسوخ کریں۔ پہلے سے محفوظ تبدیلیاں برقرار ہیں۔",
+    "workspaceStillUnsaved":
+        "کچھ آئٹمز میں اب بھی غیر محفوظ تبدیلیاں ہیں۔ کچھ بھی بند نہیں کیا گیا۔ جائزے کے لیے منسوخ کریں۔",
+    "workspaceChanged":
+        "ورک اسپیس تبدیل ہو گئی ہے۔ کچھ بھی بند نہیں کیا گیا۔ منسوخ کریں اور دوبارہ کوشش کریں۔",
     "minimize": "چھوٹا کریں",
     "xRayViewer": "ایکس رے ویور",
     "showOrders": "آرڈرز دکھائیں",
@@ -178,10 +194,33 @@ class Ur implements En {
     "isDone": "اپائنٹمنٹ مکمل ہو گئی",
     "addLabwork": "اس اپائنٹمنٹ کے لیے لیب ورک شامل کریں",
     "labworksForThisAppointment": "اس اپائنٹمنٹ کے لیب ورکس",
+    "deleteVisit": "معائنہ حذف کریں",
+    "removeLabwork": "لیب ورک ہٹائیں",
 
     // patients
     "patientDetails": "مریض کی تفصیلات",
     "allAppointments": "تمام اپائنٹمنٹس",
+    "saveVisit": "معائنہ محفوظ کریں",
+    "savePatient": "مریض محفوظ کریں",
+    "thisPatient": "یہ مریض",
+    "visitOf": "معائنہ · {date}",
+    "detachVisit": "معائنہ بند کریں",
+    "detachKeepsDraft":
+        "معائنہ بند ہو جاتا ہے؛ آپ کی تبدیلیاں وزٹس میں دوبارہ کھولنے کے لیے محفوظ رہتی ہیں۔",
+    "unsavedVisitsCount": "{count} معائنے جن میں غیر محفوظ تبدیلیاں ہیں",
+    "moveToVisit": "اس معائنے پر جائیں",
+    "patientReadOnlyWhileVisit":
+        "معائنہ کھلا ہو تو مریض کی تفصیلات صرف پڑھنے کے لیے ہیں۔",
+    "closePatientClosesVisits":
+        "یہ اس مریض کے ساتھ کھلے معائنے بھی بند کر دے گا۔",
+    "markCompleted": "مکمل قرار دیں",
+    "saveAndMarkCompleted": "محفوظ کریں اور مکمل قرار دیں",
+    "appointmentUnavailable": "یہ معائنہ اب دستیاب نہیں ہے۔",
+    "restoreVisit": "معائنہ بحال کریں",
+    "visitMarkedCompleted": "مکمل قرار دیا گیا",
+    "closePromptSaveAll": "سب محفوظ کریں اور بند کریں",
+    "closePromptDiscardAll": "رد کریں اور بند کریں",
+    "closePromptKeepEditing": "ترمیم جاری رکھیں",
     "age": "عمر",
     "gender": "جنس",
     "lastVisit": "پچھلا معائنہ",
@@ -211,6 +250,8 @@ class Ur implements En {
     "printQR": "QR کوڈ پرنٹ کریں",
     "dentalNotes": "ڈینٹل نوٹس",
     "dentalChart": "ڈینٹل چارٹ",
+    "initialExam": "ابتدائی معائنہ",
+    "newestVisit": "تازہ ترین ملاقات",
     "treatments": "علاجات",
     "toothHistory": "دانت کی ہسٹری",
     "toothPatientHistory": "مریض کی ڈینٹل ہسٹری",

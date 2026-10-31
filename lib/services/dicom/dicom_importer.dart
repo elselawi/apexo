@@ -756,20 +756,8 @@ class DicomImporter {
         _linkedPatients = linkedPatients ?? (() => dicomLinks.linkedPatients),
         _pendingMatches = pendingMatches ?? (() => dicomPendingMatches.all),
         _unmatchedIds = unmatchedIds ?? (() => dicomUnmatched.all),
-        _appointmentDayMap = appointmentDayMap ??
-            (() {
-              final map = <String, Set<DateTime>>{};
-              for (final entry in appointments.byPatient.entries) {
-                final days = entry.value['all']
-                        ?.where((a) => a.archived != true)
-                        .map((a) =>
-                            DateTime(a.date.year, a.date.month, a.date.day))
-                        .toSet() ??
-                    const <DateTime>{};
-                if (days.isNotEmpty) map[entry.key] = days;
-              }
-              return map;
-            }),
+        _appointmentDayMap =
+            appointmentDayMap ?? (() => appointments.appointmentDaysByPatient),
         _useIsolate = useIsolate,
         _scanDirectory = scanDirectory ?? DicomIO.scanDirectory,
         _readBytes = readBytes ?? DicomIO.readBytes,
@@ -800,10 +788,10 @@ class DicomImporter {
                 )),
         _setAppointment = setAppointment ?? appointments.set,
         _appointmentsForPatient = appointmentsForPatient ??
-            ((id) =>
-                (appointments.byPatient[id]?["all"] ?? const <Appointment>[])
-                    .where((a) => a.archived != true)
-                    .toList()),
+            ((id) => appointments
+                .allForPatient(id)
+                .where((a) => a.archived != true)
+                .toList()),
         _ensureAppointmentPersisted = ensureAppointmentPersisted ??
             (() async {
               await appointments.waitUntilChangesAreProcessed();

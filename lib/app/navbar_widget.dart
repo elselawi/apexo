@@ -13,6 +13,7 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final resources = FluentTheme.of(context).resources;
     return Positioned(
       key: WK.bottomNav,
       bottom: 0,
@@ -20,19 +21,17 @@ class BottomNavBar extends StatelessWidget {
       width: MediaQuery.of(context).size.width,
       child: Container(
         decoration: BoxDecoration(
-          color: FluentTheme.of(context).menuColor,
+          color: resources.solidBackgroundFillColorSecondary,
           boxShadow: [
             BoxShadow(
-              offset: const Offset(0.0, -2.0), // Cast shadow upwards
-              blurRadius: 15.0,
-              spreadRadius: 1.0,
-              color: Colors.black.withValues(alpha: 0.05), // Slight, elegant shadow
+              offset: const Offset(0, -2),
+              blurRadius: 12,
+              color: resources.smokeFillColorDefault,
             ),
           ],
           border: Border(
             top: BorderSide(
-              color:
-                  FluentTheme.of(context).resources.dividerStrokeColorDefault,
+              color: resources.dividerStrokeColorDefault,
               width: 0.5,
             ),
           ),

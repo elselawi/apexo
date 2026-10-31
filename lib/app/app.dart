@@ -20,6 +20,7 @@ import 'package:apexo/common_widgets/dialogs/new_version_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/ui/workspace/window_origin.dart';
 import 'package:apexo/ui/workspace/windows_layer.dart';
+import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/patient_side/patient_side_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -105,15 +106,20 @@ class ApexoApp extends StatelessWidget {
                       child: ScaffoldPage(
                         padding: EdgeInsets.zero,
                         resizeToAvoidBottomInset: true,
-                        content: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            buildAppLayout(),
-                            if (routes.showBottomNav() &&
-                                PanelsManager.active().isEmpty &&
-                                launch.open() == Open.staff)
-                              const BottomNavBar()
-                          ],
+                        content: ColoredBox(
+                          color: FluentTheme.of(context)
+                              .resources
+                              .solidBackgroundFillColorBase,
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              buildAppLayout(),
+                              if (routes.showBottomNav() &&
+                                  PanelsManager.active().isEmpty &&
+                                  launch.open() == Open.staff)
+                                const BottomNavBar()
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -203,11 +209,23 @@ class ApexoApp extends StatelessWidget {
       builder: (context, _) => PopScope(
         canPop: false,
         onPopInvokedWithResult: (_, __) {
-          if (launch.layoutWidth < kWindowsBreakpoint &&
-              PanelsManager.active().isNotEmpty &&
-              PanelsManager.minimize() == false) {
-            PanelsManager.minimize(true);
-            return;
+          if (launch.layoutWidth < kWindowsBreakpoint) {
+            // Out in order: the sheet, then the visit, then the panel itself
+            // (plan §4.2).
+            if (WindowsManager.dismissSheet?.call() ?? false) return;
+            final panel = PanelsManager.active().lastOrNull;
+            if (panel != null &&
+                panel.attached != null &&
+                PanelsManager.minimize() == false) {
+              // Detaching keeps the draft — nothing behind the visit is lost.
+              panel.detach();
+              return;
+            }
+            if (PanelsManager.active().isNotEmpty &&
+                PanelsManager.minimize() == false) {
+              PanelsManager.minimize(true);
+              return;
+            }
           }
           routes.goBack();
         },
@@ -246,8 +264,8 @@ class ApexoApp extends StatelessWidget {
                     },
                   ),
                 ),
-                // The way out of a clean workspace: every panel and window,
-                // closed at once — beside the panel, never over it.
+                // The workspace command stays above the windows, beside the
+                // panel, and asks before closing anything with unsaved work.
                 if (launch.open() == Open.staff)
                   CloseAllButton(
                     screenWidth: constraints.maxWidth,

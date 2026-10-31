@@ -1,3 +1,30 @@
+### ____0.17.0____
+
+- New Features & Improvements
+    - **Visits beside the patient.** Keep the patient's record in view while a visit brings its own date, time, clinicians and notes together in a compact visit card.
+    - **One treatment workspace.** Move between the initial examination and dated visits from the dental chart, with operative notes, prescriptions and payments directly beneath the teeth.
+    - **Visit attachments.** Open a visit's laboratory order and photos from either its visit card or its treatment chart.
+    - **A patient's whole gallery.** Browse photos and X-rays from all their visits together, grouped by the visit that holds them.
+    - **Faster reception.** Create a patient with their name and phone, or book a visit with its patient, clinicians and notes, before opening the saved record. Suggested booking times take existing visits into account.
+    - **Speak into the chart.** Dental-history dictation fills the chart being edited when online voice assistance is enabled; its changes remain yours to review and save.
+
+- Reliability & Bug Fixes
+    - **Keep unfinished visits.** Switching visits or closing a visit card keeps its unfinished work available until the patient's workspace is closed.
+    - **Close without losing notes.** Closing the workspace lists unfinished work and offers Save all, Discard or a return to editing. A failed save, an active write or a new edit during saving keeps the affected workspace open.
+    - **Independent saves.** Uploading a photo, moving a calendar booking or updating a laboratory order no longer saves or overwrites unrelated clinical notes.
+    - **The right visit every time.** Switching visits refreshes gallery and laboratory editors, and a delayed archive action cannot close a different visit opened meanwhile.
+    - **Charts on shorter screens.** A requested treatment chart remains reachable on a short laptop display instead of silently staying closed.
+    - **Reliable scan matching.** Imported X-rays recognise existing visits even when appointment permissions hide them from lists, avoiding duplicate bookings.
+    - **Clearer notification opening.** A notice for an unavailable visit shows one message, and queued openings are cancelled when the signed-in session ends.
+
+- Testing & Developer Experience
+    - **More reliable checks.** Expanded checks cover switching visits, separate saves, closing unfinished work, galleries and notification opening. Shared-state checks run serially, and the test harness no longer hides unrelated application errors.
+
+- UI & UX Polish
+    - **Clearer focus and navigation.** Joined workspace buttons, record colours and stronger active-window depth make the current patient and visit easier to distinguish. Phone Back leaves the open window before the visit and patient record.
+    - **Quicker photo browsing.** Galleries reuse smaller previews, retain cached pictures when reopened and can create previews from photos already on the device.
+    - **Translated workspace controls.** New visit, attachment and close-confirmation labels are available across all ten supported languages, with right-to-left navigation preserved.
+
 ### ____0.16.1____
 
 - Improved crash reports with readable framework diagnostics, app breadcrumbs, and repeated-message suppression that preserves navigation history.

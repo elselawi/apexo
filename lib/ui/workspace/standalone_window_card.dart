@@ -20,6 +20,7 @@ class StandaloneWindowCard extends StatefulWidget {
     required this.floating,
     required this.compact,
     this.accent,
+    this.active = true,
     this.onRaise,
     this.onDragUpdate,
   });
@@ -31,6 +32,9 @@ class StandaloneWindowCard extends StatefulWidget {
 
   /// The colour the record's kind is known by, from the window's scope.
   final Color? accent;
+
+  /// Whether this window is in front of the other floating windows.
+  final bool active;
 
   /// Touching the window brings it in front of the others.
   final VoidCallback? onRaise;
@@ -128,6 +132,7 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
       title: window.title,
       subtitle: window.subtitle?.call(),
       accent: widget.accent,
+      active: widget.active,
       dirty: _dirty,
       onRaise: widget.onRaise,
       onDragUpdate: widget.onDragUpdate,
@@ -173,6 +178,7 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
               onSave: widget.floating.onSave ?? () async {},
               onSaved: _resample,
               onClose: onClose,
+              extraActions: window.footerActions,
             ),
         ],
       ),

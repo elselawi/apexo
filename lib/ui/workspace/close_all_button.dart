@@ -7,34 +7,13 @@ import 'package:apexo/ui/workspace/panel.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
+import 'package:apexo/ui/workspace/workspace_close_dialog.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The way out of a clean workspace: one command button that puts every panel
-/// and every floating window away at once.
-///
-/// It comes out only while something is open **and nothing holds work that has
-/// not been stored**. A panel or window with unsaved work has its own Close,
-/// which asks before throwing the work away; one button that silently closed
-/// all of them would be the easiest way to lose a day's notes, so it stays
-/// hidden until there is nothing to lose.
-///
-/// The button floats in the corner where the content meets the panel's own
-/// start edge — beside the panel, never over it. With no panel open it takes
-/// the same corner of the screen.
-///
-/// It wears the shape of a Fluent command rather than that of a round floating
-/// action: the corner radius and hairline Fluent gives its controls, the one
-/// soft shadow it gives a flyout, and the label spelled out beside the glyph, as
-/// Fluent asks of any action whose glyph does not say it on its own.
-///
-/// The pointer is answered in three ways at once — the fill steps lighter, the
-/// shadow reaches further out, and the whole control grows a little — so the one
-/// press that empties the workspace can be felt coming from across the screen.
-///
-/// Its body is the same dark grey with white text that every Close in the app
-/// wears — the window's and the dialog's — in either theme, so the last way out
-/// of the workspace is recognisably the same kind of control as all the others.
+/// A top-edge workspace command, beside the panel rather than over it.
+/// Unsaved owners are counted, including retained visits; closing asks whether
+/// to save or discard their work. A clean workspace still closes in one press.
 class CloseAllButton extends StatefulWidget {
   const CloseAllButton({
     super.key,
@@ -54,10 +33,7 @@ class CloseAllButton extends StatefulWidget {
 
 class _CloseAllButtonState extends State<CloseAllButton>
     with SingleTickerProviderStateMixin {
-  /// A draft is edited in place, and only its owner can say whether it differs
-  /// from what is stored: the same sample a standalone window takes for its own
-  /// unsaved dot, and often enough that the button is there the moment the last
-  /// save lands.
+  /// Drafts are edited in place, so sample their owners for the unsaved count.
   static const Duration _sampleEvery = Duration(milliseconds: 400);
 
   /// The gap between the button and the panel — or the screen — it sits beside.
@@ -75,11 +51,9 @@ class _CloseAllButtonState extends State<CloseAllButton>
     reverseCurve: Curves.easeIn,
   );
 
-  /// Rises into place rather than appearing where it will sit: the corner it
-  /// belongs to is the one it comes up from. Fluent's entrances travel a short
-  /// way and decelerate into place; nothing bounces.
+  /// Fluent entrances travel a short way from their edge and decelerate.
   late final Animation<Offset> _slide = Tween<Offset>(
-    begin: const Offset(0, 0.25),
+    begin: const Offset(0, -0.25),
     end: Offset.zero,
   ).animate(CurvedAnimation(
     parent: _entrance,
@@ -93,6 +67,9 @@ class _CloseAllButtonState extends State<CloseAllButton>
 
   /// Whether the button is out of its corner.
   bool _shown = false;
+  int _dirtyCount = 0;
+  bool _saving = false;
+  bool _dialogOpen = false;
 
   /// Whether the pointer is on it, for the lift it answers with.
   bool _hovered = false;
@@ -129,52 +106,61 @@ class _CloseAllButtonState extends State<CloseAllButton>
   bool get _hasRoom =>
       widget.panelWidth == 0 || widget.screenWidth >= kWindowsBreakpoint;
 
-  /// There is something to close, and nothing on screen is holding work that
-  /// closing it would throw away.
-  ///
-  /// A panel's floating windows save with the panel, so the panel's own answer
-  /// covers them.
-  bool get _allClean {
-    final panels = PanelsManager.active();
-    final floating = WindowsManager.open();
-    if (panels.isEmpty && floating.isEmpty) return false;
-    if (panels.any((panel) => panel.hasPendingEdits)) return false;
-    return !floating.any((window) => window.hasChanges?.call() ?? false);
-  }
-
   void _sample() {
-    final shown = _hasRoom && _allClean;
-    if (shown == _shown || !mounted) return;
-    if (shown) {
-      _entrance.forward();
-    } else {
-      _entrance.reverse();
+    final request = WorkspaceCloseRequest();
+    final shown =
+        _hasRoom && (request.panels.isNotEmpty || request.windows.isNotEmpty);
+    final dirtyCount = request.dirtyCount;
+    final saving = request.saving;
+    if (!mounted ||
+        (shown == _shown && dirtyCount == _dirtyCount && saving == _saving)) {
+      return;
+    }
+    if (shown != _shown) {
+      if (shown) {
+        _entrance.forward();
+      } else {
+        _entrance.reverse();
+      }
     }
     setState(() {
       _shown = shown;
-      // It leaves under a pointer that was on it: the hover it took with it
-      // must not be waiting when it comes back.
+      _dirtyCount = dirtyCount;
+      _saving = saving;
       if (!shown) _hovered = false;
     });
   }
 
-  /// Puts everything away at once. Everything is clean by the time this can be
-  /// pressed, so nothing here needs a confirmation.
-  void _closeAll() {
-    // Read the workspace again: a press that landed as a draft was being typed
-    // into must not close the window holding it.
-    if (!_allClean) return;
-    WindowsManager.closeAll();
-    PanelsManager.closeAll();
+  Future<void> _closeAll() async {
+    if (_dialogOpen) return;
+    // Re-read on activation: a keystroke can land between samples.
+    final request = WorkspaceCloseRequest();
+    if (request.saving) return;
+    if (request.dirtyCount == 0) {
+      request.close();
+      return;
+    }
+    setState(() => _dialogOpen = true);
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        dismissWithEsc: false,
+        builder: (_) => WorkspaceCloseDialog(request: request),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _dialogOpen = false);
+        _sample();
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final ltr = Directionality.of(context) == TextDirection.ltr;
-    // The panel's start edge is the content's end edge: the button sits in the
-    // content, beside the panel, at the bottom of both. It slides when that edge
-    // moves, in step with the panel's own entrance.
+    // Keep the command outside the panel, mirrored with the workspace in RTL.
     final edge = _margin + widget.panelWidth;
     final label = txt("closeAllWindows");
     // The elevation a flyout gets: one soft shadow, under a surface that keeps
@@ -189,7 +175,7 @@ class _CloseAllButtonState extends State<CloseAllButton>
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
-      bottom: _margin + MediaQuery.paddingOf(context).bottom,
+      top: kWindowEdgeInset + MediaQuery.paddingOf(context).top,
       right: ltr ? edge : null,
       left: ltr ? null : edge,
       child: IgnorePointer(
@@ -218,9 +204,14 @@ class _CloseAllButtonState extends State<CloseAllButton>
                       borderRadius: BorderRadius.circular(4),
                       boxShadow: [floatingShadow],
                     ),
+                    constraints: BoxConstraints(
+                      maxWidth:
+                          (widget.screenWidth - widget.panelWidth - _margin * 2)
+                              .clamp(0, double.infinity),
+                    ),
                     child: Button(
                       key: WK.closeAllWindows,
-                      onPressed: _closeAll,
+                      onPressed: _saving || _dialogOpen ? null : _closeAll,
                       style: greyButtonStyle.copyWith(
                         // A step above a standard control's padding: this is pressed
                         // once at the end of a session, so it is given the room to
@@ -250,7 +241,38 @@ class _CloseAllButtonState extends State<CloseAllButton>
                         spacing: 10,
                         children: [
                           const Icon(FluentIcons.remove_content),
-                          Txt(label),
+                          Flexible(
+                            child: Txt(label,
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                          if (_dirtyCount > 0)
+                            Tooltip(
+                              message: txt('workspaceUnsavedCount')
+                                  .replaceAll('{count}', '$_dirtyCount'),
+                              child: Semantics(
+                                label: txt('workspaceUnsavedCount')
+                                    .replaceAll('{count}', '$_dirtyCount'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: theme.accentColor,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: ExcludeSemantics(
+                                    child: Text(
+                                      '$_dirtyCount',
+                                      style: TextStyle(
+                                        color: theme.resources
+                                            .textOnAccentFillColorPrimary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

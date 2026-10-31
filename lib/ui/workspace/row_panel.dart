@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:apexo/ui/workspace/panel.dart';
+import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 
@@ -17,7 +18,8 @@ import 'package:apexo/core/store.dart';
 /// against (`item`, `store`, `title`, `canNotBeNew`, `checkUnsavedChanges`,
 /// `onSave`), so a feature names this class instead of the old `Panel<T>` and
 /// changes nothing else.
-final class RowPanel<T extends Model> extends Panel {
+final class RowPanel<T extends Model> extends Panel
+    implements DraftAcknowledgements {
   RowPanel({
     required this.item,
     required this.store,
@@ -33,6 +35,10 @@ final class RowPanel<T extends Model> extends Panel {
     this.validate,
     String? savedBaseline,
     super.showBottomControls,
+    super.saveLabel,
+    super.recordsWindowId,
+    super.workspaceWindows,
+    super.attachmentLayout,
     super.additionalControls,
     super.archiveButtonReplacement,
     super.initialWindow,
@@ -139,12 +145,14 @@ final class RowPanel<T extends Model> extends Panel {
   /// The gallery saves an appointment the moment a photo is uploaded or
   /// deleted, so the record is stored and the panel is already clean; without
   /// this it would keep offering to save what it has just saved.
+  @override
   void markSaved() {
     _savedJson = jsonEncode(item.toJson());
     _existing = true;
   }
 
   /// Acknowledges fields saved immediately without clearing other draft edits.
+  @override
   void markFieldsSaved(Iterable<String> fields) {
     final saved = jsonDecode(_savedJson) as Map<String, dynamic>;
     final current = item.toJson();

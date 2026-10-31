@@ -15,12 +15,14 @@ class WindowShell extends StatelessWidget {
     required this.title,
     required this.child,
     this.subtitle,
+    this.badge,
     this.actions = const <Widget>[],
     this.footer,
     this.padding = 10,
     this.scrollable = true,
     this.dirty = false,
     this.accent,
+    this.active = true,
     this.onRaise,
     this.onDragUpdate,
   });
@@ -32,6 +34,13 @@ class WindowShell extends StatelessWidget {
 
   /// Whose window this is: the record's own name, over the window's label.
   final String? subtitle;
+
+  /// The glyph that marks the record's kind — 📅 for a visit, 👤 for a patient.
+  ///
+  /// Two records share one row, and their windows carry the same labels (both
+  /// have a "Gallery"), so the kind is marked on the frame itself: a window that
+  /// needs reading to know whose it is has already failed (plan §4.4).
+  final String? badge;
 
   /// Header buttons, drawn after the title, spaced apart.
   final List<Widget> actions;
@@ -56,6 +65,9 @@ class WindowShell extends StatelessWidget {
   /// the icon wears it, so two windows of the same label are still told apart by
   /// which record they belong to.
   final Color? accent;
+
+  /// The frontmost window has a raised surface, a stronger edge and shadow.
+  final bool active;
 
   /// Touching the window anywhere brings it in front of the others.
   final VoidCallback? onRaise;
@@ -83,12 +95,31 @@ class WindowShell extends StatelessWidget {
 
   Widget _buildFrame(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final resources = theme.resources;
     final frame = Container(
       decoration: BoxDecoration(
-        color: theme.resources.solidBackgroundFillColorBaseAlt,
+        color: active
+            ? resources.solidBackgroundFillColorBase
+            : resources.solidBackgroundFillColorSecondary,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey.withAlpha(120)),
-        boxShadow: kElevationToShadow[16],
+        border: Border.all(
+          color: active
+              ? resources.surfaceStrokeColorDefault
+              : resources.surfaceStrokeColorFlyout,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: resources.smokeFillColorDefault,
+            offset: Offset(0, active ? 8 : 2),
+            blurRadius: active ? 32 : 8,
+          ),
+          if (active)
+            BoxShadow(
+              color: resources.smokeFillColorDefault,
+              offset: const Offset(0, 2),
+              blurRadius: 6,
+            ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -98,35 +129,23 @@ class WindowShell extends StatelessWidget {
           _buildHeader(theme),
           Flexible(
             child: LayoutBuilder(
-              builder: (context, constraints) {
-                final media = MediaQuery.of(context);
-                // A window's body reads the width it was given, not the width
-                // of the screen: the dental chart picks its layout from
-                // MediaQuery, and a chart in a narrow card must draw the
-                // compact arch instead of the panoramic one.
-                return MediaQuery(
-                  data: media.copyWith(
-                    size: Size(
-                      constraints.maxWidth,
-                      constraints.maxHeight.isFinite
-                          ? constraints.maxHeight
-                          : media.size.height,
+              builder: (context, constraints) => Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Flexible(child: _buildBody()),
+                  // A window dragged near the bottom may have less room than
+                  // its tools need; the footer scrolls rather than overflowing.
+                  if (footer != null)
+                    ConstrainedBox(
+                      constraints:
+                          BoxConstraints(maxHeight: constraints.maxHeight),
+                      child: SingleChildScrollView(child: footer!),
                     ),
-                  ),
-                  child: scrollable
-                      ? SingleChildScrollView(
-                          padding: EdgeInsets.all(padding),
-                          child: child,
-                        )
-                      : Padding(
-                          padding: EdgeInsets.all(padding),
-                          child: child,
-                        ),
-                );
-              },
+                ],
+              ),
             ),
           ),
-          if (footer != null) footer!,
         ],
       ),
     );
@@ -135,12 +154,34 @@ class WindowShell extends StatelessWidget {
     return Listener(onPointerDown: (_) => onRaise!(), child: frame);
   }
 
+  Widget _buildBody() => LayoutBuilder(
+        builder: (context, constraints) {
+          final media = MediaQuery.of(context);
+          // Editors read the window's available size, not the full screen.
+          return MediaQuery(
+            data: media.copyWith(
+                size: Size(
+              constraints.maxWidth,
+              constraints.maxHeight.isFinite
+                  ? constraints.maxHeight
+                  : media.size.height,
+            )),
+            child: scrollable
+                ? SingleChildScrollView(
+                    padding: EdgeInsets.all(padding), child: child)
+                : Padding(padding: EdgeInsets.all(padding), child: child),
+          );
+        },
+      );
+
   Widget _buildHeader(FluentThemeData theme) {
     final line = subtitle;
     final header = Container(
       padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 6, 6),
       decoration: BoxDecoration(
-        color: Colors.grey.withValues(alpha: 0.08),
+        color: active
+            ? theme.resources.subtleFillColorSecondary
+            : theme.resources.subtleFillColorTertiary,
         border: Border(
           bottom: BorderSide(color: theme.resources.dividerStrokeColorDefault),
         ),
@@ -148,6 +189,10 @@ class WindowShell extends StatelessWidget {
       child: Row(
         children: [
           Icon(icon, size: 16, color: accent ?? theme.accentColor),
+          if (badge != null) ...[
+            const SizedBox(width: 4),
+            Txt(badge!, style: const TextStyle(fontSize: 12)),
+          ],
           const SizedBox(width: 8),
           Expanded(
             child: Column(

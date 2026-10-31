@@ -33,11 +33,83 @@ final class PanelWindow {
     this.onlyIfSaved = false,
     this.scrollable = true,
     this.editsRecord = false,
+    this.saveLabel,
     this.matchesPanelWidth = true,
     this.preferredWidth = 460,
     this.maxHeight = double.infinity,
     this.minHeight = kWindowMinRowHeight,
+    this.replacementGroup,
+    this.attachedTo,
+    this.byDefault = true,
+    this.headerActions = const <Widget>[],
+    this.footerActions = const <Widget>[],
+    this.chipPreview,
   });
+
+  /// The window — or panel — this one is an **attachment** of.
+  ///
+  /// An attachment is not a row window: it never takes a place beside the panel
+  /// and is never a first pick. It is drawn as a chip on the frame it belongs to
+  /// (or in the panel's own attachment tray, for [panelAttachment]) and opens its
+  /// editor as a side window when the chip is switched on.
+  ///
+  /// This is how a visit's labwork and photos hang off its band — and off the
+  /// post-op card inside its chart, which draws the same tray — and how a
+  /// patient's photos and page hang off the patient's panel: everything that is
+  /// *about* a record rather than *of* it. Null means the window is a row window.
+  final String? attachedTo;
+
+  /// Whether a record with no remembered arrangement opens this window by itself.
+  ///
+  /// A record's workspace does; a list or a secondary editor does not — it is one
+  /// click away, behind its own control (a header button, an attachment chip).
+  /// Only row windows are ever first picks; an attachment is never one.
+  final bool byDefault;
+
+  /// Buttons the window draws beside its title.
+  ///
+  /// A chart's way into the record's lists, a report's way to print — the things
+  /// that act *on* the record rather than edit it, so they do not compete with
+  /// the window's own Save. Built by the feature that owns the window; the host
+  /// only places them.
+  final List<Widget> headerActions;
+
+  /// Buttons the window draws in its **footer**, in the row with its Save and
+  /// Close.
+  ///
+  /// A window's own delete lives here rather than in the form above it: the
+  /// record's actions sit together, and a button that takes the record away is
+  /// not one more field to fill in. Built by the feature that owns the window;
+  /// the host only places them.
+  final List<Widget> footerActions;
+
+  /// What this window's attachment chip shows beside its name, built whenever
+  /// the chip is drawn: a gallery's first pictures, whether an order exists.
+  ///
+  /// Only an attachment draws a chip, so a row window leaves this null — and so
+  /// does an attachment with nothing to add, so its chip stays a plain label
+  /// rather than a label beside a gap. A builder rather than a widget because
+  /// the record it previews is live: a photo uploaded while the tray is on
+  /// screen must reach the chip without the record being rebuilt.
+  final Widget? Function()? chipPreview;
+
+  /// The [attachedTo] value that means "attached to the panel itself" rather
+  /// than to one of its windows — a patient's photos and page.
+  static const String panelAttachment = 'panel';
+
+  /// The [attachedTo] value that means "attached to the record's band" — a
+  /// visit's labwork and photos, which are reachable from the record's band
+  /// whatever its windows are doing. The band draws them in its attachment tray,
+  /// and the record's own card (the visit's post-op card) draws the same one.
+  static const String bandAttachment = 'band';
+
+  /// Whether this window hangs off something else rather than taking a place in
+  /// the row.
+  bool get isAttachment => attachedTo != null;
+
+  /// Editors in a group replace content in the same slot without animating
+  /// the window's frame again; the editor owns its content transition.
+  final String? replacementGroup;
 
   /// What this window is, for good: a window is named rather than counted, so
   /// adding or reordering one cannot point a caller at the wrong editor.
@@ -76,14 +148,23 @@ final class PanelWindow {
   /// True gives it its **own Save and Close** in its footer: a window is where
   /// the editing happens, so it is also where saving must be, rather than
   /// sending the user hunting for the panel's bottom bar. The Save is the
-  /// panel's own ([Panel.save]) — one record has one write — and Close puts the
-  /// window back in the panel's dock with the draft — and whatever else was
-  /// typed — still there.
+  /// **owning session's** own write — one record has one write — and Close puts
+  /// the window back in its dock with the draft still there.
   ///
   /// False for a window that only reads (a list of the record's visits) or one
   /// that writes as it goes (a gallery, a page): a Save button there would write
   /// something the window does not show.
   final bool editsRecord;
+
+  /// The localization key for this window's Save, or null for the plain "save".
+  ///
+  /// A panel may carry two records at once, and a Save that does not say which
+  /// record it writes is exactly the misunderstanding this redesign removes:
+  /// "Save visit" and "Save patient" are different writes (plan §4.4, §4.5).
+  ///
+  /// The window does **not** name the session that writes — its group does. Two
+  /// owners for one fact is the class of bug this deletes.
+  final String? saveLabel;
 
   /// Whether this window is drawn at the panel's own width — the default, so a
   /// panel and its windows read as one column of the screen. A window that

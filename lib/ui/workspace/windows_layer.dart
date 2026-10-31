@@ -10,12 +10,18 @@ import 'package:apexo/ui/workspace/floating_window.dart';
 import 'package:apexo/ui/workspace/panel_workspace.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/panel_window_card.dart';
+import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:apexo/ui/workspace/standalone_window_card.dart';
+import 'package:apexo/ui/workspace/window_attachments.dart';
 import 'package:apexo/ui/workspace/window_close_button.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
 import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/rendering.dart' show RenderProxyBox;
+import 'package:flutter/scheduler.dart';
 
 part 'window_entry.dart';
 part 'window_entrance.dart';
@@ -107,15 +113,28 @@ class _WindowsArea extends StatefulWidget {
 }
 
 class _WindowsAreaState extends State<_WindowsArea> {
-  WindowsLayout _layout = const WindowsLayout(compact: false, capacity: 0);
+  /// What the row last showed: which windows, at what widths, in what order.
+  ///
+  /// A count would not do. The chart asks for 960, a pre-op form for 560 and a
+  /// tool for the panel's width, so "two windows fit" describes one selection and
+  /// says nothing about the next (plan §1).
+  WindowsPlan _plan = WindowsPlan.none;
 
   /// What is on screen, and what is folding away from it.
   List<_WindowEntry> _live = const [];
   final Map<String, _WindowEntry> _closing = <String, _WindowEntry>{};
 
+  /// Replacing content in an existing frame must not replay its entrance.
+  final Set<String> _replacements = <String>{};
+
   /// The entry the phone sheet is showing, which is the only one a phone has an
   /// exit animation for.
   String? _shown;
+
+  /// The window the app last asked for, kept in front of the row for as long as
+  /// it is on screen: a focus that arrives before the rest of the row has been
+  /// planned must not be buried by the next frame.
+  String? _focusKey;
 
   /// The window the app last asked for while a phone is drawing sheets: a phone
   /// shows one window at a time, and the one just asked for is the one to show.
@@ -139,12 +158,116 @@ class _WindowsAreaState extends State<_WindowsArea> {
   /// window is drawn no taller than its cell, so it never covers the one below.
   final Map<String, double> _cells = {};
 
+  /// The height each window that was opened at a tap asked for, by key, once it
+  /// has been laid out — the height it is then lifted by, so the whole of it fits
+  /// above the bottom edge of the screen ([placementAt]).
+  ///
+  /// Only the windows a tap placed need this: a window in the row is given its
+  /// cell's room by the arrangement and never starts scrolled.
+  final Map<String, double> _heights = {};
+
+  /// The windows whose own height has been read, so they are placed by it rather
+  /// than measured again on every frame.
+  final Set<String> _fitted = {};
+
   StreamSubscription<int>? _workspaceSub;
+  StreamSubscription<int>? _attachmentsSub;
 
   PanelWorkspace? get _workspace => widget.panel?.workspace;
 
-  List<PanelWindow> get _floating =>
-      widget.panel?.floatingWindows ?? const <PanelWindow>[];
+  /// The records this panel draws in its row, from the panel's edge outwards: the
+  /// visit it carries beside itself, then its own record (plan §4.1).
+  ///
+  /// The visit's group exists only while a visit is attached, and its memory is
+  /// keyed by the visit **kind** and the slot — never by the visit's id, or every
+  /// visit would open differently (plan §6.2-4).
+  List<WindowGroup> get _groups {
+    final panel = widget.panel;
+    if (panel == null) return const <WindowGroup>[];
+    final attached = panel.attached;
+    return <WindowGroup>[
+      if (attached != null)
+        WindowGroup(
+          slot: kAttachedSlot,
+          id: '${attached.singularName}:${attached.itemId}',
+          session: attached,
+          windows: attached.windows,
+          label: () => attached.displayTitle,
+          kind: attached.singularName,
+          accent: attached.accent,
+          glyph: attached.unicodeSymbol,
+          remembered: widget.defaults.of(attached.singularName, kAttachedSlot),
+        ),
+      WindowGroup(
+        slot: kHostSlot,
+        id: '${panel.singularName}:${panel.itemId}',
+        session: panel,
+        // The row's floating windows, plus the attachments that hang off the
+        // panel itself: an attachment still has to be drawn when it is open, it
+        // just never takes a row slot (see `computeWindowsPlan`).
+        windows: _hostWindows(panel, attached),
+        label: () => panel.displayTitle,
+        kind: panel.singularName,
+        accent: panel.accent,
+        glyph: panel.unicodeSymbol,
+        remembered: widget.defaults.of(panel.singularName, kHostSlot),
+      ),
+    ];
+  }
+
+  /// The panel's own windows, less the ones the record it carries replaces.
+  ///
+  /// A visit's chart *is* the chart while that visit is on screen: the patient's
+  /// own entry for the same editor is not offered (the dock hides it, and
+  /// [PanelScreen]'s workspace button drives the visit's), so the row must not
+  /// open it either. Leaving it in the candidates let it win whenever the visit's
+  /// chart did not fit — on a short screen the wrong record's chart appeared, and
+  /// the visit's post-op record with it had no window to sit in (plan §4.3).
+  List<PanelWindow> _hostWindows(
+    Panel panel,
+    HostedRecordSession? attached,
+  ) {
+    final replaced = <String>{
+      if (attached != null)
+        for (final window in attached.windows)
+          if (window.replacementGroup case final group?) group,
+    };
+    return <PanelWindow>[
+      for (final window in panel.floatingWindows)
+        if (window.replacementGroup == null ||
+            !replaced.contains(window.replacementGroup))
+          window,
+      ...panel.panelAttachments,
+    ];
+  }
+
+  /// What each group asks the row for, in the row's order.
+  ///
+  /// [hostOpens] is the panel's `opensWithWindows`: a record asked for on its own
+  /// — a dashboard row that means "this patient", not "their chart" — brings its
+  /// own windows neither up nor away. That flag is about the panel's record: a
+  /// visit attached to it still opens the window its opener asked for (plan §4.7).
+  ///
+  /// A window that needs the record stored first is not one the screen opens by
+  /// itself — but the opener may still have asked for it by name, and an opener
+  /// that names a window knows what it is asking for.
+  List<WindowGroupDemand> _demands({required bool hostOpens}) =>
+      <WindowGroupDemand>[
+        for (final group in _groups)
+          WindowGroupDemand(
+            slot: group.slot,
+            windows: <PanelWindow>[
+              for (final window in group.windows)
+                if (!(window.onlyIfSaved && group.session.isNew) ||
+                    rowKey(group.slot, window.id) == _focus)
+                  window,
+            ],
+            remembered: switch (group.slot) {
+              kHostSlot when !hostOpens => const <String>[],
+              _ => group.remembered,
+            },
+          ),
+      ];
 
   /// The width the panel takes on this screen — none when no panel is open, so
   /// the whole screen is free for the windows that are.
@@ -152,20 +275,69 @@ class _WindowsAreaState extends State<_WindowsArea> {
       ? 0
       : computePanelWidth(screenWidth: widget.screenWidth);
 
-  /// The height the windows have to work with: the screen, less whatever the
-  /// system keeps at its edges — what the grid decides how many rows to use by.
+  double get _commandHeight =>
+      widget.panel == null || widget.screenWidth >= kWindowsBreakpoint
+          ? kWorkspaceCommandHeight
+          : 0;
+
+  /// The grid uses the same command and safe-area insets as the drawn windows.
   double get _room {
     final size = MediaQuery.sizeOf(context);
     final padding = MediaQuery.paddingOf(context);
-    return size.height - padding.top - padding.bottom;
+    return math.max(
+      0,
+      size.height - padding.top - padding.bottom - _commandHeight,
+    );
   }
 
-  WindowsLayout _computeLayout() => computeWindowsLayout(
-        floating: _floating,
-        screenWidth: widget.screenWidth,
-        panelWidth: _panelWidth,
-        screenHeight: _room,
-      );
+  /// The window the opener asked for, as a row key.
+  ///
+  /// A window the user has just asked the panel to show wins over everything
+  /// else: pressing "all appointments" on a chart means the list, even if that
+  /// costs the chart its place (it keeps its draft, and the band keeps its chip).
+  /// After that the attached record's request wins: a caller that opened a visit's
+  /// treatment plan came for that visit, not for whatever its patient's panel
+  /// would have shown by itself.
+  String? get _focus {
+    final panel = widget.panel;
+    if (panel == null) return null;
+    final attached = panel.attached;
+    // The windows this panel may actually put in the row: one an attached record
+    // replaces is not one of them, however it is asked for.
+    final hostWindows = _hostWindows(panel, attached);
+    bool offersHost(String id) => hostWindows.any((window) => window.id == id);
+    final requested = panel.requestedWindow;
+    if (requested != null && offersHost(requested)) {
+      return rowKey(kHostSlot, requested);
+    }
+    final attachedFocus = panel.attachedFocus;
+    if (attached != null &&
+        attachedFocus != null &&
+        attached.windows.any((window) => window.id == attachedFocus)) {
+      return rowKey(kAttachedSlot, attachedFocus);
+    }
+    final host = panel.initialWindow;
+    if (host != null && offersHost(host) && panel.opensWithWindows) {
+      return rowKey(kHostSlot, host);
+    }
+    return null;
+  }
+
+  WindowsPlan _computePlan({bool? hostOpens}) {
+    final plan = computeWindowsPlan(
+      screenWidth: widget.screenWidth,
+      screenHeight: _room,
+      panelWidth: _panelWidth,
+      groups: _demands(
+        hostOpens: hostOpens ?? (widget.panel?.opensWithWindows ?? true),
+      ),
+      focus: _focus,
+    );
+    // The request has been honoured (or honestly could not be): a second plan
+    // must not keep forcing the window it named over the user's arrangement.
+    widget.panel?.requestedWindow = null;
+    return plan;
+  }
 
   /// False until the first arrangement has been made. Its place is
   /// [didChangeDependencies], not [initState]: how many rows of windows a screen
@@ -196,9 +368,15 @@ class _WindowsAreaState extends State<_WindowsArea> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _layout = _computeLayout();
-    if (_arranged) return;
+    if (_arranged) {
+      _followScreen();
+      return;
+    }
     _arranged = true;
+    // One plan, and only one: [_arrange] computes it. Computing it here as well
+    // would spend the window the app asked for — a one-shot request — on a plan
+    // nothing draws, and the second plan would put that window away again before
+    // the first frame that could have shown it.
     _arrange();
     // The panel may have opened in the same frame this layer was built for: a
     // window that was standing over the app steps aside on a phone.
@@ -207,16 +385,46 @@ class _WindowsAreaState extends State<_WindowsArea> {
 
   /// Teaches the panel where to send what the user opens and puts away: the
   /// host owns the memory, the panel only reports the change.
+  ///
+  /// The memory is keyed by the record's **kind** and the **slot** — `patient/host`,
+  /// `appointment/attached` — so every visit of every patient opens the way the
+  /// last one was left. Keying it by the record's id would make the layout
+  /// per-visit (plan §6.2-4).
   void _bindWorkspace() {
     final panel = widget.panel;
     if (panel == null) return;
-    panel.workspace.onUserChange =
-        (open) => widget.defaults.remember(panel.singularName, open);
+    panel.workspace.onUserChange = (slot, open) {
+      final kind = _kindForSlot(slot);
+      // No record of that kind is on screen — nothing to remember it for.
+      if (kind.isEmpty) return;
+      widget.defaults.remember(kind, open, slot: slot);
+    };
+  }
+
+  /// The kind the record in [slot] is, for the layout memory. Empty when the
+  /// slot holds no record: a memory of "the appointment slot of no appointment"
+  /// is not a preference anyone can use.
+  String _kindForSlot(String slot) {
+    final panel = widget.panel;
+    if (panel == null) return '';
+    if (slot == kAttachedSlot) {
+      return panel.attached?.singularName ?? '';
+    }
+    return panel.singularName;
   }
 
   void _listenToWorkspace() {
     unawaited(_workspaceSub?.cancel());
     _workspaceSub = _workspace?.revision.stream.listen((_) => _sync());
+    // Attaching a visit mutates a panel that is already on screen: nothing
+    // rebuilds the layer for it, so it listens for the change itself (plan
+    // §6.2-2).
+    unawaited(_attachmentsSub?.cancel());
+    _attachmentsSub = widget.panel?.attachments.stream.listen((_) {
+      if (!mounted) return;
+      _arrange();
+      _sync();
+    });
   }
 
   @override
@@ -226,11 +434,16 @@ class _WindowsAreaState extends State<_WindowsArea> {
     if (oldWidget.panel == null && widget.panel != null) {
       _stepAsideForPanel();
     }
-    if (oldWidget.panel != widget.panel) {
+    final panelChanged = oldWidget.panel != widget.panel;
+    if (panelChanged) {
       _bindWorkspace();
       _listenToWorkspace();
+      // Another record's panel: its own remembered windows decide the row, even
+      // on the same screen.
+      _arrange();
+    } else {
+      _followScreen();
     }
-    _followScreen();
     // Already rebuilding: recompute what is on screen without asking for
     // another frame.
     final live = _entries();
@@ -273,6 +486,7 @@ class _WindowsAreaState extends State<_WindowsArea> {
       _sheetFocus = focus;
       return;
     }
+    _focusKey = focus;
     if (!_stack.contains(focus) || _stack.last == focus) return;
     _stack
       ..remove(focus)
@@ -282,70 +496,84 @@ class _WindowsAreaState extends State<_WindowsArea> {
   @override
   void dispose() {
     unawaited(_workspaceSub?.cancel());
+    unawaited(_attachmentsSub?.cancel());
+    if (identical(_dismissSheet, WindowsManager.dismissSheet)) {
+      WindowsManager.dismissSheet = null;
+    }
     for (final place in _places.values) {
       place.dispose();
     }
     super.dispose();
   }
 
-  /// The windows this screen could open by itself, in the panel's priority
-  /// order: a window that needs the record stored first is not one of them.
-  List<String> get _candidates => [
-        for (final window in _floating)
-          if (!(window.onlyIfSaved && (widget.panel?.isNew ?? false)))
-            window.id,
-      ];
-
-  /// The window the opener asked for, if it is one that floats.
-  String? get _focus {
-    final id = widget.panel?.initialWindow;
-    if (id == null) return null;
-    return _floating.any((window) => window.id == id) ? id : null;
+  /// Puts the sheet a phone is showing away — the first step Back walks out by
+  /// (plan §4.2). A hosted window goes back to its dock; a window standing on
+  /// its own closes, asking first if it holds work.
+  bool _dismissSheet() {
+    final entry = _entryFor(_shown);
+    if (entry == null) return false;
+    unawaited(_dismiss(entry));
+    return true;
   }
 
-  /// Opens a screenful of windows — the ones the user left on the last panel of
-  /// this kind, or the panel's own first picks — unless the panel was asked to
-  /// come alone, in which case its dock is where they stay until the user asks
-  /// for one.
+  /// Opens a screenful of windows: the ones the user left on the last panel of
+  /// each kind, or the group's own first picks — unless the panel was asked to
+  /// come alone, in which case its own windows stay in its dock until the user
+  /// asks for one.
+  ///
+  /// The plan is the answer, and the workspace holds it: which windows, how wide,
+  /// in what order (plan §6.2-5).
   void _arrange() {
     final panel = widget.panel;
     if (panel == null) return;
-    if (!panel.opensWithWindows) {
-      // Nothing is opened, but the row's capacity is still learned: the windows
-      // the user asks for from the dock afterwards have to make room by it.
-      panel.workspace.measure(_layout);
-      return;
-    }
-    panel.workspace.arrange(
-      layout: _layout,
-      candidates: _candidates,
-      preferred: widget.defaults.of(panel.singularName),
-      focus: _focus,
+    _plan = _computePlan(hostOpens: panel.opensWithWindows);
+    _arrangedFor = (
+      width: widget.screenWidth,
+      room: _room,
+      panelWidth: _panelWidth,
     );
+    panel.workspace.applyPlan(_plan);
   }
 
-  /// Follows the screen: a resize that changes how many windows fit — or
-  /// crosses the phone breakpoint — rearranges what is on screen, exactly as
-  /// opening the panel would have on that screen.
+  /// Follows the screen: a resize that changes what fits — or crosses the phone
+  /// breakpoint — rearranges what is on screen, exactly as opening the panel
+  /// would have on that screen.
+  ///
+  /// Only the screen does this. A rebuild for something else — the store
+  /// emitting after a visit's checkbox is ticked, a language change, a save —
+  /// leaves what the user is looking at exactly where it is: re-planning would
+  /// put the row back to the remembered defaults, closing the window the app had
+  /// just asked for.
   void _followScreen() {
-    final next = _computeLayout();
-    final changed =
-        next.capacity != _layout.capacity || next.compact != _layout.compact;
-    _layout = next;
-    if (changed) _arrange();
+    if (!_screenChanged) return;
+    _arrange();
+  }
+
+  /// The screen the last arrangement was made for. Null before the first one.
+  ({double width, double room, double panelWidth})? _arrangedFor;
+
+  bool get _screenChanged {
+    final seen = _arrangedFor;
+    return seen == null ||
+        seen.width != widget.screenWidth ||
+        seen.room != _room ||
+        seen.panelWidth != _panelWidth;
   }
 
   /// Everything that should be on screen right now: the standalone windows,
-  /// then the panel's own, so the panel's sit above them in the stack.
+  /// then the panel's own and the record it carries, so the panel's sit above
+  /// them in the stack.
   List<_WindowEntry> _entries() {
     final entries = <_WindowEntry>[
       for (final floating in WindowsManager.open())
         _WindowEntry.standalone(floating),
     ];
     if (!widget.collapsed) {
-      for (final window in _floating) {
-        if (_workspace?.isOpen(window.id) ?? false) {
-          entries.add(_WindowEntry.hosted(window, window.id));
+      for (final group in _groups) {
+        for (final window in group.windows) {
+          if (_workspace?.isOpen(window.id, slot: group.slot) ?? false) {
+            entries.add(_WindowEntry.hosted(window, group));
+          }
         }
       }
     }
@@ -369,6 +597,23 @@ class _WindowsAreaState extends State<_WindowsArea> {
   /// window that came back while it was still folding away.
   void _settle(List<_WindowEntry> live) {
     final keys = {for (final entry in live) entry.key};
+    _replacements.retainAll(keys);
+    for (final incoming in live) {
+      final group = incoming.model.replacementGroup;
+      if (group == null) continue;
+      for (final previous in [..._live, ..._closing.values]) {
+        if (keys.contains(previous.key) ||
+            previous.model.replacementGroup != group) {
+          continue;
+        }
+        _replacements.add(incoming.key);
+        final place = _places[previous.key];
+        if (place != null) {
+          _places.putIfAbsent(incoming.key, () => ValueNotifier(place.value));
+        }
+        _closing.remove(previous.key);
+      }
+    }
     // A window that is on screen again is not leaving, however recently it
     // started to: forgetting this is what would leave it drawn at zero opacity
     // but still taking clicks.
@@ -383,6 +628,10 @@ class _WindowsAreaState extends State<_WindowsArea> {
     final oneAtATime = widget.screenWidth < kWindowsBreakpoint;
     for (final entry in _live) {
       if (keys.contains(entry.key)) continue;
+      final group = entry.model.replacementGroup;
+      if (group != null && live.any((e) => e.model.replacementGroup == group)) {
+        continue;
+      }
       // One at a time means the windows queued behind the one on screen were
       // never shown, so they have no exit to animate: only the window that is
       // up folds away.
@@ -418,7 +667,12 @@ class _WindowsAreaState extends State<_WindowsArea> {
       final shown = _entryFor(_sheetFocus) ??
           (_live.isNotEmpty ? _live.last : _closing.values.lastOrNull);
       _shown = shown?.key;
+      // Back puts the sheet away before it touches the panel it lies over.
+      WindowsManager.dismissSheet = _dismissSheet;
       return shown == null ? const SizedBox.shrink() : _buildSheet(shown);
+    }
+    if (identical(_dismissSheet, WindowsManager.dismissSheet)) {
+      WindowsManager.dismissSheet = null;
     }
     _sheetFocus = null;
     _shown = null;
@@ -449,13 +703,13 @@ class _WindowsAreaState extends State<_WindowsArea> {
       right: panelOnTheRight
           ? size.width - panelWidth - kWindowGap
           : size.width - kWindowEdgeInset,
-      top: viewPadding.top + kWindowEdgeInset,
+      top: viewPadding.top + kWindowEdgeInset + _commandHeight,
       bottom: size.height - viewPadding.bottom,
     );
     return _AreaMetrics(
       panelWidth: panelWidth,
       bounds: bounds,
-      room: size.height - viewPadding.top - viewPadding.bottom,
+      room: _room,
     );
   }
 }

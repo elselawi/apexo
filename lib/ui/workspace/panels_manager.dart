@@ -51,16 +51,31 @@ abstract class PanelsManager {
 
   /// Takes the matching panels off the screen, settling each one: a removed
   /// panel will never be saved.
+  ///
+  /// The visits a panel carries go with it. That is the panel's **teardown**, not
+  /// a detach — so every path a user can take asks first: the ✕ prompt names each
+  /// dirty record and offers to write them, and `CloseAllButton` asks whether
+  /// to save or discard every dirty owner. A programmatic caller
+  /// that must not lose a draft detaches the visits (`detachVisits`) instead of
+  /// closing the panel behind them.
   static void close(String targetToClose) {
     for (final panel in active().toList()) {
-      if (_matches(panel, targetToClose)) panel.settle();
+      if (_matches(panel, targetToClose)) {
+        panel.releaseSessions();
+        panel.settle();
+      }
     }
     active(active()..removeWhere((p) => _matches(p, targetToClose)));
   }
 
-  /// Closes every panel — logout, and the tests' clean slate. Each is settled.
+  /// Closes every panel — logout, and the tests' clean slate. Each is settled,
+  /// and the visits they carry are dropped with them.
+  ///
+  /// The UI's own "close everything" is [CloseAllButton], which confirms unsaved
+  /// work before reaching this forced teardown. Logout also uses this method.
   static void closeAll() {
     for (final panel in active()) {
+      panel.releaseSessions();
       panel.settle();
     }
     minimize(false);

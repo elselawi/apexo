@@ -1,3 +1,4 @@
+import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/ui/workspace/panel.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -17,10 +18,19 @@ class PanelOpenBuilder extends StatelessWidget {
     super.key,
     required this.itemId,
     required this.builder,
+    this.carries,
   });
 
   /// The record the row is about.
   final String itemId;
+
+  /// Whether [panel] is showing [itemId] as a record it **carries**, not as the
+  /// one it edits — a visit attached to its patient's panel.
+  ///
+  /// A visit does not become a panel, so "is this visit open?" is no longer a
+  /// question about `panel.itemId`; it is a question about what the open panels
+  /// are carrying (plan §7.2). Null for a row whose record is always a panel.
+  final bool Function(Panel panel)? carries;
 
   final Widget Function(BuildContext context, int? panelIndex) builder;
 
@@ -28,11 +38,17 @@ class PanelOpenBuilder extends StatelessWidget {
   Widget build(BuildContext context) {
     return StreamBuilder<List<Panel>>(
       stream: PanelsManager.active.stream,
-      builder: (context, _) {
-        final index = PanelsManager.active()
-            .indexWhere((panel) => panel.itemId == itemId);
-        return builder(context, index == -1 ? null : index);
-      },
+      builder: (context, _) => MStreamBuilder(
+        streams: [
+          if (carries != null)
+            for (final panel in PanelsManager.active()) panel.attachments.stream,
+        ],
+        builder: (context, _) {
+          final index = PanelsManager.active().indexWhere((panel) =>
+              panel.itemId == itemId || (carries?.call(panel) ?? false));
+          return builder(context, index == -1 ? null : index);
+        },
+      ),
     );
   }
 }

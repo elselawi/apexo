@@ -28,6 +28,8 @@ class WindowActions extends StatefulWidget {
     this.hasChanges,
     this.onSaved,
     this.confirmClose = true,
+    this.saveLabel = 'save',
+    this.extraActions = const <Widget>[],
   });
 
   /// Whether the window writes anything at all. A list or a scan does not, and
@@ -51,6 +53,15 @@ class WindowActions extends StatefulWidget {
 
   /// Told after a save lands, so the window can re-read whether it is clean.
   final VoidCallback? onSaved;
+
+  /// The localization key for this Save, so the button says **which** record it
+  /// writes — "Save visit" rather than a "save" that could mean either of the
+  /// two records the row is showing (plan §4.4).
+  final String saveLabel;
+
+  /// The record's own actions, drawn in this row beside Save and Close — a
+  /// window's delete, and nothing that edits a field.
+  final List<Widget> extraActions;
 
   @override
   State<WindowActions> createState() => _WindowActionsState();
@@ -83,9 +94,16 @@ class _WindowActionsState extends State<WindowActions> {
           top: BorderSide(color: theme.resources.dividerStrokeColorDefault),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      // A wrap rather than a row: the same row of actions, but a window narrow
+      // enough for three of them drops one to a second line instead of
+      // overflowing its edge.
+      child: Wrap(
+        alignment: WrapAlignment.spaceEvenly,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 8,
+        runSpacing: 4,
         children: [
+          ...widget.extraActions,
           if (widget.savable)
             IconButton(
               key: WK.windowSave,
@@ -102,7 +120,7 @@ class _WindowActionsState extends State<WindowActions> {
               ),
               icon: ButtonContent(
                 WindowsIcons.save,
-                txt('save'),
+                txt(widget.saveLabel),
                 inProgress: _saving,
               ),
             ),

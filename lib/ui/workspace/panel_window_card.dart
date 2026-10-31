@@ -21,23 +21,34 @@ class PanelWindowCard extends StatelessWidget {
     required this.window,
     required this.onMinimize,
     this.accent,
+    this.badge,
     this.dirty = false,
+    this.active = true,
     this.onSave,
     this.onRaise,
     this.onDragUpdate,
+    this.attachments,
   });
 
   final PanelWindow window;
   final VoidCallback onMinimize;
 
-  /// The colour the record's kind is known by — the panel's own.
+  /// The colour the record's kind is known by — the panel's own for its record,
+  /// the session's for a visit it carries.
   final Color? accent;
+
+  /// The glyph that marks whose record this window edits — 📅 or 👤.
+  final String? badge;
 
   /// Whether the record behind this window has work that has not been stored.
   final bool dirty;
 
-  /// Writes the record this window edits — the panel's own save. Null for a
-  /// window that has nothing to write, which then gets no Save button.
+  /// Whether this window is in front of the other floating windows.
+  final bool active;
+
+  /// Writes the record this window edits — the **session's** own save, not the
+  /// panel's. Null for a window that has nothing to write, which then gets no
+  /// Save button.
   final Future<void> Function()? onSave;
 
   /// Touching the window brings it in front of the others.
@@ -46,17 +57,28 @@ class PanelWindowCard extends StatelessWidget {
   /// Dragging the window by its header.
   final ValueChanged<Offset>? onDragUpdate;
 
+  /// The editors this window carries with it — a visit chart's labwork and
+  /// photos — drawn as an attachment tray under its own content.
+  final Widget? attachments;
+
   @override
   Widget build(BuildContext context) {
     final save = onSave;
+    final tray = attachments;
+    final actions = window.footerActions;
     return WindowShell(
       icon: window.icon,
       title: window.title,
       subtitle: window.subtitle?.call(),
       accent: accent,
+      active: active,
+      badge: badge,
       onRaise: onRaise,
       onDragUpdate: onDragUpdate,
       actions: [
+        // The window's own ways into what it belongs to, before its controls: a
+        // chart's list of visits sits beside "minimize", not in its footer.
+        ...window.headerActions,
         Button(
           key: WK.windowMinimize(window.id),
           onPressed: onMinimize,
@@ -73,25 +95,32 @@ class PanelWindowCard extends StatelessWidget {
           ),
         ),
       ],
-      footer: save == null && window.footer == null
+      footer: save == null &&
+              window.footer == null &&
+              tray == null &&
+              actions.isEmpty
           ? null
           : Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 if (window.footer != null) window.footer!,
-                if (save != null)
+                if (tray != null) tray,
+                if (save != null || actions.isNotEmpty)
                   WindowActions(
                     // The editing is done in here, so the saving is done in here
-                    // too: one record, one write — this is the panel's own.
+                    // too: one record, one write — this is the session's own, and
+                    // it says whose it is.
                     key: WK.windowSaveFooter(window.id),
-                    savable: true,
+                    savable: save != null,
                     dirty: dirty,
-                    onSave: save,
+                    onSave: save ?? () async {},
+                    saveLabel: window.saveLabel ?? 'save',
                     // Closing a docked window only puts it away: the panel still
                     // holds the draft, so there is nothing to ask about.
                     confirmClose: false,
                     onClose: onMinimize,
+                    extraActions: actions,
                   ),
               ],
             ),

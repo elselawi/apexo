@@ -3,6 +3,7 @@ import 'dart:ui' show Offset;
 
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/window_geometry.dart';
+import 'package:apexo/ui/workspace/window_group.dart';
 
 export 'package:apexo/ui/workspace/window_geometry.dart';
 
@@ -17,13 +18,17 @@ const double kWindowGap = 12.0;
 /// never touches it.
 const double kWindowEdgeInset = 8.0;
 
+/// Space above windows for the workspace command and its bottom gap.
+const double kWorkspaceCommandHeight = 64.0;
+
 /// How far above the tap a window opened from it is put, so the finger or the
 /// pointer does not cover the window's own header.
 const double kWindowTapLift = 20.0;
 
-/// The room a window opened at a tap keeps under it: a window that would hang
-/// off the bottom of the screen is lifted to keep at least this much of itself
-/// visible, and scrolls its body if that is less than it wanted.
+/// The room a window opened at a tap keeps under it **before its own height is
+/// known**: such a window is lifted to keep at least this much of itself visible,
+/// and a first frame that turns out taller than that scrolls until the layer has
+/// measured it and lifted it by its real height ([placementAt]).
 const double kWindowMinOpeningHeight = 320.0;
 
 /// The width the windows area has on [screenWidth]: what the panel and the gaps
@@ -117,6 +122,211 @@ double windowWidth(
   return math.min(wanted, available);
 }
 
+/// One record's windows, as a group the row is planned from.
+///
+/// The panel's own record and the record it carries beside itself are demanded
+/// separately, because they have different widths and different memories — and
+/// because a window in the row must always be able to say whose it is.
+final class WindowGroupDemand {
+  const WindowGroupDemand({
+    required this.slot,
+    required this.windows,
+    this.remembered,
+  });
+
+  /// The block of the row this group fills — see [kHostSlot], [kAttachedSlot].
+  final String slot;
+
+  /// The windows the record offers, in the order it offers them.
+  final List<PanelWindow> windows;
+
+  /// The window ids the user left open in this slot: null when they never
+  /// touched it (the group's own first picks open), an empty list when they
+  /// chose to leave none (nothing of this group opens by itself).
+  final List<String>? remembered;
+
+  String keyOf(PanelWindow window) => rowKey(slot, window.id);
+}
+
+/// What one row shows, decided once and in full.
+///
+/// A count of windows cannot describe this row: the chart is 960 wide and a
+/// pre-op form 560, so "three windows fit" says nothing about *which* three. The
+/// plan names the windows, in row order, with the width each one takes — so the
+/// layer draws exactly what the panel promised, and the dock puts away exactly
+/// what did not fit (plan §6.2-5).
+final class WindowsPlan {
+  const WindowsPlan({
+    required this.compact,
+    required this.selected,
+    required this.widths,
+    required this.used,
+    required this.available,
+    required this.room,
+  });
+
+  /// Nothing on screen — what a panel with no windows at all gets.
+  static const WindowsPlan none = WindowsPlan(
+    compact: false,
+    selected: <String>[],
+    widths: <String, double>{},
+    used: 0,
+    available: 0,
+    room: 0,
+  );
+
+  /// One window over the panel at a time: a phone draws sheets, not a row.
+  final bool compact;
+
+  /// The windows on screen, by row key ([rowKey]), **in row order** — the order
+  /// they are drawn in, from the panel's edge outwards.
+  final List<String> selected;
+
+  /// The width every candidate window takes, by row key — the selected ones and
+  /// the ones left in the dock, because opening one from the dock afterwards has
+  /// to know whether it still fits.
+  final Map<String, double> widths;
+
+  /// The width the selected windows take, gaps included.
+  final double used;
+
+  /// The width the row has to work with.
+  final double available;
+
+  /// The height a window needs to be shown whole.
+  final double room;
+
+  bool isSelected(String key) => selected.contains(key);
+
+  double widthOf(String key) => widths[key] ?? 0;
+
+  /// Whether the same windows are on screen as [other] — the question a resize
+  /// asks before rearranging.
+  bool sameSelection(WindowsPlan other) =>
+      compact == other.compact &&
+      used == other.used &&
+      selected.length == other.selected.length &&
+      selected.every(other.selected.contains);
+}
+
+/// What the row shows beside a panel [panelWidth] wide on a screen
+/// [screenWidth] wide and [screenHeight] tall, with the windows [groups] offer.
+///
+/// Rules, in order (plan §6.2-5):
+///
+/// 1. A phone draws one window: the one the opener asked for, else nothing —
+///    a sheet the user did not ask for is in the way of the panel.
+/// 2. Candidates are the focused window, then each group's remembered picks,
+///    then the remaining windows of a group the user has never arranged.
+/// 3. Each candidate is placed if it fits **and** if the row is tall enough for
+///    it; a candidate that does not fit is skipped, not fatal — a narrower
+///    window later in the list may still fit, which is the whole point of
+///    mixed widths.
+/// 4. What is left over stays in its dock. Nothing overflows, nothing scrolls,
+///    and there is never a second row.
+WindowsPlan computeWindowsPlan({
+  required double screenWidth,
+  required double screenHeight,
+  required double panelWidth,
+  required List<WindowGroupDemand> groups,
+  String? focus,
+  double gap = kWindowGap,
+}) {
+  final available = windowAreaWidth(
+    screenWidth: screenWidth,
+    panelWidth: panelWidth,
+    gap: gap,
+  );
+  // The room one row has to itself: the screen between its two insets.
+  final room = math.max(0.0, screenHeight - 2 * kWindowEdgeInset);
+
+  /// Every window the row could show, and the order the record offers them in.
+  final rowOrder = <String>[];
+  final byKey = <String, ({PanelWindow window, WindowGroupDemand group})>{};
+  for (final group in groups) {
+    for (final window in group.windows) {
+      final key = group.keyOf(window);
+      if (byKey.containsKey(key)) continue;
+      rowOrder.add(key);
+      byKey[key] = (window: window, group: group);
+    }
+  }
+  if (byKey.isEmpty) return WindowsPlan.none;
+
+  final widths = <String, double>{
+    for (final key in rowOrder)
+      key: windowWidth(byKey[key]!.window, available, panelWidth: panelWidth),
+  };
+
+  if (screenWidth < kWindowsBreakpoint) {
+    final selected = focus != null && byKey.containsKey(focus)
+        ? <String>[focus]
+        : const <String>[];
+    return WindowsPlan(
+      compact: true,
+      selected: selected,
+      widths: widths,
+      used: selected.isEmpty ? 0 : (widths[selected.first] ?? 0),
+      available: available,
+      room: room,
+    );
+  }
+
+  // The order candidates are *tried* in — not the order they are drawn in.
+  final tried = <String>[];
+  void tryWindow(String? key) {
+    if (key == null || !byKey.containsKey(key) || tried.contains(key)) return;
+    tried.add(key);
+  }
+
+  tryWindow(focus);
+  for (final group in groups) {
+    for (final id in group.remembered ?? const <String>[]) {
+      tryWindow(rowKey(group.slot, id));
+    }
+  }
+  for (final group in groups) {
+    // A group the user has arranged opens exactly what they left open. One they
+    // have never touched opens its own first picks, in its own order.
+    if (group.remembered != null) continue;
+    for (final window in group.windows) {
+      // An attachment is never a first pick: it hangs off the window it belongs
+      // to, behind that window's own chip. A record's workspace does open by
+      // itself; a secondary editor does not.
+      if (window.isAttachment || !window.byDefault) continue;
+      tryWindow(group.keyOf(window));
+    }
+  }
+
+  var used = 0.0;
+  final chosen = <String>{};
+  for (final key in tried) {
+    final candidate = byKey[key]!;
+    // Too short for it: it would have to scroll, so it stays in the dock. Not a
+    // reason to stop — a later window may ask for less height.
+    if (key != focus && candidate.window.minHeight > room + 0.5) continue;
+    final width = widths[key] ?? 0;
+    final next = used + (chosen.isEmpty ? 0 : gap) + width;
+    if (next > available + 0.5) continue;
+    used = next;
+    chosen.add(key);
+  }
+
+  return WindowsPlan(
+    compact: false,
+    // Drawn in the record's own order, group by group: the visit's windows
+    // nearest the panel, the patient's further out (plan §4.1).
+    selected: <String>[
+      for (final key in rowOrder)
+        if (chosen.contains(key)) key
+    ],
+    widths: widths,
+    used: used,
+    available: available,
+    room: room,
+  );
+}
+
 /// Where the windows a panel opens go: one row, side by side, starting at the
 /// edge the panel is on — the trailing side in a left-to-right app, the leading
 /// side in a right-to-left one.
@@ -180,17 +390,23 @@ List<WindowSlot> arrangeWindows({
 /// Where a window opened from something on the screen appears: at what was
 /// tapped, so a list a row asked for comes from that row rather than from the
 /// panel's side of the screen.
+///
+/// A tap near the bottom would open a window that hangs off the screen, so the
+/// window is lifted — but only as far as it has to be. Once its own [height] is
+/// known, that is exactly far enough for the whole window to sit above the bottom
+/// edge: put any lower, it would be scrolled before it was ever read. Until then
+/// [kWindowMinOpeningHeight] stands in for the height.
 WindowPlacement placementAt({
   required Offset origin,
   required double width,
   required WindowBounds bounds,
   required bool rtl,
+  double? height,
 }) {
   // The window opens at the tap and grows away from it, in reading order.
   final left = rtl ? origin.dx - width : origin.dx;
-  // A tap near the bottom would open a window that hangs off the screen: lift
-  // it to keep a usable part of it — header, body and buttons — in view.
-  final maxTop = math.max(bounds.top, bounds.bottom - kWindowMinOpeningHeight);
+  final room = height ?? kWindowMinOpeningHeight;
+  final maxTop = math.max(bounds.top, bounds.bottom - room);
   return bounds.clamp(
     WindowPlacement(
       left: left,

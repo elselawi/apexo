@@ -1,11 +1,19 @@
 import 'dart:convert';
 
+import 'package:apexo/ui/workspace/window_group.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 
-/// Which of a panel's floating windows the user left open last time, remembered
+/// Which of a panel's windows the user left open last time, remembered
 /// **per device** and keyed by the kind of record the panel shows
-/// (`Panel.singularName`) — so a patient's panel opens the way the last
-/// patient's was left, without a setting anywhere to find.
+/// (`Panel.singularName`) and the **slot** it draws that kind in — so a patient's
+/// panel opens the way the last patient's was left, and the visit a patient panel
+/// carries opens the way the last visit was left.
+///
+/// The slot is what keeps the memory from being per-record: `appointment` and
+/// `attached` are the same two strings for every visit in the app, while the
+/// visit's own id never reaches this class (plan §6.2-4). A memory written before
+/// slots existed is read as the host slot's, so an upgrade does not rearrange
+/// anybody's screens.
 ///
 /// Only the *default* is remembered: the screen still decides what fits, and a
 /// window the panel no longer offers is simply dropped when the default is
@@ -23,23 +31,34 @@ class WindowDefaults {
   /// Stores [value] — the whole JSON, the only shape this class writes.
   final void Function(String value) write;
 
-  /// The windows left open on a `kind` panel, in the order they were on screen.
+  /// The windows left open on a `kind` panel, in the order they were on screen,
+  /// for the slot the kind is drawn in.
   ///
   /// Null when the user has never left this kind of panel — the panel then opens
   /// its own first picks — and an empty list when they left none of its windows
   /// open, which is a choice and is kept: such a panel comes alone, with every
   /// window one click away in its dock.
-  List<String>? of(String kind) {
-    final stored = _read()[kind];
-    return stored == null ? null : List<String>.of(stored);
+  List<String>? of(String kind, [String slot = kHostSlot]) {
+    final stored = _read();
+    final scoped = stored['$kind/$slot'];
+    if (scoped != null) return List<String>.of(scoped);
+    // Written before slots existed: a memory of the kind is the host slot's.
+    final legacy = stored[kind];
+    if (slot != kHostSlot || legacy == null) return null;
+    return List<String>.of(legacy);
   }
 
-  /// Remembers [open] as the windows a `kind` panel should open with next time.
-  void remember(String kind, List<String> open) {
+  /// Remembers [open] as the windows a `kind` panel should open with next time,
+  /// in the slot it draws them.
+  void remember(String kind, List<String> open, {String slot = kHostSlot}) {
     final all = _read();
-    final previous = all[kind];
+    final key = '$kind/$slot';
+    final previous = all[key] ?? (slot == kHostSlot ? all[kind] : null);
     if (previous != null && listEquals(previous, open)) return;
-    all[kind] = List<String>.of(open);
+    // The un-slotted entry has been migrated: keeping it would let an old
+    // preference come back if the new one is ever removed.
+    if (slot == kHostSlot) all.remove(kind);
+    all[key] = List<String>.of(open);
     write(jsonEncode(all));
   }
 

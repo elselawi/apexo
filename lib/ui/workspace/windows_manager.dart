@@ -57,6 +57,13 @@ abstract final class WindowsManager {
     return shown;
   }
 
+  /// The sheet a phone is showing, registered by the windows layer.
+  ///
+  /// Back walks out in order — sheet, then the visit, then the panel (plan
+  /// §4.2) — and the sheet is the layer's, so the app asks it through here. Null
+  /// on a wide screen, where windows are not sheets.
+  static bool Function()? dismissSheet;
+
   /// The window to bring in front of the others, once — null when there is no
   /// such request waiting.
   static String? takeFocus() {
@@ -199,7 +206,9 @@ abstract final class WindowsManager {
     if (carried != null) panel.adoptDraft(carried);
     closeScope(scope);
     if (focus != null && panel.floatingWindows.any((w) => w.id == focus)) {
-      panel.workspace.show(focus);
+      // The caller named a window of the record: the panel takes it as the one to
+      // show, so the next plan cannot put it away again.
+      panel.showWindow(focus);
     }
     final index = PanelsManager.active().indexOf(panel);
     if (index > -1) PanelsManager.bringToFront(index);

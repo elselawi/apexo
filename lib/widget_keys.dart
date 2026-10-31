@@ -209,6 +209,66 @@ class WK {
   static Key windowToggle(String id) => Key("windowToggle-$id");
   static Key windowMinimize(String id) => Key("windowMinimize-$id");
 
+  /// The visit band: the record a panel carries, its windows, its state, and the
+  /// controls in its footer.
+  ///
+  /// The band is a second dock on the same screen, so its pills are namespaced:
+  /// a visit and its patient both offer a `gallery`, and a test (or a user) has
+  /// to be able to say which one it means.
+  static const visitBand = Key("visitBand");
+
+  /// The record's own compact editor, inside the band.
+  static const visitContent = Key("visitContent");
+  static const visitState = Key("visitState");
+  static const visitSave = Key("visitSave");
+  static const visitMenu = Key("visitMenu");
+  static const visitDetach = Key("visitDetach");
+  static const visitMarkedCompleted = Key("visitMarkedCompleted");
+  static const visitUnsavedCount = Key("visitUnsavedCount");
+  static const visitMenuDone = Key("visitMenuDone");
+
+  /// The band footer's "move to the visit that still has unsaved work" action.
+  static const visitMoveToVisit = Key("visitMoveToVisit");
+
+  /// The line that explains why the patient's fields are read-only while a visit
+  /// is open.
+  static const patientReadOnly = Key("patientReadOnly");
+
+  /// The band footer's delete (archive/restore) action. Close is
+  /// [visitDetach], and save is [visitSave].
+  static const visitDelete = Key("visitDelete");
+
+  /// The one tool in the visit band's dock: operative details.
+  static Key visitBandWindow(String id) => Key("visitBandWindow-$id");
+
+  /// The tray of editors hanging off the visit band — its labwork order and its
+  /// photos — drawn at the band's foot, and again on the post-op card inside the
+  /// visit's chart.
+  static const visitBandAttachments = Key("visitBandAttachments");
+  static const visitChartAttachments = Key("visitChartAttachments");
+
+  /// The visit scope bar's "new visit" button — beside the visits it joins.
+  static const chartAddAppointment = Key("chartAddAppointment");
+
+  /// The visit chart's own way into the patient's whole list of visits — a
+  /// button on the chart's title, beside minimize.
+  static const chartAllAppointments = Key("chartAllAppointments");
+
+  /// One attachment chip: the way to a window's side editors — a visit chart's
+  /// labwork and photos, a patient's photos and page.
+  ///
+  /// [owner] names the frame the chip is drawn on. A visit's photos and a
+  /// patient's are both `gallery`, so the key has to say which record is
+  /// offering it.
+  static Key attachmentToggle(String id, {String? owner}) => Key(
+        owner == null ? "attachmentToggle-$id" : "attachmentToggle-$owner-$id",
+      );
+
+  /// One of the record's workspace buttons, inside a panel's body — a patient's
+  /// chart and Visits list.
+  static Key workspaceWindowToggle(String id) =>
+      Key("workspaceWindowToggle-$id");
+
   /// The Save/Close a window standing on its own carries, and the close button
   /// its sheet gets on a phone.
   static const windowSave = Key("windowSave");
@@ -242,6 +302,17 @@ class WK {
   static const btnNewAppointment = Key("btnNewAppointment");
   static const btnNewLabwork = Key("btnNewLabwork");
 
+  /// The sheets a patient or a visit is created from — fields first, then the
+  /// record: nothing is opened as a draft for the sheet to fill in.
+  static const fieldNewPatientName = Key("fieldNewPatientName");
+  static const fieldNewPatientPhone = Key("fieldNewPatientPhone");
+  static const btnCreatePatient = Key("btnCreatePatient");
+  static const fieldNewAppointmentPatient = Key("fieldNewAppointmentPatient");
+  static const fieldNewAppointmentDate = Key("fieldNewAppointmentDate");
+  static const fieldNewAppointmentTime = Key("fieldNewAppointmentTime");
+  static const fieldNewAppointmentNotes = Key("fieldNewAppointmentNotes");
+  static const btnCreateAppointment = Key("btnCreateAppointment");
+
   /// One of the dashboard's squares, and the number (or amount) it shows.
   ///
   /// The square's own labels are localized and the widgets are anonymous, so
@@ -267,8 +338,16 @@ class WK {
   static const btnNewSupplier = Key("btnNewSupplier");
 
   /// The appointment's labwork: the "add labwork for this appointment" link, and
-  /// the delete inside the order itself.
+  /// the order's own removal, which asks the standard delete question first.
   static const btnAddLabwork = Key("btnAddLabwork");
+  static const btnRemoveLabwork = Key("btnRemoveLabwork");
+
+  /// The operative window's delete for a visit standing on its own — the band's
+  /// [visitDelete], where there is no band to carry it — and the same action on
+  /// the visit's chart, whose footer carries it while the visit is beside its
+  /// patient.
+  static const operativeDeleteVisit = Key("operativeDeleteVisit");
+  static const chartDeleteVisit = Key("chartDeleteVisit");
 
   /// The X-ray link (DICOM) screen.
   ///

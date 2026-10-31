@@ -8,6 +8,11 @@ class Ku implements En {
   String $code = "ku";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "کژ",
+    "timelineDayUnit": "ڕ",
+    "timelineWeekUnit": "هەف",
+    "timelineMonthUnit": "مانگ",
+    "timelineYearUnit": "ساڵ",
     // common
     "cancel": "هەڵوەشاندنەوە",
     "ok": "باشە",

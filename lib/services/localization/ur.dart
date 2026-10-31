@@ -8,6 +8,11 @@ class Ur implements En {
   String $code = "ur";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "گھ",
+    "timelineDayUnit": "د",
+    "timelineWeekUnit": "ہف",
+    "timelineMonthUnit": "ماہ",
+    "timelineYearUnit": "سال",
     // common
     "cancel": "منسوخ کریں",
     "ok": "ٹھیک ہے",

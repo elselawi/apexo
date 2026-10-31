@@ -8,6 +8,11 @@ class Fa implements En {
   String $code = "fa";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "س",
+    "timelineDayUnit": "ر",
+    "timelineWeekUnit": "ه",
+    "timelineMonthUnit": "م",
+    "timelineYearUnit": "سال",
     // common
     "cancel": "لغو",
     "ok": "تأیید",

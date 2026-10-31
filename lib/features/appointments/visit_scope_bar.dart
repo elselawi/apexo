@@ -1013,20 +1013,22 @@ class _VisitTimelineCanvas extends StatelessWidget {
     final days = to.difference(from).inDays.abs();
     if (days == 0) {
       final hours = to.difference(from).inHours.abs();
-      return hours > 0 ? '${hours}h' : '<1d';
+      return hours > 0
+          ? '$hours${txt('timelineHourUnit')}'
+          : '<1${txt('timelineDayUnit')}';
     }
     if (days >= 365) {
       final years = (days / 365).floor();
-      return '${years}y';
+      return '$years${txt('timelineYearUnit')}';
     }
     if (days >= 60) {
       final months = (days / 30).round();
-      return '${months}m';
+      return '$months${txt('timelineMonthUnit')}';
     }
     if (days >= 14 && days % 7 == 0) {
-      return '${days ~/ 7}w';
+      return '${days ~/ 7}${txt('timelineWeekUnit')}';
     }
-    return '${days}d';
+    return '$days${txt('timelineDayUnit')}';
   }
 
   /// The widest a dot reaches either side of its position — the selected dot at

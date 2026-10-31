@@ -8,6 +8,7 @@ import 'package:apexo/features/appointments/visit_scope_bar.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
 import 'package:apexo/widget_keys.dart';
@@ -40,6 +41,35 @@ void main() {
       ..setAll(originalAppointments.values.toList());
     login.savedPermissions = originalPermissions;
   });
+
+  for (var language = 0; language < locale.list.length; language++) {
+    testWidgets('timeline units follow ${locale.list[language].$code}',
+        (tester) async {
+      final previous = locale.selected();
+      addTearDown(() => locale.select(previous));
+      locale.select(language);
+      final patient = testPatient(id: 'localized-interval');
+      patients.set(patient);
+      final from = DateTime(2026, 1, 1);
+      appointments.setAll([
+        testAppointment(id: 'interval-start', patientID: patient.id, date: from),
+        testAppointment(id: 'interval-end', patientID: patient.id,
+            date: from.add(const Duration(days: 7))),
+      ]);
+      final session = DentalChartSession(
+        id: 'patient:${patient.id}', titleKey: 'dentalChart',
+        subtitle: () => patient.title, type: StateType.state,
+        teeth: {}, extraNotes: {}, history: () => [], oldNotes: () => {},
+        historyTitle: 'toothHistory',
+      );
+      await pumpApexoApp(tester, Directionality(
+        textDirection: locale.s.$direction,
+        child: SizedBox(width: 700, child: VisitScopeBar(patient: patient, session: session)),
+      ));
+      expect(find.text('7${txt('timelineDayUnit')}'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   for (final direction in TextDirection.values) {
     for (final visitCount in [0, 1, 4, 30]) {

@@ -10,6 +10,11 @@ class Es implements En {
 
   @override
   Map<String, String> dictionary = {
+    "timelineHourUnit": "h",
+    "timelineDayUnit": "d",
+    "timelineWeekUnit": "sem",
+    "timelineMonthUnit": "m",
+    "timelineYearUnit": "a",
     // common
     "cancel": "Cancelar",
     "ok": "Aceptar",

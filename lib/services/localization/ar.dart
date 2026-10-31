@@ -8,6 +8,11 @@ class Ar implements En {
   String $code = "ar";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "س",
+    "timelineDayUnit": "ي",
+    "timelineWeekUnit": "أ",
+    "timelineMonthUnit": "ش",
+    "timelineYearUnit": "سنة",
     // common
     "cancel": "إلغاء",
     "ok": "موافق",

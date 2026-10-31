@@ -8,6 +8,11 @@ class Tr implements En {
   String $code = "tr";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "sa",
+    "timelineDayUnit": "g",
+    "timelineWeekUnit": "hf",
+    "timelineMonthUnit": "ay",
+    "timelineYearUnit": "y",
     // common
     "cancel": "İptal",
     "ok": "Tamam",

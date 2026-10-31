@@ -10,6 +10,11 @@ class El implements En {
 
   @override
   Map<String, String> dictionary = {
+    "timelineHourUnit": "ώ",
+    "timelineDayUnit": "ημ",
+    "timelineWeekUnit": "εβδ",
+    "timelineMonthUnit": "μήν",
+    "timelineYearUnit": "έτ",
     // common
     "cancel": "Άκυρο",
     "ok": "OK",

@@ -8,6 +8,11 @@ class It implements En {
   String $code = "it";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "h",
+    "timelineDayUnit": "g",
+    "timelineWeekUnit": "sett",
+    "timelineMonthUnit": "m",
+    "timelineYearUnit": "a",
     // common
     "cancel": "Annulla",
     "ok": "OK",

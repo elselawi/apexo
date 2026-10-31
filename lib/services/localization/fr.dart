@@ -8,6 +8,11 @@ class Fr implements En {
   String $code = "fr";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "h",
+    "timelineDayUnit": "j",
+    "timelineWeekUnit": "sem",
+    "timelineMonthUnit": "m",
+    "timelineYearUnit": "a",
     // common
     "cancel": "Annuler",
     "ok": "OK",

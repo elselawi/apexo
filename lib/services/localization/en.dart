@@ -9,6 +9,11 @@ class En {
   String $code = "en";
 
   Map<String, String> dictionary = {
+    "timelineHourUnit": "h",
+    "timelineDayUnit": "d",
+    "timelineWeekUnit": "w",
+    "timelineMonthUnit": "m",
+    "timelineYearUnit": "y",
     // common
     "cancel": "Cancel",
     "ok": "OK",

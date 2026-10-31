@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 class TagInputItem extends AutoSuggestBoxItem<String> {
@@ -59,8 +60,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   }
 
   void _onSuggestionSelected(AutoSuggestBoxItem<String> suggestion) {
-    // Same window as `onFocusChange` above (fluent runs both from its own
-    // dispose path), so the same early return applies.
+    // Defensive: this is the user's own tap or Enter, but a callback after our
+    // element is gone would still be a `setState` on a dead State.
     if (!mounted || !context.mounted) return;
     setState(() {
       _tags.add(TagInputItem(value: suggestion.value, label: suggestion.label));
@@ -81,6 +82,61 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     if (_tags.length < widget.limit) {
       _focusNode.requestFocus();
     }
+  }
+
+  /// Runs [fn] as a rebuild: now when the tree can take one, at the end of the
+  /// frame when it cannot.
+  ///
+  /// `setState` is illegal while the framework is locked — during build, layout,
+  /// paint, and the microtasks between them:
+  ///
+  ///     setState() or markNeedsBuild() called when widget tree was locked.
+  ///
+  /// `AutoSuggestBox` reaches our callbacks from places that are not the user's
+  /// own keystroke: `_select()` when the highlight moves, `_unselectAll()` from
+  /// `dismissOverlay()` (which runs when the box loses focus), and its own
+  /// `dispose()`. A focus change applied in a mid-frame microtask, or a teardown
+  /// inside the locked part of a frame, therefore arrives while a rebuild is not
+  /// allowed. Neither `State.mounted` nor `context.mounted` can express that
+  /// window — both stay true until `dispose()`/`unmount()` return — so the guard
+  /// is the scheduler phase.
+  ///
+  /// Deferring rather than dropping matters: a lock that is not a teardown still
+  /// needs the repaint, and a frame is in progress by definition, so the
+  /// callback runs at the end of it.
+  void _rebuild(VoidCallback fn) {
+    void apply() {
+      if (!mounted) return;
+      setState(fn);
+    }
+
+    final phase = SchedulerBinding.instance.schedulerPhase;
+    final locked = phase == SchedulerPhase.persistentCallbacks ||
+        phase == SchedulerPhase.midFrameMicrotasks;
+    if (locked) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => apply());
+    } else {
+      apply();
+    }
+  }
+
+  /// Moves the dropdown's keyboard highlight.
+  ///
+  /// Several focus changes can queue up behind one lock, so the answer is
+  /// recomputed when the rebuild finally runs rather than captured here.
+  void _setFocusedSuggestion(String label, {required bool focused}) {
+    final next = focused
+        ? label
+        : (_focusedSuggestion == label ? null : _focusedSuggestion);
+    if (next == _focusedSuggestion) return;
+
+    _rebuild(() {
+      if (focused) {
+        _focusedSuggestion = label;
+      } else if (_focusedSuggestion == label) {
+        _focusedSuggestion = null;
+      }
+    });
   }
 
   /// Commits whatever is in the text box as a tag, returning whether one was
@@ -204,9 +260,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   }
 
   void _onFocusChanged() {
-    setState(() {
-      _isFocused = _focusNode.hasFocus;
-    });
+    _rebuild(() => _isFocused = _focusNode.hasFocus);
   }
 
   @override
@@ -362,14 +416,20 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                       // width the row actually has: `fieldChrome` is what the
                       // container below spends on its own padding and border.
                       ConstrainedBox(
-                        constraints: BoxConstraints(
-                            maxWidth: availableWidth),
+                        constraints: BoxConstraints(maxWidth: availableWidth),
                         child: AnimatedSize(
                           duration: const Duration(milliseconds: 250),
                           curve: Curves.easeInOut,
                           child: _tags.isEmpty
                               ? const SizedBox.shrink()
-                              : (_isFocused
+                              // A focused field folds its chips away to leave
+                              // the input room. A field that has reached its
+                              // limit has no input left to leave room for, so
+                              // the chips stay: a `limit: 1` picker (the
+                              // patient selector) folded the name it had just
+                              // taken to "+1" and kept it folded until focus
+                              // went somewhere else.
+                              : (_isFocused && inputVisible
                                   ? _buildHiddenTagsIndicator(
                                       tokenSpacing, _tags)
                                   : Row(
@@ -474,29 +534,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
               // callback has to travel with the item: `AutoSuggestBox` only
               // invokes `onSelected` from its own row widget.
               onSelected: () => _onSuggestionSelected(s),
-              onFocusChange: (focused) {
-                // fluent calls this from its own `dispose()`: `_unselectAll()`
-                // walks every item and fires `onFocusChange(false)`, at which
-                // point the element is already defunct and the widget tree is
-                // locked — so this `setState` cannot be taken.
-                //
-                // Note that **no guard expresses that window**: during it
-                // `State.mounted` is still true (`_element` is cleared after
-                // `dispose()` returns) and `context.mounted` is still true too
-                // (`Element.mounted` is `_parent != null`). The harness drops
-                // the resulting assertion on the fluent frame
-                // (`E2E.installKnownFlutterIssueFilters`, which matches the
-                // stack, not the message); this early return only covers the
-                // ordinary case of a callback after our own dispose.
-                if (!mounted || !context.mounted) return;
-                setState(() {
-                  if (focused) {
-                    _focusedSuggestion = s.label;
-                  } else if (_focusedSuggestion == s.label) {
-                    _focusedSuggestion = null;
-                  }
-                });
-              },
+              onFocusChange: (focused) =>
+                  _setFocusedSuggestion(s.label, focused: focused),
             ),
           )
           .toList(),

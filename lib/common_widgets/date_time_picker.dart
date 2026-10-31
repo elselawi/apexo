@@ -52,6 +52,7 @@ class DateTimePicker extends StatefulWidget {
     this.showButton = true,
     this.enabled = true,
     this.textStyle,
+    this.textAlignment = AlignmentDirectional.center,
   });
   final DateTime initValue;
   final bool pickTime;
@@ -60,6 +61,13 @@ class DateTimePicker extends StatefulWidget {
   final IconData buttonIcon;
   final void Function(DateTime value) onChange;
   final TextStyle? textStyle;
+
+  /// Where the date sits in the space the picker leaves for it. A picker that
+  /// is one field of a row starts its date at the field's own edge — beside the
+  /// glyph the date carries — rather than floating it in a box wider than the
+  /// text.
+  final AlignmentGeometry textAlignment;
+
   final bool enabled;
 
   @override
@@ -73,6 +81,18 @@ class DateTimePickerState extends State<DateTimePicker> {
   void initState() {
     super.initState();
     value = widget.initValue;
+  }
+
+  @override
+  void didUpdateWidget(covariant DateTimePicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The field is also a view of a record that another control can switch: the
+    // chart's scope bar can put another visit behind the same band, and the date
+    // on screen must be that visit's the moment it does. `initValue` is the only
+    // source of truth — the picker's own `value` is just the last thing it drew.
+    if (widget.initValue != oldWidget.initValue) {
+      value = widget.initValue;
+    }
   }
 
   @override
@@ -94,12 +114,13 @@ class DateTimePickerState extends State<DateTimePicker> {
             Flexible(
               child: SizedBox(
                   height: 34,
-                  child: Center(
+                  child: Align(
+                      alignment: widget.textAlignment,
                       child: Txt(
-                    widget.pickTime ? DF.time(value) : DF.commonDate(value),
-                    style: widget.textStyle,
-                    overflow: TextOverflow.ellipsis,
-                  ))),
+                        widget.pickTime ? DF.time(value) : DF.commonDate(value),
+                        style: widget.textStyle,
+                        overflow: TextOverflow.ellipsis,
+                      ))),
             ),
             if (widget.showButton && widget.enabled)
               IconButton(

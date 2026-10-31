@@ -12,19 +12,33 @@ class PatientPicker extends StatelessWidget {
       {super.key,
       required this.onChanged,
       required this.value,
-      this.enabled = true});
+      this.enabled = true,
+      this.fieldKey = WK.fieldPatient,
+      this.tapOpensRecord = true});
   final void Function(String? id) onChanged;
   final String? value;
   final bool enabled;
 
+  /// The key the picker's field carries. A picker that shares the screen with
+  /// another one — a sheet opened over a panel — needs its own.
+  final Key fieldKey;
+
+  /// Whether tapping the selected patient opens their record. A sheet that is
+  /// still being filled in turns this off: its answer is the patient, not the
+  /// record behind the sheet.
+  final bool tapOpensRecord;
+
   @override
   Widget build(BuildContext context) {
     return TagInputWidget(
-      key: WK.fieldPatient,
-      onItemTap: (tag) {
-        final Patient? tapped = patients.get(tag.value ?? "");
-        unawaited(openPatient(tapped));
-      },
+      key: fieldKey,
+      onItemTap: tapOpensRecord
+          ? (tag) {
+              final Patient? tapped = patients.get(tag.value ?? "");
+              // A tag whose patient is gone is not a reason to start one.
+              if (tapped != null) unawaited(openPatient(tapped));
+            }
+          : null,
       suggestions: patients.present.values
           .map((e) => TagInputItem(value: e.id, label: e.title))
           .toList(),

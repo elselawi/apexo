@@ -135,6 +135,9 @@ abstract interface class HostedRecordSession
   /// band toggle and a form toggle are the same edit.
   void markDone(bool done);
 
+  /// Whether the current account may archive or restore this record.
+  bool get canArchive;
+
   /// Archives or restores the record.
   ///
   /// Not a draft edit: the flag changes the stored record, and opening or saving

@@ -392,7 +392,8 @@ class _VisitBandState extends State<_VisitBand> {
                   ),
                 ),
               ),
-              DeleteButton(
+              if (session.canArchive)
+                DeleteButton(
                 key: WK.visitDelete,
                 restorable: true,
                 actionText: actionText,

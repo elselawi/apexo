@@ -22,11 +22,20 @@ final class WorkspaceCloseRequest {
 
   List<WindowRecordSession> get _currentRecords => <WindowRecordSession>{
         for (final panel in panels) ...[panel, ...panel.owned],
+        for (final window in windows)
+          if (window.recordSession case final owner?) owner,
       }.toList();
+
+  List<FloatingWindow> get independentWindows => [
+        for (final window in windows)
+          if (window.recordSession == null) window,
+      ];
 
   int get dirtyCount =>
       records.where((record) => record.hasPendingEdits).length +
-      windows.where((window) => window.hasChanges?.call() ?? false).length;
+      independentWindows
+          .where((window) => window.hasChanges?.call() ?? false)
+          .length;
 
   bool get saving => records.any((record) => record.inProgress());
 
@@ -50,8 +59,12 @@ final class WorkspaceCloseRequest {
   }
 
   void close() {
+    final hosted = {for (final panel in panels) ...panel.owned};
     WindowsManager.closeAll();
     PanelsManager.closeAll();
+    for (final record in records.whereType<HostedRecordSession>()) {
+      if (!hosted.contains(record)) record.dispose();
+    }
   }
 }
 
@@ -128,7 +141,13 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
     final index = panels.indexWhere((panel) =>
         identical(panel, record) ||
         panel.owned.any((session) => identical(session, record)));
-    if (index < 0) return;
+    if (index < 0) {
+      final window = _request.windows
+          .where((window) => identical(window.recordSession, record))
+          .lastOrNull;
+      if (window != null) _reviewWindow(window);
+      return;
+    }
     final panel = panels[index];
     if (record is HostedRecordSession) {
       // Reattach the existing draft; opening a fresh record would hide its edits.
@@ -200,14 +219,26 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
         setState(() => _error = txt('workspaceResolveVisitsFirst'));
         return;
       }
+      final closingOwners = <WindowRecordSession>{
+        record,
+        if (record is Panel) ...record.owned,
+      };
+      for (final window in _request.windows) {
+        if (closingOwners.contains(window.recordSession)) {
+          WindowsManager.close(window);
+        }
+      }
       if (record is Panel) {
         PanelsManager.close(record.identifier);
       } else if (record is HostedRecordSession) {
         final owner = _request.panels
             .where((panel) => panel.owned.contains(record))
             .firstOrNull;
-        if (owner == null) return;
-        owner.disposeSession(record);
+        if (owner == null) {
+          record.dispose();
+        } else {
+          owner.disposeSession(record);
+        }
       }
       _request = WorkspaceCloseRequest();
     } catch (_) {
@@ -254,7 +285,7 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
         if (!mounted || !_checkWorkspace()) return;
         await _saveRecord(record);
       }
-      for (final window in _request.windows) {
+      for (final window in _request.independentWindows) {
         if (!(window.hasChanges?.call() ?? false)) continue;
         if (!mounted || !_checkWorkspace()) return;
         await _saveWindow(window);
@@ -363,7 +394,7 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
             canSave: record.showBottomControls,
             blocked: _hasDirtyVisits(record),
           ),
-      for (final window in _request.windows)
+      for (final window in _request.independentWindows)
         if (window.hasChanges?.call() ?? false)
           _itemMenu(
             owner: window,

@@ -95,6 +95,7 @@ Future<void> openPatientDentalChart(
     WindowsManager.showStandalone(
       dentalChartWindow(hosted, actions: _visitsActions(patient)),
       scope: scope,
+      recordSession: owner,
       onSave: owner.save,
       hasChanges: () => hosted.hasChanges,
       transfer: hosted.mergeInto,

@@ -279,7 +279,7 @@ class _DeleteVisitButton extends StatelessWidget {
   Widget build(BuildContext context) {
     // Archiving a visit takes its clinical record with it: full access to
     // visits, the same rule its context menu keeps.
-    if (!login.perm(Perm.appointments).full) return const SizedBox.shrink();
+    if (!session.canArchive) return const SizedBox.shrink();
     final appointment = session.item;
     return DeleteButton(
       restorable: true,

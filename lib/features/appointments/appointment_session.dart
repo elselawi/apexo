@@ -7,6 +7,8 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_owner_line.dart';
 import 'package:apexo/features/settings/settings_stores.dart' show DF;
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/appointments/appointment_windows.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
@@ -173,7 +175,11 @@ final class AppointmentSession implements HostedRecordSession {
   }
 
   @override
+  bool get canArchive => login.perm(Perm.appointments).full;
+
+  @override
   Future<void> setArchived(bool archived) async {
+    if (!canArchive) throw StateError('Visit archive permission is required');
     if (archived) {
       appointments.archive(item.id);
     } else {

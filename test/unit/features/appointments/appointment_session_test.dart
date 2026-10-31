@@ -6,6 +6,8 @@ import 'dart:async';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_sessions.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/model_factory.dart';
@@ -39,6 +41,24 @@ void main() {
         preOpNotes: notes,
         price: price,
       );
+
+  for (final archived in [false, true]) {
+    test('limited accounts cannot set archive state to $archived', () async {
+      final permissions = login.savedPermissions;
+      addTearDown(() => login.savedPermissions = permissions);
+      login.savedPermissions = List.of(Perm.full)..[Perm.appointments] = 1;
+      appointments.set(stored()..archived = !archived);
+      final session = appointmentSessions.getOrCreate(stored());
+      session.item.preOpNotes = 'unsaved clinical note';
+
+      expect(session.canArchive, isFalse);
+      await expectLater(session.setArchived(archived), throwsStateError);
+      expect(appointments.get(session.itemId)!.archived, !archived);
+      expect(session.item.archived, !archived);
+      expect(session.item.preOpNotes, 'unsaved clinical note');
+      expect(session.hasPendingEdits, isTrue);
+    });
+  }
 
   test('a fresh session starts clean and in step with the store', () {
     appointments.set(stored());

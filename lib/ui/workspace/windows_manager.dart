@@ -5,6 +5,7 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/floating_window.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/window_origin.dart';
+import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:apexo/core/reactive/observable.dart';
 
 /// Every window floating on its own, in the order they were opened.
@@ -165,6 +166,7 @@ abstract final class WindowsManager {
     Future<void> Function()? onOpenRecord,
     Map<String, dynamic> Function(Map<String, dynamic> stored)? transfer,
     Map<String, String> Function()? baselines,
+    WindowRecordSession? recordSession,
     Offset? origin,
   }) {
     late final FloatingWindow floating;
@@ -180,6 +182,7 @@ abstract final class WindowsManager {
       onOpenRecord: onOpenRecord,
       transfer: transfer,
       baselines: baselines,
+      recordSession: recordSession,
       onClose: () => close(floating),
     );
     return show(floating);

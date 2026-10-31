@@ -98,6 +98,114 @@ void main() {
         theme: theme,
       );
 
+  testWidgets('standalone editors count and save one shared owner',
+      (tester) async {
+    final owner =
+        FakeSession(itemId: 'shared-visit', windows: const [], hasWork: true);
+    for (final id in ['notes', 'labwork']) {
+      WindowsManager.showStandalone(
+        FakeSession.window(id),
+        scope: 'appointment:shared-visit',
+        recordSession: owner,
+        onSave: owner.save,
+        hasChanges: () => owner.hasPendingEdits,
+      );
+    }
+    final request = WorkspaceCloseRequest();
+    expect(request.dirtyCount, 1);
+    expect(request.records, [owner]);
+    expect(request.independentWindows, isEmpty);
+    await pumpButton(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(WK.closeAllWindows));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(txt('workspaceSaveAndClose')).last);
+    await tester.pumpAndSettle();
+
+    expect(owner.saves, ['shared-visit']);
+    expect(owner.isDisposed, isTrue);
+    expect(WindowsManager.open(), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('a hosted owner is counted once even with a standalone editor', () {
+    final host = panel();
+    final owner =
+        FakeSession(itemId: 'shared-visit', windows: const [], hasWork: true);
+    host.attach(owner);
+    PanelsManager.open(host);
+    WindowsManager.showStandalone(
+      windowModel(),
+      recordSession: owner,
+      hasChanges: () => owner.hasPendingEdits,
+    );
+
+    expect(WorkspaceCloseRequest().dirtyCount, 1);
+    owner.inProgress(true);
+    expect(WorkspaceCloseRequest().saving, isTrue);
+    owner.inProgress(false);
+  });
+
+  test('unrelated drafts in the same scope remain separate owners', () {
+    for (final id in ['independent-notes', 'independent-order']) {
+      WindowsManager.showStandalone(FakeSession.window(id),
+          scope: 'same-scope', hasChanges: () => true);
+    }
+    expect(WorkspaceCloseRequest().dirtyCount, 2);
+    expect(WorkspaceCloseRequest().independentWindows, hasLength(2));
+  });
+
+  testWidgets('discarding one standalone owner closes all its editors',
+      (tester) async {
+    final owner =
+        FakeSession(itemId: 'discard-visit', windows: const [], hasWork: true);
+    for (final id in ['notes', 'labwork']) {
+      WindowsManager.showStandalone(FakeSession.window(id),
+          recordSession: owner,
+          onSave: owner.save,
+          hasChanges: () => owner.hasPendingEdits);
+    }
+    await pumpButton(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(WK.closeAllWindows));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(ObjectKey(owner)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(txt('workspaceIgnoreItemAndClose')).last);
+    await tester.pumpAndSettle();
+
+    expect(owner.saves, isEmpty);
+    expect(owner.isDisposed, isTrue);
+    expect(WindowsManager.open(), isEmpty);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reviewing a standalone owner raises its existing editor',
+      (tester) async {
+    final owner =
+        FakeSession(itemId: 'standalone', windows: const [], hasWork: true);
+    final window = WindowsManager.showStandalone(
+      windowModel(),
+      recordSession: owner,
+      onSave: owner.save,
+      hasChanges: () => owner.hasPendingEdits,
+    );
+    await pumpButton(tester);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(WK.closeAllWindows));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(ObjectKey(owner)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(txt('openRecord')).last);
+    await tester.pumpAndSettle();
+
+    expect(WindowsManager.open(), [window]);
+    expect(find.byType(WorkspaceCloseDialog), findsNothing);
+    expect(owner.hasPendingEdits, isTrue);
+    expect(owner.isDisposed, isFalse);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('stays away while nothing is open', (tester) async {
     await pumpButton(tester);
 

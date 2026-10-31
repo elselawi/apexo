@@ -1,6 +1,7 @@
 import 'dart:ui' show Offset;
 
 import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
 /// A window the app floats on its own — a panel's window shown without its
@@ -23,9 +24,14 @@ final class FloatingWindow {
     this.onOpenRecord,
     this.transfer,
     this.baselines,
+    this.recordSession,
   });
 
   final PanelWindow window;
+
+  /// The shared draft owner, when this window edits or accompanies a session.
+  /// Closing the workspace counts and saves the owner once, not once per editor.
+  final WindowRecordSession? recordSession;
 
   /// The record this window belongs to (`patient:<id>`, `appointment:<id>`).
   /// Windows of one record are replaced, not duplicated, and opening a record's

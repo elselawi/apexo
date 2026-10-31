@@ -312,6 +312,7 @@ Future<void> _openStandaloneVisit(
   WindowsManager.showStandalone(
     target,
     scope: session.scope,
+    recordSession: session,
     onSave: target.editsRecord ? session.save : null,
     hasChanges: target.editsRecord ? () => session.hasPendingEdits : null,
     onOpenRecord: onOpenRecord,

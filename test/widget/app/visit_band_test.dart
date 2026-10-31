@@ -168,6 +168,20 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  for (final allowed in [false, true]) {
+    testWidgets('visit band archive capability is $allowed', (tester) async {
+      final panel = hostPanel();
+      final session = visit()..canArchive = allowed;
+      panel.attach(session);
+      await pumpShell(tester, panel);
+
+      expect(
+          find.byKey(WK.visitDelete), allowed ? findsOneWidget : findsNothing);
+      expect(find.byKey(WK.visitDetach), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets('archiving a previous visit does not detach the current visit',
       (tester) async {
     final panel = hostPanel();

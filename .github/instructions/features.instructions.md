@@ -185,6 +185,12 @@ panel of its own. Such a record is a **session**, not a panel:
   An edit or a newly attached visit during a save must keep the panel open.
   Gallery progress belongs to its record and must finish even after the gallery
   widget leaves the screen.
+- A hosted session exposes `canArchive`; both the band and feature actions use
+  that capability, and `setArchived` enforces it again before writing.
+- A standalone editor backed by an existing draft passes `recordSession` to
+  `WindowsManager.showStandalone`. Close confirmation counts and saves the owner
+  once across all its windows and any panel carrying it. Unrelated windows omit
+  the owner and keep independent saves, even when they share a scope.
 
 Tests mirror `lib/`: `test/widget/features/<feature>/`, `test/widget/app/` for
 the shell, `test/widget/shared/<editor>/` for a shared editor, and

@@ -74,6 +74,8 @@ final class FakeSession implements HostedRecordSession {
   }
 
   bool archived = false;
+  @override
+  bool canArchive = true;
   Future<void> Function(bool value)? archive;
 
   @override

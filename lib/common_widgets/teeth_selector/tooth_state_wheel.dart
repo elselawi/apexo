@@ -772,7 +772,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
             ),
             const SizedBox(height: 8),
             Flexible(
-              child: SingleChildScrollView(
+              child: _HistoryScrollFade(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
@@ -1055,4 +1055,89 @@ class _SurfaceClipper extends CustomClipper<RRect> {
 
   @override
   bool shouldReclip(_SurfaceClipper oldClipper) => oldClipper.radius != radius;
+}
+
+class _HistoryScrollFade extends StatefulWidget {
+  const _HistoryScrollFade({required this.child});
+  final Widget child;
+
+  @override
+  State<_HistoryScrollFade> createState() => _HistoryScrollFadeState();
+}
+
+class _HistoryScrollFadeState extends State<_HistoryScrollFade> {
+  final ScrollController _controller = ScrollController();
+  bool _fadeTop = false;
+  bool _fadeBottom = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_syncFade);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncFade());
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_syncFade);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _syncFade() {
+    if (!mounted || !_controller.hasClients) return;
+    final pos = _controller.position;
+    final top = pos.maxScrollExtent > 1.0 && pos.pixels > 1.0;
+    final bottom =
+        pos.maxScrollExtent > 1.0 && pos.pixels < pos.maxScrollExtent - 1.0;
+    if (top != _fadeTop || bottom != _fadeBottom) {
+      setState(() {
+        _fadeTop = top;
+        _fadeBottom = bottom;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (_) {
+        _syncFade();
+        return false;
+      },
+      child: ShaderMask(
+        key: const ValueKey('wheel-history-fade'),
+        blendMode: BlendMode.dstIn,
+        shaderCallback: (bounds) {
+          if (!_fadeTop && !_fadeBottom) {
+            return const LinearGradient(
+              colors: [Colors.white, Colors.white],
+            ).createShader(bounds);
+          }
+          final h = bounds.height;
+          final stop = h > 0 ? (20.0 / h).clamp(0.06, 0.22) : 0.14;
+          return LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              _fadeTop ? Colors.transparent : Colors.white,
+              Colors.white,
+              Colors.white,
+              _fadeBottom ? Colors.transparent : Colors.white,
+            ],
+            stops: [
+              0.0,
+              _fadeTop ? stop : 0.0,
+              _fadeBottom ? 1.0 - stop : 1.0,
+              1.0,
+            ],
+          ).createShader(bounds);
+        },
+        child: SingleChildScrollView(
+          controller: _controller,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
 }

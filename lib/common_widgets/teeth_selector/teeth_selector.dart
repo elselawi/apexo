@@ -17,6 +17,8 @@ class TeethSelector extends StatefulWidget {
     this.history = const [],
     this.historyTitle = 'toothHistory',
     this.onOpenAppointment,
+    this.tint,
+    this.fillCompactHeight = false,
     required this.notation,
     required this.onNote,
     this.onExtraNote,
@@ -37,6 +39,13 @@ class TeethSelector extends StatefulWidget {
   final String historyTitle;
   final ValueChanged<String>? onOpenAppointment;
   final StateType type;
+
+  /// The colour of the record kind the chart belongs to (see
+  /// [OpgDentalChart.tint]). Null keeps the neutral radiographic wash.
+  final Color? tint;
+
+  /// Keeps the chart surface behind a floating operative card.
+  final bool fillCompactHeight;
 
   @override
   State<TeethSelector> createState() => _TeethSelectorState();
@@ -84,6 +93,7 @@ class _TeethSelectorState extends State<TeethSelector> {
     final primaryShown = compact ? showPrimary && !showPermanent : showPrimary;
     return OpgDentalChart(
       isCompactArch: compact,
+      fillCompactHeight: widget.fillCompactHeight,
       currentNotes: widget.currentNotes,
       oldNotes: widget.oldNotes,
       extraNotes: _extraNotes,
@@ -107,6 +117,7 @@ class _TeethSelectorState extends State<TeethSelector> {
       onOpenAppointment: widget.onOpenAppointment,
       notation: widget.notation,
       type: widget.type,
+      tint: widget.tint,
       onNote: (iso, tooth) {
         setState(() {
           widget.onNote(iso, tooth);

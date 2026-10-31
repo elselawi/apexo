@@ -34,24 +34,55 @@ Color _neutralHistoryColor(bool darkMode) =>
 
 /// The radiographic wash the arch sits in: brighter through the middle of the
 /// mouth, where the jaws part, and cooler towards the bone at either end.
-LinearGradient _archWellGradient(bool darkMode) => LinearGradient(
+const List<Color> _lightArchWellColors = [
+  Color(0xFFEDF2F8),
+  Color(0xFFF7FAFC),
+  Color(0xFFE5ECF4),
+  Color(0xFFF7FAFC),
+  Color(0xFFEDF2F8),
+];
+
+/// The same wash for dark mode, over a darker film.
+const List<Color> _darkArchWellColors = [
+  Color(0xFF0A1018),
+  Color(0xFF111A27),
+  Color(0xFF090E15),
+  Color(0xFF111A27),
+  Color(0xFF0A1018),
+];
+
+/// How far the wash is allowed to colour up: it takes the record kind's hue and
+/// only as much saturation as a pale radiograph can carry.
+double _wellTintSaturation(HSLColor wash, bool darkMode) =>
+    (wash.saturation * (darkMode ? 2.0 : 1.9)).clamp(0.0, 1.0).toDouble();
+
+/// [base] washed with the record kind's [tint].
+///
+/// The wash keeps the brightness it always had — the chart stays the pale
+/// radiograph it was — and takes the kind's hue instead of its own blue-grey
+/// one: violet on a visit's treatments, blue on a patient's plan. Only the
+/// colour the background leans on says which scope these teeth are in; the
+/// teeth and everything recorded on them are drawn exactly as before.
+Color _tintedWell(Color base, Color? tint, bool darkMode) {
+  if (tint == null) return base;
+  final wash = HSLColor.fromColor(base);
+  return HSLColor.fromAHSL(
+    wash.alpha,
+    HSLColor.fromColor(tint).hue,
+    _wellTintSaturation(wash, darkMode),
+    wash.lightness,
+  ).toColor();
+}
+
+/// The wash the arch sits in, coloured by the kind of record the chart edits.
+LinearGradient _archWellGradient(bool darkMode, Color? tint) => LinearGradient(
       begin: Alignment.topCenter,
       end: Alignment.bottomCenter,
-      colors: darkMode
-          ? const [
-              Color(0xFF0A1018),
-              Color(0xFF111A27),
-              Color(0xFF090E15),
-              Color(0xFF111A27),
-              Color(0xFF0A1018),
-            ]
-          : const [
-              Color(0xFFEDF2F8),
-              Color(0xFFF7FAFC),
-              Color(0xFFE5ECF4),
-              Color(0xFFF7FAFC),
-              Color(0xFFEDF2F8),
-            ],
+      colors: [
+        for (final color
+            in darkMode ? _darkArchWellColors : _lightArchWellColors)
+          _tintedWell(color, tint, darkMode),
+      ],
       stops: const [0.0, 0.36, 0.5, 0.64, 1.0],
     );
 
@@ -112,11 +143,13 @@ class OpgDentalChart extends StatefulWidget {
     required this.onShowPermanentChanged,
     required this.onShowPrimaryChanged,
     this.isCompactArch = false,
+    this.fillCompactHeight = false,
     this.onExtraNote,
     this.textStyle,
     this.history = const [],
     this.historyTitle = 'toothHistory',
     this.onOpenAppointment,
+    this.tint,
   });
 
   final Map<String, String> currentNotes;
@@ -133,10 +166,17 @@ class OpgDentalChart extends StatefulWidget {
   final ValueChanged<bool> onShowPermanentChanged;
   final ValueChanged<bool> onShowPrimaryChanged;
   final bool isCompactArch;
+  final bool fillCompactHeight;
   final TextStyle? textStyle;
   final List<ToothHistory> history;
   final String historyTitle;
   final ValueChanged<String>? onOpenAppointment;
+
+  /// The colour the record kind this chart belongs to is known by — violet on
+  /// a visit's treatments, blue on a patient's plan. It washes the chart's
+  /// background only, never the teeth or what is recorded on them. Null for a
+  /// chart that stands for no record kind, which keeps the neutral wash.
+  final Color? tint;
 
   @override
   State<OpgDentalChart> createState() => _OpgDentalChartState();
@@ -286,8 +326,11 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     final mediaHeight = MediaQuery.sizeOf(context).height;
     final showInlineHistory = mediaHeight >= 500;
 
-    final archWellBg =
-        darkMode ? const Color(0xFF0A0F16) : const Color(0xFFF3F6FA);
+    final archWellBg = _tintedWell(
+      darkMode ? const Color(0xFF0A0F16) : const Color(0xFFF3F6FA),
+      widget.tint,
+      darkMode,
+    );
     final borderColor = darkMode
         ? const Color(0xFF233044)
         : theme.inactiveColor.withValues(alpha: 0.22);
@@ -468,7 +511,8 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     // Give the compact arch generous vertical room so teeth are large, crisp,
     // and clinical marks/icons/drawings are clearly visible, while still
     // fitting a phone viewport without scrolling.
-    final room = math.max(380.0, mediaHeight - 190.0);
+    final room = math.max(
+        380.0, widget.fillCompactHeight ? mediaHeight : mediaHeight - 190.0);
 
     final currentLegendNotes = <String>{
       ...widget.currentNotes.values.where((x) => x.isNotEmpty).map(
@@ -494,7 +538,7 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
           color: wellBg,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: borderColor.withValues(alpha: 0.7)),
-          gradient: _archWellGradient(darkMode),
+          gradient: _archWellGradient(darkMode, widget.tint),
         ),
         padding: const EdgeInsets.fromLTRB(4, 5, 4, 5),
         child: Column(
@@ -719,7 +763,7 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
         color: wellBg,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: borderColor.withValues(alpha: 0.7)),
-        gradient: _archWellGradient(darkMode),
+        gradient: _archWellGradient(darkMode, widget.tint),
       ),
       padding: EdgeInsets.symmetric(
         horizontal: isPrimary ? 48 : 8,

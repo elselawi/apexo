@@ -23,6 +23,7 @@ final class DentalChartSession {
     required this.historyTitle,
     this.showPrimary = false,
     this.onOpenAppointment,
+    this.header,
     this.footer,
     this.onSave,
   })  : _savedTeeth = Map.of(teeth),
@@ -30,6 +31,9 @@ final class DentalChartSession {
 
   /// What the chart edits, e.g. `patient:<id>` or `appointment:<id>`.
   final String id;
+
+  /// Logical direction for the chart content's scope transition; chrome stays still.
+  int navigationDirection = 0;
 
   /// The window's label as a localization key — "Dental Chart" on a record,
   /// "Treatments" on a visit, because what the same chart writes differs. The
@@ -61,6 +65,10 @@ final class DentalChartSession {
 
   /// Opens an appointment listed in the tooth history.
   final ValueChanged<String>? onOpenAppointment;
+
+  /// A header the owner adds above the chart (the scope bar). Built lazily, and
+  /// handed the session so it can check whether the chart holds unsaved work.
+  final Widget Function(DentalChartSession session)? header;
 
   /// A footer the owner adds under the chart (the dictation button). Built
   /// lazily, and handed the session so it can report edits back to it.
@@ -95,14 +103,40 @@ final class DentalChartSession {
         'teethExtraNotes': Map<String, String>.from(extraNotes),
       };
 
+  /// Sets the baseline [hasChanges] is measured against (e.g. when a panel
+  /// adopts unsaved work from a standalone window).
+  void setBaseline({
+    required Map<String, String> teeth,
+    required Map<String, String> extraNotes,
+  }) {
+    _savedTeeth = Map.of(teeth);
+    _savedExtraNotes = Map.of(extraNotes);
+  }
+
+  /// Re-baselines [hasChanges] to the current [teeth] and [extraNotes].
+  void markSaved() {
+    _savedTeeth = Map.of(teeth);
+    _savedExtraNotes = Map.of(extraNotes);
+    changed();
+  }
+
+  /// Reverts [teeth] and [extraNotes] back to the last saved baseline.
+  void discardChanges() {
+    teeth
+      ..clear()
+      ..addAll(_savedTeeth);
+    extraNotes
+      ..clear()
+      ..addAll(_savedExtraNotes);
+    changed();
+  }
+
   /// Persists a standalone chart, then re-baselines [hasChanges]. A failed save
   /// leaves the session dirty and is rethrown to the window.
   Future<void> save() async {
     final save = onSave;
     if (save == null) return;
     await save();
-    _savedTeeth = Map.of(teeth);
-    _savedExtraNotes = Map.of(extraNotes);
-    changed();
+    markSaved();
   }
 }

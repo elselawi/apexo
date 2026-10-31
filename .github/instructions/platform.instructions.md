@@ -91,20 +91,29 @@ handleNewImage(rowID, sourcePath, sourceFile, targetStore)
 ### Retrieval Flow
 
 ```
-getImage(rowID, name, thumb?)
-  ├── Check in-memory cache (30-item LRU)
+getImage(rowID, name, thumb?, resolve?, thumbSize?)
+  ├── Check the app cache, keyed by file name + size (thumbs and originals apart)
   ├── Web: Fetch from PocketBase file URL → NetworkImage
-  └── Native: Check local filesDir → if missing, download from PocketBase → FileImage
+  └── Native: Serve the local file when it is there — the thumb asked for, or a
+      thumb drawn from the local original; only then download from PocketBase
 ```
+
+Callers never pass `thumb: false` for a tile: the grid asks for the 100px thumb
+(`kThumbSize`) and a gallery's one large preview asks for a 640px one
+(`kPreviewSize`). Originals are for the photo viewer, which asks for them by
+name and gets them from the local disk when they are there.
+
+Local files are named `<name>.thumb<ext>` for the 100px thumb and
+`<name>.thumb<size><ext>` above it, so a preview never overwrites a grid thumb.
 
 ### Key Differences: Native vs Web
 
 | Operation | Native | Web |
 |-----------|--------|-----|
 | **File storage** | `filesDir()` from `safe_dir.dart` (app documents directory) | No local filesystem — PocketBase is the source of truth |
-| **Thumbnails** | Generated locally with `image` package | Requested from PocketBase with `?thumb=100x100` query param |
+| **Thumbnails** | Generated locally with `image` package (upload, and from a local original when only that is cached) | Requested from PocketBase with a `?thumb=WxH` query param |
 | **Upload source** | File path on disk | Blob URL or proxied through `https://imgs.apexo.app/` |
-| **Cache** | Both memory + disk | Memory only |
+| **Cache** | Memory (providers, per size) + disk (thumbs, previews, originals) | Memory only — a provider kept in `imgMemoryCache` is what spares the browser another request |
 
 ### Image Upload via Store
 

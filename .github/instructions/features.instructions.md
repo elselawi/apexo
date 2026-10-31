@@ -103,6 +103,89 @@ built with `PanelsManager.open`; a window shown on its own with
 `open_<record>_window.dart`. A file that edits one record's field group is
 `<thing>_widget.dart`, not a second `open_*` file.
 
+A record that is **carried beside another** (a visit beside its patient) has no
+`open_*_panel.dart`: its opener is `open_<record>.dart`, because it opens no
+panel of its own. Such a record is a **session**, not a panel:
+
+- The session (`<record>_session.dart`) owns the draft, the chart or other
+  editors that belong to the record, and the record's windows. It implements
+  `HostedRecordSession` (`lib/ui/workspace/record_session.dart`) — never `Panel`.
+- The registry (`<record>_sessions.dart`) is the app's identity map: one id, one
+  draft, for the app session, cleared on logout. Two openers of the same record
+  get the same session, so two windows cannot disagree.
+- The panel that shows it calls `Panel.attach(session, focus:)`; closing the visit
+  (the footer's Close, backed by `detach()`) keeps the draft, `disposeSession()`
+  drops it. The panel draws a bubble-shaped **band** for it — it implements the
+  interface's own label, state and Save, never a copy.
+- Moving to another visit is a swap, not a discard: the visit left behind keeps its
+  draft — teeth, operative details and the band's fields alike — so nothing asks
+  first. The chart-swap guard (`closeOpenDentalChartWindows`) only resets a chart
+  that would really be thrown away: a panel's own plan chart, or a chart standing
+  on its own. The band says which retained visits still hold work.
+- Every local mutation of that record goes through
+  `<record>_commands.dart`'s `appointmentCommand(id, mutate)`: it edits the open
+  draft when there is one, and the store when there is not. With a draft open it
+  **also stores exactly the fields the mutation changed** and acknowledges only
+  those (`writeThrough`), because the controls that call it — a list checkbox, a
+  calendar drag, a labwork toggle — read the record from the store: a change held
+  only in the draft is invisible to them and is lost with the panel. A direct
+  `store.set(...)` on a carried record is still the bug that reverts a calendar
+  drag.
+- A write outside the record's Save (a gallery's files) writes **only its own
+  fields** and acknowledges only those (`markFieldsSaved`).
+- The band also carries the record's **own form** (`HostedRecordSession.bandContent`):
+  a visit's date, time, duration, operators and pre-op notes are compact fields
+  inside the band, so they need no window and no row slot. The band content is
+  keyed by the record's id: a different visit is a different form, never the old
+  fields under a new title.
+- The visit band also draws the record's **tool dock** (`AppointmentBandDock`): one
+  tool, operative details, whose fields live at the foot of the visit's chart, so
+  its button opens that chart. It stays reachable while the chart is away, because
+  the band is the visit's permanent surface.
+- The band's labwork order and gallery are **not** dock chips: they are
+  attachments of the band (`PanelWindow.bandAttachment`), drawn as a
+  `WindowAttachments` tray at the band's foot (`WK.visitBandAttachments`) and again
+  on the post-op card inside the visit's chart (`WK.visitChartAttachments`), the
+  way a patient's photos hang off the patient panel. Both trays switch the same
+  windows in the row's `kAttachedSlot`.
+- The band's **footer** owns the record's actions: Delete/Restore, Close, the
+  retained-draft hint with its "move to that visit" action, and Save when the
+  visit is dirty. It uses standard Fluent buttons so themes own the colours. While
+  a visit is attached, the panel's inline record is drawn read-only (visible, but
+  behind an `AbsorbPointer` and a short notice) because its Save is not the visit's
+  Save.
+- A window that is an editor *of* a record rather than its workspace is an
+  **attachment**: `PanelWindow.attachedTo` names the frame that draws its chip —
+  another window (`kDentalChartWindowId`), the record's band
+  (`PanelWindow.bandAttachment`), or `PanelWindow.panelAttachment` for the panel
+  itself. Attachments are never row windows and never first picks.
+  `byDefault: false` makes any other row window a labelled workspace button.
+- A panel that presents its windows this way sets `attachmentLayout: true` and
+  `workspaceWindows: [...]` (`Panel`): its labelled workspace buttons live inside
+  the record's own body instead of under the header. Both workspace buttons are
+  always drawn; filled means open, neutral means closed, and the filled one's
+  label is painted in the accent's own foreground colour. The pair is drawn
+  joined — no gap, and only the outer corners rounded — so it reads as one
+  control. `WindowDock` draws it, the same widget a panel with floating windows
+  uses for its switches: equal segments filling the panel's width, one flat
+  stroke, a filled segment in the record's accent while its window is open, and a
+  label too long for its segment ellipsised with the full name in the tooltip.
+  Opening the patient's plan closes the attached visit (its draft is retained)
+  rather than showing two charts.
+  `WindowAttachments` draws the tray; the key is
+  `WK.attachmentToggle(id, owner: frameId)` because two records may both offer a
+  `gallery`.
+- Naming the layout memory: keyed by record **kind + slot**
+  (`appointment/attached`), never by record id. Editor state, by contrast, belongs
+  to a record: key galleries by visit id and refresh labwork controllers when
+  their appointment changes.
+- Minimum height controls automatic opening, not an explicit request: a requested
+  chart remains reachable on a short screen, with its content scrolling.
+- Closing after Save must recheck every owner for pending edits and active writes.
+  An edit or a newly attached visit during a save must keep the panel open.
+  Gallery progress belongs to its record and must finish even after the gallery
+  widget leaves the screen.
+
 Tests mirror `lib/`: `test/widget/features/<feature>/`, `test/widget/app/` for
 the shell, `test/widget/shared/<editor>/` for a shared editor, and
 `test/widget/common_widgets/` for the atoms.
@@ -114,6 +197,16 @@ Use `DelegatedPanel` for caller-managed collections with explicit save,
 pending-edit and archive callbacks. Both implement the non-generic `Panel`
 host contract. `panel.result` is a `Future<void>`; inspect `savedId`/
 `savedIds` for records written. Do not share drafts between panels.
+
+### Creating a record
+
+A new record is asked for in a sheet, not in an empty panel: the sheet
+(`new_<record>_dialog.dart`) collects the fields the record cannot start
+without, the helper beside it (`addPatient`, `addAppointment`) stores the
+record, and only then is it opened — so `isNew` is false and nothing the user
+does can leave a draft behind. Guess what the sheet can: an appointment's date
+and time come from the day the caller came from and the visits already booked
+that day (`appointment_start_guess.dart`).
 
 ### Adding a persistent feature
 

@@ -102,7 +102,7 @@ device token or a payload — only the operation that failed and the error type.
   identity and COM activation (Microsoft documents limited unpackaged push, not none).
 - **Registration order**: attach `PushReceived` → `Register()` exactly once → only then
   `AppInstance::GetCurrent().GetActivatedEventArgs()`.
-- **Channel**: `CreateChannelAsync(<Entra Object ID>)` on an owned MTA worker, bounded at **5
+- **Channel**: `CreateChannelAsync(<Azure application (client) ID>)` on an owned MTA worker, bounded at **5
   minutes** (the official sample's limit) and then cancelled. That bound is shorter than the
   SDK's internal retry window; a later launch, resume or `getChannelUri` starts a fresh
   attempt. Requests coalesce; `null` on unsupported/unconfigured/failed/expired/timeout.
@@ -295,15 +295,21 @@ deferredPush.clearByStore(name); // clear all pushes for a store
 
 ## Windows notification identity and activation contracts
 
-Four identifiers are involved. They are different values with different jobs and must never
+Three identifiers are involved. They are different values with different jobs and must never
 be substituted for one another:
 
 | Identifier | Value | Used by |
 |---|---|---|
-| Entra **Object ID** | `431f890b-3a77-4d0b-b52a-aa684ffed80d` (`APEXO_WNS_OBJECT_ID`) | `CreateChannelAsync` only |
-| Azure **application (client) ID** | `8f4d5ac1-5142-44fb-928a-6ce05c641dd0` (`APEXO_WNS_APP_ID`) | push COM `com:Class Id`, and the PFN→AppId mapping request to Microsoft |
+| Azure **application (client) ID** | `8f4d5ac1-5142-44fb-928a-6ce05c641dd0` (`APEXO_WNS_APP_ID`) | `CreateChannelAsync` `remoteId`, push COM `com:Class Id`, and the relay's `WNS_CLIENT_ID` |
 | Local-toast **CLSID** | `51fc2ec1-f21e-4b3c-9f2b-71c28c7b0f7e` (`WindowsNotificationIdentity.activationGuid`) | `flutter_local_notifications_windows` + `msix_config.toast_activator` |
 | **AUMID** | `alisaleem.apexo.app_e460fpmm323ja!apexo` | `<PackageFamilyName>!<Application Id>` |
+
+The same registration owns the channel and sends on it. `CreateChannelAsync` documents its
+`remoteId` as "the Azure AppId … a GUID that matches the application ID specified in Azure Active
+Directory", so it is the **client ID** — never the app registration's object ID (the "Object ID" on
+the Overview blade) and never the service principal object ID. A channel requested with either
+object ID still comes back with a URI, but WNS then rejects every send with **403**, which the relay
+surfaces as a retryable `503`.
 
 Both activation servers use the same executable but different contracts:
 
@@ -384,9 +390,19 @@ The dependency values come from the Windows App SDK NuGet package itself
 not from documentation guesswork. `MakeAppx unpack` + `pack` on the extracted tree is **structural**
 validation only.
 
-**PFN mapping**: before WNS delivers a single notification, Microsoft must map the package family
-name to the application id (email Win_App_SDK_Push@microsoft.com — processed weekly). Until then
-`CreateChannelAsync` fails and `getChannelUri` stays `null`.
+**PFN mapping guidance is conflicting.** Deployment notes report a WNS-team confirmation
+(2026-10-31) that this same-registration Windows App SDK flow needs no PFN mapping. However,
+Microsoft's [public quickstart](https://learn.microsoft.com/en-us/windows/apps/develop/notifications/push-notifications/push-quickstart)
+still requires it for packaged apps and describes an Object ID, while the
+[`CreateChannelAsync` API reference](https://learn.microsoft.com/en-us/windows/windows-app-sdk/api/winrt/microsoft.windows.pushnotifications.pushnotificationmanager.createchannelasync?view=windows-app-sdk-1.7)
+describes `remoteId` as the Azure application ID. This implementation follows the API reference
+and uses `APEXO_WNS_APP_ID`. Do not generalize the reported mapping exception to other apps;
+verify foreground delivery, closed-app activation and toast-click navigation on the installed
+MSIX package, using a freshly acquired channel, before treating deployment as validated.
+
+A WNS `403` can indicate a mismatch between channel and sender identities; it does not prove
+that this is the only cause. Check the response diagnostics and confirm that the sender token's
+`appid` claim equals `APEXO_WNS_APP_ID`. Never log or commit the token or channel URI.
 
 ### Building the native side
 
@@ -466,7 +482,8 @@ On web, instead of using the Flutter FCM plugin directly, notifications go throu
 | Running `msix:build`/`msix:pack` without `--sign-msix false` on a machine without the signing certificate | `msix` substitutes its test certificate subject as `publisher`, which changes the package family name; `--verify` fails with that hint |
 | Installing a package only to run `Get-AppxPackageManifest` | That upgrades the user's installed app; verify the extracted manifest instead and query `Get-AppxPackage` for the observed PFN |
 | Calling `PushNotificationManager::Unregister()`/`UnregisterAll()` on exit | 1.7 documents both as removing the registration, so the next push can no longer launch the app; only revoke the `PushReceived` token |
-| Passing the Azure application (client) ID to `CreateChannelAsync` | It takes the Entra Object ID; the application ID is what the manifest's push `com:Class Id` must match |
+| Passing the app registration's object ID (or the service principal object ID) to `CreateChannelAsync` | `remoteId` is the Azure **application (client) ID** — `APEXO_WNS_APP_ID`. A channel requested with an object ID still returns a URI, but WNS then answers every send with `403` |
+| Assuming PFN mapping is universally required or universally unnecessary | Public guidance and this deployment's reported WNS advice conflict; verify the installed-package flow described above |
 | Reading `GetActivatedEventArgs()` before `Register()` | A push that started the process is missed; attach `PushReceived`, register, then read the activation |
 | Treating a WNS push body as an XML toast template | The relay sends `Content-Type: application/octet-stream` with `X-WNS-Type: wns/raw`, so the body is the raw `{"payload": …}` JSON — the app builds its own toast |
 | Measuring the WNS payload limit against the `PushData` JSON alone | The relay wraps it in `JSON.stringify(data)`, which escapes and grows it; size checks must count the serialized request body |

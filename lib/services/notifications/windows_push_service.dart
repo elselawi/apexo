@@ -506,8 +506,9 @@ class WindowsPushService with WidgetsBindingObserver {
     final channel = uri?.trim() ?? "";
     if (channel.isEmpty) {
       // The native side starts a request when it has no channel, so this is
-      // either a still-running request, a build without PFN mapping, or a call
-      // that failed. Ask again rather than giving up silently.
+      // either a still-running request, a channel rejected for this app
+      // registration, or a call that failed. Ask again rather than giving up
+      // silently.
       _scheduleRetry(session);
       return;
     }

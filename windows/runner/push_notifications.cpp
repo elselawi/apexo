@@ -88,7 +88,7 @@ struct PushNotifications::Impl {
   bool background_activation = false;
   bool channel_configured = false;
 
-  winrt::guid object_id{};
+  winrt::guid remote_id{};
   winrt::event_token received_token{};
 
   std::mutex deferral_mutex;
@@ -168,8 +168,8 @@ void PushNotifications::Initialize() {
 
   // Configuration is readable without identity (it is just the header), so the
   // diagnostics can report it even in a build Windows will not register.
-  impl_->object_id = GuidFromLiteral(APEXO_WNS_OBJECT_ID);
-  impl_->channel_configured = !IsZeroGuid(impl_->object_id);
+  impl_->remote_id = GuidFromLiteral(APEXO_WNS_APP_ID);
+  impl_->channel_configured = !IsZeroGuid(impl_->remote_id);
 
   UINT32 length = 0;
   impl_->has_identity =
@@ -508,9 +508,9 @@ bool PushNotifications::StartChannelRequest() {
   }
 
   channel_stop_requested_.store(false);
-  const winrt::guid object_id = impl_->object_id;
+  const winrt::guid remote_id = impl_->remote_id;
   try {
-    std::thread worker([this, generation, window, object_id] {
+    std::thread worker([this, generation, window, remote_id] {
       auto outcome = std::make_unique<ChannelOutcome>();
       outcome->generation = generation;
       bool apartment_initialized = false;
@@ -520,7 +520,7 @@ bool PushNotifications::StartChannelRequest() {
         apartment_initialized = true;
 
         auto operation = PushNotificationManager::Default().CreateChannelAsync(
-            object_id);
+            remote_id);
         const auto deadline =
             std::chrono::steady_clock::now() + kChannelRequestTimeout;
         auto status = operation.Status();
@@ -552,7 +552,8 @@ bool PushNotifications::StartChannelRequest() {
           }
         }
       } catch (...) {
-        // Unsupported, unregistered (PFN not mapped), network or activation
+        // Unsupported, unauthorized (a channel requested with an app
+        // registration other than the sender's), network or activation
         // failures all end as "no channel"; the next request retries.
       }
       if (apartment_initialized) {

@@ -7,6 +7,9 @@
 //   * a push COM server whose class id is the Azure application (client) id and
 //     whose activation arguments are "----WindowsAppRuntimePushServer:".
 //
+// That application (client) id is also what CreateChannelAsync takes as its
+// remoteId, so the header's APEXO_WNS_APP_ID is the only push identity involved.
+//
 // The toast activator is a different contract — different class id, different
 // arguments — and this tool never rewrites it.
 //
@@ -80,12 +83,11 @@ class PatchError implements Exception {
 
 /// The identifiers from `push_config.h`.
 class PushConfig {
-  const PushConfig({required this.objectId, required this.appId});
-  final String objectId;
+  const PushConfig({required this.appId});
   final String appId;
 }
 
-/// Reads the two identifiers from the C header.
+/// Reads the application (client) id from the C header.
 PushConfig readPushConfig(String path) {
   final file = File(path);
   if (!file.existsSync()) {
@@ -93,7 +95,6 @@ PushConfig readPushConfig(String path) {
   }
   final source = file.readAsStringSync();
   return PushConfig(
-    objectId: _define(source, 'APEXO_WNS_OBJECT_ID', path),
     appId: _define(source, 'APEXO_WNS_APP_ID', path),
   );
 }
@@ -214,7 +215,7 @@ String _dartString(String source, String name, String path) {
 
 /// Applies every rule and returns the manifest as text.
 String patchManifest(String manifestXml, {required String appId}) {
-  _requireConfiguredIds(appId: appId, objectId: null);
+  _requireConfiguredIds(appId: appId);
 
   final document = XmlDocument.parse(manifestXml);
   final package = document.rootElement;
@@ -242,9 +243,8 @@ void verifyManifest(
   required String appId,
   required MsixConfig msix,
   required WindowsNotificationIdentity identity,
-  String? objectId,
 }) {
-  _requireConfiguredIds(appId: appId, objectId: objectId);
+  _requireConfiguredIds(appId: appId);
 
   final document = XmlDocument.parse(manifestXml);
   final package = document.rootElement;
@@ -462,27 +462,12 @@ void _requireCapability(
   );
 }
 
-void _requireConfiguredIds({required String appId, String? objectId}) {
+void _requireConfiguredIds({required String appId}) {
   if (_normalizeGuid(appId) == zeroGuid) {
     throw PatchError(
       'the push application id is still the all-zero placeholder. Set '
       'APEXO_WNS_APP_ID in windows/runner/push_config.h (or pass --app-id).',
     );
-  }
-  if (objectId != null) {
-    if (_normalizeGuid(objectId) == zeroGuid) {
-      throw PatchError(
-        'the Entra Object ID is still the all-zero placeholder. Set '
-        'APEXO_WNS_OBJECT_ID in windows/runner/push_config.h.',
-      );
-    }
-    if (_normalizeGuid(objectId) == _normalizeGuid(appId)) {
-      throw PatchError(
-        'the Entra Object ID and the Azure application id are the same '
-        '("$appId"). CreateChannelAsync takes the Object ID; the manifest '
-        'takes the application id — they must not be substituted.',
-      );
-    }
   }
 }
 
@@ -878,7 +863,6 @@ String patchManifestFile(
   required String appId,
   required MsixConfig msix,
   required WindowsNotificationIdentity identity,
-  String? objectId,
 }) {
   final file = File(path);
   if (!file.existsSync()) {
@@ -891,7 +875,6 @@ String patchManifestFile(
     verifyManifest(
       temporary.readAsStringSync(),
       appId: appId,
-      objectId: objectId,
       msix: msix,
       identity: identity,
     );
@@ -919,7 +902,6 @@ Future<void> main(List<String> arguments) async {
     final msix = readMsixConfig(options.pubspecPath);
     final identity = readWindowsNotificationIdentity(options.identityPath);
     final appId = options.appId ?? config.appId;
-    final objectId = options.objectId ?? config.objectId;
 
     final file = File(options.manifestPath);
     if (!file.existsSync()) {
@@ -931,7 +913,6 @@ Future<void> main(List<String> arguments) async {
       verifyManifest(
         source,
         appId: appId,
-        objectId: objectId,
         msix: msix,
         identity: identity,
       );
@@ -946,7 +927,6 @@ Future<void> main(List<String> arguments) async {
     final patched = patchManifestFile(
       options.manifestPath,
       appId: appId,
-      objectId: objectId,
       msix: msix,
       identity: identity,
     );
@@ -972,7 +952,6 @@ class _Options {
     required this.identityPath,
     required this.verify,
     this.appId,
-    this.objectId,
   });
 
   final String manifestPath;
@@ -981,7 +960,6 @@ class _Options {
   final String identityPath;
   final bool verify;
   final String? appId;
-  final String? objectId;
 }
 
 _Options _parseArguments(List<String> arguments) {
@@ -991,7 +969,6 @@ _Options _parseArguments(List<String> arguments) {
   var identityPath = defaultIdentityPath;
   var verify = false;
   String? appId;
-  String? objectId;
 
   for (var index = 0; index < arguments.length; index++) {
     final argument = arguments[index];
@@ -1006,8 +983,6 @@ _Options _parseArguments(List<String> arguments) {
         identityPath = arguments[++index];
       case '--app-id':
         appId = arguments[++index];
-      case '--object-id':
-        objectId = arguments[++index];
       default:
         if (argument.startsWith('--')) {
           throw PatchError('unknown option $argument');
@@ -1020,8 +995,7 @@ _Options _parseArguments(List<String> arguments) {
     throw PatchError(
       'usage: dart run tools/patch_push_manifest.dart <AppxManifest.xml> '
       '[--verify] [--config push_config.h] [--pubspec pubspec.yaml] '
-      '[--identity windows_notification_identity.dart] [--app-id <guid>] '
-      '[--object-id <guid>]',
+      '[--identity windows_notification_identity.dart] [--app-id <guid>]',
     );
   }
   return _Options(
@@ -1031,6 +1005,5 @@ _Options _parseArguments(List<String> arguments) {
     identityPath: identityPath,
     verify: verify,
     appId: appId,
-    objectId: objectId,
   );
 }

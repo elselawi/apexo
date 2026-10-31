@@ -10,7 +10,6 @@ import 'package:xml/xml.dart';
 import '../../../tools/patch_push_manifest.dart';
 
 const String appId = '8f4d5ac1-5142-44fb-928a-6ce05c641dd0';
-const String objectId = '431f890b-3a77-4d0b-b52a-aa684ffed80d';
 const String toastClsid = '51fc2ec1-f21e-4b3c-9f2b-71c28c7b0f7e';
 
 const String identityName = 'alisaleem.apexo.app';
@@ -165,14 +164,12 @@ String? toastClsidOf(String xml) {
 void verifyOk(
   String xml, {
   String appIdValue = appId,
-  String objectIdValue = objectId,
   MsixConfig msix = testMsix,
   WindowsNotificationIdentity identity = testIdentity,
 }) {
   verifyManifest(
     xml,
     appId: appIdValue,
-    objectId: objectIdValue,
     msix: msix,
     identity: identity,
   );
@@ -183,6 +180,21 @@ Matcher throwsPatchError() => throwsA(
     );
 
 void main() {
+  test('native channel and push manifest share the configured application id',
+      () {
+    final config = readPushConfig(defaultConfigPath);
+    final header = File(defaultConfigPath).readAsStringSync();
+    final native =
+        File('windows/runner/push_notifications.cpp').readAsStringSync();
+    expect(config.appId, appId);
+    expect(header, isNot(contains('APEXO_WNS_OBJECT_ID')));
+    expect(native, contains('GuidFromLiteral(APEXO_WNS_APP_ID)'));
+    expect(RegExp(r'CreateChannelAsync\(\s*remote_id\s*\)').hasMatch(native),
+        isTrue);
+    final patched = patchManifest(manifest(toast: true), appId: config.appId);
+    verifyOk(patched, appIdValue: config.appId);
+  });
+
   group('patch', () {
     test('a manifest with no extensions gains the dependency and push server',
         () {
@@ -327,7 +339,6 @@ void main() {
       final patched = patchManifestFile(
         file.path,
         appId: appId,
-        objectId: objectId,
         msix: testMsix,
         identity: testIdentity,
       );
@@ -349,7 +360,6 @@ void main() {
         () => patchManifestFile(
           file.path,
           appId: appId,
-          objectId: objectId,
           // A toast CLSID that disagrees with the manifest fails verification of
           // the temporary file, after the patch itself succeeded.
           msix: const MsixConfig(
@@ -494,18 +504,14 @@ void main() {
       );
     });
 
-    test('rejects an all-zero Object ID', () {
-      expect(
-        () => verifyOk(manifest(), objectIdValue: zeroGuid),
-        throwsPatchError(),
-      );
-    });
+    test('rejects a push class id that is not the application id', () {
+      // The class id is the Azure application (client) id, which is also the
+      // remoteId of CreateChannelAsync — an app registration's object id here
+      // produces a channel the relay is not authorized to send to.
+      final wrongIdentity = patchManifest(manifest(toast: true), appId: appId)
+          .replaceAll(appId, '431f890b-3a77-4d0b-b52a-aa684ffed80d');
 
-    test('rejects the Object ID being used as the application id', () {
-      expect(
-        () => verifyOk(manifest(), appIdValue: objectId),
-        throwsPatchError(),
-      );
+      expect(() => verifyOk(wrongIdentity), throwsPatchError());
     });
 
     test('rejects duplicate push servers', () {

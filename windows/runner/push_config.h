@@ -3,13 +3,18 @@
 
 // Identifiers and activation arguments for Windows push notifications.
 //
-// Four identifiers are involved and they are deliberately different values:
+// WNS authenticates a send as an Azure app registration, and
+// PushNotificationManager::CreateChannelAsync binds the channel to that same
+// registration: its `remoteId` parameter is documented as "the Azure AppId ... a
+// GUID that matches the application ID specified in Azure Active Directory".
+// One identifier therefore covers both directions — the application (client) ID
+// below — and no package-family-name mapping is involved. The app registration's
+// *object ID* (the "Object ID" on the Overview blade) is not used anywhere here:
+// passing it makes WNS answer 403 to every send, because the channel then
+// belongs to an identity the relay never authenticates as.
 //
-//   * the Entra application (service principal) **Object ID**, used only as the
-//     remote id of PushNotificationManager::CreateChannelAsync;
-//   * the Azure application (client) **ID**, which is the COM class id of the
-//     push activator in the package manifest and the identity Microsoft maps to
-//     the package family name;
+// Two further identifiers are deliberately different values:
+//
 //   * the local-toast activation CLSID, which belongs to
 //     flutter_local_notifications_windows and lives in Dart
 //     (`WindowsNotificationIdentity.activationGuid`) and in
@@ -24,10 +29,9 @@
 // adds the push COM activator to the generated AppxManifest.xml, so this header
 // is the single source of truth for the push class id.
 
-// Microsoft Entra application (service principal) Object ID.
-#define APEXO_WNS_OBJECT_ID "431f890b-3a77-4d0b-b52a-aa684ffed80d"
-
-// Azure application (client) ID — also the push COM class id.
+// Azure application (client) ID: the remoteId of CreateChannelAsync, the push
+// COM class id in the package manifest, and the identity the relay's
+// WNS_CLIENT_ID authenticates as when it sends.
 #define APEXO_WNS_APP_ID "8f4d5ac1-5142-44fb-928a-6ce05c641dd0"
 
 // The argument Windows passes when it starts the executable for the push COM

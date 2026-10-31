@@ -134,7 +134,6 @@ class GridGallery extends StatefulWidget {
 
 class _GridGalleryState extends State<GridGallery>
     with TickerProviderStateMixin {
-  final Set<ImageProvider> _imageProviders = {};
   late AnimationController _entranceController;
   late List<Animation<double>> _entranceAnimations;
   final FlyoutController _uploadFlyoutCtrl = FlyoutController();
@@ -211,9 +210,6 @@ class _GridGalleryState extends State<GridGallery>
   void dispose() {
     _entranceController.dispose();
     _uploadFlyoutCtrl.dispose();
-    for (final provider in _imageProviders) {
-      unawaited(provider.evict());
-    }
     super.dispose();
   }
 
@@ -264,7 +260,8 @@ class _GridGalleryState extends State<GridGallery>
     // The photo's own window outlives this gallery: deleting from it reaches
     // here after the panel that holds the gallery may be gone — so the owner
     // is only told about it while there is one to tell.
-    if (mounted) widget.onProgress?.call(true);
+    final onProgress = mounted ? widget.onProgress : null;
+    onProgress?.call(true);
     if (mounted) setState(() {});
     try {
       // DCM X-rays need a dedicated delete (removes both .dcm + .png preview).
@@ -278,7 +275,7 @@ class _GridGalleryState extends State<GridGallery>
       }
     } finally {
       _isDeleting = false;
-      if (mounted) widget.onProgress?.call(false);
+      onProgress?.call(false);
       if (mounted) setState(() {});
     }
   }
@@ -359,7 +356,8 @@ class _GridGalleryState extends State<GridGallery>
     required String errorTag,
   }) async {
     setState(() => _isUploading = true);
-    widget.onProgress?.call?.call(true);
+    final onProgress = widget.onProgress;
+    onProgress?.call(true);
     try {
       await work();
       return true;
@@ -369,10 +367,8 @@ class _GridGalleryState extends State<GridGallery>
       logger("Error during $errorTag: $e", s);
       return false;
     } finally {
-      if (mounted) {
-        setState(() => _isUploading = false);
-        widget.onProgress?.call(false);
-      }
+      if (mounted) setState(() => _isUploading = false);
+      onProgress?.call(false);
     }
   }
 
@@ -524,7 +520,6 @@ class _GridGalleryState extends State<GridGallery>
         width: widget.rowWidth - _kGallerySpacing * 2,
         canDelete: _deleteEnabled,
         clipCount: widget.clipCount,
-        imageProviders: _imageProviders,
         downloadingFiles: _downloadingFiles,
         onTapImage: (i) => _handleFileTap(_displayImgs[i]),
         onDeleteImage: (i) => _doDelete(_displayImgs[i]),
@@ -629,7 +624,6 @@ class _GridGalleryState extends State<GridGallery>
                 remainingCount: _displayImgs.length - widget.clipCount + 1,
                 onTap: () => _handleFileTap(_displayImgs[i]),
                 onDelete: () => _doDelete(_displayImgs[i]),
-                imageProviders: _imageProviders,
                 downloadingFiles: _downloadingFiles,
                 tileSize: tileSize,
                 onTapClip: widget.onTapClip,

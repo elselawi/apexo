@@ -34,10 +34,9 @@ class _ImageTile extends StatefulWidget {
     required this.remainingCount,
     required this.onTap,
     required this.onDelete,
-    required this.imageProviders,
     required this.downloadingFiles,
     required this.tileSize,
-    this.useOriginal = false,
+    this.thumbSize = kThumbSize,
     this.onTapClip,
   });
   final String img;
@@ -53,10 +52,14 @@ class _ImageTile extends StatefulWidget {
   final int remainingCount;
   final VoidCallback onTap;
   final VoidCallback onDelete;
-  final Set<ImageProvider> imageProviders;
   final Set<String> downloadingFiles;
   final double tileSize;
-  final bool useOriginal;
+
+  /// The width of the picture this tile asks for: the grid's [kThumbSize], or
+  /// [kPreviewSize] where the gallery shows one picture bigger. A tile never
+  /// asks for the original — that is the viewer's job, and it is several
+  /// megabytes for a box a few hundred pixels wide.
+  final int thumbSize;
   final VoidCallback? onTapClip;
 
   @override
@@ -66,6 +69,12 @@ class _ImageTile extends StatefulWidget {
 class _ImageTileState extends State<_ImageTile> {
   bool _isHovered = false;
   bool _hasLoaded = false;
+
+  /// The picture the last lookup found, or null while there is none — an
+  /// X-ray whose PNG preview has not been generated yet. A tile that already
+  /// shows its picture has nothing to gain from another preview, so it stays
+  /// put when one lands.
+  ImageProvider<Object>? _resolved;
   late Future<ImageProvider<Object>?> _imageFuture;
   StreamSubscription<int>? _pngReadySub;
 
@@ -75,30 +84,35 @@ class _ImageTileState extends State<_ImageTile> {
   @override
   void initState() {
     super.initState();
-    _imageFuture = getImage(widget.rowId, widget.img, !widget.useOriginal);
-    // DCM previews are generated lazily; rebuild the cell each time a new
-    // PNG lands so a placeholder flips to the real preview.
-    if (widget.isDcm) {
-      _pngReadySub = dicomPngReady.stream.listen((_) {
-        if (!mounted) return;
-        setState(() {
-          _hasLoaded = false;
-          _imageFuture =
-              getImage(widget.rowId, widget.img, !widget.useOriginal);
-        });
-      });
-    }
+    _load();
+    _listenForPreviews();
+  }
+
+  void _listenForPreviews() {
+    unawaited(_pngReadySub?.cancel());
+    _pngReadySub = widget.isDcm
+        ? dicomPngReady.stream.listen((_) {
+            if (!mounted || _resolved != null) return;
+            setState(_load);
+          })
+        : null;
+  }
+
+  void _load() {
+    _hasLoaded = false;
+    _resolved = null;
+    _imageFuture = getImage(
+        widget.rowId, widget.img, true, null, widget.thumbSize);
   }
 
   @override
   void didUpdateWidget(_ImageTile oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.isDcm != widget.isDcm) _listenForPreviews();
     if (oldWidget.img != widget.img ||
-        oldWidget.useOriginal != widget.useOriginal) {
-      setState(() {
-        _hasLoaded = false;
-        _imageFuture = getImage(widget.rowId, widget.img, !widget.useOriginal);
-      });
+        oldWidget.rowId != widget.rowId ||
+        oldWidget.thumbSize != widget.thumbSize) {
+      _load();
     }
   }
 
@@ -226,12 +240,11 @@ class _ImageTileState extends State<_ImageTile> {
       future: _imageFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
-          if (!_hasLoaded) {
-            _hasLoaded = true;
-            if (snapshot.data != null) {
-              widget.imageProviders.add(snapshot.data!);
-            }
-          }
+          // The lookup is done, picture or not: what it found is what this
+          // tile has, and a DCM that found nothing still wants the next
+          // preview to land here.
+          _hasLoaded = true;
+          _resolved = snapshot.data;
           if (snapshot.hasData) {
             return Image(
               image: snapshot.data!,
@@ -546,7 +559,6 @@ class _FeaturedMasonry extends StatefulWidget {
     required this.width,
     required this.canDelete,
     required this.clipCount,
-    required this.imageProviders,
     required this.downloadingFiles,
     required this.onTapImage,
     required this.onDeleteImage,
@@ -558,7 +570,6 @@ class _FeaturedMasonry extends StatefulWidget {
   final double width;
   final bool canDelete;
   final int clipCount;
-  final Set<ImageProvider> imageProviders;
   final Set<String> downloadingFiles;
   final void Function(int index) onTapImage;
   final void Function(int index) onDeleteImage;
@@ -621,12 +632,12 @@ class _FeaturedMasonryState extends State<_FeaturedMasonry> {
       child: SizedBox(
         width: widget.width,
         height: featuredH,
-        child: _buildTile(0, featuredH, original: true),
+        child: _buildTile(0, featuredH, preview: true),
       ),
     );
   }
 
-  Widget _buildTile(int index, double tileSize, {bool original = false}) {
+  Widget _buildTile(int index, double tileSize, {bool preview = false}) {
     final isLast = widget.clipCount > 0 &&
         index == widget.clipCount - 1 &&
         widget.imgs.length > widget.clipCount;
@@ -638,10 +649,9 @@ class _FeaturedMasonryState extends State<_FeaturedMasonry> {
       canDelete: widget.canDelete && widget.clipCount == 0,
       showClipOverlay: isLast,
       remainingCount: isLast ? widget.imgs.length - widget.clipCount : 0,
-      useOriginal: original,
+      thumbSize: preview ? kPreviewSize : kThumbSize,
       onTap: () => widget.onTapImage(index),
       onDelete: () => widget.onDeleteImage(index),
-      imageProviders: widget.imageProviders,
       downloadingFiles: widget.downloadingFiles,
       tileSize: tileSize,
       onTapClip: widget.onTapClip,

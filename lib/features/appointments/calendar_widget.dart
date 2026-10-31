@@ -136,8 +136,9 @@ class WeekAgendaCalendarState<Item extends Appointment>
       mainButton: IconButton(
         key: WK.btnNewAppointment,
         // The day, not the moment the calendar happens to be on: a visit added
-        // from here is guessed into a free slot, while a click on the timeline
-        // (which does carry a time) keeps the hour it landed on.
+        // from here lands on the selected day at the time of day it is now,
+        // while a click on the timeline (which does carry a time) keeps the
+        // hour it landed on.
         onPressed: () => widget.onAddNew(
             DateTime(selectedDate.year, selectedDate.month, selectedDate.day)),
         icon: ButtonContent(FluentIcons.add, txt("newAppointment")),

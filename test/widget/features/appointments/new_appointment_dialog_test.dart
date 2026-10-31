@@ -15,12 +15,35 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
+/// The sheet's start time is the clock's hour and minute on [day]; opening and
+/// saving the sheet may cross a minute boundary, so both ends of the wait are
+/// allowed.
+void expectStartsAt(
+  DateTime actual,
+  DateTime day,
+  DateTime opened,
+  DateTime closed,
+) {
+  expect(
+    [actual.year, actual.month, actual.day],
+    [day.year, day.month, day.day],
+  );
+  expect(
+    {
+      opened.hour * 60 + opened.minute,
+      closed.hour * 60 + closed.minute,
+    },
+    contains(actual.hour * 60 + actual.minute),
+  );
+}
+
 void main() {
   late List<Appointment> previousAppointments;
   late List<Patient> previousPatients;
   late Patient patient;
 
-  /// A day a week out: never today, so the guess is the clinic's morning hour.
+  /// A day a week out: never today, so the sheet starts it at the current time
+  /// of day.
   final day = DateTime.now().add(const Duration(days: 7));
   final bareDay = DateTime(day.year, day.month, day.day);
 
@@ -81,9 +104,10 @@ void main() {
     expect(saveButton(tester).onPressed, isNotNull);
   });
 
-  testWidgets('the sheet hands over the guessed hour and what was typed',
+  testWidgets('the sheet hands over the current time of day and what was typed',
       (tester) async {
     Appointment? created;
+    final opened = DateTime.now();
     await openSheet(
       tester,
       patientID: patient.id,
@@ -102,16 +126,16 @@ void main() {
         greaterThan(40));
     await tester.tap(find.byKey(WK.btnCreateAppointment));
     await tester.pumpAndSettle();
+    final closed = DateTime.now();
 
     expect(created, isNotNull);
     expect(created!.patientID, patient.id);
-    expect(
-        created!.date, DateTime(bareDay.year, bareDay.month, bareDay.day, 9));
+    expectStartsAt(created!.date, bareDay, opened, closed);
     expect(created!.preOpNotes, 'Crown preparation');
     expect(find.byKey(WK.fieldNewAppointmentPatient), findsNothing);
   });
 
-  testWidgets('a guessed hour keeps clear of the day it is guessed in',
+  testWidgets('a visit already booked that day does not move the start',
       (tester) async {
     appointments.set(testAppointment(
       id: 'booked',
@@ -121,6 +145,7 @@ void main() {
     ));
 
     Appointment? created;
+    final opened = DateTime.now();
     await openSheet(
       tester,
       patientID: patient.id,
@@ -129,9 +154,9 @@ void main() {
 
     await tester.tap(find.byKey(WK.btnCreateAppointment));
     await tester.pumpAndSettle();
+    final closed = DateTime.now();
 
-    expect(created!.date,
-        DateTime(bareDay.year, bareDay.month, bareDay.day, 9, 30));
+    expectStartsAt(created!.date, bareDay, opened, closed);
   });
 
   testWidgets('a timeline time survives changing duration and day',

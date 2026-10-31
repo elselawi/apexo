@@ -8,7 +8,6 @@ import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/operators_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/features/appointments/appointment_start_guess.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/new_patient_dialog.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -24,9 +23,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 /// written down for it — are asked for before there is a record, so [onSave]
 /// receives a visit that can be stored as it is. Nothing is opened as a draft.
 ///
-/// The fields the sheet does not invent are guessed: [day] says which day the
-/// caller came from, and the time is filled in around what that day already
-/// holds.
+/// The fields the sheet does not invent come from the caller: [day] says which
+/// day the caller came from, and a bare day starts at the time of day it is
+/// now.
 class NewAppointmentDialog extends StatefulWidget {
   const NewAppointmentDialog({
     super.key,
@@ -36,7 +35,7 @@ class NewAppointmentDialog extends StatefulWidget {
   });
 
   /// The day — or, when the caller has one, the exact moment — to start from.
-  /// A moment is kept, a bare day is guessed within.
+  /// A moment is kept, a bare day takes the current time of day.
   final DateTime? day;
 
   /// The patient the sheet starts with: a list opened for one patient already
@@ -53,10 +52,6 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   late final Appointment _draft;
   final TextEditingController _notes = TextEditingController();
 
-  /// Whether the time on screen is the user's, not a guess: their choice is
-  /// kept when the day or the duration changes, a guess is made again.
-  bool _timeWasPicked = false;
-
   /// The visit's initial operator, for the accounts that may only own the
   /// visits they are on.
   bool get _assignsItself =>
@@ -71,15 +66,8 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
       if (widget.patientID != null) "patientID": widget.patientID,
       if (_assignsItself) "operatorsIDs": [login.currentAccountID],
     });
-    final from = widget.day ?? DateTime.now();
-    _timeWasPicked = widget.day != null &&
-        (from.hour != 0 || from.minute != 0);
-    _draft.date = _guess(
-      day: from,
-      // A caller that clicked 10:00 meant 10:00; one that named a day meant
-      // "some time that day".
-      preferred: from.hour == 0 && from.minute == 0 ? null : from,
-    );
+    final from = widget.day;
+    _draft.date = from == null ? DateTime.now() : _atCurrentTime(from);
     _notes.text = _draft.preOpNotes;
   }
 
@@ -89,31 +77,24 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     super.dispose();
   }
 
-  DateTime _guess({required DateTime day, DateTime? preferred}) =>
-      guessAppointmentStart(
-        day: day,
-        now: DateTime.now(),
-        preferred: preferred,
-        duration: _draft.duration,
-        busy: [
-          for (final visit in appointments.docs.values)
-            if (visit.archived != true)
-              (start: visit.date, duration: Duration(minutes: visit.duration)),
-        ],
-      );
+  /// [day] as the sheet starts it: a caller that clicked 10:00 meant 10:00; one
+  /// that named a day meant that day at the time of day it is now.
+  DateTime _atCurrentTime(DateTime day) {
+    if (day.hour != 0 || day.minute != 0) return day;
+    final now = DateTime.now();
+    return DateTime(day.year, day.month, day.day, now.hour, now.minute);
+  }
 
   void _pickDate(DateTime picked) {
     setState(() {
       final time = _draft.date;
-      _draft.date = _timeWasPicked
-          ? DateTime(picked.year, picked.month, picked.day, time.hour, time.minute)
-          : _guess(day: picked);
+      _draft.date =
+          DateTime(picked.year, picked.month, picked.day, time.hour, time.minute);
     });
   }
 
   void _pickTime(DateTime picked) {
     setState(() {
-      _timeWasPicked = true;
       _draft.date = DateTime(
         _draft.date.year,
         _draft.date.month,
@@ -125,10 +106,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   }
 
   void _pickDuration(int duration) {
-    setState(() {
-      _draft.duration = duration;
-      if (!_timeWasPicked) _draft.date = _guess(day: _draft.date);
-    });
+    setState(() => _draft.duration = duration);
   }
 
   Future<void> _addPatient() async {
@@ -143,34 +121,24 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     Navigator.of(context).pop();
   }
 
-  /// A picker that starts from the current moment again whenever that moment
-  /// changes outside the picker's own picking — a guessed time after another
-  /// day was chosen. [DateTimePicker] keeps its own value, so it is rebuilt for
-  /// that.
   Widget _datePicker() => KeyedSubtree(
-        key: ValueKey("date-${_draft.date.millisecondsSinceEpoch}"),
-        child: KeyedSubtree(
-          key: WK.fieldNewAppointmentDate,
-          child: DateTimePicker(
-            initValue: _draft.date,
-            onChange: _pickDate,
-            buttonText: txt("changeDate"),
-            buttonIcon: WindowsIcons.calendar,
-          ),
+        key: WK.fieldNewAppointmentDate,
+        child: DateTimePicker(
+          initValue: _draft.date,
+          onChange: _pickDate,
+          buttonText: txt("changeDate"),
+          buttonIcon: WindowsIcons.calendar,
         ),
       );
 
   Widget _timePicker() => KeyedSubtree(
-        key: ValueKey("time-${_draft.date.millisecondsSinceEpoch}"),
-        child: KeyedSubtree(
-          key: WK.fieldNewAppointmentTime,
-          child: DateTimePicker(
-            initValue: _draft.date,
-            onChange: _pickTime,
-            pickTime: true,
-            buttonText: txt("changeTime"),
-            buttonIcon: FluentIcons.clock,
-          ),
+        key: WK.fieldNewAppointmentTime,
+        child: DateTimePicker(
+          initValue: _draft.date,
+          onChange: _pickTime,
+          pickTime: true,
+          buttonText: txt("changeTime"),
+          buttonIcon: FluentIcons.clock,
         ),
       );
 

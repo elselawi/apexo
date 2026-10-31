@@ -309,11 +309,16 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
   ///
   /// The new visit is the one the user came for, so it becomes the selected
   /// scope: the same call an opener makes from the calendar, with the patient
-  /// and the day already known (the design brief).
+  /// and the day already known (the design brief). Only the day is carried
+  /// over — a new visit at the current visit's exact hour would be a second
+  /// booking of the same slot.
   Future<void> _addVisit(BuildContext context) async {
+    final current = widget.currentAppointment?.date;
     final created = await addAppointment(
       context,
-      day: widget.currentAppointment?.date ?? DateTime.now(),
+      day: current == null
+          ? null
+          : DateTime(current.year, current.month, current.day),
       patientID: widget.patient.id,
     );
     if (created == null || !mounted) return;

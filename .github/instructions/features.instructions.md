@@ -210,9 +210,9 @@ A new record is asked for in a sheet, not in an empty panel: the sheet
 (`new_<record>_dialog.dart`) collects the fields the record cannot start
 without, the helper beside it (`addPatient`, `addAppointment`) stores the
 record, and only then is it opened — so `isNew` is false and nothing the user
-does can leave a draft behind. Guess what the sheet can: an appointment's date
-and time come from the day the caller came from and the visits already booked
-that day (`appointment_start_guess.dart`).
+does can leave a draft behind. The sheet does not invent a date: an appointment
+starts on the day — or at the moment — the caller came from, and a bare day
+takes the current time of day.
 
 ### Adding a persistent feature
 

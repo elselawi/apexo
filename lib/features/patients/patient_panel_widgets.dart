@@ -163,15 +163,32 @@ class PatientAppointments extends StatelessWidget {
                         difference =
                             "${txt("after")} ${Patient.formatDuration(appointment.date, apts[index + 1].date)}";
                       }
-                      return AppointmentCard(
+                      void openWindow(AppointmentWindow window) {
+                        final open = onOpenAppointment;
+                        if (open != null) {
+                          open(appointment, window);
+                        } else {
+                          unawaited(openAppointment(appointment, window));
+                        }
+                      }
+
+                      return ContextMenuRegion(
                         key: Key(appointment.id),
-                        appointment: appointment,
-                        difference: difference,
-                        hide: hide,
-                        number: index + 1,
-                        onOpen: onOpenAppointment,
-                        onTapDcm: (context, rowId, name) =>
-                            openDicomViewerWindow(rowId, name),
+                        items: (context, controller) => appointmentMenuItems(
+                          item: appointment,
+                          onOpenWindow: openWindow,
+                          controller: controller,
+                          menuContext: AppointmentMenuContext.patientRecord,
+                        ),
+                        child: AppointmentCard(
+                          appointment: appointment,
+                          difference: difference,
+                          hide: hide,
+                          number: index + 1,
+                          onOpen: onOpenAppointment,
+                          onTapDcm: (context, rowId, name) =>
+                              openDicomViewerWindow(rowId, name),
+                        ),
                       );
                     }),
                     const Divider(),
@@ -260,6 +277,7 @@ class PatientAppointments extends StatelessWidget {
 
 class _PatientDetails extends StatefulWidget {
   const _PatientDetails(this.patient);
+
   final Patient patient;
 
   @override

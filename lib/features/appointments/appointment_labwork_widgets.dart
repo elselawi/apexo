@@ -1,14 +1,36 @@
-part of 'open_appointment_panel.dart';
+import 'package:apexo/features/appointments/appointment_commands.dart';
+import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 
 /// A visit's labwork, wherever it is shown: the panel's own body and the labwork
 /// window draw the same thing, so neither can drift from the other.
 ///
 /// Two states, because a visit either has an order or has not started one: the
-/// way to start one, and the order itself with the way to take it away.
+/// way to start one, and the order itself. Taking the order away is the
+/// window's footer's job, beside its Save and Close.
 class AppointmentLabworkSection extends StatefulWidget {
-  const AppointmentLabworkSection({super.key, required this.appointment});
+  const AppointmentLabworkSection({
+    super.key,
+    required this.appointment,
+    this.hasOrder,
+    this.onEdited,
+  });
 
   final Appointment appointment;
+
+  /// Whether an order exists, shared with the window's footer so its remove
+  /// button follows this body — and this body follows that button.
+  ///
+  /// Null where there is no such footer (the labwork panel edits its own copy
+  /// and carries its own delete).
+  final ValueNotifier<bool>? hasOrder;
+
+  /// Tells the visit's session that its draft changed — starting or removing an
+  /// order is a change to save, like any typed field.
+  final VoidCallback? onEdited;
 
   @override
   State<AppointmentLabworkSection> createState() =>
@@ -16,16 +38,52 @@ class AppointmentLabworkSection extends StatefulWidget {
 }
 
 class _AppointmentLabworkSectionState extends State<AppointmentLabworkSection> {
-  void _setHasLabwork(bool hasLabwork) => setState(
-        () => widget.appointment.hasLabwork = hasLabwork,
-      );
+  @override
+  void initState() {
+    super.initState();
+    widget.hasOrder?.addListener(_orderChangedElsewhere);
+    widget.hasOrder?.value = widget.appointment.hasLabwork;
+  }
+
+  @override
+  void didUpdateWidget(covariant AppointmentLabworkSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.hasOrder, widget.hasOrder)) {
+      oldWidget.hasOrder?.removeListener(_orderChangedElsewhere);
+      widget.hasOrder?.addListener(_orderChangedElsewhere);
+    }
+    if (!identical(oldWidget.hasOrder, widget.hasOrder) ||
+        !identical(oldWidget.appointment, widget.appointment)) {
+      widget.hasOrder?.value = widget.appointment.hasLabwork;
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.hasOrder?.removeListener(_orderChangedElsewhere);
+    super.dispose();
+  }
+
+  /// The window's footer took the order away: the body shows what it says.
+  void _orderChangedElsewhere() {
+    final hasOrder = widget.hasOrder?.value ?? widget.appointment.hasLabwork;
+    if (hasOrder == widget.appointment.hasLabwork) return;
+    setState(() => widget.appointment.hasLabwork = hasOrder);
+    widget.onEdited?.call();
+  }
+
+  void _setHasLabwork(bool hasLabwork) {
+    setState(() => widget.appointment.hasLabwork = hasLabwork);
+    widget.hasOrder?.value = hasLabwork;
+    widget.onEdited?.call();
+  }
 
   @override
   Widget build(BuildContext context) {
     if (widget.appointment.hasLabwork) {
       return LabWorkEditor(
         appointment: widget.appointment,
-        onDelete: () => _setHasLabwork(false),
+        onEdited: widget.onEdited,
       );
     }
     return HyperlinkButton(
@@ -51,9 +109,9 @@ class _AppointmentLabworkSectionState extends State<AppointmentLabworkSection> {
 }
 
 class LabWorkEditor extends StatefulWidget {
-  const LabWorkEditor({super.key, required this.appointment, this.onDelete});
+  const LabWorkEditor({super.key, required this.appointment, this.onEdited});
   final Appointment appointment;
-  final VoidCallback? onDelete;
+  final VoidCallback? onEdited;
   @override
   State<LabWorkEditor> createState() => _LabWorkEditorState();
 }
@@ -68,6 +126,14 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
     labOrderNotesController.dispose();
     transcriptionEditCounter.unObserve(_updateWhenTranscriptionOccurs);
     super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant LabWorkEditor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.appointment, widget.appointment)) {
+      _fillControllers();
+    }
   }
 
   void _fillControllers() {
@@ -109,24 +175,9 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Txt(
-                txt("labworks"),
-                style: theme.typography.bodyStrong,
-              ),
-              if (widget.onDelete != null)
-                Tooltip(
-                  message: txt("delete"),
-                  child: IconButton(
-                    icon: const Icon(WindowsIcons.delete),
-                    onPressed: () {
-                      widget.onDelete!();
-                    },
-                  ),
-                )
-            ],
+          Txt(
+            txt("labworks"),
+            style: theme.typography.bodyStrong,
           ),
           const SizedBox(height: 5),
           const Divider(),
@@ -167,10 +218,12 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
                   onChanged: (text, reason) {
                     if (reason == TextChangedReason.userInput) {
                       widget.appointment.labName = text;
+                      widget.onEdited?.call();
                     }
                   },
                   onSelected: (item) {
                     widget.appointment.labName = item.value ?? item.label;
+                    widget.onEdited?.call();
                   },
                   controller: labNameController,
                   items: appointments.labs
@@ -200,6 +253,7 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
                   controller: labOrderNotesController,
                   onChanged: (value) {
                     widget.appointment.labworkNotes = value;
+                    widget.onEdited?.call();
                   },
                 ),
               ),
@@ -209,8 +263,10 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
           Checkbox(
             key: WK.fieldLabworkReceived,
             checked: widget.appointment.labworkReceived,
-            onChanged: (v) =>
-                setState(() => widget.appointment.labworkReceived = v ?? false),
+            onChanged: (v) => setState(() {
+              widget.appointment.labworkReceived = v ?? false;
+              widget.onEdited?.call();
+            }),
             content: Txt(txt("received")),
           ),
         ],

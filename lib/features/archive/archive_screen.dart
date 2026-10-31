@@ -10,7 +10,7 @@ import 'package:apexo/core/model.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/notes/column_edit_dialog.dart';
@@ -203,7 +203,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
           subtitle: ops.isNotEmpty ? '$d — $ops' : d,
           onRestore: () => appointments.unarchive(a.id),
           onOpen: () {
-            openAppointment(a);
+            unawaited(openAppointment(a));
           },
           canRestore: login.perm(Perm.appointments).full,
         );

@@ -13,6 +13,8 @@ import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/patients/new_patient_dialog.dart';
+import 'package:apexo/features/patients/patient_gallery.dart';
 import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -208,8 +210,12 @@ class _PatientsPageState extends State<_PatientsPage> {
       mainButton: IconButton(
         key: WK.btnNewPatient,
         icon: ButtonContent(FluentIcons.add, txt("newPatient")),
-        onPressed: () {
-          unawaited(openPatient());
+        onPressed: () async {
+          // The patient exists before the record opens: the sheet asks for the
+          // name and phone, and the panel edits a stored patient, never a draft.
+          final patient = await addPatient(context);
+          if (patient == null) return;
+          await openPatient(patient);
         },
       ),
       otherButtons: [
@@ -330,6 +336,8 @@ class _PatientsPageState extends State<_PatientsPage> {
             switch (window) {
               PatientWindow.appointments =>
                 menuCountSuffix(patient.allAppointments.length),
+              PatientWindow.gallery =>
+                menuCountSuffix(patientGalleryVisits(patient).length),
               PatientWindow.page =>
                 menuPresenceSuffix(patient.shortLink.isNotEmpty),
               _ => null,

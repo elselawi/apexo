@@ -8,16 +8,15 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/ui/workspace/panel_open_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/appointment_menu_items.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/appointment_operators_widgets.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:intl/intl.dart' as intl;
-import 'package:pocketbase/pocketbase.dart';
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
-import 'appointments_store.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Calendar Timeline View (Google‑Calendar‑style time grid)
@@ -681,7 +680,7 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
         app.date.hour != tt.hour ||
         app.date.minute != tt.minute) {
       app.date = DateTime(tt.year, tt.month, tt.day, tt.hour, tt.minute);
-      appointments.set(app);
+      appointmentCommand(app.id, (draft) => draft.date = app.date);
       widget.onSetTime(app);
     }
     setState(() {
@@ -797,6 +796,8 @@ class _TimelineChipState extends State<TimelineChip> {
       ),
       child: PanelOpenBuilder(
         itemId: widget.item.id,
+        // A visit is not a panel: it is open when a panel is carrying it.
+        carries: (panel) => panel.attached?.itemId == widget.item.id,
         builder: (context, panelIndex) => _buildChip(context, panelIndex),
       ),
     );
@@ -903,15 +904,19 @@ class _TimelineChipState extends State<TimelineChip> {
                                                       ),
                                                     ),
                                                   ),
-                                                  if (note.isNotEmpty || carries)
+                                                  if (note.isNotEmpty ||
+                                                      carries)
                                                     AppointmentInfoLine(
                                                       item: widget.item,
                                                       note: note,
                                                       color: widget.color,
-                                                      onOpenWindow: widget.onSelect,
+                                                      onOpenWindow:
+                                                          widget.onSelect,
                                                       noteStyle: TextStyle(
                                                         fontSize: 12,
-                                                        color: FluentTheme.of(context).inactiveColor,
+                                                        color: FluentTheme.of(
+                                                                context)
+                                                            .inactiveColor,
                                                       ),
                                                     ),
                                                 ],
@@ -944,8 +949,10 @@ class _TimelineChipState extends State<TimelineChip> {
                                               item: widget.item,
                                               color: widget.color,
                                               onSet: (duration) =>
-                                                  appointments.set(widget.item
-                                                    ..duration = duration),
+                                                  appointmentCommand(
+                                                      widget.item.id,
+                                                      (draft) => draft
+                                                          .duration = duration),
                                             ),
                                             if (showsPayment)
                                               _buildPaymentChip(context)
@@ -1011,10 +1018,8 @@ class _TimelineChipState extends State<TimelineChip> {
               FluentTheme.of(context).inactiveColor.withValues(alpha: 0.4)),
         ),
         checked: widget.item.isDone,
-        onChanged: (checked) {
-          widget.item.isDone = checked == true;
-          appointments.set(widget.item);
-        },
+        onChanged: (checked) => appointmentCommand(
+            widget.item.id, (draft) => draft.isDone = checked == true),
       ),
     );
   }
@@ -1045,7 +1050,11 @@ class _TimelineChipState extends State<TimelineChip> {
   }
 
   Widget _buildOperatorsPill(bool isCurrentlyOpenInAPanel) {
-    final selectedIds = widget.item.operatorsIDs.toSet();
+    // The names come from the visit as it reads now: a tick in the list beside
+    // this pill is a write to the draft and the store, not to the copy this
+    // chip was built with.
+    final visit = liveAppointment(widget.item.id) ?? widget.item;
+    final selectedIds = visit.operatorsIDs.toSet();
     final ops = accounts.operators;
     final display = ops.where((o) => selectedIds.contains(o.id)).toList();
     final label = display.isEmpty
@@ -1061,7 +1070,12 @@ class _TimelineChipState extends State<TimelineChip> {
                   _operatorsFlyout.close<void>();
                 } else {
                   unawaited(_operatorsFlyout.showFlyout<void>(
-                    builder: (ctx) => _buildOperatorsFlyoutContent(ctx, ops),
+                    builder: (_) => AppointmentOperatorsFlyout(
+                      appointmentId: widget.item.id,
+                      // The pill names who is on the visit: it has to hear
+                      // about every tick, while the list is still open.
+                      onChanged: () => setState(() {}),
+                    ),
                   ));
                 }
               },
@@ -1083,83 +1097,6 @@ class _TimelineChipState extends State<TimelineChip> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildOperatorsFlyoutContent(BuildContext ctx, List<RecordModel> ops) {
-    return StatefulBuilder(
-      builder: (ctx, flyoutSetState) {
-        final selectedIds = widget.item.operatorsIDs.toSet();
-        return Container(
-          constraints: const BoxConstraints(maxHeight: 300, maxWidth: 220),
-          decoration: BoxDecoration(
-            color: FluentTheme.of(ctx).resources.solidBackgroundFillColorBase,
-            borderRadius: BorderRadius.circular(6),
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.2),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4)),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 4),
-                child: Row(children: [
-                  Icon(FluentIcons.people,
-                      size: 14, color: FluentTheme.of(ctx).inactiveColor),
-                  const SizedBox(width: 8),
-                  Text(txt("selectDoctors"),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 12)),
-                ]),
-              ),
-              const Divider(size: 1),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: ops.map((op) {
-                    final checked = selectedIds.contains(op.id);
-                    void toggle() {
-                      if (checked) {
-                        widget.item.operatorsIDs.remove(op.id);
-                      } else {
-                        widget.item.operatorsIDs.add(op.id);
-                      }
-                      appointments.set(widget.item);
-                      flyoutSetState(() {});
-                      setState(() {});
-                    }
-
-                    return GestureDetector(
-                      onTap: toggle,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        child: Row(children: [
-                          Checkbox(
-                            checked: checked,
-                            onChanged: (_) => toggle(),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(accounts.name(op),
-                              style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: checked
-                                      ? FontWeight.w600
-                                      : FontWeight.normal)),
-                        ]),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }

@@ -7,12 +7,13 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
 import 'package:apexo/features/labwork/labworks_controller.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -52,6 +53,7 @@ class DashboardScreen extends StatelessWidget {
       return MStreamBuilder(
           streams: [
             appointments.observableMap.stream,
+            patients.observableMap.stream,
             expenses.observableMap.stream,
           ],
           builder: (context, asyncSnapshot) {
@@ -93,7 +95,7 @@ class DashboardScreen extends StatelessWidget {
                             .map((e) => ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   onPressed: () {
-                                    openAppointment(e);
+                                    unawaited(openAppointment(e));
                                   },
                                   title: ItemTitle(item: e, maxWidth: 123),
                                   trailing: Text(DF.time(e.date)),
@@ -139,9 +141,11 @@ class DashboardScreen extends StatelessWidget {
                         items: labworks.due
                             .map((e) => ListTile(
                                   // Each row is one order: its labwork window is
-                                  // the thing that is due.
-                                  onPressed: () => openAppointmentWindow(
-                                      e, AppointmentWindow.labwork),
+                                  // the thing that is due. Opening the patient's
+                                  // record beside it would bury the order.
+                                  onPressed: () => unawaited(
+                                      openAppointmentWindowOnItsOwn(
+                                          e, AppointmentWindow.labwork)),
                                   title: ItemTitle(item: e),
                                   subtitle: Txt(
                                       "${DateTime.now().difference(e.date).inDays} ${txt("daysAgo")}"),
@@ -157,25 +161,24 @@ class DashboardScreen extends StatelessWidget {
                         icon: FluentIcons.manufacturing,
                         onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("undelivered")})",
-                        items: labworks.notDeliveredPatients
-                            .map((e) {
-                              // The undelivered order belongs to the patient's
-                              // latest visit: that is the record whose labwork
-                              // window this opens. A patient whose visits have
-                              // all been archived has no visit to open.
-                              final visit = e.allAppointments.lastOrNull;
-                              if (visit == null) {
-                                return const SizedBox.shrink();
-                              }
-                              return ListTile(
-                                  onPressed: () => openAppointmentWindow(
-                                      visit, AppointmentWindow.labwork),
-                                  title: ItemTitle(item: e),
-                                  subtitle: Txt(
-                                      "${DateTime.now().difference(e.doneAppointments.lastOrNull?.date ?? visit.date).inDays} ${txt("daysAgo")}"),
-                                );
-                            })
-                            .toList(),
+                        items: labworks.notDeliveredPatients.map((e) {
+                          // The undelivered order belongs to the patient's
+                          // latest visit: that is the record whose labwork
+                          // window this opens. A patient whose visits have
+                          // all been archived has no visit to open.
+                          final visit = e.allAppointments.lastOrNull;
+                          if (visit == null) {
+                            return const SizedBox.shrink();
+                          }
+                          return ListTile(
+                            onPressed: () => unawaited(
+                                openAppointmentWindowOnItsOwn(
+                                    visit, AppointmentWindow.labwork)),
+                            title: ItemTitle(item: e),
+                            subtitle: Txt(
+                                "${DateTime.now().difference(e.doneAppointments.lastOrNull?.date ?? visit.date).inDays} ${txt("daysAgo")}"),
+                          );
+                        }).toList(),
                       ),
                     if (login.perm(Perm.expenses).some)
                       _buildDashboardList(

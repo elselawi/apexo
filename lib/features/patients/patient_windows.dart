@@ -19,6 +19,9 @@ enum PatientWindow {
   /// The visits of this patient.
   appointments('appointments', "appointments", WindowsIcons.calendar),
 
+  /// Every photo and X-ray of this patient, grouped by the visit holding it.
+  gallery('gallery', "gallery", FluentIcons.camera),
+
   /// The shareable patient page.
   page('page', "patientPage", FluentIcons.q_r_code);
 
@@ -58,5 +61,6 @@ List<PatientWindow> patientWindows() => [
       PatientWindow.details,
       PatientWindow.dentalChart,
       if (login.perm(Perm.appointments).some) PatientWindow.appointments,
+      PatientWindow.gallery,
       PatientWindow.page,
     ];

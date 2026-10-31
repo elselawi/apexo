@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/core/reactive/observable_base.dart';
+import 'package:apexo/features/appointments/appointment_sessions.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/file_links.dart';
 import 'package:apexo/services/session_events.dart';
@@ -56,6 +57,9 @@ void main() async {
     routes.reset();
     PanelsManager.closeAll();
     WindowsManager.closeAll();
+    // A visit's draft belongs to the account that opened it: logout is a forced
+    // teardown, with nobody left to prompt (plan §4.6).
+    appointmentSessions.clear();
   });
   SessionEvents.onStarted(
     () => unawaited(ApexoApp.showDialogsIfNeeded()),

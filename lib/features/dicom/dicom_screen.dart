@@ -7,6 +7,7 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/dicom/dicom_auto_import_toggle.dart';
 import 'package:apexo/features/dicom/dicom_controller.dart';
 import 'package:apexo/features/dicom/dicom_dir_manager.dart';
@@ -65,6 +66,9 @@ class DicomScreen extends StatelessWidget {
         dicomCtrl.scanFileProgress.stream,
         globalSettings.observableMap.stream,
         dicomLinks.version.stream,
+        // The date-match indicators ask whether a visit already exists, so
+        // they must re-read once appointments finish loading or change.
+        appointments.observableMap.stream,
       ],
       builder: (context, _) {
         final tick = dicomCtrl.pending().hashCode +

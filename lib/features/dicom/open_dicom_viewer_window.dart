@@ -5,7 +5,7 @@ import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/dicom/dicom_byte_fetcher.dart';
 import 'package:apexo/services/dicom/dicom_viewer_prefs.dart';
@@ -112,7 +112,7 @@ void openDicomViewerWindow(String rowId, String dcmName) {
         ? null
         : () async {
             final appointment = appointments.get(rowId);
-            if (appointment != null) openAppointment(appointment);
+            if (appointment != null) await openAppointment(appointment);
           },
   );
 }
@@ -385,8 +385,8 @@ class _DicomViewerState extends State<DicomScanViewer> {
       // Remove from the appointment model.
       final appt = appointments.get(widget.rowId!);
       if (appt != null) {
-        appt.dcmImgs.remove(widget.dcmName);
-        appointments.set(appt);
+        appointmentCommand(
+            appt.id, (draft) => draft.dcmImgs.remove(widget.dcmName));
       }
       if (!mounted) return;
       widget.onClose();

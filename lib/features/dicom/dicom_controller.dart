@@ -4,7 +4,7 @@ import 'dart:io' show Platform;
 
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/store.dart';
-import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/appointment_commands.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -156,12 +156,8 @@ class DicomController {
   }
 
   Set<DateTime> _appointmentDaySet(String apexoPatientId) {
-    final all =
-        appointments.byPatient[apexoPatientId]?["all"] ?? const <Appointment>[];
-    return all
-        .where((a) => a.archived != true)
-        .map((a) => DateTime(a.date.year, a.date.month, a.date.day))
-        .toSet();
+    return appointments.appointmentDaysByPatient[apexoPatientId] ??
+        const <DateTime>{};
   }
 
   /// Batch-approves every selected pending import that has a confirmed match.
@@ -468,8 +464,10 @@ class DicomController {
         }
       }
       if (unregistered.isNotEmpty) {
-        appt.dcmImgs.removeWhere((d) => unregistered.contains(d));
-        appointments.set(appt);
+        appointmentCommand(
+            appt.id,
+            (draft) =>
+                draft.dcmImgs.removeWhere((d) => unregistered.contains(d)));
         changed = true;
       }
     }

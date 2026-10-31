@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/widget_keys.dart';

@@ -353,22 +353,31 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
     super.dispose();
   }
 
+  /// The orders this window lists: the panel's own list, cut down to the ones
+  /// this window is about and to the search.
+  ///
+  /// Worked out where the list is drawn, not where the window is built: an
+  /// order added here, marked paid in a row or deleted from its menu reaches
+  /// the store before it reaches [widget.allOrders], and a list taken once
+  /// would keep showing the window as it was until it was closed and reopened.
+  List<Expense> ordersFor(String search) {
+    if (widget.singleArchived == true) return widget.allOrders;
+    return (widget.processed
+            ? widget.allOrders.where((e) => e.processed == true)
+            : widget.allOrders.where((e) => e.processed == false))
+        .where((e) =>
+            e.archived != true &&
+            e.items.join("").toLowerCase().contains(search))
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
   @override
   Widget build(BuildContext context) {
-    final search = _searchOrderController.text.toLowerCase();
-    final orders = widget.singleArchived == true
-        ? widget.allOrders
-        : (widget.processed
-                ? widget.allOrders.where((e) => e.processed == true).toList()
-                : widget.allOrders.where((e) => e.processed == false).toList())
-            .where((e) =>
-                e.archived != true &&
-                e.items.join("").toLowerCase().contains(search))
-            .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
     return MStreamBuilder(
         streams: [expenses.observableMap.stream],
         builder: (context, asyncSnapshot) {
+          final orders = ordersFor(_searchOrderController.text.toLowerCase());
           return Column(
             children: [
               if (widget.singleArchived != true)

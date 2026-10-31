@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/ui/workspace/delegated_panel.dart';
@@ -8,9 +9,9 @@ import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
+import 'package:apexo/features/appointments/appointment_labwork_widgets.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -24,6 +25,25 @@ final _isEditing = ObservableState(false);
 final _selectedPatientID = ObservableState<String>("");
 final _selectedAppointmentID = ObservableState<String>("");
 final _hasEdited = ObservableState(false);
+Appointment? _labworkDraft;
+String _labworkBaseline = '';
+
+String _labworkStamp(Appointment? appointment) => jsonEncode([
+      appointment?.labName,
+      appointment?.labworkNotes,
+      appointment?.labworkReceived,
+    ]);
+
+void _selectLabworkAppointment(String id) {
+  final source = liveAppointment(id);
+  // Keep edits out of the shared visit until Save can write their field deltas.
+  _labworkDraft = source == null
+      ? null
+      : Appointment.fromJson(source.toJson());
+  _labworkBaseline = _labworkStamp(_labworkDraft);
+  _hasEdited(false);
+  _selectedAppointmentID(id);
+}
 
 String _panelIdentifier(String appointmentId) => "$appointmentId-labwork";
 
@@ -43,17 +63,17 @@ void closeLabworksPanels() {
 Future<String?> openLabworkPanel(
     Appointment? initiallySelectedAppointment) async {
   closeLabworksPanels();
-  closeAppointmentsPanels();
+  detachVisits();
   _hasEdited(false);
 
   if (initiallySelectedAppointment != null) {
     _isEditing(true);
     _selectedPatientID(initiallySelectedAppointment.patientID);
-    _selectedAppointmentID(initiallySelectedAppointment.id);
+    _selectLabworkAppointment(initiallySelectedAppointment.id);
   } else {
     _isEditing(false);
     _selectedPatientID("");
-    _selectedAppointmentID("");
+    _selectLabworkAppointment("");
   }
 
   final panel = DelegatedPanel(
@@ -108,35 +128,6 @@ class _SingleLabworkPanelBody extends StatefulWidget {
 }
 
 class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
-  String labworkStamp = "";
-  Timer? timer;
-  @override
-  void initState() {
-    super.initState();
-    labworkStamp =
-        labworkStampFromAppointment(appointments.get(_selectedAppointmentID()));
-    timer = Timer.periodic(const Duration(milliseconds: 250), (timer) {
-      if (labworkStampFromAppointment(
-              appointments.get(_selectedAppointmentID())) !=
-          labworkStamp) {
-        _hasEdited(true);
-      } else {
-        _hasEdited(false);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    timer?.cancel();
-    super.dispose();
-  }
-
-  String labworkStampFromAppointment(Appointment? appointment) {
-    if (appointment == null) return "";
-    return "${appointment.labName}${appointment.labworkNotes}${appointment.labworkReceived}";
-  }
-
   Widget formatAppointmentDate(DateTime date) {
     return Txt("${txt("appointment")}: ${DF.allNumbers(date)}");
   }
@@ -147,9 +138,7 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
         ? null
         : patients.get(_selectedPatientID());
 
-    final Appointment? selectedAppointment = _selectedAppointmentID().isEmpty
-        ? null
-        : appointments.get(_selectedAppointmentID());
+    final selectedAppointment = _labworkDraft;
 
     final bool validPatientWithAppointments = () {
       if (selectedPatient == null) return false;
@@ -173,7 +162,7 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
                   onChanged: (patientID) {
                     setState(() {
                       _selectedPatientID(patientID ?? "");
-                      _selectedAppointmentID("");
+                      _selectLabworkAppointment("");
                     });
                   },
                   value: _selectedPatientID().isEmpty
@@ -196,7 +185,7 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
                     ),
                   ]),
                   onPressed: () {
-                    openAppointment(selectedAppointment);
+                    unawaited(openAppointment(selectedAppointment));
                     closeLabworksPanels();
                   },
                 )
@@ -214,14 +203,17 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
                       ? null
                       : (id) {
                           setState(() {
-                            _selectedAppointmentID(id!);
+                            _selectLabworkAppointment(id!);
                           });
                         },
                   value: _selectedAppointmentID(),
                 ),
               if (selectedAppointment != null)
                 LabWorkEditor(
+                  key: ValueKey(selectedAppointment.id),
                   appointment: selectedAppointment,
+                  onEdited: () => _hasEdited(
+                      _labworkStamp(_labworkDraft) != _labworkBaseline),
                 )
             ],
           );
@@ -248,10 +240,7 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
     return MStreamBuilder(
         streams: [_selectedAppointmentID.stream, _hasEdited.stream],
         builder: (context, asyncSnapshot) {
-          final Appointment? selectedAppointment =
-              _selectedAppointmentID().isEmpty
-                  ? null
-                  : appointments.get(_selectedAppointmentID());
+          final selectedAppointment = _labworkDraft;
           return Row(
             spacing: 10,
             children: [
@@ -281,8 +270,8 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                           ),
                           restorable: false,
                           onConfirm: () {
-                            selectedAppointment.hasLabwork = false;
-                            appointments.set(selectedAppointment);
+                            appointmentCommand(selectedAppointment.id,
+                                (draft) => draft.hasLabwork = false);
                             closeLabworksPanels();
                           },
                           controller: confirmDeleteFlyoutController,
@@ -312,8 +301,13 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                     if (!_hasEdited()) {
                       return;
                     }
-                    selectedAppointment.hasLabwork = true;
-                    appointments.set(selectedAppointment);
+                    appointmentCommand(selectedAppointment.id, (draft) {
+                      draft.hasLabwork = true;
+                      draft.labName = selectedAppointment.labName;
+                      draft.labworkNotes = selectedAppointment.labworkNotes;
+                      draft.labworkReceived =
+                          selectedAppointment.labworkReceived;
+                    });
                     closeLabworksPanels();
                   },
                 ),

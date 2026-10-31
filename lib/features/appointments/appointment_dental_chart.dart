@@ -1,8 +1,10 @@
 import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
+import 'package:apexo/features/appointments/appointment_chart_footer.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_owner_line.dart';
-import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
+import 'package:apexo/features/appointments/visit_scope_bar.dart';
 import 'package:apexo/features/settings/settings_stores.dart' show DF;
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
@@ -49,31 +51,34 @@ DentalChartSession appointmentDentalChart(
     ],
     oldNotes: () => patient?.allAppointmentsDentalNotes ?? const {},
     showPrimary: (patient?.age ?? 18) < 14,
-    onOpenAppointment: onOpenAppointment,
+    onOpenAppointment: onOpenAppointment ?? openAppointmentChartFromHistory,
+    header: patient == null
+        ? null
+        : (session) => VisitScopeBar(
+              patient: patient,
+              session: session,
+              currentAppointment: appointment,
+            ),
+    // The default is the standalone shape; the windows built for a visit beside
+    // its patient override it with the visit's own footer, so the post-op record
+    // sits under the teeth (see `appointmentSessionWindows`).
+    footer: (session) => AppointmentChartFooter(
+      key: ValueKey('chart-footer-${appointment.id}'),
+      appointment: appointment,
+      session: session,
+    ),
     onSave: onSave,
   );
 }
 
-/// The same, for one visit: the chart of [appointment], saved onto it, shown on
-/// its own when the visit's panel is not open.
+/// Opens the visit's chart — beside its patient, where the visit lives.
+///
+/// A visit's chart is one of its windows, so opening it is opening the visit
+/// focused on the chart: same patient panel, same draft, same Save (plan §4.3).
+/// With no patient the account may see, the chart stands on its own with the rest
+/// of the visit's windows.
 Future<void> openAppointmentDentalChart(
   Appointment appointment, {
-  ValueChanged<String>? onOpenAppointment,
-  Future<void> Function()? onOpenRecord,
-}) async {
-  final draft = Appointment.fromJson(appointment.toJson());
-  final session = appointmentDentalChart(
-    draft,
-    onOpenAppointment: onOpenAppointment,
-    onSave: () async {
-      final stored = appointments.get(draft.id);
-      if (stored == null) {
-        throw StateError('Appointment ${draft.id} is no longer stored');
-      }
-      appointments.set(stored.copy(false)
-        ..teeth = Map<String, String>.from(draft.teeth)
-        ..teethExtraNotes = Map<String, String>.from(draft.teethExtraNotes));
-    },
-  );
-  showDentalChartWindow(session, onOpenRecord: onOpenRecord);
-}
+  BuildContext? context,
+}) =>
+    openAppointment(appointment, AppointmentWindow.dentalChart);

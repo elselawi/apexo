@@ -120,6 +120,41 @@ class Appointments extends Store<Appointment> {
     return _byPatientCache!;
   }
 
+  /// Every stored appointment of [patientID], archived ones included.
+  ///
+  /// [byPatient] is built from [present], which hides appointments the signed-in
+  /// account may not edit ([Appointment.locked]). Use this method — not
+  /// [byPatient] — when the question is whether a visit already exists for a
+  /// patient, as DICOM matching and import ask: a scan must attach to the
+  /// existing visit even when this account's permission level hides it.
+  List<Appointment> allForPatient(String patientID) {
+    return observableMap.docs.values
+        .where((a) => a.patientID == patientID)
+        .toList();
+  }
+
+  Map<String, Set<DateTime>>? _daysByPatientCache;
+
+  /// The calendar days that already have a (non-archived) appointment, per
+  /// patient id.
+  ///
+  /// Like [allForPatient] this ignores [Appointment.locked], so it answers
+  /// "does this patient already have a visit that day?" for accounts with
+  /// limited appointment permissions too.
+  Map<String, Set<DateTime>> get appointmentDaysByPatient {
+    _ensureCacheRevision();
+    if (_daysByPatientCache != null) return _daysByPatientCache!;
+    final days = <String, Set<DateTime>>{};
+    for (final appointment in observableMap.docs.values) {
+      if (appointment.archived == true) continue;
+      final patientID = appointment.patientID ?? "";
+      if (patientID.isEmpty) continue;
+      (days[patientID] ??= <DateTime>{}).add(DateTime(
+          appointment.date.year, appointment.date.month, appointment.date.day));
+    }
+    return _daysByPatientCache = days;
+  }
+
   final Set<String> _labs = {};
   Set<String> get labs {
     _ensureCacheRevision();
@@ -129,6 +164,7 @@ class Appointments extends Store<Appointment> {
 
   void nullifyAppointmentsCache(_) {
     _byPatientCache = null;
+    _daysByPatientCache = null;
     _todayAppointments = null;
     _thisMonthAppointments = null;
     _allPrescriptions = null;

@@ -6,7 +6,7 @@ import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/firebase_options.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -235,6 +235,7 @@ abstract class PushListeners {
       return;
     }
 
+    final sessionRevision = notificationSessions.revision;
     if (pushData.store == "appointments") {
       await appointments.synchronize();
     }
@@ -242,19 +243,20 @@ abstract class PushListeners {
     if (pushData.store == "notes") {
       await notes.synchronize();
     }
+    if (notificationSessions.revision != sessionRevision) return;
 
     await _addStaticNotification(pushData);
+    if (notificationSessions.revision != sessionRevision) return;
 
     if (openedFromNotification) {
-      _navigateTo(pushData);
-      // A tap that launched the app can arrive before the record exists on
-      // this device: the route change starts a sync, so open the record once
-      // it lands.
+      // Retry before opening: a missing record must produce one message, not
+      // one before synchronization and another after it.
       if (pushData.store == "appointments" &&
           appointments.get(pushData.id) == null) {
         await appointments.synchronize();
-        openAppointmentIfExist(pushData.id);
+        if (notificationSessions.revision != sessionRevision) return;
       }
+      _navigateTo(pushData);
       return;
     }
 
@@ -273,13 +275,21 @@ abstract class PushListeners {
   }
 
   static void openAppointmentIfExist(String id) {
-    if (appointments.get(id) == null) {
+    final WidgetsBinding binding;
+    try {
+      binding = WidgetsBinding.instance;
+    } catch (_) {
+      // A background isolate has no screen on which to open a record.
       return;
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        openAppointment(appointments.get(id));
-      });
     }
+    final sessionRevision = notificationSessions.revision;
+    binding.addPostFrameCallback((_) {
+      if (notificationSessions.revision != sessionRevision) return;
+      // Resolve at execution time: synchronization or deletion may have changed
+      // the record since the notification was clicked.
+      unawaited(openAppointmentById(id));
+    });
+    binding.ensureVisualUpdate();
   }
 
   /// The callback the local-notifications plugin invokes for a toast click.

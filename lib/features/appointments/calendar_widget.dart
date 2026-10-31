@@ -15,7 +15,7 @@ import 'package:flutter/material.dart' show Card;
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 import '../../utils/round.dart';
-import 'open_appointment_panel.dart' show AppointmentWindow;
+import 'open_appointment.dart' show AppointmentWindow;
 import 'events_agenda_widget.dart';
 import 'events_timeline_widget.dart';
 
@@ -135,7 +135,11 @@ class WeekAgendaCalendarState<Item extends Appointment>
     return ScreenCommandBar(
       mainButton: IconButton(
         key: WK.btnNewAppointment,
-        onPressed: () => widget.onAddNew(selectedDate),
+        // The day, not the moment the calendar happens to be on: a visit added
+        // from here is guessed into a free slot, while a click on the timeline
+        // (which does carry a time) keeps the hour it landed on.
+        onPressed: () => widget.onAddNew(
+            DateTime(selectedDate.year, selectedDate.month, selectedDate.day)),
         icon: ButtonContent(FluentIcons.add, txt("newAppointment")),
       ),
       farItems: widget.actions ?? [],

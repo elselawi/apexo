@@ -11,7 +11,7 @@ import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -20,7 +20,6 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show TimeOfDay;
-import 'appointments_store.dart';
 import 'package:apexo/ui/workspace/panel_open_builder.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 
@@ -171,6 +170,8 @@ class AppointmentCalendarTile<Item extends Appointment>
           leading: Row(children: [
             PanelOpenBuilder(
               itemId: item.id,
+              // A visit is not a panel: it is open when a panel is carrying it.
+              carries: (panel) => panel.attached?.itemId == item.id,
               builder: (context, panelIndex) => panelIndex == null
                   ? Transform.scale(
                       scale: 1.25,
@@ -181,10 +182,8 @@ class AppointmentCalendarTile<Item extends Appointment>
                               FluentTheme.of(context).inactiveColor),
                         ),
                         checked: item.isDone,
-                        onChanged: (checked) {
-                          item.isDone = checked == true;
-                          appointments.set(item as Appointment);
-                        },
+                        onChanged: (checked) => appointmentCommand(
+                            item.id, (draft) => draft.isDone = checked == true),
                       ),
                     )
                   : OpenInPanelButton(panelIndex: panelIndex),
@@ -227,6 +226,9 @@ class AppointmentCalendarTile<Item extends Appointment>
                   ),
                   PanelOpenBuilder(
                     itemId: item.id,
+                    // A visit is not a panel: it is open when a panel is
+                    // carrying it.
+                    carries: (panel) => panel.attached?.itemId == item.id,
                     builder: (context, panelIndex) => IconButton(
                       onPressed: () async {
                         if (panelIndex != null) {

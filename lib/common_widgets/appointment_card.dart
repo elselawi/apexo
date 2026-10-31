@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -10,7 +12,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_owner_line.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -52,6 +54,7 @@ class AppointmentCard extends StatelessWidget {
     this.openOnWindow = AppointmentWindow.details,
     this.onOpen,
     this.onTapDcm,
+    this.canDeletePhotos,
   });
   final Appointment appointment;
   final List<AppointmentSections> hide;
@@ -64,9 +67,9 @@ class AppointmentCard extends StatelessWidget {
   final Color openButtonColor;
   final AppointmentWindow openOnWindow;
 
-  /// How the card opens the visit. A window that is itself a list of visits —
-  /// a patient's history, say — passes its own opener, so it can make way for the
-  /// visit it opened. Defaults to opening the visit's panel.
+  /// How the card and its preview sections open the visit. A window that is
+  /// itself a list of visits can supply its own opener. Defaults to
+  /// [openAppointment], which opens charts and galleries beside the patient.
   final void Function(Appointment appointment, AppointmentWindow window)?
       onOpen;
 
@@ -75,13 +78,27 @@ class AppointmentCard extends StatelessWidget {
   final void Function(BuildContext context, String rowId, String dcmName)?
       onTapDcm;
 
+  /// Whether the pictures in this card may be deleted. Null keeps the photos
+  /// permission alone; a caller that shows a visit's files elsewhere says here
+  /// that the visit itself must also be one the user may change — a file
+  /// belongs to its visit, so deleting it is a write to that visit.
+  final bool? canDeletePhotos;
+
   void _open(AppointmentWindow window) {
     final open = onOpen;
     if (open != null) {
       open(appointment, window);
       return;
     }
-    openAppointment(appointment, window);
+    unawaited(openAppointment(appointment, window));
+  }
+
+  VoidCallback? _sectionOpener(AppointmentWindow window) {
+    if (hide.contains(AppointmentSections.openAppointmentButton) ||
+        !appointmentWindows(appointment).contains(window)) {
+      return null;
+    }
+    return () => _open(window);
   }
 
   @override
@@ -170,7 +187,9 @@ class AppointmentCard extends StatelessWidget {
                               ItemTitle(item: appointment.patient!),
                               FluentIcons.medical,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.details)),
                         ],
                         if (appointment.operatorsIDs.isNotEmpty &&
                             !hide.contains(AppointmentSections.doctors)) ...[
@@ -191,7 +210,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               FluentIcons.medical,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.details)),
                         ],
                         if ((appointment.imgs.isNotEmpty ||
                                 appointment.dcmImgs.isNotEmpty) &&
@@ -202,7 +223,8 @@ class AppointmentCard extends StatelessWidget {
                           _buildSection(
                               txt("photos"),
                               GridGallery(
-                                canDelete: login.perm(Perm.photos).exact(1),
+                                canDelete: canDeletePhotos ??
+                                    login.perm(Perm.photos).exact(1),
                                 rowId: appointment.id,
                                 owner: () => appointmentOwnerLine(appointment),
                                 imgs: appointment.imgs,
@@ -213,10 +235,9 @@ class AppointmentCard extends StatelessWidget {
                                 rowWidth: 200,
                                 size: 43,
                                 drawings: appointment.drawings,
-                                onSaveDrawing: (img, drawing) {
-                                  appointment.drawings[img] = drawing;
-                                  appointments.set(appointment);
-                                },
+                                onSaveDrawing: (img, drawing) =>
+                                    appointmentCommand(appointment.id,
+                                        (draft) => draft.drawings[img] = drawing),
                                 onTapClip: () {
                                   _open(AppointmentWindow.gallery);
                                 },
@@ -226,9 +247,10 @@ class AppointmentCard extends StatelessWidget {
                                       appointment.id,
                                       img,
                                     );
-                                    appointment.drawings.remove(img);
-                                    appointments
-                                        .set(appointment..imgs.remove(img));
+                                    appointmentCommand(appointment.id, (draft) {
+                                      draft.drawings.remove(img);
+                                      draft.imgs.remove(img);
+                                    });
                                   } catch (e, s) {
                                     showErrorMessage(
                                         e, "deletingPatientImageFromServer");
@@ -243,8 +265,10 @@ class AppointmentCard extends StatelessWidget {
                                       appointment.id,
                                       dcmName,
                                     );
-                                    appointments.set(
-                                        appointment..dcmImgs.remove(dcmName));
+                                    appointmentCommand(
+                                        appointment.id,
+                                        (draft) =>
+                                            draft.dcmImgs.remove(dcmName));
                                   } catch (e, s) {
                                     showErrorMessage(
                                         e, "deletingPatientImageFromServer");
@@ -257,7 +281,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               FluentIcons.camera,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.gallery)),
                         ],
                         if (appointment.preOpNotes.isNotEmpty &&
                             !hide.contains(AppointmentSections.preNotes)) ...[
@@ -273,7 +299,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               WindowsIcons.quick_note,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.details)),
                         ],
                         if (appointment.postOpNotes.isNotEmpty &&
                             !hide.contains(AppointmentSections.postNotes)) ...[
@@ -289,7 +317,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               WindowsIcons.quick_note,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.details)),
                         ],
                         if (appointment.teeth.isNotEmpty &&
                             !hide
@@ -315,7 +345,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               FluentIcons.teeth,
                               color,
-                              context),
+                              context,
+                              onOpen: _sectionOpener(
+                                  AppointmentWindow.dentalChart)),
                         ],
                         if (appointment.hasLabwork &&
                             !hide.contains(AppointmentSections.labworks)) ...[
@@ -331,7 +363,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               FluentIcons.manufacturing,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.labwork)),
                         ],
                         if (appointment.prescriptions.isNotEmpty &&
                             !hide.contains(
@@ -348,7 +382,9 @@ class AppointmentCard extends StatelessWidget {
                               ),
                               FluentIcons.pill,
                               color,
-                              context),
+                              context,
+                              onOpen:
+                                  _sectionOpener(AppointmentWindow.operative)),
                         ],
                         if ((appointment.price != 0 || appointment.paid != 0) &&
                             !hide.contains(AppointmentSections.pay) &&
@@ -363,6 +399,7 @@ class AppointmentCard extends StatelessWidget {
                             FluentIcons.money,
                             color,
                             context,
+                            onOpen: _sectionOpener(AppointmentWindow.operative),
                           ),
                         ],
                       ],
@@ -382,10 +419,8 @@ class AppointmentCard extends StatelessWidget {
     return Checkbox(
       key: WK.acCheckBox,
       checked: appointment.isDone,
-      onChanged: (checked) {
-        appointment.isDone = checked == true;
-        appointments.set(appointment);
-      },
+      onChanged: (checked) => appointmentCommand(
+          appointment.id, (draft) => draft.isDone = checked == true),
       style: CheckboxThemeData(
         checkedDecoration: WidgetStatePropertyAll(
           BoxDecoration(
@@ -447,14 +482,15 @@ class AppointmentCard extends StatelessWidget {
     );
   }
 
-  Row _buildSection(
+  Widget _buildSection(
     String title,
     Widget child,
     IconData icon,
     Color color,
-    context,
-  ) {
-    return Row(
+    BuildContext context, {
+    VoidCallback? onOpen,
+  }) {
+    final row = Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         if (showSectionTitle) ...[
@@ -482,7 +518,40 @@ class AppointmentCard extends StatelessWidget {
           const SizedBox(width: 5),
         ],
         Expanded(child: child),
+        if (onOpen != null) ...[
+          const SizedBox(width: 6),
+          Icon(
+            Directionality.of(context) == TextDirection.rtl
+                ? WindowsIcons.chevron_left
+                : WindowsIcons.chevron_right,
+            size: 11,
+            color: FluentTheme.of(context).inactiveColor,
+          ),
+        ],
       ],
+    );
+    if (onOpen == null) return row;
+    return Tooltip(
+      message: title,
+      child: Button(
+        onPressed: onOpen,
+        style: ButtonStyle(
+          padding: const WidgetStatePropertyAll(
+              EdgeInsets.symmetric(horizontal: 2, vertical: 4)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.pressed)
+                  ? color.withValues(alpha: 0.16)
+                  : states.contains(WidgetState.hovered)
+                      ? color.withValues(alpha: 0.08)
+                      : Colors.transparent),
+          shape: WidgetStatePropertyAll(RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(4),
+          )),
+        ),
+        // A section is one preview target, including its photo thumbnails;
+        // editing and individual-image actions remain in the gallery it opens.
+        child: IgnorePointer(child: row),
+      ),
     );
   }
 
@@ -490,22 +559,27 @@ class AppointmentCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (number > 0 &&
-                !hide.contains(AppointmentSections.appointmentNumber))
-              Txt(
-                "${txt("appointment")}: $number",
-                style: TextStyle(
-                  fontSize: 10,
-                  color: color.withValues(alpha: 0.5),
-                  fontWeight: FontWeight.bold,
+        // The date gives way before the button does: a visit's card is drawn in
+        // a 350-pixel list window, and the full date is the first thing that no
+        // longer fits at that width.
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (number > 0 &&
+                  !hide.contains(AppointmentSections.appointmentNumber))
+                Txt(
+                  "${txt("appointment")}: $number",
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: color.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            const SizedBox(height: 3),
-            _buildFormattedDate(color),
-          ],
+              const SizedBox(height: 3),
+              _buildFormattedDate(color),
+            ],
+          ),
         ),
         if (!hide.contains(AppointmentSections.openAppointmentButton)) ...[
           IconButton(
@@ -522,6 +596,8 @@ class AppointmentCard extends StatelessWidget {
   Text _buildFormattedDate(Color color) {
     return Txt(
       DF.full(appointment.date),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
       style: TextStyle(
         color: showLeftBorder ? color : null,
         fontSize: 13,

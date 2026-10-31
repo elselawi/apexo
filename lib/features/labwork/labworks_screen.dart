@@ -9,9 +9,10 @@ import 'package:apexo/common_widgets/show_more_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
-import 'package:apexo/features/appointments/open_appointment_panel.dart';
+import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/labwork/labworks_controller.dart';
 import 'package:apexo/features/labwork/open_labwork_panel.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
@@ -28,7 +29,13 @@ class LabworksScreen extends StatelessWidget {
       children: [
         Expanded(
           child: MStreamBuilder(
-              streams: [appointments.observableMap.stream],
+              streams: [
+                appointments.observableMap.stream,
+                // The not-delivered half of the table is filtered by the
+                // patients behind the visits, so their record is a source of
+                // change here too.
+                patients.observableMap.stream,
+              ],
               builder: (context, snapshot) {
                 // ignore: prefer_const_constructors
                 return LabworksTable();
@@ -211,7 +218,11 @@ class _LabworksTableState extends State<LabworksTable> {
             child: HoverButton(
               onPressed: () {
                 if (canEditLabwork(apt) == false) return;
-                openAppointmentWindow(apt, AppointmentWindow.labwork);
+                // The order, not the patient's record: opening the visit's panel
+                // as well buried the labwork window under the appointment it
+                // belongs to.
+                unawaited(openAppointmentWindowOnItsOwn(
+                    apt, AppointmentWindow.labwork));
                 return;
               },
               builder: (context, states) {
@@ -241,8 +252,10 @@ class _LabworksTableState extends State<LabworksTable> {
                           checked: apt.labworkReceived,
                           onChanged: (checked) {
                             if (!canEdit(apt.operatorsIDs)) return;
-                            apt.labworkReceived = checked == true;
-                            appointments.set(apt);
+                            appointmentCommand(
+                                apt.id,
+                                (draft) =>
+                                    draft.labworkReceived = checked == true);
                           }),
                       const SizedBox(width: 5),
                       _buildDataCell(apt.patient?.title ?? "",
@@ -277,7 +290,8 @@ class _LabworksTableState extends State<LabworksTable> {
           text: Txt(txt("open")),
           leading: const Icon(WindowsIcons.open_in_new_window),
           onPressed: () {
-            openAppointmentWindow(apt, AppointmentWindow.labwork);
+            unawaited(
+                openAppointmentWindowOnItsOwn(apt, AppointmentWindow.labwork));
           },
         ),
       if (login.perm(Perm.appointments).some)
@@ -285,7 +299,7 @@ class _LabworksTableState extends State<LabworksTable> {
           text: Txt(txt("appointment")),
           leading: const Icon(WindowsIcons.calendar),
           onPressed: () {
-            openAppointment(apt);
+            unawaited(openAppointment(apt));
           },
         ),
       if (canEdit(apt.operatorsIDs)) ...[
@@ -293,10 +307,8 @@ class _LabworksTableState extends State<LabworksTable> {
         ToggleMenuFlyoutItem(
           text: Txt(txt("received")),
           value: apt.labworkReceived,
-          onChanged: (received) {
-            apt.labworkReceived = received;
-            appointments.set(apt);
-          },
+          onChanged: (received) => appointmentCommand(
+              apt.id, (draft) => draft.labworkReceived = received),
         ),
         const MenuFlyoutSeparator(),
         // Deleting a labwork takes the order off the visit: the visit itself,
@@ -312,10 +324,8 @@ class _LabworksTableState extends State<LabworksTable> {
               Txt("${txt("labwork")}: ${apt.patient?.title ?? ""}"),
             ],
           ),
-          onConfirm: () {
-            apt.hasLabwork = false;
-            appointments.set(apt);
-          },
+          onConfirm: () =>
+              appointmentCommand(apt.id, (draft) => draft.hasLabwork = false),
         ),
       ],
     ];

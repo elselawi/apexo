@@ -89,6 +89,26 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# `firebase_core` declares imported locations for the Debug and Release
+# configurations only, so the Visual Studio generator resolves `Profile` to the
+# *Debug* `firebase_app.lib`. That library is built against the debug CRT and
+# cannot link into a /MD profile build (`unresolved external symbol
+# _CrtSetReportMode`, and six more). Point `Profile` at the release libraries,
+# which is what a profile build has always compiled against.
+foreach(FIREBASE_LIB IN ITEMS firebase_app firebase_auth firebase_remote_config
+                            firebase_storage firebase_firestore firebase_database
+                            firebase_app_check)
+  if(TARGET ${FIREBASE_LIB})
+    get_target_property(FIREBASE_DEBUG_LOCATION ${FIREBASE_LIB}
+      IMPORTED_LOCATION_DEBUG)
+    if(FIREBASE_DEBUG_LOCATION)
+      string(REPLACE "Debug" "Release" FIREBASE_PROFILE_LOCATION
+        "${FIREBASE_DEBUG_LOCATION}")
+      set_target_properties(${FIREBASE_LIB} PROPERTIES
+        IMPORTED_LOCATION_PROFILE "${FIREBASE_PROFILE_LOCATION}")
+    endif()
+  endif()
+endforeach()
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can

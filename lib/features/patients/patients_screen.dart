@@ -103,10 +103,18 @@ class _PatientsPageState extends State<_PatientsPage> {
     final words =
         searchString.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
 
+    // `every` over a list of empty words is always true, so an empty query
+    // matches every patient whatever their `searchString` says. Asking for it
+    // anyway makes each patient build its table labels: during a sync batch this
+    // method runs again for every store notification, and at clinic size that is
+    // a thousand label builds per pass (measured at ~135 ms each) for a result
+    // that is thrown away.
+    final matchesEverything = words.every((word) => word.isEmpty);
+
     List<Patient> candidates = [];
 
     for (var item in patients.present.values) {
-      final bool allTermsFound =
+      final bool allTermsFound = matchesEverything ||
           words.every((word) => item.searchString.contains(word));
       if (allTermsFound) candidates.add(item);
     }

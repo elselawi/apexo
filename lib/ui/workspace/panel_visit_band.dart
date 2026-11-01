@@ -96,9 +96,13 @@ class _VisitBandState extends State<_VisitBand> {
         stream: session.hasUnsavedChanges.stream,
         builder: (context, _) {
           final theme = FluentTheme.of(context);
+          // Blended over the panel's own opaque fill, not over
+          // `scaffoldBackgroundColor`: that one is a 25%-opaque acrylic layer in
+          // Fluent, and a bubble painted on it is translucent — its tail then
+          // washes out over the page while the bubble above it looks solid.
           final background = Color.alphaBlend(
             accent.withValues(alpha: 0.055),
-            theme.scaffoldBackgroundColor,
+            theme.resources.solidBackgroundFillColorSecondary,
           );
           return Padding(
             // Room above for the tail, so the bubble points up at the patient
@@ -155,10 +159,10 @@ class _VisitBandState extends State<_VisitBand> {
                   ),
                 ),
                 PositionedDirectional(
-                  top: -6,
+                  top: -5,
                   start: 102,
                   child: CustomPaint(
-                    size: const Size(18, 8),
+                    size: const Size(14, 6),
                     painter: _VisitBandArrow(
                       background: background,
                       border: accent.withValues(alpha: 0.34),
@@ -473,7 +477,9 @@ class _VisitBandState extends State<_VisitBand> {
 ///
 /// The band is not another field group: it is a card *about* the visit the
 /// patient panel carries. The tail is what makes that relation visible without a
-/// label saying so.
+/// label saying so. It is drawn at the post-op card's size and depth — the same
+/// gesture over the same kind of bubble — so the two cards of the app cannot
+/// grow two different arrows.
 class _VisitBandArrow extends CustomPainter {
   const _VisitBandArrow({required this.background, required this.border});
 

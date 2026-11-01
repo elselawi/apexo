@@ -49,7 +49,8 @@ export 'package:apexo/features/appointments/appointment_windows.dart'
 /// patient panel with the visit's band and nothing over it. The chart is 960
 /// pixels of workspace; as a sheet it would cover the date, time and duration the
 /// user came to read. A caller that names a window still gets that window, because
-/// it asked for it.
+/// it asked for it — and the operative details are the chart's foot, so a phone
+/// draws that chart as a sheet rather than answering with the band alone.
 Future<void> openAppointment([
   Appointment? appointment,
   AppointmentWindow? window,
@@ -57,9 +58,7 @@ Future<void> openAppointment([
     _openVisit(
       appointment,
       focus: window?.id,
-      preferBand: window == null ||
-          window == AppointmentWindow.details ||
-          window == AppointmentWindow.operative,
+      preferBand: window == null || window == AppointmentWindow.details,
     );
 
 /// Opens one of [appointment]'s windows **on its own** — no patient panel, no

@@ -15,6 +15,7 @@
     - **Independent saves.** Uploading a photo, moving a calendar booking or updating a laboratory order no longer saves or overwrites unrelated clinical notes.
     - **The right visit every time.** Switching visits refreshes gallery and laboratory editors, and a delayed archive action cannot close a different visit opened meanwhile.
     - **Charts on shorter screens.** A requested treatment chart remains reachable on a short laptop display instead of silently staying closed.
+    - **Operative details on a phone.** Choosing a visit's operative details opens the chart that carries them, instead of leaving the visit card alone on screen with the record out of reach.
     - **Reliable scan matching.** Imported X-rays recognise existing visits even when appointment permissions hide them from lists, avoiding duplicate bookings.
     - **Clearer notification opening.** A notice for an unavailable visit shows one message, and queued openings are cancelled when the signed-in session ends.
     - **Matching Windows notification identity.** Windows requests push delivery using the same application identity as the sender, rather than a different registration identifier.

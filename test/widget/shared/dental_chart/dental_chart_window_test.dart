@@ -2899,6 +2899,39 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets(
+      'on a phone asking for the operative details opens the chart that holds '
+      'them', (tester) async {
+    setViewport(tester, const Size(420, 900));
+    final patient = testPatient(id: 'phone-operative-patient');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'phone-operative-visit',
+      patientID: patient.id,
+      date: DateTime(2026, 6, 4, 9, 0),
+    );
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    bContext = tester.element(find.byType(SizedBox).first);
+
+    // What the visit's context menu does when the user picks "Operative
+    // details": the record lives at the foot of the chart, so the chart is the
+    // window that was asked for — the band alone is not an answer to that.
+    await openAppointment(visit, AppointmentWindow.operative);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 420);
+    await tester.pumpAndSettle();
+
+    expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
+        isTrue,
+        reason: 'the operative record is drawn at the chart\'s own foot');
+    expect(find.byKey(const ValueKey('visit-operative-phone-operative-visit')),
+        findsOneWidget,
+        reason: 'the window the user asked for shows what they came for');
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the plan chart keeps the all-visits action on its title',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));

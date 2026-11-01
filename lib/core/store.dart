@@ -862,6 +862,22 @@ class Store<G extends Model> {
         final SyncResult result = await _syncTry(session);
         tries.add(result);
         if (result.exception != null) break;
+        // A pass that pushed, pulled and merged nothing left both sides exactly
+        // as it found them, so running it again can only repeat that work. That
+        // is what a remote whose store is empty (or was reset) looks like while
+        // the local cursor is ahead — the old loop spun here without end, and a
+        // login awaits this future, so the app never reached the shell.
+        final progressed = (result.pushed ?? 0) > 0 ||
+            (result.pulled ?? 0) > 0 ||
+            (result.conflicts ?? 0) > 0;
+        if (!progressed) {
+          effects.log(
+            'sync stopped after a pass that changed nothing; '
+            'local and remote are not converging',
+            StackTrace.current,
+          );
+          break;
+        }
       }
       return tries;
     } finally {

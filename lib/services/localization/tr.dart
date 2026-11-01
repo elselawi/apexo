@@ -8,6 +8,11 @@ class Tr implements En {
   String $code = "tr";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "Tercihler",
+    "settingsClinic": "Klinik",
+    "settingsStorage": "Veriler ve depolama",
+    "settingsServer": "Sunucu",
+    "settingsSubtitle": "Apexo ile çalışma şeklinizi özelleştirin.",
     "timelineHourUnit": "sa",
     "timelineDayUnit": "g",
     "timelineWeekUnit": "hf",

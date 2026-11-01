@@ -4,9 +4,9 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
+import '../settings_card.dart';
 
 class MetaSettings extends StatefulWidget {
   const MetaSettings({super.key});
@@ -107,9 +107,11 @@ class _MetaSettingsState extends State<MetaSettings> {
   Widget _hint(String key) {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Text(
+      child: Txt(
         txt(key),
-        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
+        style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).resources.textFillColorSecondary),
       ),
     );
   }
@@ -117,15 +119,15 @@ class _MetaSettingsState extends State<MetaSettings> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Expander(
+      padding: EdgeInsets.zero,
+      child: SettingsCard(
         key: WK.serviceSection('meta_settings'),
         leading: const Icon(FluentIcons.settings),
         header: Txt(txt("meta_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
-        contentPadding: const EdgeInsets.all(10),
+        contentPadding: const EdgeInsets.only(top: 20),
         content: SizedBox(
-          width: 400,
+          width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -141,7 +143,7 @@ class _MetaSettingsState extends State<MetaSettings> {
                   children: [
                     Txt(txt("meta_appName")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _appNameController,
                       placeholder: "My Clinic",
                     ),
@@ -153,7 +155,7 @@ class _MetaSettingsState extends State<MetaSettings> {
                   children: [
                     Txt(txt("meta_appUrl")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _appUrlController,
                       placeholder: "https://mine.apexo.app",
                     ),

@@ -8,6 +8,11 @@ class Fa implements En {
   String $code = "fa";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "ترجیحات",
+    "settingsClinic": "کلینیک",
+    "settingsStorage": "داده‌ها و ذخیره‌سازی",
+    "settingsServer": "سرور",
+    "settingsSubtitle": "Apexo را با روش کار خود هماهنگ کنید.",
     "timelineHourUnit": "س",
     "timelineDayUnit": "ر",
     "timelineWeekUnit": "ه",

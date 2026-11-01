@@ -8,6 +8,11 @@ class It implements En {
   String $code = "it";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "Preferenze",
+    "settingsClinic": "Clinica",
+    "settingsStorage": "Dati e archiviazione",
+    "settingsServer": "Server",
+    "settingsSubtitle": "Adatta Apexo al tuo modo di lavorare.",
     "timelineHourUnit": "h",
     "timelineDayUnit": "g",
     "timelineWeekUnit": "sett",

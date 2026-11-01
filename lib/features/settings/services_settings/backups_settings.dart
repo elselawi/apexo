@@ -6,18 +6,17 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
-import 'package:apexo/utils/get_deterministic_item.dart';
+import 'backup_file_tile.dart';
 import 'package:apexo/common_widgets/transitions/border.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
-import 'package:apexo/features/settings/services_settings/services_list_item.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
+import '../settings_card.dart';
 
 final _backupS3TestResult = ObservableState("");
 
@@ -157,9 +156,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
   Widget _hint(String key) {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Text(
+      child: Txt(
         txt(key),
-        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
+        style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).resources.textFillColorSecondary),
       ),
     );
   }
@@ -178,15 +179,15 @@ class _BackupsSettingsState extends State<BackupsSettings> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Expander(
+      padding: EdgeInsets.zero,
+      child: SettingsCard(
         key: WK.serviceSection('backups'),
         leading: const Icon(FluentIcons.folder),
         header: Txt(txt("backups")),
         trailing: const AppliesToIndicator(scope: Scope.system),
-        contentPadding: const EdgeInsets.all(10),
+        contentPadding: const EdgeInsets.only(top: 20),
         content: SizedBox(
-          width: 400,
+          width: double.infinity,
           child: MStreamBuilder(
               streams: [
                 backups.list.stream,
@@ -201,15 +202,17 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               ],
               builder: (context, _) {
                 return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: List<Widget>.from(backups.list().map(
-                            (element) => buildBackupTile(element, context)))
-                        .followedBy([
-                      const SizedBox(height: 10),
-                      buildBottomControls(),
-                      const SizedBox(height: 15),
-                      _buildBackupConfig(),
-                    ]).toList());
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    buildBottomControls(),
+                    const SizedBox(height: 16),
+                    _buildBackupGrid(context),
+                    const SizedBox(height: 24),
+                    const Divider(),
+                    const SizedBox(height: 24),
+                    _buildBackupConfig(),
+                  ],
+                );
               }),
         ),
       ),
@@ -239,7 +242,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                       onChanged: (v) => _autoBackupEnabled.value = v,
                     ),
                     const SizedBox(width: 10),
-                    Txt(txt("backups_auto_enabled")),
+                    Expanded(child: Txt(txt("backups_auto_enabled"))),
                   ],
                 );
               },
@@ -247,19 +250,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
             const SizedBox(height: 15),
             Txt(txt("backups_cron")),
             const SizedBox(height: 5),
-            Row(
-              spacing: 5,
+            ResponsiveRow(
               children: [
                 ComboBox<String>(
-                  // The **preset picker**, which is what a test means by
-                  // "the cron field": the box beside it only *shows* the cron
-                  // expression and is `enabled: false` (a tap on it does nothing,
-                  // which `backups 04` spent 60s discovering — a missed tap only
-                  // warns, and the wait for a preset list that can never open
-                  // follows). `Fixtures.serviceFieldText` reads a
-                  // `CupertinoTextField` *or* a `ComboBox`, which is what makes
-                  // this the key's home.
                   key: WK.serviceField('backups_cron'),
+                  isExpanded: true,
                   value: _cronController.text.isEmpty
                       ? null
                       : _cronController.text,
@@ -276,20 +271,10 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                     setState(() {});
                   },
                 ),
-                Expanded(
-                  child: CupertinoTextField(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                          color: FluentTheme.of(context)
-                              .inactiveColor
-                              .withValues(alpha: 0.1)),
-                      borderRadius: BorderRadius.circular(5),
-                    ),
-                    controller: _cronController,
-                    enabled: false,
-                    placeholder: "0 0 * * *",
-                    style: const TextStyle(color: Colors.grey),
-                  ),
+                TextBox(
+                  controller: _cronController,
+                  enabled: false,
+                  placeholder: "0 0 * * *",
                 ),
               ],
             ),
@@ -301,7 +286,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                 children: [
                   Txt(txt("backups_max_keep")),
                   const SizedBox(height: 5),
-                  CupertinoTextField(
+                  TextBox(
                     key: WK.serviceField('backups_maxKeep'),
                     controller: _maxKeepController,
                     placeholder: "5",
@@ -324,7 +309,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                             onChanged: (v) => _s3Enabled.value = v,
                           ),
                           const SizedBox(width: 10),
-                          Txt(txt("backups_s3_enabled")),
+                          Expanded(child: Txt(txt("backups_s3_enabled"))),
                         ],
                       );
                     },
@@ -336,7 +321,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               const SizedBox(height: 15),
               Txt(txt("s3_endpoint")),
               const SizedBox(height: 5),
-              CupertinoTextField(
+              TextBox(
                 key: WK.serviceField('backups_s3_endpoint'),
                 controller: _endpointController,
                 placeholder: "https://s3.amazonaws.com",
@@ -349,7 +334,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   children: [
                     Txt(txt("s3_bucket")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _bucketController,
                       placeholder: "my-backups",
                     ),
@@ -361,7 +346,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   children: [
                     Txt(txt("s3_region")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _regionController,
                       placeholder: "auto",
                     ),
@@ -376,7 +361,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   children: [
                     Txt(txt("s3_accessKey")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _accessKeyController,
                       placeholder: "AKIA...",
                     ),
@@ -391,7 +376,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                     ValueListenableBuilder<bool>(
                       valueListenable: _showSecretKey,
                       builder: (context, show, _) {
-                        return CupertinoTextField(
+                        return TextBox(
                           controller: _secretKeyController,
                           placeholder: txt("leaveBlankToKeepUnchanged"),
                           obscureText: !show,
@@ -423,7 +408,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                         onChanged: (v) => _forcePathStyle.value = v,
                       ),
                       const SizedBox(width: 10),
-                      Txt(txt("s3_forcePathStyle")),
+                      Expanded(child: Txt(txt("s3_forcePathStyle"))),
                     ],
                   );
                 },
@@ -431,7 +416,10 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               _hint("s3_forcePathStyle_hint"),
             ],
             const SizedBox(height: 20),
-            Row(
+            Wrap(
+              runSpacing: 8,
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 FilledButton(
                   onPressed: _saveSettings,
@@ -444,7 +432,6 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
                 FilledButton(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -465,8 +452,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                     }
                   },
                 ),
-                const SizedBox(width: 10),
-                if (_backupS3TestResult().length == 1) const ProgressBar()
+                if (_backupS3TestResult().length == 1)
+                  const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: ProgressRing(strokeWidth: 2))
               ],
             ),
             if (_backupS3TestResult().length > 1)
@@ -491,34 +481,70 @@ class _BackupsSettingsState extends State<BackupsSettings> {
     );
   }
 
+  Widget _buildBackupGrid(BuildContext context) {
+    final files = backups.list();
+    if (files.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 32),
+        child: Center(
+          child: backups.loading()
+              ? const ProgressRing()
+              : Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(WindowsIcons.zip_folder,
+                        size: 36,
+                        color: FluentTheme.of(context)
+                            .resources
+                            .textFillColorSecondary),
+                    const SizedBox(height: 12),
+                    Txt(txt('noFiles')),
+                  ],
+                ),
+        ),
+      );
+    }
+    return LayoutBuilder(builder: (context, constraints) {
+      const gap = 12.0;
+      final textScale = MediaQuery.textScalerOf(context).scale(13) / 13;
+      final columns = ((constraints.maxWidth + gap) / (220 * textScale + gap))
+          .floor()
+          .clamp(1, 4);
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final file in files)
+            SizedBox(width: width, child: buildBackupTile(file, context)),
+        ],
+      );
+    });
+  }
+
   Widget buildBackupTile(BackupFile element, BuildContext context) {
-    return ServicesListItem(
-      // The row's own file name is what the suite addresses it by — a backup
-      // has no record id, and the date is not unique on a busy day.
+    return BackupFileTile(
       key: WK.backupRow(element.key),
-      title: DF.fullCompact(element.date),
-      subtitle: element.key,
+      fileName: element.key,
+      modifiedLabel: DF.fullCompact(element.date),
+      sizeLabel: formatFileSize(element.size),
       actions: [
         buildDownloadButton(element, context),
+        buildRestoreButton(element, context),
         buildDeleteButton(element, context),
-        buildRestoreButton(element, context)
       ],
-      trailingText: buildFileSize(element),
     );
   }
 
-  Row buildBottomControls() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget buildBottomControls() {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Row(
-          children: [
-            buildCreateNewBackupButton(),
-            const SizedBox(width: 10),
-            buildUploadBackupButton(),
-          ],
-        ),
-        buildRefreshButton()
+        buildCreateNewBackupButton(),
+        buildUploadBackupButton(),
+        buildRefreshButton(),
       ],
     );
   }
@@ -546,7 +572,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                 backgroundColor:
                     WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)))
             : null,
-        child: ButtonContent(FluentIcons.upload, txt("upload")),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(FluentIcons.upload, size: 16),
+          const SizedBox(width: 8),
+          Flexible(child: Txt(txt("upload"))),
+        ]),
         onPressed: () {
           if (backups.uploading()) return;
           unawaited(backups.pickAndUpload());
@@ -564,24 +594,16 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                 backgroundColor:
                     WidgetStatePropertyAll(Colors.grey.withValues(alpha: 0.1)))
             : null,
-        child: ButtonContent(FluentIcons.add, txt("createNew")),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(FluentIcons.add, size: 16),
+          const SizedBox(width: 8),
+          Flexible(child: Txt(txt("createNew"))),
+        ]),
         onPressed: () {
           if (backups.creating()) return;
           unawaited(backups.newBackup());
         },
       ),
-    );
-  }
-
-  Container buildFileSize(BackupFile element) {
-    return Container(
-      padding: const EdgeInsets.all(7),
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(15),
-          color: getDeterministicItem(Colors.accentColors, element.key)
-              .withValues(alpha: 0.1)),
-      child: Txt(formatFileSize(element.size),
-          style: const TextStyle(fontSize: 12)),
     );
   }
 
@@ -613,7 +635,10 @@ class _BackupsSettingsState extends State<BackupsSettings> {
             content: Txt(
                 "${txt("restoreBackupWarning1")} (${DF.full(element.date)}) ${txt("restoreBackupWarning2")}"),
             actions: [
-              const CloseButtonInDialog(),
+              Button(
+                onPressed: () => Navigator.pop(context),
+                child: Txt(txt("cancel")),
+              ),
               FilledButton(
                 style: filledButtonStyle(Colors.red),
                 child: Txt(txt("restore")),

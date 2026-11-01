@@ -40,7 +40,8 @@ void main() {
       addTearDown(client.close);
       login.pb =
           PocketBase('https://example.test', httpClientFactory: () => client);
-      await tester.pumpWidget(FluentApp(home: widget));
+      await tester
+          .pumpWidget(FluentApp(home: SingleChildScrollView(child: widget)));
       await tester.pump();
       await tester.pumpWidget(const SizedBox.shrink());
       response.complete(http.Response(

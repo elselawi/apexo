@@ -7,6 +7,23 @@ Each test boots the app for itself: a `testWidgets` starts with an **empty**
 widget tree, so there is no "boot once and share" to build on. The backend and
 the local state are reset once per run, on the first boot.
 
+## Settings navigation
+
+Settings use always-visible editors grouped into Preferences, Calendar, Clinic,
+AI Services, Data & storage, Backups, and Server. Wide screens show category navigation;
+compact screens use a category picker. Clinic and server controls retain their
+admin/online restrictions. Unsaved edits survive category changes and resizing.
+Backups are shown as a responsive file grid with download, restore, and delete
+controls on each tile; existing `WK.backupRow` identifiers still address files.
+Upload-size and cache-reset controls use the same trailing-control layout as
+other settings, stacking beneath their descriptions on compact screens.
+
+Use `Fixtures.revealSettingsCard` or `Fixtures.openServiceSection` to select the
+correct category and scroll to an editor. The legacy `expandSettingsCard` helpers
+now reveal inline editors; tests must not tap card headers or infer expansion
+from card height. Deterministic layout and Save/Cancel coverage lives in
+`test/widget/features/settings/`.
+
 ## Running the suite
 
 ### Native (Windows/macOS/Linux, Android, iOS)

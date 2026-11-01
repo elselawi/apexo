@@ -4,9 +4,9 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
+import '../settings_card.dart';
 
 class AuthSettings extends StatefulWidget {
   const AuthSettings({super.key});
@@ -101,7 +101,7 @@ class _AuthSettingsState extends State<AuthSettings> {
     final days = int.tryParse(controller.text) ?? 0;
     return Padding(
       padding: const EdgeInsets.all(5),
-      child: Text(
+      child: Txt(
         days == 1 ? txt("day") : txt("days"),
         style: const TextStyle(
           fontSize: 12,
@@ -122,9 +122,11 @@ class _AuthSettingsState extends State<AuthSettings> {
   Widget _hint(String key) {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Text(
+      child: Txt(
         txt(key),
-        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
+        style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).resources.textFillColorSecondary),
       ),
     );
   }
@@ -132,15 +134,15 @@ class _AuthSettingsState extends State<AuthSettings> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Expander(
+      padding: EdgeInsets.zero,
+      child: SettingsCard(
         key: WK.serviceSection('auth_settings'),
         leading: const Icon(FluentIcons.authenticator_app),
         header: Txt(txt("auth_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
-        contentPadding: const EdgeInsets.all(10),
+        contentPadding: const EdgeInsets.only(top: 20),
         content: SizedBox(
-          width: 400,
+          width: double.infinity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -156,7 +158,7 @@ class _AuthSettingsState extends State<AuthSettings> {
                   children: [
                     Txt(txt("auth_users_duration")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _usersDurationController,
                       placeholder: "14",
                       keyboardType: TextInputType.number,
@@ -170,7 +172,7 @@ class _AuthSettingsState extends State<AuthSettings> {
                   children: [
                     Txt(txt("auth_superusers_duration")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: _superusersDurationController,
                       placeholder: "14",
                       keyboardType: TextInputType.number,

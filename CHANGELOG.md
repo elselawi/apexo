@@ -1,3 +1,8 @@
+### ____0.17.1____
+
+- UI & UX Polish
+    - redesigned settings screen
+
 ### ____0.17.0____
 
 - New Features & Improvements

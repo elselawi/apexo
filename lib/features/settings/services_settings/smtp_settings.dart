@@ -6,10 +6,10 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
+import '../settings_card.dart';
 
 final _smtpTestResult = ObservableState("");
 
@@ -152,16 +152,18 @@ class _SmtpSettingsState extends State<SmtpSettings> {
   Widget _presetChip(String label, VoidCallback onTap) {
     return Button(
       onPressed: onTap,
-      child: Text(label, style: const TextStyle(fontSize: 12)),
+      child: Txt(label, style: const TextStyle(fontSize: 12)),
     );
   }
 
   Widget _hint(String key) {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Text(
+      child: Txt(
         txt(key),
-        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
+        style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).resources.textFillColorSecondary),
       ),
     );
   }
@@ -171,7 +173,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
       onTap: () {
         unawaited(launchUrl(Uri.parse(url)));
       },
-      child: Text(
+      child: Txt(
         "${txt("smtp_app_passwords")} ($provider)",
         style: TextStyle(
           fontSize: 11,
@@ -185,15 +187,15 @@ class _SmtpSettingsState extends State<SmtpSettings> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Expander(
+      padding: EdgeInsets.zero,
+      child: SettingsCard(
         key: WK.serviceSection('smtp_settings'),
         leading: const Icon(FluentIcons.mail),
         header: Txt(txt("smtp_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
-        contentPadding: const EdgeInsets.all(10),
+        contentPadding: const EdgeInsets.only(top: 20),
         content: SizedBox(
-          width: 400,
+          width: double.infinity,
           child: MStreamBuilder(
               streams: [_smtpTestResult.stream],
               builder: (context, _) {
@@ -216,18 +218,19 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                               onChanged: (v) => smtpEnabled.value = v,
                             ),
                             const SizedBox(width: 10),
-                            Txt(txt("smtp_enabled")),
+                            Expanded(child: Txt(txt("smtp_enabled"))),
                           ],
                         );
                       },
                     ),
                     const SizedBox(height: 15),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         Txt("${txt("smtp_presets")}:"),
-                        const SizedBox(width: 8),
                         _presetChip("Gmail", _applyGmailPreset),
-                        const SizedBox(width: 5),
                         _presetChip("Outlook", _applyOutlookPreset),
                       ],
                     ),
@@ -245,7 +248,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           children: [
                             Txt(txt("smtp_host")),
                             const SizedBox(height: 5),
-                            CupertinoTextField(
+                            TextBox(
                               key: WK.serviceField('smtp_host'),
                               controller: hostController,
                               placeholder: "smtp.example.com",
@@ -258,7 +261,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           children: [
                             Txt(txt("smtp_port")),
                             const SizedBox(height: 5),
-                            CupertinoTextField(
+                            TextBox(
                               key: WK.serviceField('smtp_port'),
                               controller: portController,
                               placeholder: "587",
@@ -307,7 +310,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                         children: [
                           Txt(txt("smtp_username")),
                           const SizedBox(height: 5),
-                          CupertinoTextField(
+                          TextBox(
                             controller: usernameController,
                             placeholder: "user@example.com",
                           ),
@@ -322,7 +325,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           ValueListenableBuilder<bool>(
                             valueListenable: showPassword,
                             builder: (context, show, _) {
-                              return CupertinoTextField(
+                              return TextBox(
                                 key: WK.serviceField('smtp_password'),
                                 controller: passwordController,
                                 placeholder: txt("leaveBlankToKeepUnchanged"),
@@ -368,7 +371,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                         children: [
                           Txt(txt("smtp_senderName")),
                           const SizedBox(height: 5),
-                          CupertinoTextField(
+                          TextBox(
                             controller: senderNameController,
                             placeholder: "My Clinic",
                           ),
@@ -380,7 +383,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                         children: [
                           Txt(txt("smtp_senderEmail")),
                           const SizedBox(height: 5),
-                          CupertinoTextField(
+                          TextBox(
                             controller: senderEmailController,
                             placeholder: "noreply@example.com",
                           ),
@@ -391,13 +394,16 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                     const SizedBox(height: 15),
                     Txt(txt("smtp_localName")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       controller: localNameController,
                       placeholder: "mine.apexo.app",
                     ),
                     _hint("smtp_localName_hint"),
                     const SizedBox(height: 20),
-                    Row(
+                    Wrap(
+                      runSpacing: 8,
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         FilledButton(
                           onPressed: _saveSmtpSettings,
@@ -410,7 +416,6 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
                         FilledButton(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -432,8 +437,11 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             }
                           },
                         ),
-                        const SizedBox(width: 10),
-                        if (_smtpTestResult().length == 1) const ProgressBar()
+                        if (_smtpTestResult().length == 1)
+                          const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: ProgressRing(strokeWidth: 2))
                       ],
                     ),
                     if (_smtpTestResult().length > 1)

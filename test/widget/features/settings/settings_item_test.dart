@@ -8,27 +8,21 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/pump_app.dart';
 
 Finder _card(String identifier) => find.byKey(WK.settingsItem(identifier));
 
-Future<void> _expandCard(
+Future<void> _expectInlineCard(
   WidgetTester tester,
   String identifier,
   String headerLabel,
 ) async {
-  await tester.tap(
-    find
-        .descendant(
-          of: _card(identifier),
-          matching: find.text(headerLabel),
-        )
-        .first,
-  );
-  await tester.pumpAndSettle();
+  expect(
+      find.descendant(of: _card(identifier), matching: find.text(headerLabel)),
+      findsWidgets);
+  expect(find.byType(Expander), findsNothing);
 }
 
 Future<void> _selectOption(
@@ -44,7 +38,8 @@ Future<void> _selectOption(
 
 Finder _button(String identifier, String label) => find.descendant(
       of: _card(identifier),
-      matching: find.widgetWithText(FilledButton, label),
+      matching: find.widgetWithText(
+          label == txt('save') ? FilledButton : Button, label),
     );
 
 SettingsItem _textItem({
@@ -128,7 +123,7 @@ void main() {
         ),
       );
 
-      await _expandCard(tester, 'currency', txt('currency'));
+      await _expectInlineCard(tester, 'currency', txt('currency'));
 
       final field = find.byKey(const Key('currency_text_field'));
       await tester.enterText(field, 'CHF');
@@ -150,7 +145,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        tester.widget<CupertinoTextField>(field).controller!.text,
+        tester.widget<TextBox>(field).controller!.text,
         'CHF',
       );
       expect(_button('currency', txt('save')), findsNothing);
@@ -183,19 +178,19 @@ void main() {
           );
         }),
       );
-      await _expandCard(tester, 'currency', txt('currency'));
+      await _expectInlineCard(tester, 'currency', txt('currency'));
       final field = find.byKey(const Key('currency_text_field'));
       rebuild(() => initial = 'CHF');
       await tester.pumpAndSettle();
-      expect(tester.widget<CupertinoTextField>(field).controller!.text, 'CHF');
+      expect(tester.widget<TextBox>(field).controller!.text, 'CHF');
       await tester.enterText(field, 'USD');
       rebuild(() => initial = 'GBP');
       await tester.pumpAndSettle();
-      expect(tester.widget<CupertinoTextField>(field).controller!.text, 'USD');
+      expect(tester.widget<TextBox>(field).controller!.text, 'USD');
       expect(_button('currency', txt('save')), findsOneWidget);
       await tester.tap(_button('currency', txt('cancel')));
       await tester.pumpAndSettle();
-      expect(tester.widget<CupertinoTextField>(field).controller!.text, 'GBP');
+      expect(tester.widget<TextBox>(field).controller!.text, 'GBP');
       expect(_button('currency', txt('save')), findsNothing);
     });
 
@@ -207,7 +202,7 @@ void main() {
         SizedBox(width: 480, child: _calendarSystemItem()),
       );
 
-      await _expandCard(tester, 'calendarSystem', txt('calendarSystem'));
+      await _expectInlineCard(tester, 'calendarSystem', txt('calendarSystem'));
       await _selectOption(tester, 'calendarSystem', txt('persian'));
 
       expect(localSettings.calendarSystem, 'gregorian');
@@ -238,7 +233,7 @@ void main() {
         SizedBox(width: 480, child: _dentalNotationItem()),
       );
 
-      await _expandCard(tester, 'dentalNotation', txt('dentalNotation'));
+      await _expectInlineCard(tester, 'dentalNotation', txt('dentalNotation'));
       await _selectOption(tester, 'dentalNotation', txt('universal'));
 
       expect(localSettings.dentalNotation, 'p');

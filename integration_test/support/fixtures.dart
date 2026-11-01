@@ -15,6 +15,7 @@ import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/features/settings/settings_section.dart';
 import 'package:apexo/services/localization/locale.dart' show Txt, locale, txt;
 import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
@@ -85,11 +86,6 @@ abstract final class Fixtures {
   static int _seq = 0;
   static String stamp([String prefix = 'e2e']) =>
       '$prefix ${DateTime.now().millisecondsSinceEpoch}-${_seq++}';
-
-  /// A shut services section is its header (`minHeight: 42`); an open one is that
-  /// plus its content (hundreds of pixels). Anything between is not expected, so
-  /// the boundary is deliberately generous.
-  static const double _collapsedSectionHeight = 60;
 
   static void _remember(String store, String id) {
     if (id.isEmpty) return;
@@ -2261,70 +2257,55 @@ abstract final class Fixtures {
     await E2E.settle(tester, frames: 10);
   }
 
-  /// Opens the insights-style settings screen (its first card is `currency`).
+  /// Opens the settings screen with its responsive category navigation.
   static Future<void> openSettings(WidgetTester tester) => openRoute(
         tester,
         'settings',
-        find.byKey(WK.settingsItem('currency')),
+        find.byKey(WK.settingsList),
         description: 'the settings screen',
       );
 
-  /// Scrolls the settings list until card [identifier] is on screen (which is
-  /// also what builds it — the cards are lazy list children).
+  static Future<void> _selectSettingsSection(
+    WidgetTester tester,
+    String identifier,
+  ) async {
+    final section = settingsSectionFor(identifier);
+    final navigation =
+        find.byKey(ValueKey('settings_category_${section.name}'));
+    if (navigation.evaluate().isNotEmpty) {
+      await tester.ensureVisible(navigation);
+      await E2E.tap(tester, navigation, description: 'the settings category');
+    } else {
+      await E2E.tap(
+          tester, find.byKey(const ValueKey('settings_category_picker')),
+          description: 'the settings category picker');
+      await E2E.settle(tester, frames: 5);
+      await E2E.tap(tester, find.text(txt(section.titleKey)).last,
+          description: 'the settings category');
+    }
+    await E2E.settle(tester, frames: 5);
+  }
+
+  /// Selects a card's category and scrolls its inline editor into view.
   static Future<void> revealSettingsCard(
     WidgetTester tester,
     String identifier,
   ) async {
+    await _selectSettingsSection(tester, identifier);
     final card = find.byKey(WK.settingsItem(identifier));
-    if (card.evaluate().isEmpty) {
-      // The list's **own** scrollable — not `find.byType(Scrollable).last`, which
-      // is a *text field's* internal `editable` scrollable whenever the screen
-      // holds one: a drag on that goes nowhere and `scrollUntilVisible` gives up
-      // with `Bad state: No element` (`settings_general 03`, whose cards have to
-      // be scrolled to).
-      await tester.scrollUntilVisible(
-        card,
-        150,
-        scrollable: find
-            .descendant(
-              of: find.byKey(WK.settingsList),
-              matching: find.byType(Scrollable),
-            )
-            .first,
-        maxScrolls: 40,
-      );
-    }
-    // **Built is not visible.** A card stays built while it sits in the list's
-    // cache extent, and a tap on a card outside the viewport only warns — the
-    // flyout it was meant to open never appears and the test's next wait times
-    // out on it. `tester.ensureVisible` does nothing on this list, so the
-    // position is driven directly instead.
+    await E2E.waitFor(tester, card, description: 'the settings card');
     await _scrollIntoSettingsView(tester, card);
-    await E2E.settle(tester, frames: 5);
   }
 
-  /// Expands a settings card by its title's localization key — the AI card (and
-  /// any other card without a stable identifier) is addressed this way.
+  /// Kept for callers that previously expanded a card; editors are now inline.
   static Future<void> expandSettingsCardByTitle(
     WidgetTester tester,
     String titleKey,
-  ) async {
-    final header = find.text(txt(titleKey)).first;
-    if (header.evaluate().isEmpty) {
-      await tester.scrollUntilVisible(
-        header,
-        150,
-        scrollable: find.byType(Scrollable).last,
-        maxScrolls: 40,
-      );
-      await E2E.settle(tester, frames: 5);
-    }
-    await E2E.tap(tester, header, description: 'the "$titleKey" card header');
-    await E2E.settle(tester, frames: 15);
-  }
+  ) =>
+      revealSettingsCard(
+          tester, titleKey == 'ai_services' ? 'ai_services_ena' : titleKey);
 
-  /// The text a settings card's field currently holds (revealing and expanding it
-  /// first).
+  /// The text a settings card's field currently holds, after revealing it.
   ///
   /// This is deliberately a *UI* read: a store read of the same setting can
   /// answer with the default until the row has synced down, which makes a test
@@ -2338,10 +2319,10 @@ abstract final class Fixtures {
     await E2E.waitFor(tester, field,
         description: 'the "$identifier" field',
         timeout: const Duration(seconds: 20));
-    return tester.widget<CupertinoTextField>(field).controller?.text ?? '';
+    return tester.widget<TextBox>(field).controller?.text ?? '';
   }
 
-  /// Expands the settings card [identifier] and commits [value] into its text
+  /// Reveals the settings card [identifier] and commits [value] into its text
   /// field, which is what the card's Save button applies.
   static Future<void> setSettingsText(
     WidgetTester tester,
@@ -2360,7 +2341,7 @@ abstract final class Fixtures {
 
     // The Save button only exists once the field differs from the stored value,
     // so an absent one usually means "the value is already $value". It also often
-    // sits *below* the viewport (expanding the card pushed it out), which makes a
+    // sits *below* the viewport after editing, which makes a
     // default finder blind to it — hence `skipOffstage: false` plus a scroll.
     // (No `.first` before the emptiness check: `evaluate()` on a `.first` finder
     // throws "Bad state: No element" instead of answering "nothing".)
@@ -2476,24 +2457,12 @@ abstract final class Fixtures {
     await E2E.settle(tester, frames: 20);
   }
 
-  /// Expands the settings card [identifier] without touching its value.
+  /// Reveals the inline editor without touching its value.
   static Future<void> expandSettingsCard(
     WidgetTester tester,
     String identifier,
-  ) async {
-    await revealSettingsCard(tester, identifier);
-    final card = find.byKey(WK.settingsItem(identifier));
-    // **"The content exists" is not "the card is open".** fluent's `Expander`
-    // lays its content out while it is collapsed (the same behaviour
-    // `openServiceSection` works around), so the old early return on the child's
-    // existence left the card shut: the tap on its dropdown derived an offset
-    // inside the *header*, only warned, and the option was never offered —
-    // `localization_rtl 04` waited out a full 60s on it. Height is the test that
-    // works, exactly as it does for the service sections.
-    if (tester.getSize(card).height > _collapsedSectionHeight) return;
-    await E2E.tap(tester, card, description: 'the "$identifier" card');
-    await E2E.settle(tester, frames: 15);
-  }
+  ) =>
+      revealSettingsCard(tester, identifier);
 
   /// Picks [optionLabel] in the settings card [identifier]'s dropdown and saves.
   ///
@@ -2583,153 +2552,24 @@ abstract final class Fixtures {
 
   // --------------------------------------- settings services and backups
 
-  /// Opens the settings screen and expands one of its **services** sections.
-  ///
-  /// The sections (`smtp_settings`, `s3_settings`, `backups`,
-  /// `file_upload_settings`, `meta_settings`, `auth_settings`) sit below the
-  /// cards, are collapsed `Expander`s, and are rendered only for an admin on an
-  /// online session.
+  /// Opens the category containing a service's inline form.
   static Future<void> openServiceSection(
     WidgetTester tester,
     String id,
   ) async {
     await openSettings(tester);
-    // The screen reads its values before it builds the list; the list is what
-    // has the scrollable, so wait for it rather than for the first card.
-    await E2E.waitFor(tester, find.byKey(WK.settingsList),
-        description: 'the settings list', timeout: const Duration(seconds: 60));
-
+    await _selectSettingsSection(tester, id);
     final section = find.byKey(WK.serviceSection(id));
-    if (section.evaluate().isEmpty) {
-      final scrollable = find.descendant(
-        of: find.byKey(WK.settingsList),
-        matching: find.byType(Scrollable),
-      );
-      expect(scrollable, findsWidgets,
-          reason: 'the settings list has no scrollable to scroll');
-      await tester.scrollUntilVisible(
-        section,
-        150,
-        scrollable: scrollable.first,
-        maxScrolls: 80,
-      );
-      await E2E.settle(tester, frames: 10);
-    }
-    if (section.evaluate().isEmpty) {
-      const known = [
-        'meta_settings',
-        'auth_settings',
-        'file_upload_settings',
-        's3_settings',
-        'smtp_settings',
-        'backups',
-      ];
-      final present = known
-          .where((candidate) =>
-              find.byKey(WK.serviceSection(candidate)).evaluate().isNotEmpty)
-          .toList();
-      fail('The "$id" section is not on the settings screen after scrolling '
-          'to the end. Sections present: $present (they are rendered only for '
-          'an admin on an online session).');
-    }
-    // Is it already open? **Not** by looking for its content: fluent's
-    // `Expander` keeps the content in the tree and merely animates its height to
-    // zero (`SizeTransition`), so a field, a Save button and every key inside are
-    // findable while the section is still shut — they are simply not
-    // hit-testable (`tester.tap` only *warns* about that, so the failure surfaces
-    // much later as a missing dialog). The one honest signal is height: shut,
-    // the section is its header (`minHeight: 42`); open, it is header + content.
-    if (_sectionHeight(tester, section) <= _collapsedSectionHeight) {
-      // The header has to be *on screen* before it can be tapped — the section
-      // below the fold is where the expand tap used to miss. Its top strip is
-      // what matters (the last section's header can sit right on the fold, and
-      // the list has no room to lift it further).
-      await _scrollIntoSettingsView(tester, section, topEdgeIsEnough: true);
-      final rect = tester.getRect(section.first);
-      // The header, not the box's middle: while the section is shut the box is
-      // the header, and the header starts at the box's own top.
-      await tester.tapAt(Offset(rect.center.dx, rect.top + 20));
-      await E2E.settle(tester, frames: 5);
-      // The open/close animation is `mediumAnimationDuration`; the height grows
-      // as it plays, which is what the wait below watches.
-      for (var frame = 0; frame < 60; frame++) {
-        if (_sectionHeight(tester, section) > _collapsedSectionHeight) break;
-        await E2E.settle(tester, frames: 5);
-      }
-    }
-    expect(
-        _sectionHeight(tester, section), greaterThan(_collapsedSectionHeight),
-        reason: 'the "$id" section never opened: tapping its header left it '
-            'only ${_sectionHeight(tester, section)} tall, which is a header '
-            'and nothing else (a collapsed section lays its content out anyway, '
-            'so nothing inside it can be tapped).');
+    await E2E.waitFor(tester, section, description: 'the service settings');
+    await _scrollIntoSettingsView(tester, section);
   }
 
-  /// The height a services section draws at — a header while it is shut.
-  static double _sectionHeight(WidgetTester tester, Finder section) {
-    final rect = tester.getRect(section.first);
-    return rect.height;
-  }
-
-  /// Scrolls the settings list until [target] is inside the window, then taps it.
-  ///
-  /// The `ScrollPosition` is driven directly, because neither of the usual
-  /// gestures works here: the services sections are full of text fields and a
-  /// drag that starts on one is swallowed by it (thirty drags left the target at
-  /// y≈2140 in a 1000-tall window), and `tester.ensureVisible` scrolled nothing
-  /// either — while a tap that misses only *warns*, so the test then waits for a
-  /// dialog that never comes. The notes board is scrolled the same way
-  /// (`revealInBoard`).
   static Future<void> _scrollIntoSettingsView(
     WidgetTester tester,
-    Finder target, {
-    bool topEdgeIsEnough = false,
-  }) async {
-    final listFinder = find.byKey(WK.settingsList);
-    final scrollables = find.descendant(
-      of: listFinder,
-      matching: find.byType(Scrollable),
-    );
-    final state = tester.state<ScrollableState>(scrollables.first);
-    final position = state.position;
-    final window = tester.view.physicalSize / tester.view.devicePixelRatio;
-
-    // A `ListView` builds its children lazily, so its `maxScrollExtent` is only
-    // an *estimate* until every child has been laid out — and it refuses to
-    // grow until something asks it to go past the estimate. Asking for the end
-    // of the list repeatedly is what makes the extent catch up, which is how
-    // the services sections (twelve cards below the fold) come into reach.
-    for (var attempt = 0; attempt < 80; attempt++) {
-      final rect = tester.getRect(target.first);
-      // A control is reachable when its own middle is on screen, because that is
-      // where the tap lands. Four pixels of margin is what the last section's
-      // header gets: the settings list has no room to lift it any further, and a
-      // tighter bound simply refuses to reach a control that *is* tappable.
-      final onScreen = rect.top >= 40 &&
-          rect.top <= window.height - 40 &&
-          (topEdgeIsEnough || rect.bottom <= window.height - 4);
-      if (onScreen) return;
-      // Below the fold: ask for the end of the list. Above it: scroll back up.
-      final next = rect.top > window.height / 2
-          ? position.maxScrollExtent
-          : (position.pixels - 200.0)
-              .clamp(position.minScrollExtent, position.maxScrollExtent);
-      if (next == position.pixels) break;
-      position.jumpTo(next);
-      await E2E.settle(tester, frames: 6);
-    }
-
-    final rect = tester.getRect(target.first);
-    final inside =
-        find.ancestor(of: target.first, matching: listFinder).evaluate();
-    fail(
-        'Could not scroll the settings list to a control (it sits at $rect in a '
-        '$window window; the list is at ${position.pixels} of '
-        '${position.maxScrollExtent}, its viewport is '
-        '${position.viewportDimension}, its own rect is '
-        '${tester.getRect(listFinder)}, it holds '
-        '${scrollables.evaluate().length} scrollables, and the control is '
-        '${inside.isEmpty ? 'NOT ' : ''}a descendant of it).');
+    Finder target,
+  ) async {
+    await tester.ensureVisible(target.first);
+    await E2E.settle(tester, frames: 5);
   }
 
   /// Presses a control inside a services section, scrolling it into view first.
@@ -2750,11 +2590,11 @@ abstract final class Fixtures {
         description: description ?? 'a control in the "$id" section');
   }
 
-  /// The text a services section's field holds (`CupertinoTextField` or
-  /// `ComboBox`).
+  /// The text a services section's Fluent text field or dropdown holds.
   static String serviceFieldText(WidgetTester tester, String id) {
     final widget = tester.widget(find.byKey(WK.serviceField(id)));
     if (widget is CupertinoTextField) return widget.controller?.text ?? '';
+    if (widget is TextBox) return widget.controller?.text ?? '';
     if (widget is ComboBox<String>) return widget.value ?? '';
     return '';
   }

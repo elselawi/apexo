@@ -17,21 +17,17 @@ class AppliesToIndicator extends StatelessWidget {
             : Colors.orange;
 
     return Container(
-      padding: const EdgeInsets.fromLTRB(7, 5, 7, 5),
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            color.withAlpha(20),
-            color.withAlpha(60),
-          ],
-        ),
+        borderRadius: BorderRadius.circular(4),
+        color: color.withValues(alpha: 0.08),
       ),
       child: Txt(
         "${txt("appliesTo")}: ${scope == Scope.app ? txt("all") : scope == Scope.system ? txt("system") : txt("you")}",
-        style: const TextStyle(fontSize: 13),
+        style: TextStyle(
+          fontSize: 11,
+          color: FluentTheme.of(context).resources.textFillColorSecondary,
+        ),
       ),
     );
   }

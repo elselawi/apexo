@@ -10,6 +10,11 @@ class Es implements En {
 
   @override
   Map<String, String> dictionary = {
+    "settingsPreferences": "Preferencias",
+    "settingsClinic": "Clínica",
+    "settingsStorage": "Datos y almacenamiento",
+    "settingsServer": "Servidor",
+    "settingsSubtitle": "Adapta Apexo a tu forma de trabajar.",
     "timelineHourUnit": "h",
     "timelineDayUnit": "d",
     "timelineWeekUnit": "sem",

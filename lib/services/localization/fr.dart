@@ -8,6 +8,11 @@ class Fr implements En {
   String $code = "fr";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "Préférences",
+    "settingsClinic": "Cabinet",
+    "settingsStorage": "Données et stockage",
+    "settingsServer": "Serveur",
+    "settingsSubtitle": "Adaptez Apexo à votre façon de travailler.",
     "timelineHourUnit": "h",
     "timelineDayUnit": "j",
     "timelineWeekUnit": "sem",

@@ -10,7 +10,6 @@ import 'package:apexo/services/localization/locale.dart' show txt;
 import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart' show CupertinoTextField;
 import 'package:flutter_test/flutter_test.dart';
 import '../support/e2e.dart';
 import '../support/fixtures.dart';
@@ -101,7 +100,7 @@ void registerSettingsServicesTests() {
       await Fixtures.openServiceSection(tester, 'smtp_settings');
 
       final field = find.byKey(WK.serviceField('smtp_password'));
-      bool obscured() => tester.widget<CupertinoTextField>(field).obscureText;
+      bool obscured() => tester.widget<TextBox>(field).obscureText;
 
       expect(obscured(), isTrue,
           reason: 'the stored mail password is shown in the clear');

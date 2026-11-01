@@ -9,6 +9,11 @@ class En {
   String $code = "en";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "Preferences",
+    "settingsClinic": "Clinic",
+    "settingsStorage": "Data & storage",
+    "settingsServer": "Server",
+    "settingsSubtitle": "Make Apexo work the way you do.",
     "timelineHourUnit": "h",
     "timelineDayUnit": "d",
     "timelineWeekUnit": "w",

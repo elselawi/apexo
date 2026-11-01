@@ -6,9 +6,9 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
+import '../settings_card.dart';
 
 final _s3TestResult = ObservableState("");
 
@@ -125,9 +125,11 @@ class _S3SettingsState extends State<S3Settings> {
   Widget _hint(String key) {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
-      child: Text(
+      child: Txt(
         txt(key),
-        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
+        style: TextStyle(
+            fontSize: 12,
+            color: FluentTheme.of(context).resources.textFillColorSecondary),
       ),
     );
   }
@@ -135,15 +137,15 @@ class _S3SettingsState extends State<S3Settings> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Expander(
+      padding: EdgeInsets.zero,
+      child: SettingsCard(
         key: WK.serviceSection('s3_settings'),
         leading: const Icon(FluentIcons.cloud_upload),
         header: Txt(txt("s3_settings")),
         trailing: const AppliesToIndicator(scope: Scope.system),
-        contentPadding: const EdgeInsets.all(10),
+        contentPadding: const EdgeInsets.only(top: 20),
         content: SizedBox(
-          width: 400,
+          width: double.infinity,
           child: MStreamBuilder(
               streams: [_s3TestResult.stream],
               builder: (context, _) {
@@ -166,7 +168,7 @@ class _S3SettingsState extends State<S3Settings> {
                               onChanged: (v) => s3Enabled.value = v,
                             ),
                             const SizedBox(width: 10),
-                            Txt(txt("s3_enabled")),
+                            Expanded(child: Txt(txt("s3_enabled"))),
                           ],
                         );
                       },
@@ -174,7 +176,7 @@ class _S3SettingsState extends State<S3Settings> {
                     const SizedBox(height: 15),
                     Txt(txt("s3_endpoint")),
                     const SizedBox(height: 5),
-                    CupertinoTextField(
+                    TextBox(
                       key: WK.serviceField('s3_endpoint'),
                       controller: endpointController,
                       placeholder: "https://s3.amazonaws.com",
@@ -187,7 +189,7 @@ class _S3SettingsState extends State<S3Settings> {
                         children: [
                           Txt(txt("s3_bucket")),
                           const SizedBox(height: 5),
-                          CupertinoTextField(
+                          TextBox(
                             key: WK.serviceField('s3_bucket'),
                             controller: bucketController,
                             placeholder: "my-bucket",
@@ -200,7 +202,7 @@ class _S3SettingsState extends State<S3Settings> {
                         children: [
                           Txt(txt("s3_region")),
                           const SizedBox(height: 5),
-                          CupertinoTextField(
+                          TextBox(
                             key: WK.serviceField('s3_region'),
                             controller: regionController,
                             placeholder: "us-east-1",
@@ -216,7 +218,7 @@ class _S3SettingsState extends State<S3Settings> {
                         children: [
                           Txt(txt("s3_accessKey")),
                           const SizedBox(height: 5),
-                          CupertinoTextField(
+                          TextBox(
                             key: WK.serviceField('s3_accessKey'),
                             controller: accessKeyController,
                             placeholder: "AKIA...",
@@ -232,7 +234,7 @@ class _S3SettingsState extends State<S3Settings> {
                           ValueListenableBuilder<bool>(
                             valueListenable: showSecretKey,
                             builder: (context, show, _) {
-                              return CupertinoTextField(
+                              return TextBox(
                                 key: WK.serviceField('s3_secretKey'),
                                 controller: secretKeyController,
                                 placeholder: txt("leaveBlankToKeepUnchanged"),
@@ -269,14 +271,17 @@ class _S3SettingsState extends State<S3Settings> {
                               onChanged: (v) => forcePathStyle.value = v,
                             ),
                             const SizedBox(width: 10),
-                            Txt(txt("s3_forcePathStyle")),
+                            Expanded(child: Txt(txt("s3_forcePathStyle"))),
                           ],
                         );
                       },
                     ),
                     _hint("s3_forcePathStyle_hint"),
                     const SizedBox(height: 20),
-                    Row(
+                    Wrap(
+                      runSpacing: 8,
+                      spacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         FilledButton(
                           onPressed: _saveS3Settings,
@@ -289,7 +294,6 @@ class _S3SettingsState extends State<S3Settings> {
                             ],
                           ),
                         ),
-                        const SizedBox(width: 10),
                         FilledButton(
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -310,8 +314,11 @@ class _S3SettingsState extends State<S3Settings> {
                             }
                           },
                         ),
-                        const SizedBox(width: 10),
-                        if (_s3TestResult().length == 1) const ProgressBar()
+                        if (_s3TestResult().length == 1)
+                          const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: ProgressRing(strokeWidth: 2))
                       ],
                     ),
                     if (_s3TestResult().length > 1)

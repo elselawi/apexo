@@ -10,6 +10,11 @@ class El implements En {
 
   @override
   Map<String, String> dictionary = {
+    "settingsPreferences": "Προτιμήσεις",
+    "settingsClinic": "Κλινική",
+    "settingsStorage": "Δεδομένα και αποθήκευση",
+    "settingsServer": "Διακομιστής",
+    "settingsSubtitle": "Προσαρμόστε το Apexo στον τρόπο εργασίας σας.",
     "timelineHourUnit": "ώ",
     "timelineDayUnit": "ημ",
     "timelineWeekUnit": "εβδ",

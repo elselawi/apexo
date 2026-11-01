@@ -8,6 +8,11 @@ class Ku implements En {
   String $code = "ku";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "هەڵبژاردەکان",
+    "settingsClinic": "کلینیک",
+    "settingsStorage": "داتا و هەڵگرتن",
+    "settingsServer": "ڕاژەکار",
+    "settingsSubtitle": "Apexo بەپێی شێوازی کارکردنت ڕێک بخە.",
     "timelineHourUnit": "کژ",
     "timelineDayUnit": "ڕ",
     "timelineWeekUnit": "هەف",

@@ -8,6 +8,11 @@ class Ur implements En {
   String $code = "ur";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "ترجیحات",
+    "settingsClinic": "کلینک",
+    "settingsStorage": "ڈیٹا اور اسٹوریج",
+    "settingsServer": "سرور",
+    "settingsSubtitle": "Apexo کو اپنے کام کے انداز کے مطابق بنائیں۔",
     "timelineHourUnit": "گھ",
     "timelineDayUnit": "د",
     "timelineWeekUnit": "ہف",

@@ -4,9 +4,8 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter/cupertino.dart';
-import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
+import '../settings_card.dart';
 
 class FileUploadSettings extends StatefulWidget {
   const FileUploadSettings({super.key});
@@ -96,7 +95,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
     final mb = int.tryParse(_maxSizeController.text) ?? 0;
     return Padding(
       padding: const EdgeInsets.all(5),
-      child: Text(
+      child: Txt(
         mb == 1 ? "MB" : "MB",
         style: const TextStyle(
           fontSize: 12,
@@ -113,76 +112,50 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
     super.dispose();
   }
 
-  Widget _hint(String key) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 2),
-      child: Text(
-        txt(key),
-        style: TextStyle(fontSize: 11, color: Colors.grey.withAlpha(180)),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-      child: Expander(
-        key: WK.serviceSection('file_upload_settings'),
-        leading: const Icon(FluentIcons.upload),
-        header: Txt(txt("file_upload_settings")),
-        trailing: const AppliesToIndicator(scope: Scope.system),
-        contentPadding: const EdgeInsets.all(10),
-        content: SizedBox(
-          width: 400,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              InfoBar(
-                title: Txt(txt("file_upload_info_title")),
-                severity: InfoBarSeverity.info,
-                content: Txt(txt("file_upload_info_desc")),
-              ),
-              const SizedBox(height: 15),
-              ResponsiveRow(children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Txt(txt("file_upload_max_size")),
-                    const SizedBox(height: 5),
-                    CupertinoTextField(
-                      key: WK.serviceField('file_upload_maxSize'),
-                      controller: _maxSizeController,
-                      placeholder: "15",
-                      keyboardType: TextInputType.number,
-                      suffix: _buildSuffix(),
-                    ),
-                    _hint("file_upload_max_size_hint"),
-                  ],
-                ),
-              ]),
-              const SizedBox(height: 20),
-              Row(
+    return SettingsCard(
+      key: WK.serviceSection('file_upload_settings'),
+      leading: const Icon(FluentIcons.upload),
+      header: Txt(txt("file_upload_info_title")),
+      description: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Txt(txt("file_upload_info_desc")),
+          const SizedBox(height: 4),
+          Txt(txt("file_upload_max_size_hint")),
+        ],
+      ),
+      trailing: const AppliesToIndicator(scope: Scope.system),
+      control: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            label: txt("file_upload_max_size"),
+            child: TextBox(
+              key: WK.serviceField('file_upload_maxSize'),
+              controller: _maxSizeController,
+              placeholder: "15",
+              keyboardType: TextInputType.number,
+              suffix: _buildSuffix(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton(
+              onPressed: _saveSettings,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  FilledButton(
-                    onPressed: _saveSettings,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(WindowsIcons.save),
-                        const SizedBox(width: 8),
-                        Txt(txt("save")),
-                      ],
-                    ),
-                  ),
+                  const Icon(WindowsIcons.save, size: 16),
+                  const SizedBox(width: 8),
+                  Flexible(child: Txt(txt("save"))),
                 ],
               ),
-            ]
-                .map((e) => [e, const SizedBox(height: 5)])
-                .expand((e) => e)
-                .toList(),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

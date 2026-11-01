@@ -22,9 +22,7 @@ void registerSettingsGeneralTests() {
       await Fixtures.openSettings(tester);
       await E2E.settle(tester, frames: 10);
 
-      // Only the cards with a stable identifier are listed: the screen's cards
-      // are collapsed `Expander`s in a `ListView`, so each is revealed first,
-      // which is also what builds it.
+      // Reveal each card through its category before checking its inline editor.
       for (final identifier in [
         'currency',
         'language',
@@ -109,9 +107,7 @@ void registerSettingsGeneralTests() {
       await E2E.signIn(tester);
       await Fixtures.openSettings(tester);
 
-      // The AI card is the one whose title is `ai_services` (its identifier is
-      // `ai_services_ena`), so it is reached by its title: tapping the header of a
-      // collapsed card is what expands it.
+      // The title and identifier differ; the fixture resolves its AI category.
       await Fixtures.expandSettingsCardByTitle(tester, 'ai_services');
       expect(find.byKey(const Key('ai_services_ena_combo')), findsOneWidget,
           reason: 'the AI card does not offer its on/off switch');

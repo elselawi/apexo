@@ -8,6 +8,11 @@ class Ar implements En {
   String $code = "ar";
 
   Map<String, String> dictionary = {
+    "settingsPreferences": "التفضيلات",
+    "settingsClinic": "العيادة",
+    "settingsStorage": "البيانات والتخزين",
+    "settingsServer": "الخادم",
+    "settingsSubtitle": "اضبط Apexo ليناسب طريقة عملك.",
     "timelineHourUnit": "س",
     "timelineDayUnit": "ي",
     "timelineWeekUnit": "أ",

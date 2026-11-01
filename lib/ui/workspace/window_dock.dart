@@ -48,7 +48,7 @@ class WindowDock extends StatelessWidget {
 
   /// Whether a window's switch carries the unsaved dot — for the one window that
   /// leads to a record whose draft is dirty but whose windows are not on screen
-  /// (a patient's Visits switch while a retained visit holds work, plan §2.4).
+  /// (a patient's chart switch while a retained visit holds work, plan §2.4).
   final bool Function(PanelWindow window)? dirty;
 
   /// The row's inset from the panel. A bar drawn inside the record's body gives

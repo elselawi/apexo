@@ -2829,6 +2829,50 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('a carried visit\'s draft is marked on the chart button',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final patient = testPatient(id: 'chart-dot-patient');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'chart-dot-visit',
+      patientID: patient.id,
+    );
+    appointments.set(visit);
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await openAppointment(visit, AppointmentWindow.dentalChart);
+    await tester.pumpAndSettle();
+    final panel = PanelsManager.active().single;
+    await pumpShell(tester, panel, 1600);
+    await tester.pumpAndSettle();
+
+    Finder dotOn(String windowId) => find.descendant(
+          of: find.byKey(WK.workspaceWindowToggle(windowId)),
+          matching: find.byKey(WK.unsavedDot),
+        );
+
+    expect(dotOn(PatientWindow.dentalChart.id), findsNothing,
+        reason: 'a visit with no edits has nothing to mark');
+
+    final session = panel.owned.whereType<AppointmentSession>().single;
+    session.chart.teeth['26'] = 'filling';
+    session.chart.changed();
+    panel.refreshDirty();
+    await tester.pumpAndSettle();
+
+    expect(dotOn(PatientWindow.dentalChart.id), findsOneWidget,
+        reason: 'the draft is chart work, and the chart is where it is seen');
+    expect(dotOn(PatientWindow.appointments.id), findsNothing,
+        reason: 'the visits list finds records; it does not hold their work');
+
+    // Closing the visit keeps its draft, and the chart button keeps saying so.
+    await tester.tap(find.byKey(WK.visitDetach));
+    await tester.pumpAndSettle();
+    expect(find.byKey(WK.visitBand), findsNothing);
+    expect(dotOn(PatientWindow.dentalChart.id), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the band moves to the visit that still has unsaved work',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));

@@ -30,7 +30,7 @@ abstract base class Panel implements WindowRecordSession {
     this.accent,
     this.showBottomControls = true,
     this.saveLabel = 'save',
-    this.recordsWindowId,
+    this.carriedDraftWindowId,
     this.workspaceWindows = const <String>[],
     this.attachmentLayout = false,
     this.additionalControls,
@@ -125,11 +125,14 @@ abstract base class Panel implements WindowRecordSession {
   /// bottom bar says which of the two records on screen it writes (plan §4.4).
   final String saveLabel;
 
-  /// The window of this panel that lists the records it **carries** — a
-  /// patient's Visits window. Tapping the band's unsaved count opens it, so a
-  /// retained draft always has somewhere to be seen. Null for a panel that
-  /// carries nothing.
-  final String? recordsWindowId;
+  /// The window whose switch carries the unsaved dot while a record this panel
+  /// **carries** holds a draft — a patient's chart, which is where a visit's
+  /// work happens. The dot is on the record's workspace because that is what the
+  /// draft is: a visit is charted, not listed, and a retained draft whose chart
+  /// is closed must still say so from the button that reopens it.
+  ///
+  /// Null for a panel that carries nothing.
+  final String? carriedDraftWindowId;
 
   /// The row windows this panel offers as **workspace buttons**, inside its own
   /// body — a patient's chart and Visits list.

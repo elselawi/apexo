@@ -331,7 +331,7 @@ class _PanelScreenState extends State<PanelScreen> {
     return MStreamBuilder(
       streams: [
         widget.panel.workspace.revision.stream,
-        // A retained visit's draft marks the visits button while its windows are
+        // A retained visit's draft marks the chart button while its windows are
         // not on screen, so the dot has to hear about an edit too.
         widget.panel.hasUnsavedChanges.stream,
       ],
@@ -354,7 +354,7 @@ class _PanelScreenState extends State<PanelScreen> {
           },
           enabled: (window) => !(window.onlyIfSaved && isNew),
           dirty: (window) =>
-              widget.panel.recordsWindowId == window.id &&
+              widget.panel.carriedDraftWindowId == window.id &&
               widget.panel.owned.any((owned) => owned.hasPendingEdits),
           onToggle: (window) {
             final carried = _carriedWindowOf(window);
@@ -423,17 +423,17 @@ class _PanelScreenState extends State<PanelScreen> {
             for (final window in widget.panel.floatingWindows)
               if (!carriedGroups.contains(window.replacementGroup)) window,
           ];
-          final recordsWindow = widget.panel.recordsWindowId;
+          final draftWindow = widget.panel.carriedDraftWindowId;
           return WindowDock(
             windows: windows,
             isOpen: (window) => widget.panel.workspace.isOpen(window.id),
             enabled: (window) => !(window.onlyIfSaved && isNew),
             accent: _accent,
             // A retained draft whose windows are not on screen still has a mark
-            // here: the Visits pill is what makes §2.4 visible.
+            // here: the chart pill is what makes §2.4 visible.
             dirty: (window) =>
-                recordsWindow != null &&
-                window.id == recordsWindow &&
+                draftWindow != null &&
+                window.id == draftWindow &&
                 widget.panel.owned.any((owned) => owned.hasPendingEdits),
             onToggle: (window) => widget.panel.workspace.toggle(window.id),
           );

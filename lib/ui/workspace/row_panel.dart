@@ -36,7 +36,7 @@ final class RowPanel<T extends Model> extends Panel
     String? savedBaseline,
     super.showBottomControls,
     super.saveLabel,
-    super.recordsWindowId,
+    super.carriedDraftWindowId,
     super.workspaceWindows,
     super.attachmentLayout,
     super.additionalControls,

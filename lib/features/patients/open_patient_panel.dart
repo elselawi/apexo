@@ -211,9 +211,9 @@ Future<Panel> _ensurePatientPanel(
     unicodeSymbol: "👤",
     // The two records on this screen save differently, and their buttons say so.
     saveLabel: 'savePatient',
-    // The window that lists the visits this panel carries: where the band's
-    // unsaved count leads.
-    recordsWindowId: PatientWindow.appointments.id,
+    // The dot for a carried visit's draft sits on the chart, where that work
+    // lives: the visits list is a way to find a record, not the record itself.
+    carriedDraftWindowId: PatientWindow.dentalChart.id,
     // The record's own workspaces sit inside the record, as two prominent
     // buttons under its name: the chart and the visits list are what the record
     // is *for*, so they must not hide among header icons.

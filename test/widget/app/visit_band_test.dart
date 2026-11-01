@@ -46,7 +46,7 @@ void main() {
         unicodeSymbol: '👤',
         icon: WindowsIcons.contact,
         saveLabel: 'savePatient',
-        recordsWindowId: 'appointments',
+        carriedDraftWindowId: 'chart',
         attachmentLayout: true,
         workspaceWindows: const ['chart', 'appointments'],
         checkUnsavedChanges: () => false,
@@ -347,7 +347,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a retained draft is marked on the visits button and the band',
+  testWidgets('a retained draft is marked on the chart button and the band',
       (tester) async {
     final panel = hostPanel();
     final session = visit(dirty: true);
@@ -356,12 +356,20 @@ void main() {
 
     expect(
       find.descendant(
-        of: find.byKey(WK.workspaceWindowToggle('appointments')),
+        of: find.byKey(WK.workspaceWindowToggle('chart')),
         matching: find.byKey(WK.unsavedDot),
       ),
       findsOneWidget,
-      reason: 'the button is the primary signal: it is visible with the list '
-          'closed, and it is where a retained draft lives',
+      reason: 'the draft is the visit\'s chart, and the chart button is where '
+          'it is reopened',
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(WK.workspaceWindowToggle('appointments')),
+        matching: find.byKey(WK.unsavedDot),
+      ),
+      findsNothing,
+      reason: 'the visits list only lists records; it is not where the work is',
     );
   });
 
@@ -380,7 +388,7 @@ void main() {
     expect(panel.owned, [session], reason: 'closing is not disposing');
     expect(
       find.descendant(
-        of: find.byKey(WK.workspaceWindowToggle('appointments')),
+        of: find.byKey(WK.workspaceWindowToggle('chart')),
         matching: find.byKey(WK.unsavedDot),
       ),
       findsOneWidget,

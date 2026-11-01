@@ -30,7 +30,7 @@ final class DelegatedPanel extends Panel {
     super.liveTitle,
     super.showBottomControls,
     super.saveLabel,
-    super.recordsWindowId,
+    super.carriedDraftWindowId,
     super.workspaceWindows,
     super.attachmentLayout,
     super.additionalControls,

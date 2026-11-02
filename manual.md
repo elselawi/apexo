@@ -433,6 +433,22 @@ Open the **X-Ray Link** route from the sidebar to manage pending imports:
 
 ---
 
+### Insights
+
+Keep using the date range, interval and doctor controls at the top to scope your analysis.
+
+- **Overview** shows appointment activity, completion rate, unique patients and, with revenue permission, financial trends. Switch activity between lines and bars. The status chart stacks completed and missed appointments; pending appointments are not part of these stacks. Hover or tap charts for exact values.
+- **Cash flow over time** subtracts expenses from payments. Enable **Cumulative** for a running total beginning at zero in the selected range. Payments are attributed to appointment dates, not payment transaction dates; expenses use receipt dates and remain clinic-wide even when a doctor is selected.
+- **Outstanding balances** sums unpaid appointment charges in the selected range, without offsetting them against overpayments on other appointments. This is not the clinic's all-time receivables balance.
+- **Scheduling patterns** switches between hour, weekday, day of month and month of year. Calendar labels follow your calendar settings.
+- **Chair time**, under Scheduling patterns, compares scheduled appointment durations with the durations of completed appointments, in hours. This uses planned durations, not measured treatment time or room utilization; negative durations count as zero.
+- **Patient mix** shows newly acquired patients and a gender breakdown counting each patient once. Patients without a recorded gender are excluded from the breakdown. **New vs returning patient visits** stacks first-ever recorded visits against subsequent visits; it counts visits, not unique patients or a retention rate, and excludes missing patient records.
+- **Completed care: charges vs collections** compares charges and recorded payments for completed appointments only, attributed to visit dates. It is not a payment-transaction timeline.
+- **Unpaid completed care by age** groups positive unpaid balances into 0–30, 31–60, 61–90 and over 90 days since the visit, as of today. It includes only completed, non-future appointments in the selected date/doctor range, not the clinic's full outstanding ledger. These are ages since visits, not days overdue against an invoice due date; overpayments never offset other visits.
+- Every chart has **Data table** and **Copy data** controls. Copy exports the currently displayed series as CSV to the clipboard, ready for a spreadsheet. Cumulative charts copy cumulative values.
+
+Completion rate is completed appointments divided by all appointments in the selected range, including future appointments. Financial cards and their data controls require revenue permission.
+
 ### Settings
 
 The **Settings** screen contains all configurable options for the application. Each setting is displayed as an expandable card showing its icon, title, and an indicator of whether it applies to the whole clinic or only your device.

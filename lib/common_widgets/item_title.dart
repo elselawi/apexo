@@ -61,14 +61,6 @@ class ItemTitle extends StatefulWidget {
 }
 
 class _ItemTitleState extends State<ItemTitle> {
-  ImageProvider? _avatarToEvict;
-
-  @override
-  void dispose() {
-    super.dispose();
-    if (_avatarToEvict != null) unawaited(_avatarToEvict!.evict());
-  }
-
   @override
   Widget build(BuildContext context) {
     final Color color = widget.predefinedColor ??
@@ -79,37 +71,13 @@ class _ItemTitleState extends State<ItemTitle> {
       width: 200,
       child: Row(children: [
         if (widget.radius > 0)
-          FutureBuilder(
-              future: widget.item.avatar != null
-                  ? (launch.isDemo
-                      ? demoAvatarRequestQue.add(
-                          () => getImage(widget.item.id, widget.item.avatar!))
-                      : getImage(widget.item.imageRowId ?? widget.item.id,
-                          widget.item.avatar!))
-                  : null,
-              builder: (context, snapshot) {
-                if (snapshot.data != null) {
-                  _avatarToEvict = snapshot.data;
-                }
-                if (widget.item.title.isEmpty) {
-                  widget.item.title = " ";
-                }
-                return CircleAvatar(
-                  key: Key(widget.item.id),
-                  radius: widget.radius,
-                  backgroundColor: color,
-                  backgroundImage:
-                      (snapshot.data != null) ? snapshot.data : null,
-                  child:
-                      (widget.item.archived == true && widget.archivedStyling)
-                          ? Icon(WindowsIcons.delete, size: widget.radius)
-                          : snapshot.data == null
-                              ? widget.icon == null
-                                  ? Txt(initialOf(widget.item))
-                                  : Icon(widget.icon, size: widget.radius)
-                              : null,
-                );
-              }),
+          ItemAvatar(
+            item: widget.item,
+            radius: widget.radius,
+            icon: widget.icon,
+            archivedStyling: widget.archivedStyling,
+            predefinedColor: widget.predefinedColor,
+          ),
         const SizedBox(width: 5),
         Expanded(
           child: Row(
@@ -144,6 +112,103 @@ class _ItemTitleState extends State<ItemTitle> {
         )
       ]),
     );
+  }
+}
+
+/// An item's round identity, on its own: its picture when it has one, its first
+/// letter in the record's own colour otherwise.
+///
+/// Split out of [ItemTitle] for the places that show a patient without their
+/// name — the day's follow-up band, where the name is the tooltip and the row of
+/// faces is the whole message. Image requests are retained across rebuilds and
+/// refreshed only when the source row or filename changes.
+class ItemAvatar extends StatefulWidget {
+  const ItemAvatar({
+    super.key,
+    required this.item,
+    this.radius = 15,
+    this.icon,
+    this.archivedStyling = true,
+    this.predefinedColor,
+  });
+
+  final Model item;
+  final double radius;
+  final IconData? icon;
+  final bool archivedStyling;
+  final Color? predefinedColor;
+
+  @override
+  State<ItemAvatar> createState() => _ItemAvatarState();
+}
+
+class _ItemAvatarState extends State<ItemAvatar> {
+  ImageProvider? _avatarToEvict;
+  Future<ImageProvider?>? _image;
+  (String, String?)? _imageKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  @override
+  void didUpdateWidget(covariant ItemAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _loadImage();
+  }
+
+  void _loadImage() {
+    final item = widget.item;
+    final rowID = launch.isDemo ? item.id : item.imageRowId ?? item.id;
+    final avatar = item.avatar;
+    final key = (rowID, avatar);
+    if (_imageKey == key) return;
+    _imageKey = key;
+    if (_avatarToEvict != null) unawaited(_avatarToEvict!.evict());
+    _avatarToEvict = null;
+    _image = avatar == null
+        ? null
+        : launch.isDemo
+            ? demoAvatarRequestQue.add(() => getImage(rowID, avatar))
+            : getImage(rowID, avatar);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    if (_avatarToEvict != null) unawaited(_avatarToEvict!.evict());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = widget.item;
+    final Color color = widget.predefinedColor ??
+        (item.archived == true && widget.archivedStyling
+            ? FluentTheme.of(context).shadowColor.withValues(alpha: 0.2)
+            : item.color);
+    return FutureBuilder<ImageProvider?>(
+        key: ValueKey(_imageKey),
+        future: _image,
+        builder: (context, snapshot) {
+          if (snapshot.data != null) {
+            _avatarToEvict = snapshot.data;
+          }
+          return CircleAvatar(
+            key: Key(item.id),
+            radius: widget.radius,
+            backgroundColor: color,
+            backgroundImage: (snapshot.data != null) ? snapshot.data : null,
+            child: (item.archived == true && widget.archivedStyling)
+                ? Icon(WindowsIcons.delete, size: widget.radius)
+                : snapshot.data == null
+                    ? widget.icon == null
+                        ? Txt(initialOf(item))
+                        : Icon(widget.icon, size: widget.radius)
+                    : null,
+          );
+        });
   }
 }
 

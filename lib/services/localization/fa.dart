@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -167,6 +167,23 @@ class Fa implements En {
     "pastAppointments": "نوبت‌های گذشته",
     "upcomingAppointments": "نوبت‌های آینده",
     "addAppointment": "افزودن نوبت",
+    // follow-ups
+    "nextFollowUp": "پیگیری بعدی",
+    "notSelected": "انتخاب نشده",
+    "followUp": "پیگیری",
+    "followUpsDue": "پیگیری‌های سررسید",
+    "followUpOn": "پیگیری · {date}",
+    "chooseFollowUpDate": "انتخاب تاریخ",
+    "clearFollowUp": "حذف پیگیری",
+    "bookFollowUp": "رزرو نوبت",
+    "followUpNotePlaceholder": "یادداشت (اختیاری)",
+    "followUpPresetDays": "{count} روز",
+    "followUpPresetWeek": "{count} هفته",
+    "followUpPresetWeeks": "{count} هفته",
+    "followUpPresetMonths": "{count} ماه",
+    "followUpContactHint": "برای دیدن اطلاعات تماس کلیک کنید",
+    "daysAway": "{count} روز دیگر",
+    "tomorrow": "فردا",
 
     // days and months
     "monday": "دوشنبه",
@@ -868,6 +885,11 @@ class Fa implements En {
     "uploadingFile": "آپلود فایل",
 
     // AI services
+    "optionalFeatures": "ویژگی‌های اختیاری",
+    "followUps": "پیگیری‌ها",
+    "followUpsHintTitle": "نحوه استفاده از پیگیری‌ها",
+    "followUpsHint": "برای پیگیری، روز بازگشت بیمار را در پرونده‌اش ثبت می‌کنید و در صورت نیاز یادداشت می‌گذارید. پیگیری به معنی رزرو نوبت نیست: نه ساعتی رزرو شده و نه با بیمار توافقی شده است. در آن روز، نام بیمار را در فهرست پیگیری‌های سررسید تقویم پیدا کنید و برای رزرو نوبت با او تماس بگیرید. با رزرو نوبت برای همان تاریخ یا تاریخی بعد از آن، پیگیری خودکار پاک می‌شود.",
+    "followUps_desc": "روز بازگشت بیمار را ثبت کنید و ببینید برای رزرو نوبت با چه کسی تماس بگیرید.",
     "ai_services": "خدمات هوش مصنوعی",
     "ai_services_desc":
         "ویژگی‌های مبتنی بر هوش مصنوعی مانند اسکن رسید، یادداشت‌های صوتی و استخراج سابقه دندانپزشکی را فعال یا غیرفعال کنید.",

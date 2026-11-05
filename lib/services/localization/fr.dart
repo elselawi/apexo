@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -169,6 +169,23 @@ class Fr implements En {
     "pastAppointments": "Rendez-vous passés",
     "upcomingAppointments": "Rendez-vous à venir",
     "addAppointment": "Ajouter un rendez-vous",
+    // follow-ups
+    "nextFollowUp": "Prochain contrôle",
+    "notSelected": "Non défini",
+    "followUp": "Contrôle",
+    "followUpsDue": "Contrôles à venir",
+    "followUpOn": "Contrôle · {date}",
+    "chooseFollowUpDate": "Choisir une date",
+    "clearFollowUp": "Supprimer le contrôle",
+    "bookFollowUp": "Réserver une visite",
+    "followUpNotePlaceholder": "Note (facultatif)",
+    "followUpPresetDays": "{count} jours",
+    "followUpPresetWeek": "{count} semaine",
+    "followUpPresetWeeks": "{count} semaines",
+    "followUpPresetMonths": "{count} mois",
+    "followUpContactHint": "Cliquez pour les coordonnées",
+    "daysAway": "Dans {count} jours",
+    "tomorrow": "Demain",
 
     // days and months
     "monday": "Lundi",
@@ -889,6 +906,11 @@ class Fr implements En {
     "uploadingFile": "téléversement du fichier",
 
     // AI services
+    "optionalFeatures": "Fonctionnalités optionnelles",
+    "followUps": "Contrôles",
+    "followUpsHintTitle": "Comment utiliser les contrôles",
+    "followUpsHint": "Un contrôle est une date de retour notée dans le dossier du patient, avec une note facultative. Ce n'est pas un rendez-vous réservé : aucun créneau n'est réservé ni convenu avec le patient. Ce jour-là, retrouvez le patient dans la liste des contrôles à venir de l'agenda et appelez-le pour réserver une visite. Le contrôle s'efface automatiquement dès qu'une visite est réservée pour cette date ou une date ultérieure.",
+    "followUps_desc": "Notez quand les patients doivent revenir et qui appeler pour réserver une visite.",
     "ai_services": "Services d'IA",
     "ai_services_desc":
         "Activez ou désactivez les fonctionnalités basées sur l'IA telles que la numérisation de reçus, les notes vocales et l'extraction de l'historique dentaire.",

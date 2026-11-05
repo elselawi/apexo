@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -172,6 +172,23 @@ class Ur implements En {
     "pastAppointments": "پچھلی اپائنٹمنٹس",
     "upcomingAppointments": "آنے والی اپائنٹمنٹس",
     "addAppointment": "اپائنٹمنٹ شامل کریں",
+    // follow-ups
+    "nextFollowUp": "اگلا فالو اپ",
+    "notSelected": "منتخب نہیں",
+    "followUp": "فالو اپ",
+    "followUpsDue": "زیرِ التوا فالو اپس",
+    "followUpOn": "فالو اپ · {date}",
+    "chooseFollowUpDate": "تاریخ منتخب کریں",
+    "clearFollowUp": "فالو اپ ہٹائیں",
+    "bookFollowUp": "وزٹ بک کریں",
+    "followUpNotePlaceholder": "نوٹ (اختیاری)",
+    "followUpPresetDays": "{count} دن",
+    "followUpPresetWeek": "{count} ہفتہ",
+    "followUpPresetWeeks": "{count} ہفتے",
+    "followUpPresetMonths": "{count} ماہ",
+    "followUpContactHint": "رابطے کی تفصیلات کے لیے کلک کریں",
+    "daysAway": "{count} دن بعد",
+    "tomorrow": "کل",
 
     // days and months
     "monday": "پیر",
@@ -877,6 +894,11 @@ class Ur implements En {
     "uploadingFile": "فائل اپ لوڈ کرتے وقت",
 
     // AI services
+    "optionalFeatures": "اختیاری خصوصیات",
+    "followUps": "فالو اپس",
+    "followUpsHintTitle": "فالو اپس کیسے استعمال کریں؟",
+    "followUpsHint": "فالو اپ مریض کے ریکارڈ میں درج واپسی کی تاریخ ہے، جس کے ساتھ چاہیں تو مختصر نوٹ بھی لکھ سکتے ہیں۔ یہ بک کی ہوئی اپائنٹمنٹ نہیں: نہ کوئی وقت بک ہے، نہ مریض سے ابھی وقت طے ہوا ہے۔ اُس دن مریض کا نام کیلنڈر کی زیرِ التوا فالو اپس کی فہرست میں دیکھیں، کال کریں اور وزٹ بک کریں۔ اُسی تاریخ یا اُس کے بعد کی کسی تاریخ کے لیے وزٹ بک کرنے پر فالو اپ خود بخود ختم ہو جاتا ہے۔",
+    "followUps_desc": "مریض کی واپسی کا دن درج کریں اور دیکھیں کہ وزٹ بک کرنے کے لیے کس کو کال کرنی ہے۔",
     "ai_services": "مصنوعی ذہانت (AI) کی خدمات",
     "ai_services_desc":
         "مصنوعی ذہانت پر مبنی خصوصیات جیسے رسید اسکیننگ، صوتی نوٹس اور ڈینٹل ہسٹری اخذ کرنے کو فعال یا غیر فعال کریں۔",

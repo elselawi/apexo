@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -169,6 +169,23 @@ class Ku implements En {
     "pastAppointments": "مەوعیدەکانی پێشوو",
     "upcomingAppointments": "مەوعیدەکانی داهاتوو",
     "addAppointment": "زیادکردنی مەوعید",
+    // follow-ups
+    "nextFollowUp": "بەدواداچوونی داهاتوو",
+    "notSelected": "هەڵنەبژێردراو",
+    "followUp": "بەدواداچوون",
+    "followUpsDue": "بەدواداچوونە گەیشتووەکان",
+    "followUpOn": "بەدواداچوون · {date}",
+    "chooseFollowUpDate": "ڕێکەوت هەڵبژێرە",
+    "clearFollowUp": "سڕینەوەی بەدواداچوون",
+    "bookFollowUp": "تۆمارکردنی سەردان",
+    "followUpNotePlaceholder": "تێبینی (ئارەزوومەندانە)",
+    "followUpPresetDays": "{count} ڕۆژ",
+    "followUpPresetWeek": "{count} هەفتە",
+    "followUpPresetWeeks": "{count} هەفتە",
+    "followUpPresetMonths": "{count} مانگ",
+    "followUpContactHint": "کلیک بکە بۆ زانیاری پەیوەندی",
+    "daysAway": "{count} ڕۆژی تر",
+    "tomorrow": "بەیانی",
 
     // days and months
     "monday": "دووشەممە",
@@ -873,6 +890,11 @@ class Ku implements En {
     "uploadingFile": "بارکردنی فایل",
 
     // AI services
+    "optionalFeatures": "تایبەتمەندییە ئارەزوومەندانەکان",
+    "followUps": "بەدواداچوونەکان",
+    "followUpsHintTitle": "چۆن بەدواداچوونەکان بەکاربهێنیت؟",
+    "followUpsHint": "بەدواداچوون ڕۆژێکە بۆ گەڕانەوەی نەخۆش کە لە پەڕگەکەیدا تۆمار دەکرێت؛ دەتوانیت تێبینییەکیش زیاد بکەیت. ئەمە نۆرەی تۆمارکراو نییە: هیچ کاتێک حجز نەکراوە و هێشتا لەگەڵ نەخۆش ڕێک نەکەوتوون. لەو ڕۆژەدا ناوی نەخۆش لە لیستی بەدواداچوونە گەیشتووەکانی ڕۆژژمێر دەردەکەوێت؛ پەیوەندی پێوە بکە و سەردانێک تۆمار بکە. بە تۆمارکردنی سەردان بۆ ئەو ڕۆژە یان ڕۆژێکی دواتر، بەدواداچوونەکە بە خۆکاری دەسڕێتەوە.",
+    "followUps_desc": "ڕۆژی گەڕانەوەی نەخۆش تۆمار بکە و بزانە بۆ تۆمارکردنی سەردان پەیوەندی بە کێوە بکەیت.",
     "ai_services": "خزمەتگوزارییەکانی ژیری دەستکرد",
     "ai_services_desc":
         "چالاککردن یان ناچالاککردنی تایبەتمەندییەکانی ژیری دەستکرد وەک پشکنینی پسووڵە، تێبینی دەنگی و دەرهێنانی مێژووی ددان.",

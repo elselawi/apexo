@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -174,6 +174,23 @@ class Tr implements En {
     "pastAppointments": "Geçmiş randevular",
     "upcomingAppointments": "Yaklaşan randevular",
     "addAppointment": "Randevu Ekle",
+    // follow-ups
+    "nextFollowUp": "Sonraki kontrol",
+    "notSelected": "Seçilmedi",
+    "followUp": "Kontrol",
+    "followUpsDue": "Bekleyen kontroller",
+    "followUpOn": "Kontrol · {date}",
+    "chooseFollowUpDate": "Tarih seç",
+    "clearFollowUp": "Kontrolü kaldır",
+    "bookFollowUp": "Randevu al",
+    "followUpNotePlaceholder": "Not (isteğe bağlı)",
+    "followUpPresetDays": "{count} gün",
+    "followUpPresetWeek": "{count} hafta",
+    "followUpPresetWeeks": "{count} hafta",
+    "followUpPresetMonths": "{count} ay",
+    "followUpContactHint": "İletişim bilgileri için tıklayın",
+    "daysAway": "{count} gün sonra",
+    "tomorrow": "Yarın",
 
     // days and months
     "monday": "Pazartesi",
@@ -877,6 +894,11 @@ class Tr implements En {
     "uploadingFile": "dosya yüklenirken",
 
     // AI services
+    "optionalFeatures": "İsteğe bağlı özellikler",
+    "followUps": "Kontroller",
+    "followUpsHintTitle": "Kontroller nasıl kullanılır?",
+    "followUpsHint": "Kontrol, hastanın kaydına eklenen geri dönüş tarihidir; isterseniz kısa bir not da ekleyebilirsiniz. Alınmış bir randevu değildir: saat ayrılmaz ve hastayla henüz anlaşılmamıştır. O gün hastayı takvimdeki bekleyen kontroller listesinde bulun, arayın ve randevu alın. O tarih veya sonrası için randevu alındığında kontrol otomatik olarak silinir.",
+    "followUps_desc": "Hastaların ne zaman geri gelmesi gerektiğini ve randevu için kimi arayacağınızı kaydedin.",
     "ai_services": "Yapay Zeka Hizmetleri",
     "ai_services_desc":
         "Fiş tarama, sesli notlar ve diş geçmişi çıkarma gibi yapay zeka destekli özellikleri etkinleştirin veya devre dışı bırakın.",

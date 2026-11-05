@@ -1,4 +1,4 @@
-import "dart:ui" show TextDirection;
+﻿import "dart:ui" show TextDirection;
 
 // Re-exported so the locale files need only `import "en.dart";`.
 export "dart:ui" show TextDirection;
@@ -169,6 +169,23 @@ class En {
     "pastAppointments": "Past appointments",
     "upcomingAppointments": "Upcoming appointments",
     "addAppointment": "Add Appointment",
+    // follow-ups
+    "nextFollowUp": "Next follow-up",
+    "notSelected": "Not selected",
+    "followUp": "Follow-up",
+    "followUpsDue": "Follow-ups due",
+    "followUpOn": "Follow-up · {date}",
+    "chooseFollowUpDate": "Choose date",
+    "clearFollowUp": "Clear follow-up",
+    "bookFollowUp": "Book visit",
+    "followUpNotePlaceholder": "Note (optional)",
+    "followUpPresetDays": "{count} days",
+    "followUpPresetWeek": "{count} week",
+    "followUpPresetWeeks": "{count} weeks",
+    "followUpPresetMonths": "{count} months",
+    "followUpContactHint": "Click for contact details",
+    "daysAway": "{count} days away",
+    "tomorrow": "Tomorrow",
 
     // days and months
     "monday": "Monday",
@@ -870,6 +887,11 @@ class En {
     "uploadingFile": "uploading file",
 
     // AI services
+    "optionalFeatures": "Optional features",
+    "followUps": "Follow-ups",
+    "followUpsHintTitle": "How follow-ups work",
+    "followUpsHint": "A follow-up is a return date in the patient's record, with an optional note. It is not a booked appointment: no time is reserved or agreed with the patient. On that day, find the patient in the calendar's due list, call and book a visit. Booking a visit for that date or later clears the follow-up automatically.",
+    "followUps_desc": "Record when patients should come back and who to call to book a visit.",
     "ai_services": "AI Services",
     "ai_services_desc":
         "Enable or disable AI-powered features such as receipt scanning, voice notes, and dental history extraction.",

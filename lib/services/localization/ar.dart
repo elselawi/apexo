@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -166,6 +166,23 @@ class Ar implements En {
     "pastAppointments": "المواعيد السابقة",
     "upcomingAppointments": "المواعيد القادمة",
     "addAppointment": "إضافة موعد",
+    // follow-ups
+    "nextFollowUp": "المتابعة التالية",
+    "notSelected": "غير محدد",
+    "followUp": "متابعة",
+    "followUpsDue": "متابعات مستحقة",
+    "followUpOn": "متابعة · {date}",
+    "chooseFollowUpDate": "اختر التاريخ",
+    "clearFollowUp": "إزالة المتابعة",
+    "bookFollowUp": "احجز موعدًا",
+    "followUpNotePlaceholder": "ملاحظة (اختياري)",
+    "followUpPresetDays": "{count} يومًا",
+    "followUpPresetWeek": "{count} أسبوع",
+    "followUpPresetWeeks": "{count} أسابيع",
+    "followUpPresetMonths": "{count} أشهر",
+    "followUpContactHint": "اضغط لعرض بيانات الاتصال",
+    "daysAway": "بعد {count} يومًا",
+    "tomorrow": "غدًا",
 
     // days and months
     "monday": "الاثنين",
@@ -861,6 +878,11 @@ class Ar implements En {
     "uploadingFile": "رفع الملف",
 
     // AI services
+    "optionalFeatures": "ميزات اختيارية",
+    "followUps": "المتابعات",
+    "followUpsHintTitle": "كيف تستخدم المتابعات؟",
+    "followUpsHint": "المتابعة تاريخ يُسجّل في ملف المريض لعودته إلى العيادة، مع ملاحظة اختيارية. ليست موعدًا محجوزًا: لا يُحجز وقت، ولم يُتفق مع المريض على موعد بعد. في ذلك اليوم يظهر اسمه في قائمة المتابعات المستحقة في الرزنامة: اتصل به واحجز له موعدًا. تُمسح المتابعة تلقائيًا عند حجز موعد لذلك التاريخ أو بعده.",
+    "followUps_desc": "سجّل متى ينبغي أن يعود المريض، واعرف بمن تتصل لحجز موعد.",
     "ai_services": "الخدمات الذكية",
     "ai_services_desc":
         "تفعيل أو تعطيل الميزات المدعومة بالذكاء الاصطناعي مثل مسح الفواتير والملاحظات الصوتية واستخراج تاريخ الأسنان.",

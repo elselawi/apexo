@@ -1,4 +1,4 @@
-import 'en.dart';
+﻿import 'en.dart';
 
 class Es implements En {
   @override
@@ -171,6 +171,23 @@ class Es implements En {
     "pastAppointments": "Citas pasadas",
     "upcomingAppointments": "Próximas citas",
     "addAppointment": "Añadir cita",
+    // follow-ups
+    "nextFollowUp": "Próxima revisión",
+    "notSelected": "Sin seleccionar",
+    "followUp": "Revisión",
+    "followUpsDue": "Revisiones pendientes",
+    "followUpOn": "Revisión · {date}",
+    "chooseFollowUpDate": "Elegir fecha",
+    "clearFollowUp": "Quitar revisión",
+    "bookFollowUp": "Reservar visita",
+    "followUpNotePlaceholder": "Nota (opcional)",
+    "followUpPresetDays": "{count} días",
+    "followUpPresetWeek": "{count} semana",
+    "followUpPresetWeeks": "{count} semanas",
+    "followUpPresetMonths": "{count} meses",
+    "followUpContactHint": "Haz clic para ver los datos de contacto",
+    "daysAway": "Dentro de {count} días",
+    "tomorrow": "Mañana",
 
     // days and months
     "monday": "Lunes",
@@ -888,6 +905,11 @@ class Es implements En {
     "uploadingFile": "subiendo archivo",
 
     // AI services
+    "optionalFeatures": "Funciones opcionales",
+    "followUps": "Revisiones",
+    "followUpsHintTitle": "Cómo usar las revisiones",
+    "followUpsHint": "La revisión guarda una fecha de regreso en la ficha del paciente, con una nota opcional. No es una cita reservada: no se reserva ninguna hora ni se ha acordado con el paciente. Ese día, busque al paciente en la lista de revisiones pendientes del calendario y llámele para reservar una visita. La revisión se borra automáticamente al reservar una visita para esa fecha o una posterior.",
+    "followUps_desc": "Anote cuándo debe volver cada paciente y a quién llamar para reservar una visita.",
     "ai_services": "Servicios de IA",
     "ai_services_desc":
         "Activar o desactivar funciones impulsadas por IA como escaneo de recibos, notas de voz y extracción de historial dental.",

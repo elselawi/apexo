@@ -1,4 +1,4 @@
-// ignore_for_file: annotate_overrides
+﻿// ignore_for_file: annotate_overrides
 
 import "en.dart";
 
@@ -174,6 +174,23 @@ class It implements En {
     "pastAppointments": "Appuntamenti passati",
     "upcomingAppointments": "Prossimi appuntamenti",
     "addAppointment": "Aggiungi appuntamento",
+    // follow-ups
+    "nextFollowUp": "Prossimo controllo",
+    "notSelected": "Non selezionato",
+    "followUp": "Controllo",
+    "followUpsDue": "Controlli in sospeso",
+    "followUpOn": "Controllo · {date}",
+    "chooseFollowUpDate": "Scegli data",
+    "clearFollowUp": "Rimuovi controllo",
+    "bookFollowUp": "Prenota visita",
+    "followUpNotePlaceholder": "Nota (facoltativa)",
+    "followUpPresetDays": "{count} giorni",
+    "followUpPresetWeek": "{count} settimana",
+    "followUpPresetWeeks": "{count} settimane",
+    "followUpPresetMonths": "{count} mesi",
+    "followUpContactHint": "Fai clic per i contatti",
+    "daysAway": "Tra {count} giorni",
+    "tomorrow": "Domani",
 
     // days and months
     "monday": "Lunedì",
@@ -893,6 +910,11 @@ class It implements En {
     "uploadingFile": "caricamento file",
 
     // AI services
+    "optionalFeatures": "Funzionalità opzionali",
+    "followUps": "Controlli",
+    "followUpsHintTitle": "Come usare i controlli",
+    "followUpsHint": "Un controllo è una data di ritorno annotata nella scheda del paziente, con una nota facoltativa. Non è un appuntamento prenotato: nessun orario è riservato o concordato con il paziente. Quel giorno, cerca il paziente nell'elenco dei controlli in sospeso del calendario e chiamalo per prenotare una visita. Il controllo si cancella automaticamente quando prenoti una visita per quella data o una successiva.",
+    "followUps_desc": "Annota quando i pazienti devono tornare e chi chiamare per prenotare una visita.",
     "ai_services": "Servizi IA",
     "ai_services_desc":
         "Abilita o disabilita le funzionalità basate sull'IA come la scansione delle ricevute, le note vocali e l'estrazione dello storico dentale.",

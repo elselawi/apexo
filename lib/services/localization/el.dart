@@ -1,4 +1,4 @@
-import 'en.dart';
+﻿import 'en.dart';
 
 class El implements En {
   @override
@@ -171,6 +171,23 @@ class El implements En {
     "pastAppointments": "Προηγούμενα ραντεβού",
     "upcomingAppointments": "Επερχόμενα ραντεβού",
     "addAppointment": "Προσθήκη ραντεβού",
+    // follow-ups
+    "nextFollowUp": "Επόμενη επανεξέταση",
+    "notSelected": "Δεν έχει οριστεί",
+    "followUp": "Επανεξέταση",
+    "followUpsDue": "Εκκρεμείς επανεξετάσεις",
+    "followUpOn": "Επανεξέταση · {date}",
+    "chooseFollowUpDate": "Επιλογή ημερομηνίας",
+    "clearFollowUp": "Αφαίρεση επανεξέτασης",
+    "bookFollowUp": "Κράτηση επίσκεψης",
+    "followUpNotePlaceholder": "Σημείωση (προαιρετικό)",
+    "followUpPresetDays": "{count} ημέρες",
+    "followUpPresetWeek": "{count} εβδομάδα",
+    "followUpPresetWeeks": "{count} εβδομάδες",
+    "followUpPresetMonths": "{count} μήνες",
+    "followUpContactHint": "Κάντε κλικ για στοιχεία επικοινωνίας",
+    "daysAway": "Σε {count} ημέρες",
+    "tomorrow": "Αύριο",
 
     // days and months
     "monday": "Δευτέρα",
@@ -888,6 +905,11 @@ class El implements En {
     "uploadingFile": "τη μεταφόρτωση αρχείου",
 
     // AI services
+    "optionalFeatures": "Προαιρετικές λειτουργίες",
+    "followUps": "Επανεξετάσεις",
+    "followUpsHintTitle": "Πώς λειτουργούν οι επανεξετάσεις",
+    "followUpsHint": "Η επανεξέταση είναι μια ημερομηνία επιστροφής στον φάκελο του ασθενούς, με προαιρετική σημείωση. Δεν είναι κλεισμένο ραντεβού: δεν δεσμεύεται ώρα ούτε έχει συμφωνηθεί με τον ασθενή. Εκείνη την ημέρα, βρείτε τον ασθενή στη λίστα εκκρεμών επανεξετάσεων του ημερολογίου και καλέστε τον για να κλείσετε επίσκεψη. Η επανεξέταση διαγράφεται αυτόματα όταν κλείσετε επίσκεψη για εκείνη την ημερομηνία ή μεταγενέστερη.",
+    "followUps_desc": "Σημειώστε πότε πρέπει να επιστρέψει ο ασθενής και ποιον να καλέσετε για να κλείσετε επίσκεψη.",
     "ai_services": "Υπηρεσίες AI",
     "ai_services_desc":
         "Ενεργοποιήστε ή απενεργοποιήστε λειτουργίες που βασίζονται σε AI, όπως σάρωση αποδείξεων, φωνητικές σημειώσεις και εξαγωγή οδοντιατρικού ιστορικού.",

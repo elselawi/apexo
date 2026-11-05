@@ -192,6 +192,60 @@ panel of its own. Such a record is a **session**, not a panel:
   once across all its windows and any panel carrying it. Unrelated windows omit
   the owner and keep independent saves, even when they share a scope.
 
+### Follow-ups
+
+A **patient** may carry a follow-up: the day they were asked to come back, and the
+optional note saying what the visit is for (`Patient.followUpNote`). The day is a
+day, never an hour (`Patient.followUpDay`), and it outlives the visit that recorded
+it — a visit is where a dentist *sets* it, not where it lives.
+`follow_up_scheduling.dart` owns every rule:
+
+- **The feature is optional and off by default.** An admin turns it on in
+  settings › optional features, stored as `follow_ups_enab` ("1"/"0", like every
+  global setting id: 15 characters). Every surface asks `followUpsEnabled` — the
+  visit's field, the scope bar's dot, the patient's row, the history card and the
+  day's band — and `followUpsOn` / `applyFollowUpsForNewVisit` are inert while it
+  is off, so a hidden promise is never silently rewritten.
+
+- `setFollowUp(patientID, date, {note})` writes the **store** and, when the patient's
+  panel is open, its **draft**, acknowledging both fields (`markFieldsSaved`) so a
+  promise made from a visit neither dirties the patient's form nor is lost with a
+  Cancel. `followUpRevision` is bumped so both surfaces that edit it redraw at once:
+  the visit's operative row (`FollowUpField`, presets counted from the visit's day)
+  and the patient's own row under the carried band (`PatientFollowUpBar`, presets
+  counted from today, folded to a button while there is no promise).
+  A note follows its day: passing no note keeps the stored one, and clearing the
+  day clears the note with it.
+- `FollowUpField` edits a **draft**, not the record: the day, the note and their
+  removal are written together by Save, with Cancel to drop the draft and Delete to
+  take the promise back at once (the same act, and the same word, as the visit
+  band's Delete). Do not make a field write on every keystroke — the note is text,
+  and text is typed a letter at a time. The footer is the visit band's grammar:
+  standard `Button`s per act and a `FilledButton` for the one that keeps the work.
+- The interval chips spell themselves out — "10 days", "2 weeks" — whenever the row
+  is wide enough for the whole set, and fall back to `FollowUpPreset.label` ("10d")
+  when it is not. Decide with a measurement (`_longPresetsFit`), not a guess: the
+  same seven chips are 190px wide in English and 260 in Arabic.
+- Opening a row chooses **no day**. `PatientFollowUpBar` passes `onCollapse` for a
+  patient with no promise, so a row opened by mistake folds again without the
+  dentist having to pick a date to escape it.
+- `applyFollowUpsForNewVisit` is the recall rule, called from `addAppointment` —
+  the one place every new visit passes through. A visit on or after the follow-up
+  day keeps the promise and clears it; a visit before it leaves the promise
+  standing.
+- `followUpsOn(day)` is a day's inbox: the patients whose promise falls on that day
+  and who are not already booked. The floating `FollowUpBand` draws them as faces;
+  a face opens the shared `FollowUpCard` (the day, the note, the phones, the visit
+  that keeps the promise), the band's own handle unfolds it into a list of the same
+  patients — where the note *replaces* the "tomorrow" label, keeping a late one's
+  overdue label beside it — and on the timeline a face can be dragged onto the hour
+  to book.
+- Every follow-up surface is drawn in `kFollowUpAccent`: it must read as "not a
+  visit" before anything else.
+- The patient's row is drawn by the panel through `Panel.carriedBandFooter`,
+  directly under the band of the visit it may carry — so it stays editable while
+  the patient's own form is read-only.
+
 Tests mirror `lib/`: `test/widget/features/<feature>/`, `test/widget/app/` for
 the shell, `test/widget/shared/<editor>/` for a shared editor, and
 `test/widget/common_widgets/` for the atoms.

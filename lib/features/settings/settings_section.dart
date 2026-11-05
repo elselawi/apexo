@@ -4,7 +4,7 @@ enum SettingsSection {
   preferences('settingsPreferences', WindowsIcons.locale_language),
   calendar('calendar', WindowsIcons.calendar),
   clinic('settingsClinic', FluentIcons.hospital),
-  ai('ai_services', FluentIcons.lightbulb),
+  optional('optionalFeatures', FluentIcons.puzzle),
   storage('settingsStorage', FluentIcons.database),
   backups('backups', FluentIcons.folder),
   server('settingsServer', FluentIcons.server);
@@ -27,7 +27,10 @@ SettingsSection settingsSectionFor(String identifier) => switch (identifier) {
       'calendarView' ||
       'calendarSystem' =>
         SettingsSection.calendar,
-      'ai_services_ena' || 'audioTranscriptionLocale' => SettingsSection.ai,
+      'ai_services_ena' ||
+      'audioTranscriptionLocale' ||
+      'follow_ups_enab' =>
+        SettingsSection.optional,
       'cacheReset' ||
       'file_upload_settings' ||
       's3_settings' =>

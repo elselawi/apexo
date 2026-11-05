@@ -124,6 +124,36 @@ void main() {
     });
   }
 
+  testWidgets('optional features hosts the ai and follow-up switches',
+      (tester) async {
+    login.adminCollectionId = 'test-admin';
+    login.token = 'x.${base64Encode(utf8.encode('test-admin'))}.x';
+    await size(tester, const Size(1400, 900));
+    await pumpApexoApp(tester, const SettingsScreen());
+
+    expect(settingsSectionFor('ai_services_ena'), SettingsSection.optional);
+    expect(settingsSectionFor('audioTranscriptionLocale'),
+        SettingsSection.optional);
+    expect(settingsSectionFor('follow_ups_enab'), SettingsSection.optional);
+
+    await tester.tap(find.byKey(const ValueKey('settings_category_optional')));
+    await tester.pumpAndSettle();
+
+    expect(find.text(txt('optionalFeatures')), findsWidgets);
+    expect(find.byKey(WK.settingsItem('ai_services_ena')), findsOneWidget);
+    expect(find.byKey(WK.settingsItem('follow_ups_enab')), findsOneWidget,
+        reason: 'follow-ups are switched on here, with the AI services');
+    final followUps = tester.widget<SettingsItem>(find.byWidgetPredicate(
+      (widget) =>
+          widget is SettingsItem && widget.identifier == 'follow_ups_enab',
+    ));
+    expect(followUps.description, txt('followUpsHint'));
+    expect(followUps.footer, isNull);
+    expect(find.text(txt('followUpsHintTitle')), findsNothing);
+    expect(find.text(txt('followUpsHint')), findsWidgets,
+        reason: 'the setting hint explains follow-ups without an info bar');
+  });
+
   for (final width in [360.0, 1400.0]) {
     testWidgets('backups has its own category at width $width', (tester) async {
       login.adminCollectionId = 'test-admin';

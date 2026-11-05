@@ -437,6 +437,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               localSettings.notifyAndPersist();
             },
           ),
+        if (login.isAdmin)
+          SettingsItem(
+            title: txt("followUps"),
+            identifier: "follow_ups_enab",
+            description: txt("followUpsHint"),
+            icon: WindowsIcons.walk_solid,
+            inputType: InputType.dropDown,
+            scope: Scope.app,
+            options: [
+              ComboBoxItem(value: "1", child: Txt(txt("on"))),
+              ComboBoxItem(value: "0", child: Txt(txt("off"))),
+            ],
+            initValue: globalSettings.get("follow_ups_enab").value,
+            apply: (newVal) => globalSettings.set(
+                Setting.fromJson({"id": "follow_ups_enab", "value": newVal})),
+          ),
         if (network.isOnline())
           SettingsItem(
             title: txt("cacheReset"),

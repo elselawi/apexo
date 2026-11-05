@@ -150,6 +150,58 @@ class WK {
       Key("fieldAppointmentPrescriptions");
   static const fieldAppointmentPrice = Key("fieldAppointmentPrice");
   static const fieldAppointmentPayment = Key("fieldAppointmentPayment");
+
+  /// The visit's next follow-up: the field itself, the day it holds (a picker
+  /// once a date is chosen, a "choose a date" chip before that), one of the
+  /// preset intervals, and the button that takes the promise back once a day is
+  /// chosen.
+  static const fieldAppointmentFollowUp = Key("fieldAppointmentFollowUp");
+  static const fieldAppointmentFollowUpDate =
+      Key("fieldAppointmentFollowUpDate");
+
+  /// The day's row: the day itself and what the visit is for.
+  static const fieldFollowUpNote = Key("fieldFollowUpNote");
+
+  /// The field's actions, in the visit band's grammar: take the promise back,
+  /// drop the draft, keep it.
+  static const followUpSave = Key("followUpSave");
+  static const followUpCancel = Key("followUpCancel");
+
+  /// Folds an opened, still empty row again — the way back out of a row the
+  /// dentist opened by mistake.
+  static const followUpCollapse = Key("followUpCollapse");
+  static const clearFollowUp = Key("clearFollowUp");
+  static Key followUpPreset(String label) => Key("followUpPreset-$label");
+
+  /// The follow-up circle on the visit scope bar, and one patient's avatar in a
+  /// day's floating follow-up band.
+  static const chartFollowUpDot = Key("chartFollowUpDot");
+  static const bookFollowUp = Key("bookFollowUp");
+  static const followUpBand = Key("followUpBand");
+  static Key followUpAvatar(String patientID) =>
+      Key("followUpAvatar-$patientID");
+
+  /// A patient's row in the day's unfolded follow-up sheet.
+  static Key followUpRow(String patientID) => Key("followUpRow-$patientID");
+
+  /// The action that takes a follow-up back, wherever it is offered (the sheet,
+  /// the patient's history card).
+  static const followUpRemove = Key("followUpRemove");
+
+  /// The day's follow-up band as a sheet: the band's own handle that unfolds it.
+  static const followUpsBandToggle = Key("followUpsBandToggle");
+
+  /// The patient's own follow-up row, under the band of the visit they may have
+  /// open: the row itself and the button that gives a patient a follow-up.
+  static const patientFollowUpBar = Key("patientFollowUpBar");
+  static const patientFollowUpSet = Key("patientFollowUpSet");
+
+  /// The follow-up card that heads the patient's history, the button that gives
+  /// them one there, and the patient's name as a link inside the bubble card.
+  static const followUpSummaryCard = Key("followUpSummaryCard");
+  static const followUpSummarySet = Key("followUpSummarySet");
+  static const followUpPatientLink = Key("followUpPatientLink");
+
   static const fieldLabworkAppointment = Key("fieldLabworkAppointment");
   static const fieldLabworkOrderNotes = Key("fieldLabworkOrderNotes");
   static const fieldLabworkLabName = Key("fieldLabworkLabName");

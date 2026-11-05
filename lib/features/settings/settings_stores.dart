@@ -43,6 +43,13 @@ class GlobalSettings extends Store<Setting> {
   String get isoCountryCode => get("ISO_country____").value;
   bool get aiServicesEnabled => get("ai_services_ena").value == "1";
 
+  /// Follow-ups are an **optional feature**: a clinic that does not chase
+  /// recalls should not be shown promises, bands or fields it never asked for.
+  /// Off until an admin turns it on — settings › optional features.
+  bool get followUpsEnabled => get("follow_ups_enab").value == "1";
+  set followUpsEnabled(bool enabled) => set(Setting.fromJson(
+      {"id": "follow_ups_enab", "value": enabled ? "1" : "0"}));
+
   // Windows-only feature: directory/directories where the Xray software
   // stores `.dcm` files. Supports multiple directories separated by `;`.
   // Empty string = not configured.
@@ -83,6 +90,7 @@ class GlobalSettings extends Store<Setting> {
     "start_day_of_wk": "monday",
     "ISO_country____": "",
     "ai_services_ena": "0",
+    "follow_ups_enab": "0",
     "dicom_watch_dir": "",
     "dicom_auto_imp_": "1",
   };
@@ -177,6 +185,7 @@ class LocalSettings extends ObservablePersistingObject {
         : (value >= locale.list.length ? locale.list.length - 1 : value);
     locale.select(_selectedLocale);
   }
+
   String dentalNotation = "p";
   String? aiToken;
   String aiTokenServer = '';

@@ -437,6 +437,38 @@ class Patient extends Model {
   /* 8b */ Map<String, String> teethExtraNotes = {};
   /* 9 */ String? link;
 
+  /// The day the patient was asked to come back, or null when none is planned.
+  ///
+  /// A follow-up belongs to the **patient**, not to the visit that recorded it:
+  /// it is a promise about the patient's future, and it survives the visit it
+  /// was written on. A visit is where a dentist *sets* it (and the patient's own
+  /// band can set it too) — see `follow_up_scheduling.dart`.
+  ///
+  /// Unlike the other merge-style fields, this field treats an absent JSON key
+  /// as cleared. Callers updating an existing patient must supply a complete
+  /// record snapshot, or explicitly preserve `followUp` in a partial update;
+  /// a title-only patch would otherwise silently clear the follow-up.
+  /* 10 */ DateTime? followUpDate;
+
+  /// What the promise is *for* — "bring the X-ray", "review the crown".
+  ///
+  /// Optional, and part of the same promise as [followUpDate]: it is written
+  /// when the day is decided and read back when the patient is called, so it is
+  /// cleared with the day rather than left behind (see `setFollowUp`).
+  /* 10b */ String followUpNote = '';
+
+  /// The follow-up day, without the time of day — a follow-up is a day, never an
+  /// hour: the clinic books the visit when it calls, and a stored hour would be
+  /// a booking nobody made.
+  DateTime? get followUpDay {
+    final followUp = followUpDate;
+    return followUp == null
+        ? null
+        : DateTime(followUp.year, followUp.month, followUp.day);
+  }
+
+  bool get hasFollowUp => followUpDate != null;
+
   String get phonesString => phone.map((p) => p.e164).join(" ");
 
   @override
@@ -466,6 +498,14 @@ class Patient extends Model {
     /* 8b */ teethExtraNotes = Map<String, String>.from(
         json['teethExtraNotes'] as Map<dynamic, dynamic>? ?? teethExtraNotes);
     /* 9 */ link = json["link"] as String? ?? link;
+    // Cleared follow-ups are omitted by toJson; adopting that snapshot must
+    // clear the old value just as an explicit null does.
+    /* 10 */ followUpDate = json['followUp'] == null
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(
+            ((json['followUp'] as num) * 60000).toInt());
+    // The note follows the same convention: absent is no note.
+    /* 10b */ followUpNote = json['followUpNote'] as String? ?? '';
   }
 
   @override
@@ -486,6 +526,12 @@ class Patient extends Model {
       json['teethExtraNotes'] = teethExtraNotes;
     }
     /* 9 */ if (link != d.link) json['link'] = link;
+    final followUp = followUpDay;
+    /* 10 */ if (followUp != null) {
+      json['followUp'] = (followUp.millisecondsSinceEpoch / 60000).round();
+      // A note with no day would be a promise with nothing to keep.
+      /* 10b */ if (followUpNote.isNotEmpty) json['followUpNote'] = followUpNote;
+    }
     return json;
   }
 }

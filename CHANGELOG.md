@@ -1,5 +1,8 @@
 ### ____0.17.1____
 
+- New Features & Improvements
+    - **Follow-ups, if you want them.** A dentist can note the day a patient should come back — and what the visit is for — while writing a visit's notes or from the patient's own page. It is a reminder, not a booking: no time is taken, and on that day the patient appears in the calendar's due list so reception can call and book the real visit. Booking a visit on that day or later clears the follow-up. Switch it on in **Settings › Optional features**, which now holds the AI settings as well.
+
 - UI & UX Polish
     - redesigned settings screen.
     - Redesigned insights, with new charts, new performance and new features.

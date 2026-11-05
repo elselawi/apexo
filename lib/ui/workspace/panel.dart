@@ -35,6 +35,7 @@ abstract base class Panel implements WindowRecordSession {
     this.attachmentLayout = false,
     this.additionalControls,
     this.archiveButtonReplacement,
+    this.carriedBandFooter,
   });
 
   /// The windows this panel offers, in priority order. The first **row** window
@@ -152,6 +153,17 @@ abstract base class Panel implements WindowRecordSession {
 
   final Widget? additionalControls;
   final Widget? archiveButtonReplacement;
+
+  /// A widget drawn directly **under the band** of the record this panel
+  /// carries — the record's own facts that the carried record also edits.
+  ///
+  /// A patient's next follow-up is set by a dentist while a visit is open (its
+  /// operative record edits it too), so it must stay reachable while the visit's
+  /// band covers the patient's own form; that is exactly the slot this fills. It
+  /// is built by the feature, so the workspace never learns what a patient is.
+  ///
+  /// Null for a panel that carries nothing, or offers no such field.
+  final Widget? carriedBandFooter;
 
   @override
   final inProgress = ObservableState(false);

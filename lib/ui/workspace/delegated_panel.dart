@@ -35,6 +35,7 @@ final class DelegatedPanel extends Panel {
     super.attachmentLayout,
     super.additionalControls,
     super.archiveButtonReplacement,
+    super.carriedBandFooter,
     super.initialWindow,
     super.opensWithWindows,
     super.accent,

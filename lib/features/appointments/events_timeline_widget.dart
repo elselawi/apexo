@@ -4,6 +4,8 @@ import 'dart:math';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/duration_pill.dart';
 import 'package:apexo/features/appointments/appointment_indicators.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
+import 'package:apexo/features/appointments/follow_up_band.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/ui/workspace/panel_open_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -32,6 +34,8 @@ class CalendarTimelineView extends StatefulWidget {
     required this.onSelect,
     required this.onSetTime,
     required this.onAddNew,
+    this.followUps = const [],
+    this.onBookFollowUp,
   });
   final List<Appointment> items;
   final bool showPayments;
@@ -39,6 +43,13 @@ class CalendarTimelineView extends StatefulWidget {
   final void Function(Appointment item, AppointmentWindow? window) onSelect;
   final void Function(Appointment item) onSetTime;
   final void Function(DateTime date) onAddNew;
+
+  /// The day's follow-ups that still need a visit — see [FollowUpBand].
+  final List<FollowUpDue> followUps;
+
+  /// Books one of them. Its face can be dragged onto the grid, and the hour it
+  /// was dropped on comes back as [at]; a plain click keeps the day.
+  final void Function(FollowUpDue followUp, {DateTime? at})? onBookFollowUp;
 
   @override
   State<CalendarTimelineView> createState() => _CalendarTimelineViewState();
@@ -69,6 +80,11 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
   final _hiddenOperators = <String>{};
   double _dragGridWCached = 0;
   Timer? _nowTimer;
+
+  /// Where the face being dragged would land, for the insertion line the grid
+  /// shows while it is over the day.
+  final _gridKey = GlobalKey();
+  DateTime? _dropTime;
 
   @override
   void initState() {
@@ -337,7 +353,105 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
       _buildScrollableArea(neededW, gridW, totalH, gx, gw, stroke, showNow,
           nowY, visibleApps, layout, needsHorizScroll),
       _buildGutterOverlay(rtl, bg.withAlpha(100), timeGutter),
+      // Always in the tree, empty or not: inserting it only while a drag is
+      // over the day would shift the band along the Stack and rebuild the very
+      // face being dragged, which cancels the drag it is drawing for.
+      _buildDropIndicator(gx, gw),
+      // The day's follow-ups float over it: the faces of the patients who were
+      // asked to come back, waiting for an hour. Dragging one onto the grid is
+      // the other way to give them one.
+      if (widget.followUps.isNotEmpty)
+        PositionedDirectional(
+          key: const ValueKey('calendar-follow-up-band'),
+          start: 12,
+          end: 12,
+          bottom: 10,
+          child: Align(
+            alignment: AlignmentDirectional.bottomCenter,
+            child: FollowUpBand(
+              followUps: widget.followUps,
+              onBook: widget.onBookFollowUp,
+              draggable: widget.onBookFollowUp != null,
+            ),
+          ),
+        ),
     ]);
+  }
+
+  /// Turns a global drag position into the hour it is over, and shows the line
+  /// the visit would start on.
+  DateTime? _readDropTime(Offset global) {
+    final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.attached || _totalH <= 0) return null;
+    final local = box.globalToLocal(global);
+    final y = (local.dy + _vertCtrl.offset).clamp(0.0, _totalH);
+    return _yToTime(y);
+  }
+
+  void _showDropTime(Offset global) {
+    final time = _readDropTime(global);
+    if (time == null || time == _dropTime) return;
+    setState(() => _dropTime = time);
+  }
+
+  void _clearDropTime() {
+    if (_dropTime == null) return;
+    setState(() => _dropTime = null);
+  }
+
+  /// A teal line where the visit would begin, with the hour on it — the same
+  /// question the timeline answers for every block, asked before anything is
+  /// written.
+  Widget _buildDropIndicator(double gx, double gw) {
+    final time = _dropTime;
+    if (time == null) {
+      return const Positioned(
+        left: 0,
+        top: 0,
+        width: 0,
+        height: 0,
+        child: SizedBox.shrink(),
+      );
+    }
+    final y = _timeToY(time) - _vertCtrl.offset;
+    return Positioned(
+      left: gx,
+      top: y - 1,
+      width: gw,
+      child: IgnorePointer(
+        child: Row(
+          children: [
+            Container(
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: kFollowUpAccent,
+                shape: BoxShape.circle,
+              ),
+            ),
+            Expanded(
+              child: Container(height: 2, color: kFollowUpAccent),
+            ),
+            Container(
+              margin: const EdgeInsetsDirectional.only(start: 6),
+              padding: const EdgeInsetsDirectional.fromSTEB(6, 1, 6, 1),
+              decoration: BoxDecoration(
+                color: kFollowUpAccent,
+                borderRadius: BorderRadius.circular(3),
+              ),
+              child: Text(
+                DF.timeOnly(time),
+                style: const TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ─── Time gutter ───────────────────────────────────────────────────────
@@ -483,15 +597,26 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
               child: content,
             ),
           );
-    return GestureDetector(
-      onTapUp: (d) {
-        final box = context.findRenderObject() as RenderBox?;
-        if (box == null) return;
-        final y = box.globalToLocal(d.globalPosition).dy + _vertCtrl.offset;
-        if (y < 0 || y > _totalH) return;
-        widget.onAddNew(_yToTime(y));
+    return DragTarget<FollowUpDue>(
+      onWillAcceptWithDetails: (_) => widget.onBookFollowUp != null,
+      onMove: (details) => _showDropTime(details.offset),
+      onLeave: (_) => _clearDropTime(),
+      onAcceptWithDetails: (details) {
+        final when = _readDropTime(details.offset);
+        _clearDropTime();
+        if (when != null) widget.onBookFollowUp?.call(details.data, at: when);
       },
-      child: scrollable,
+      builder: (context, candidate, rejected) => GestureDetector(
+        key: _gridKey,
+        onTapUp: (d) {
+          final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+          if (box == null) return;
+          final y = box.globalToLocal(d.globalPosition).dy + _vertCtrl.offset;
+          if (y < 0 || y > _totalH) return;
+          widget.onAddNew(_yToTime(y));
+        },
+        child: scrollable,
+      ),
     );
   }
 

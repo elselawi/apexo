@@ -21,10 +21,12 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/appointments/visit_scope_bar.dart';
 import 'package:apexo/features/patients/patient_dental_chart.dart';
+import 'package:apexo/features/patients/patient_follow_up_bar.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:apexo/features/dicom/open_dicom_viewer_window.dart';
 import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/logger.dart';
@@ -36,6 +38,9 @@ import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/common_widgets/visits_button.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/follow_up_card.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
+import 'package:apexo/features/appointments/new_appointment_dialog.dart';
 import 'package:apexo/features/patients/patient_gallery.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patient_owner_line.dart';
@@ -222,6 +227,10 @@ Future<Panel> _ensurePatientPanel(
       PatientWindow.appointments.id
     ],
     attachmentLayout: true,
+    // The patient's next follow-up, directly under the band of whatever visit
+    // is open: a dentist decides it with the notes in front of them, and the
+    // patient's own record must not be read-only while the visit is.
+    carriedBandFooter: PatientFollowUpBar(patientID: editingCopy.id),
     // The window the caller asked for: a table cell that means "the
     // appointments" asks for it here rather than counting windows.
     initialWindow: focus,

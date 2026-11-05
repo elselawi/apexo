@@ -6,6 +6,7 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/common_widgets/swipe_detector.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
@@ -33,6 +34,8 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
     required this.onSetTime,
     required this.onSelect,
     this.actions,
+    this.followUpsOnDay,
+    this.onBookFollowUp,
   });
   final List<Item> items;
   final List<Widget>? actions;
@@ -43,6 +46,14 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
 
   /// Opens [item], optionally on a specific panel window — see [AppointmentWindow].
   final void Function(Item item, AppointmentWindow? window) onSelect;
+
+  /// The follow-ups waiting on a day, drawn as the day's floating band — see
+  /// [FollowUpBand]. Null when the caller has none to offer.
+  final List<FollowUpDue> Function(DateTime day)? followUpsOnDay;
+
+  /// Books a follow-up's visit. The patient and the day come with it; [at] is
+  /// the hour a face was dropped on, and null keeps the day's own.
+  final void Function(FollowUpDue followUp, {DateTime? at})? onBookFollowUp;
 
   @override
   WeekAgendaCalendarState<Item> createState() =>
@@ -88,6 +99,10 @@ class WeekAgendaCalendarState<Item extends Appointment>
   @override
   Widget build(BuildContext context) {
     final itemsForSelectedDay = _getItemsForSelectedDay();
+    // A follow-up has no hour, so it is not a block or a row: it floats over the
+    // day as the practice's inbox of faces to give one to.
+    final followUps =
+        widget.followUpsOnDay?.call(selectedDate) ?? const <FollowUpDue>[];
     return Column(
       children: [
         _buildCommandBar(),
@@ -111,6 +126,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
                         showPayments: showPayments,
                         onSelect: widget.onSelect,
                         onSetTime: widget.onSetTime,
+                        followUps: followUps,
+                        onBookFollowUp: widget.onBookFollowUp,
                       )
                     : CalendarTimelineView(
                         items: itemsForSelectedDay.cast<Appointment>().toList(),
@@ -121,6 +138,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
                         onSetTime: (appointment) =>
                             widget.onSetTime(appointment as Item),
                         onAddNew: widget.onAddNew,
+                        followUps: followUps,
+                        onBookFollowUp: widget.onBookFollowUp,
                       ),
               ),
             ]),

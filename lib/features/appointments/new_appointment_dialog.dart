@@ -7,6 +7,7 @@ import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:apexo/common_widgets/operators_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/new_patient_dialog.dart';
@@ -265,5 +266,9 @@ Future<Appointment?> addAppointment(
   final created = collected;
   if (created == null) return null;
   appointments.set(created);
-  return created;
+  // A new visit can keep — or inherit — the promise a follow-up made: storing it
+  // here, before any caller opens it, is the one place every way of creating a
+  // visit passes through (see `follow_up_scheduling.dart`).
+  applyFollowUpsForNewVisit(created.id);
+  return appointments.get(created.id) ?? created;
 }

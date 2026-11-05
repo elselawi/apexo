@@ -6,15 +6,18 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_session.dart';
 import 'package:apexo/features/appointments/appointment_sessions.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/follow_up_scope_dot.dart';
 import 'package:apexo/features/appointments/new_appointment_dialog.dart';
 import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
-import 'package:apexo/features/settings/settings_stores.dart' show DF, currency;
+import 'package:apexo/features/settings/settings_stores.dart'
+    show DF, currency, globalSettings;
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
@@ -349,6 +352,7 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
       streams: [
         patients.observableMap.stream,
         appointments.observableMap.stream,
+        globalSettings.observableMap.stream,
         locale.selected.stream,
       ],
       builder: (context, _) {
@@ -373,6 +377,9 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
         }
 
         final theme = FluentTheme.of(context);
+        // The one promise on this bar that is not a visit yet: the day the
+        // patient was asked to come back, drawn past the newest dot.
+        final followUp = followUpsEnabled ? patientFollowUpDay(patient.id) : null;
         // With no visits there is no timeline beside it, so the button can
         // afford its whole name instead of the short "new".
         final addLabel = visits.isEmpty ? txt('addAppointment') : txt('new');
@@ -444,6 +451,28 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
                     ),
                   ),
                 ],
+                // The follow-up sits at the leading end of the bar — past the
+                // newest visit, where the patient's history stops and their
+                // future starts. It is not a visit: it is larger, it wears the
+                // phone, and it opens contact details rather than a chart.
+                if (followUp != null)
+                  FollowUpScopeDot(
+                    key: WK.chartFollowUpDot,
+                    patient: patient,
+                    date: followUp,
+                    onBook: login.perm(Perm.appointments).some
+                        ? () async {
+                            final created = await addAppointment(
+                              context,
+                              day: followUp,
+                              patientID: patient.id,
+                            );
+                            if (created == null || !mounted) return;
+                            await openAppointment(
+                                created, AppointmentWindow.dentalChart);
+                          }
+                        : null,
+                  ),
                 // A visit is started from the record it belongs to: one button
                 // beside the visits it will join, not a trip back to the calendar
                 // and a new dialog with the patient typed in again. The space

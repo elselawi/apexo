@@ -18,6 +18,8 @@ import 'package:apexo/common_widgets/visits_button.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/appointment_chart_footer.dart';
 import 'package:apexo/features/appointments/appointment_commands.dart';
+import 'package:apexo/features/appointments/follow_up_field.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/appointment_labwork_widgets.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_owner_line.dart';
@@ -1104,6 +1106,26 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
             );
           },
         ),
+        // The record looks forward as well as back: the day the patient is
+        // expected again is part of what this visit decided, so it is written
+        // down beside the notes that decided it. It is the *patient's* promise —
+        // the visit only sets it — and "in two weeks" counts from this visit.
+        // A clinic that does not use follow-ups never sees the row.
+        if ((appointment.patientID ?? '').isNotEmpty)
+          MStreamBuilder<Object?>(
+            streams: [globalSettings.observableMap.stream],
+            builder: (context, _) {
+              if (!followUpsEnabled) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsetsDirectional.only(top: 6),
+                child: FollowUpField(
+                  patientID: appointment.patientID!,
+                  anchor: appointment.date,
+                  onChanged: widget.onEdited,
+                ),
+              );
+            },
+          ),
         // Dictation is offered only while it can work: the setting is on and
         // there is a network to send the audio over. Both are live, so the
         // button leaves the moment either does.

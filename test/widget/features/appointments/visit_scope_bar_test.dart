@@ -4,9 +4,12 @@ library;
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/visit_scope_bar.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/features/settings/settings_stores.dart'
+    show globalSettings;
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/perm.dart';
@@ -22,14 +25,18 @@ void main() {
   late Map<String, Patient> originalPatients;
   late Map<String, Appointment> originalAppointments;
   late List<int> originalPermissions;
+  late bool originalFollowUps;
 
   setUp(() {
     originalPatients = {...patients.observableMap.docs};
     originalAppointments = {...appointments.observableMap.docs};
     originalPermissions = login.savedPermissions;
+    originalFollowUps = globalSettings.followUpsEnabled;
     patients.observableMap.clear();
     appointments.observableMap.clear();
     login.savedPermissions = Perm.full;
+    // Follow-ups are an optional feature; these tests are what it does when on.
+    globalSettings.followUpsEnabled = true;
   });
 
   tearDown(() {
@@ -40,6 +47,7 @@ void main() {
       ..clear()
       ..setAll(originalAppointments.values.toList());
     login.savedPermissions = originalPermissions;
+    globalSettings.followUpsEnabled = originalFollowUps;
   });
 
   for (var language = 0; language < locale.list.length; language++) {
@@ -52,20 +60,32 @@ void main() {
       patients.set(patient);
       final from = DateTime(2026, 1, 1);
       appointments.setAll([
-        testAppointment(id: 'interval-start', patientID: patient.id, date: from),
-        testAppointment(id: 'interval-end', patientID: patient.id,
+        testAppointment(
+            id: 'interval-start', patientID: patient.id, date: from),
+        testAppointment(
+            id: 'interval-end',
+            patientID: patient.id,
             date: from.add(const Duration(days: 7))),
       ]);
       final session = DentalChartSession(
-        id: 'patient:${patient.id}', titleKey: 'dentalChart',
-        subtitle: () => patient.title, type: StateType.state,
-        teeth: {}, extraNotes: {}, history: () => [], oldNotes: () => {},
+        id: 'patient:${patient.id}',
+        titleKey: 'dentalChart',
+        subtitle: () => patient.title,
+        type: StateType.state,
+        teeth: {},
+        extraNotes: {},
+        history: () => [],
+        oldNotes: () => {},
         historyTitle: 'toothHistory',
       );
-      await pumpApexoApp(tester, Directionality(
-        textDirection: locale.s.$direction,
-        child: SizedBox(width: 700, child: VisitScopeBar(patient: patient, session: session)),
-      ));
+      await pumpApexoApp(
+          tester,
+          Directionality(
+            textDirection: locale.s.$direction,
+            child: SizedBox(
+                width: 700,
+                child: VisitScopeBar(patient: patient, session: session)),
+          ));
       expect(find.text('7${txt('timelineDayUnit')}'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
@@ -273,5 +293,53 @@ void main() {
         findsOneWidget);
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a recorded follow-up puts its phone dot past the newest visit',
+      (tester) async {
+    final patient = testPatient(id: 'follow-up-patient');
+    patients.set(patient);
+    appointments.set(testAppointment(
+      id: 'follow-up-visit',
+      patientID: patient.id,
+      date: DateTime(2026, 1, 5),
+    ));
+    appointments.set(testAppointment(
+      id: 'follow-up-later',
+      patientID: patient.id,
+      date: DateTime(2026, 2, 2),
+    ));
+    // The promise belongs to the patient; the visits only say how old it is.
+    setFollowUp(patient.id, DateTime(2026, 3, 20));
+
+    await pumpApexoApp(
+      tester,
+      Center(
+        child: SizedBox(
+          width: 420,
+          child: VisitScopeBar(
+            patient: patient,
+            session: chartFor(patient, 'appointment:follow-up-visit'),
+          ),
+        ),
+      ),
+    );
+
+    final dot = find.byKey(WK.chartFollowUpDot);
+    expect(dot, findsOneWidget);
+    expect(
+      find.descendant(of: dot, matching: find.byIcon(WindowsIcons.walk_solid)),
+      findsOneWidget,
+      reason: 'the dot says it is a call, not a visit',
+    );
+    // The dot belongs to the patient, not to the visit that recorded it: the
+    // bar draws it whichever visit is open.
+    expect(tester.getSize(dot).height, 40);
+    expect(tester.takeException(), isNull);
+
+    // Taking the promise back takes the dot with it.
+    setFollowUp(patient.id, null);
+    await tester.pumpAndSettle();
+    expect(find.byKey(WK.chartFollowUpDot), findsNothing);
   });
 }

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/features/appointments/appointment_indicators.dart';
 import 'package:apexo/features/appointments/appointment_menu_items.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
+import 'package:apexo/features/appointments/follow_up_band.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
@@ -34,9 +36,17 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
     required this.showPayments,
     required this.onSelect,
     required this.onSetTime,
+    this.followUps = const [],
+    this.onBookFollowUp,
   });
   final List<Item> items;
   final bool showPayments;
+
+  /// The day's follow-ups that still need a visit — see [FollowUpBand].
+  final List<FollowUpDue> followUps;
+
+  /// Books one of them, with its patient and its day already chosen.
+  final void Function(FollowUpDue followUp, {DateTime? at})? onBookFollowUp;
 
   /// Opens [item], optionally on a specific window — see [AppointmentWindow].
   final void Function(Item item, AppointmentWindow? window) onSelect;
@@ -44,8 +54,9 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final Widget day;
     if (items.isEmpty) {
-      return Container(
+      day = Container(
         color: Colors.transparent,
         child: Center(
           child: InfoBar(
@@ -56,26 +67,45 @@ class AgendaListView<Item extends Appointment> extends StatelessWidget {
           ),
         ),
       );
+    } else {
+      final sortedItems = [...items]..sort((a, b) =>
+          a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
+      day = ListView.builder(
+        padding: const EdgeInsets.only(bottom: 80),
+        itemCount: sortedItems.length,
+        itemBuilder: (context, index) {
+          final item = sortedItems[index];
+          return Padding(
+            padding: const EdgeInsets.all(0),
+            child: AppointmentCalendarTile<Item>(
+              key: WK.calendarAppointmentTile,
+              context: context,
+              showPayments: showPayments,
+              item: item,
+              onSelect: onSelect,
+              onSetTime: onSetTime,
+            ),
+          );
+        },
+      );
     }
-    final sortedItems = [...items]..sort((a, b) =>
-        a.date.millisecondsSinceEpoch - b.date.millisecondsSinceEpoch);
-    return ListView.builder(
-      padding: const EdgeInsets.only(bottom: 80),
-      itemCount: sortedItems.length,
-      itemBuilder: (context, index) {
-        final item = sortedItems[index];
-        return Padding(
-          padding: const EdgeInsets.all(0),
-          child: AppointmentCalendarTile<Item>(
-            key: WK.calendarAppointmentTile,
-            context: context,
-            showPayments: showPayments,
-            item: item,
-            onSelect: onSelect,
-            onSetTime: onSetTime,
+    if (followUps.isEmpty) return day;
+    return Stack(
+      children: [
+        Positioned.fill(child: day),
+        PositionedDirectional(
+          start: 12,
+          end: 12,
+          bottom: 10,
+          child: Align(
+            alignment: AlignmentDirectional.bottomCenter,
+            child: FollowUpBand(
+              followUps: followUps,
+              onBook: onBookFollowUp,
+            ),
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 }

@@ -40,13 +40,14 @@ void main() {
     WindowsManager.closeAll();
   });
 
-  Panel hostPanel() => DelegatedPanel(
+  Panel hostPanel({Widget? footer}) => DelegatedPanel(
         itemId: 'patient-1',
         singularName: 'patient',
         unicodeSymbol: '👤',
         icon: WindowsIcons.contact,
         saveLabel: 'savePatient',
         carriedDraftWindowId: 'chart',
+        carriedBandFooter: footer,
         attachmentLayout: true,
         workspaceWindows: const ['chart', 'appointments'],
         checkUnsavedChanges: () => false,
@@ -165,6 +166,36 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the record\'s forward field sits under the band and stays live',
+      (tester) async {
+    var tapped = 0;
+    final panel = hostPanel(
+      footer: GestureDetector(
+        key: WK.patientFollowUpSet,
+        behavior: HitTestBehavior.opaque,
+        onTap: () => tapped++,
+        child: const SizedBox(height: 32, width: 120),
+      ),
+    );
+    panel.attach(visit());
+    await pumpShell(tester, panel);
+
+    final footer = find.byKey(WK.patientFollowUpSet);
+    expect(footer, findsOneWidget);
+    // Directly under the visit's bubble: the patient's own promise is not
+    // buried by the visit that records it.
+    expect(
+      tester.getTopLeft(footer).dy,
+      greaterThanOrEqualTo(tester.getBottomLeft(find.byKey(WK.visitBand)).dy),
+    );
+    // The panel's own record turns read-only while a visit is open; this row is
+    // outside it, because a visit is exactly where a follow-up is decided.
+    await tester.tap(footer);
+    await tester.pumpAndSettle();
+    expect(tapped, 1);
     expect(tester.takeException(), isNull);
   });
 

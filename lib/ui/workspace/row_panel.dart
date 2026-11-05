@@ -41,6 +41,7 @@ final class RowPanel<T extends Model> extends Panel
     super.attachmentLayout,
     super.additionalControls,
     super.archiveButtonReplacement,
+    super.carriedBandFooter,
     super.initialWindow,
     super.opensWithWindows,
     super.accent,

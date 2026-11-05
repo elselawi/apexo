@@ -150,11 +150,19 @@ class PatientAppointments extends StatelessWidget {
         builder: (context, snapshot) {
           final apts = patient.allAppointments;
           return Column(
-            children: apts.isEmpty
-                ? [
-                    InfoBar(title: Txt(txt("noAppointmentsFound"))),
-                  ]
-                : [
+            children: [
+              // The one thing in this history that has not happened yet: the
+              // patient's next follow-up, with the two acts it allows — book the
+              // visit that keeps it, or take it back.
+              FollowUpSummaryCard(
+                patientID: patient.id,
+                onBook: login.perm(Perm.appointments).some
+                    ? () => unawaited(_bookFollowUp(context))
+                    : null,
+              ),
+              if (apts.isEmpty)
+                InfoBar(title: Txt(txt("noAppointmentsFound")))
+              else ...[
                     ...List.generate(apts.length, (index) {
                       final appointment = apts[index];
                       String? difference;
@@ -270,8 +278,24 @@ class PatientAppointments extends StatelessWidget {
                         ),
                       ),
                   ],
+              ],
           );
         });
+  }
+
+  /// Books a visit on the patient's follow-up day, with the patient already
+  /// chosen — the same sheet "add appointment" opens, minus the two questions
+  /// the promise already answered.
+  Future<void> _bookFollowUp(BuildContext context) async {
+    final day = patientFollowUpDay(patient.id);
+    if (day == null) return;
+    final created = await addAppointment(
+      context,
+      day: day,
+      patientID: patient.id,
+    );
+    if (created == null) return;
+    await openAppointment(created);
   }
 }
 

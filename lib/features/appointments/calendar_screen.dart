@@ -1,6 +1,8 @@
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/calendar_widget.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -21,6 +23,13 @@ class CalendarScreen extends StatelessWidget {
         streams: [
           appointments.observableMap.stream,
           appointments.filterByOperatorID.stream,
+          // A follow-up lives on the patient, and the day's band must lose a
+          // face the moment the promise is taken back — wherever it was taken
+          // back from.
+          patients.observableMap.stream,
+          followUpRevision.stream,
+          // The feature can be switched off under an open calendar.
+          globalSettings.observableMap.stream,
         ],
         builder: (context, snapshot) {
           return WeekAgendaCalendar(
@@ -58,6 +67,22 @@ class CalendarScreen extends StatelessWidget {
               appointmentCommand(item.id, (draft) => draft.date = item.date);
             },
             onSelect: openAppointment,
+            followUpsOnDay: followUpsOn,
+            onBookFollowUp: login.perm(Perm.appointments).none
+                ? null
+                : (followUp, {at}) async {
+              // The same sheet "add appointment" opens, with the two answers it
+              // would have asked for — whose visit, and which day — already
+              // given. A face dropped on the timeline keeps the hour it was
+              // dropped on.
+              final created = await addAppointment(
+                context,
+                day: at ?? followUp.date,
+                patientID: followUp.patient.id,
+              );
+              if (created == null) return;
+              await openAppointment(created);
+            },
             onAddNew: (selectedDate) async {
               // The sheet asks for what a visit needs — whose it is and when —
               // and the visit is stored before its panel opens, so no visit is

@@ -168,6 +168,16 @@ class _PanelScreenState extends State<PanelScreen> {
                     // record's own navigation.
                     if (widget.panel.attached case final session?)
                       _buildVisitBand(session),
+                    // ...and the record's own forward-looking fields follow the
+                    // band, so they stay reachable while it covers the record:
+                    // a visit sets the patient's next follow-up, and so does the
+                    // patient's own page.
+                    if (widget.panel.carriedBandFooter case final footer?)
+                      Padding(
+                        padding:
+                            const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 4),
+                        child: footer,
+                      ),
                     // A panel that presents its windows as attachments and header
                     // actions has no dock: the same controls are already on the
                     // name and on the frames themselves (plan §4.4).

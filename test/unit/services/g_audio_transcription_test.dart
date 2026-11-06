@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:apexo/services/g_audio_transcription.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -10,16 +12,25 @@ const _recordChannel = MethodChannel('com.llfbandit.record/messages');
 /// Covers the full plugin surface (create/dispose, permission, recording
 /// state, amplitude, device enumeration) so any code path the service uses
 /// is accounted for.
-void _installRecordChannelMock({bool hasPermission = true}) {
+void _installRecordChannelMock({
+  bool hasPermission = true,
+  Completer<void>? disposeStarted,
+  Completer<void>? disposeGate,
+}) {
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(_recordChannel, (call) async {
     switch (call.method) {
       case 'create':
-      case 'dispose':
       case 'stop':
       case 'cancel':
       case 'pause':
       case 'resume':
+        return null;
+      case 'dispose':
+        if (disposeStarted != null && !disposeStarted.isCompleted) {
+          disposeStarted.complete();
+        }
+        if (disposeGate != null) await disposeGate.future;
         return null;
       case 'hasPermission':
         return hasPermission;
@@ -562,6 +573,24 @@ void main() {
     test('dispose is idempotent', () async {
       await svc.dispose();
       await expectLater(svc.dispose(), completes);
+    });
+
+    test('dispose waits for the recorder platform cleanup', () async {
+      final disposeStarted = Completer<void>();
+      final disposeGate = Completer<void>();
+      _installRecordChannelMock(
+        disposeStarted: disposeStarted,
+        disposeGate: disposeGate,
+      );
+      var completed = false;
+      final disposing = svc.dispose().then((_) => completed = true);
+
+      await disposeStarted.future;
+      expect(completed, isFalse);
+
+      disposeGate.complete();
+      await disposing;
+      expect(completed, isTrue);
     });
 
     test('startTranscription after dispose throws StateError', () async {

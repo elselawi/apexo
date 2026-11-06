@@ -174,7 +174,7 @@ class WSVoiceTranscriptionService extends AIService {
     _disposed = true;
     await _cleanup();
     await _streamCtrl.close();
-    unawaited(_recorder.dispose());
+    await _recorder.dispose();
   }
 
   // -------------------------------------------------------------------------

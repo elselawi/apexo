@@ -378,12 +378,15 @@ void main() {
       );
 
       final activation = side.activate();
+      expect(loginCtrl.loadingPatientSide(), isTrue);
       side.logoutPatientSide();
+      expect(loginCtrl.loadingPatientSide(), isFalse);
       response.complete(http.Response('{"items":[]}', 200));
       await activation;
 
       expect(side.patientID, isEmpty);
       expect(side.server, isEmpty);
+      expect(loginCtrl.loadingPatientSide(), isFalse);
       expect(notificationSessions.phase, NotificationSessionPhase.absent);
     });
   });

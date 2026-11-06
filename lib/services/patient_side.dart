@@ -137,6 +137,7 @@ class PatientSide extends ObservablePersistingObject {
 
   void logoutPatientSide() {
     _activationGeneration++;
+    loginCtrl.loadingPatientSide(false);
     notificationSessions.invalidate();
     launch.open(Open.login);
     server = "";

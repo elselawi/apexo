@@ -197,8 +197,9 @@ class BookingClinicService {
           await pb.collection(bookingClinicCollectionName).getFullList();
       if (records.isEmpty) return null;
       return BookingClinicRecord.fromRecord(records.first.data);
-    } catch (_) {
-      return null;
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
     }
   }
 
@@ -210,8 +211,9 @@ class BookingClinicService {
           .collection(bookingAdminCollectionName)
           .getOne(bookingAdminRecordId);
       return BookingAdminRecord.fromRecord(record.data);
-    } catch (_) {
-      return null;
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return null;
+      rethrow;
     }
   }
 
@@ -232,13 +234,19 @@ class BookingClinicService {
         bookingClinicCollectionName,
         bookingAdminCollectionName,
       ]) {
+        final List<RecordModel> records;
         try {
-          final records = await pb.collection(collection).getFullList();
-          for (final record in records) {
+          records = await pb.collection(collection).getFullList();
+        } on ClientException catch (e) {
+          if (e.statusCode == 404) continue;
+          rethrow;
+        }
+        for (final record in records) {
+          try {
             await pb.collection(collection).delete(record.id);
+          } on ClientException catch (e) {
+            if (e.statusCode != 404) rethrow;
           }
-        } catch (_) {
-          // Nothing local to remove is not a failure to leave the platform.
         }
       }
     }
@@ -296,7 +304,8 @@ class BookingClinicService {
       await pb
           .collection(bookingClinicCollectionName)
           .update(bookingClinicRecordId, body: body);
-    } catch (_) {
+    } on ClientException catch (e) {
+      if (e.statusCode != 404) rethrow;
       await pb
           .collection(bookingClinicCollectionName)
           .create(body: {"id": bookingClinicRecordId, ...body});
@@ -313,7 +322,8 @@ class BookingClinicService {
       await pb
           .collection(bookingAdminCollectionName)
           .update(bookingAdminRecordId, body: body);
-    } catch (_) {
+    } on ClientException catch (e) {
+      if (e.statusCode != 404) rethrow;
       await pb
           .collection(bookingAdminCollectionName)
           .create(body: {"id": bookingAdminRecordId, ...body});

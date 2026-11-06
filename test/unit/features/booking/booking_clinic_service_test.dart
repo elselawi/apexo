@@ -13,8 +13,15 @@ import 'package:pocketbase/pocketbase.dart';
 class MemoryClinic {
   final records = <String, Map<String, Map<String, dynamic>>>{};
   bool failFinalAdminSave = false;
+  bool failClinicUpdate = false;
+  bool failAdminUpdate = false;
+  bool failClinicRead = false;
+  bool failAdminRead = false;
+  bool failCredentialDelete = false;
   bool leaveProof = false;
   int proofCreates = 0;
+  int clinicCreateAttempts = 0;
+  int adminCreateAttempts = 0;
 
   Map<String, Map<String, dynamic>> collection(String name) =>
       records.putIfAbsent(name, () => {});
@@ -27,11 +34,22 @@ class MemoryClinic {
     http.Response response(Object body, [int status = 200]) => http.Response(
         jsonEncode(body), status, headers: {'content-type': 'application/json'});
     if (request.method == 'GET') {
+      if (name == bookingClinicCollectionName && failClinicRead) {
+        return response({}, 503);
+      }
+      if (name == bookingAdminCollectionName && failAdminRead) {
+        return response({}, 503);
+      }
       if (id != null) return response(rows[id] ?? {}, rows.containsKey(id) ? 200 : 404);
       return response({'page': 1, 'perPage': 500, 'totalItems': rows.length,
         'totalPages': 1, 'items': rows.values.toList()});
     }
     if (request.method == 'DELETE') {
+      if (failCredentialDelete &&
+          (name == bookingClinicCollectionName ||
+              name == bookingAdminCollectionName)) {
+        return response({}, 503);
+      }
       if (leaveProof && name == bookingVerificationCollectionName) return response({}, 503);
       rows.remove(id);
       return response({});
@@ -41,9 +59,25 @@ class MemoryClinic {
       return response({}, 503);
     }
     if (request.method == 'PATCH' && !rows.containsKey(id)) return response({}, 404);
+    if (request.method == 'PATCH' &&
+        name == bookingClinicCollectionName &&
+        failClinicUpdate) {
+      return response({}, 503);
+    }
+    if (request.method == 'PATCH' &&
+        name == bookingAdminCollectionName &&
+        failAdminUpdate) {
+      return response({}, 503);
+    }
     if (request.method == 'POST' && name == bookingVerificationCollectionName) {
       if (rows.values.any((row) => row['challenge'] == body['challenge'])) return response({}, 400);
       proofCreates++;
+    }
+    if (request.method == 'POST' && name == bookingClinicCollectionName) {
+      clinicCreateAttempts++;
+    }
+    if (request.method == 'POST' && name == bookingAdminCollectionName) {
+      adminCreateAttempts++;
     }
     final key = id ?? body['id'] as String? ?? 'proof0000000001';
     rows[key] = {'id': key, ...?rows[key], ...body};
@@ -58,8 +92,14 @@ class MemoryWorker extends BookingApi {
   int revision = 1;
   bool handleTaken = false;
   bool loseRegistrationResponse = false;
+  String? deletedHandle;
   final registrations = <Map<String, Object?>>[];
   final rotationKeys = <String>[];
+
+  @override
+  Future<void> deleteClinic(String adminKey, String handle) async {
+    deletedHandle = handle;
+  }
 
   @override
   Future<BookingRegistrationResult> register(Map<String, Object?> body) async {
@@ -197,5 +237,53 @@ void main() {
     login.pb = PocketBase('https://other.clinic.example');
     await expectLater(service.rotate(), throwsStateError);
     expect(worker.rotationKeys, isEmpty);
+  });
+
+  test('local credential cleanup failures are reported after worker deletion',
+      () async {
+    seedEnrollment();
+    backend.failCredentialDelete = true;
+
+    await expectLater(service.deleteClinic(), throwsA(isA<ClientException>()));
+
+    expect(worker.deletedHandle, 'jimclinic');
+    expect(
+        backend.collection(bookingClinicCollectionName)
+            .containsKey(bookingClinicRecordId),
+        isTrue);
+  });
+
+  test('booking credential read failures are not treated as missing records',
+      () async {
+    seedEnrollment();
+    backend.failClinicRead = true;
+    await expectLater(service.loadClinic(), throwsA(isA<ClientException>()));
+
+    backend.failClinicRead = false;
+    backend.failAdminRead = true;
+    await expectLater(service.loadAdmin(), throwsA(isA<ClientException>()));
+
+    backend.failAdminRead = false;
+    backend.collection(bookingAdminCollectionName).clear();
+    expect(await service.loadAdmin(), isNull);
+  });
+
+  test('a failed clinic update is not treated as a missing record', () async {
+    seedEnrollment();
+    backend.failClinicUpdate = true;
+
+    await expectLater(service.rotate(), throwsA(isA<ClientException>()));
+
+    expect(backend.clinicCreateAttempts, 0);
+  });
+
+  test('a failed admin update is not treated as a missing record', () async {
+    seedEnrollment();
+    backend.failAdminUpdate = true;
+
+    await expectLater(service.rotate(), throwsA(isA<ClientException>()));
+
+    expect(worker.rotationKeys, isEmpty);
+    expect(backend.adminCreateAttempts, 0);
   });
 }

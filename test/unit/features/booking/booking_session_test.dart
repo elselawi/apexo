@@ -61,6 +61,21 @@ void main() {
     expect(session.requests.isAttached, isFalse);
   });
 
+  test(
+      'credential read failures are reported rather than shown as unregistered',
+      () async {
+    final service = DiscoveryService();
+    service.record = Future.error(StateError('PocketBase unavailable'));
+    final session = BookingSession(createService: () => service);
+    addTearDown(session.reset);
+
+    await session.initialize();
+
+    expect(session.ready(), isFalse);
+    expect(session.clinic(), isNull);
+    expect(session.lastError(), 'bookingUnavailable');
+  });
+
   test('reloading unchanged credentials retains unconfirmed appointment links', () async {
     final service = DiscoveryService();
     final session = BookingSession(createService: () => service);

@@ -15,6 +15,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/features/booking/booking_labels.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/open_external.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -118,8 +119,9 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
           _diagnostics = null;
         }
       }
-    } catch (_) {
-      // Discovery failure is non-fatal.
+    } catch (error, stackTrace) {
+      logger('Could not load online booking settings: $error', stackTrace);
+      _note(txt("bookingUnavailable"), error: true);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -299,7 +301,8 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
     }
   }
 
-  Future<void> _rotate() async {    final confirmed =
+  Future<void> _rotate() async {
+    final confirmed =
         await _confirm(txt("bookingReplaceKey"), txt("bookingReplaceKeyBody"));
     if (!confirmed) return;
     setState(() => _busy = true);

@@ -52,13 +52,17 @@ class ButtonContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         mirrored,
-        Txt(
-          txt,
-          style: TextStyle(
-            fontSize: size,
-            color: inProgress
-                ? FluentTheme.of(context).inactiveColor.withValues(alpha: 0.3)
-                : null,
+        // A long label wraps inside the button instead of overflowing it on a
+        // narrow screen.
+        Flexible(
+          child: Txt(
+            txt,
+            style: TextStyle(
+              fontSize: size,
+              color: inProgress
+                  ? FluentTheme.of(context).inactiveColor.withValues(alpha: 0.3)
+                  : null,
+            ),
           ),
         )
       ],

@@ -4,6 +4,7 @@ enum SettingsSection {
   preferences('settingsPreferences', WindowsIcons.locale_language),
   calendar('calendar', WindowsIcons.calendar),
   clinic('settingsClinic', FluentIcons.hospital),
+  booking('booking', FluentIcons.globe),
   optional('optionalFeatures', FluentIcons.puzzle),
   storage('settingsStorage', FluentIcons.database),
   backups('backups', FluentIcons.folder),

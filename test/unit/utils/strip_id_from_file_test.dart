@@ -93,6 +93,13 @@ void main() {
       expect(sameStoredFileName('photo.jpg', 'photo.png'), isFalse);
       expect(sameStoredFileName('photo.jpg', ''), isFalse);
     });
+
+    test('does not match unrelated files that only share the same base', () {
+      expect(sameStoredFileName('report_ab12cd.jpg', 'report_gh77zz.jpg'),
+          isFalse);
+      expect(sameStoredFileName('report_gh77zz.jpg', 'report_ab12cd.jpg'),
+          isFalse);
+    });
   });
 
   group('withoutStoredFileSuffix', () {

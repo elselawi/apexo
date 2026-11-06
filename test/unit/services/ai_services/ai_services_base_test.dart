@@ -73,6 +73,30 @@ void main() {
       );
     });
 
+    for (final body in ['<html>Bad Gateway</html>', '', '[]', 'null', '"error"']) {
+      test('uses status fallback for non-object error body: $body', () {
+        var parsed = false;
+        expect(
+          () => AIService.parseResponse<int>(http.Response(body, 502), (_) {
+            parsed = true;
+            return 0;
+          }),
+          throwsA(predicate((e) => '$e' == 'Exception: Request failed (502)')),
+        );
+        expect(parsed, isFalse);
+      });
+    }
+
+    test('still rejects malformed successful responses', () {
+      expect(
+        () => AIService.parseResponse<int>(
+          http.Response('not JSON', 200),
+          (_) => 0,
+        ),
+        throwsFormatException,
+      );
+    });
+
     test('error message includes status code when no error field', () {
       final response = _mockResponse(503, {});
 

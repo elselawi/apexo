@@ -1,3 +1,8 @@
+### ____LATEST____
+
+- Reliability & Bug Fixes
+    - **Clearer AI service errors.** Authentication and request failures with non-JSON response bodies now report the HTTP status instead of a JSON decoding error.
+
 ### ____0.17.1____
 
 - New Features & Improvements
@@ -5,6 +10,7 @@
 
 - Reliability & Bug Fixes
     - **Readable save errors.** The "Saving failed" message was missing from every language, so error dialogs showed the raw key `savingFailed`. It is now translated in all ten supported languages.
+    - **Avoided false duplicate file matches.** PocketBase-generated suffixes are now treated as the same stored file only when one name is the unsuffixed original; unrelated files that merely share the same basename no longer look like duplicates.
 
 - Testing & Developer Experience
     - **Missing translations are caught.** The localization test now fails when code uses a translation key that no language defines, instead of only printing it. The audit scripts no longer report interpolated keys such as `bookingWeekday${n}` as unlocalized.

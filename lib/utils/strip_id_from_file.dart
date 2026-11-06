@@ -45,5 +45,5 @@ bool sameStoredFileName(String a, String b) {
   final strippedB = withoutStoredFileSuffix(b);
   if (strippedB != null && strippedB == a) return true;
   if (strippedA != null && strippedA == b) return true;
-  return strippedA != null && strippedA == strippedB;
+  return false;
 }

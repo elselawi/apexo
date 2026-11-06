@@ -33,8 +33,15 @@ class AIService {
       headers: {'x-server': server, 'x-worker-key': key},
     );
     if (r.statusCode != 200) {
-      final body = jsonDecode(r.body) as Map<String, dynamic>;
-      throw Exception(body['error'] ?? 'Auth failed (${r.statusCode})');
+      // Parse error body gracefully — the worker may return non-JSON
+      // on some failure modes; fall back to a generic message.
+      Map<String, dynamic> parsed = {};
+      try {
+        parsed = jsonDecode(r.body) as Map<String, dynamic>;
+      } catch (_) {
+        // body is not valid JSON; keep empty parsed map
+      }
+      throw Exception(parsed['error'] ?? 'Auth failed (${r.statusCode})');
     }
     final body = jsonDecode(r.body) as Map<String, dynamic>;
     return body['token'] as String;
@@ -93,8 +100,17 @@ class AIService {
     http.Response r,
     T Function(Map<String, dynamic>) fromJson,
   ) {
-    final body = jsonDecode(r.body) as Map<String, dynamic>;
-    if (r.statusCode == 200) return fromJson(body);
-    throw Exception(body['error'] ?? 'Request failed (${r.statusCode})');
+    if (r.statusCode == 200) {
+      final body = jsonDecode(r.body) as Map<String, dynamic>;
+      return fromJson(body);
+    }
+    // Non-200: parse error body gracefully — server may return non-JSON.
+    Map<String, dynamic> parsed = {};
+    try {
+      parsed = jsonDecode(r.body) as Map<String, dynamic>;
+    } catch (_) {
+      // body is not valid JSON; keep empty parsed map
+    }
+    throw Exception(parsed['error'] ?? 'Request failed (${r.statusCode})');
   }
 }

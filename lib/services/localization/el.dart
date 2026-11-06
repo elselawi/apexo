@@ -164,6 +164,7 @@ class El implements En {
     "play": "Αναπαραγωγή",
     "pause": "Παύση",
     "save": "Αποθήκευση",
+    "savingFailed": "Η αποθήκευση απέτυχε",
     "reset": "Επαναφορά",
     "window": "Παράθυρο",
     "colorMap": "Χάρτης χρωμάτων",

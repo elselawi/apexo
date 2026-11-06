@@ -162,6 +162,7 @@ class Ar implements En {
     "play": "تشغيل",
     "pause": "إيقاف مؤقت",
     "save": "حفظ",
+    "savingFailed": "فشل الحفظ",
     "reset": "إعادة تعيين",
     "window": "النافذة",
     "colorMap": "خريطة الألوان",

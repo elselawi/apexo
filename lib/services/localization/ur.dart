@@ -167,6 +167,7 @@ class Ur implements En {
     "openPatientRecord": "{name} کا ریکارڈ کھولیں",
     "unsavedChanges": "غیر محفوظ شدہ تبدیلیاں",
     "save": "محفوظ کریں",
+    "savingFailed": "محفوظ کرنے میں ناکامی",
     "reset": "ری سیٹ کریں",
     "window": "ونڈو",
     "colorMap": "رنگوں کا نقشہ",

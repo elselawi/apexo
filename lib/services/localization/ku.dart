@@ -162,6 +162,7 @@ class Ku implements En {
     "openPatientRecord": "کردنەوەی تۆماری {name}",
     "unsavedChanges": "گۆڕانکاری پاشەکەوتنەکراو",
     "save": "پاشەکەوتکردن",
+    "savingFailed": "پاشەکەوتکردن سەرکەوتوو نەبوو",
     "reset": "ڕێکخستنەوە",
     "window": "پەنجەرە",
     "colorMap": "نەخشەی ڕەنگ",

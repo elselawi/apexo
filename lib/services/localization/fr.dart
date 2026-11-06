@@ -162,6 +162,7 @@ class Fr implements En {
     "openPatientRecord": "Ouvrir la fiche de {name}",
     "unsavedChanges": "Modifications non enregistrées",
     "save": "Enregistrer",
+    "savingFailed": "Échec de l'enregistrement",
     "reset": "Réinitialiser",
     "window": "Fenêtre",
     "colorMap": "Palette de couleurs",

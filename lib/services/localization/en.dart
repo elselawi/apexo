@@ -163,6 +163,7 @@ class En {
     "play": "Play",
     "pause": "Pause",
     "save": "Save",
+    "savingFailed": "Saving failed",
     "reset": "Reset",
     "window": "Window",
     "colorMap": "Color Map",

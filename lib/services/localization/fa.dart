@@ -162,6 +162,7 @@ class Fa implements En {
     "play": "پخش",
     "pause": "مکث",
     "save": "ذخیره",
+    "savingFailed": "ذخیره ناموفق بود",
     "reset": "بازنشانی",
     "window": "پنجره",
     "colorMap": "نقشه رنگ",

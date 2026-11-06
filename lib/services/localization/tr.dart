@@ -167,6 +167,7 @@ class Tr implements En {
     "openPatientRecord": "{name} kaydını aç",
     "unsavedChanges": "Kaydedilmemiş değişiklikler",
     "save": "Kaydet",
+    "savingFailed": "Kaydetme başarısız oldu",
     "reset": "Sıfırla",
     "window": "Pencere",
     "colorMap": "Renk Haritası",

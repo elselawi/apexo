@@ -167,6 +167,7 @@ class It implements En {
     "openPatientRecord": "Apri scheda di {name}",
     "unsavedChanges": "Modifiche non salvate",
     "save": "Salva",
+    "savingFailed": "Salvataggio non riuscito",
     "reset": "Reimposta",
     "window": "Finestra",
     "colorMap": "Mappa colori",

@@ -164,6 +164,7 @@ class Es implements En {
     "play": "Reproducir",
     "pause": "Pausa",
     "save": "Guardar",
+    "savingFailed": "Error al guardar",
     "reset": "Restablecer",
     "window": "Ventana",
     "colorMap": "Mapa de colores",

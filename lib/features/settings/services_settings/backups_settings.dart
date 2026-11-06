@@ -4,6 +4,7 @@ import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'backup_file_tile.dart';
@@ -13,6 +14,7 @@ import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
@@ -39,6 +41,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
   final ValueNotifier<bool> _s3Enabled = ValueNotifier(false);
   final ValueNotifier<bool> _forcePathStyle = ValueNotifier(false);
   final ValueNotifier<bool> _showSecretKey = ValueNotifier(false);
+
+  void _reportBackupError(Object error, StackTrace stack) {
+    logger('Backup operation failed: $error', stack);
+    showErrorMessage(error, "backup");
+  }
 
   static const _presets = [
     ("backups_cron_hourly", "0 * * * *"),
@@ -579,7 +586,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
         ]),
         onPressed: () {
           if (backups.uploading()) return;
-          unawaited(backups.pickAndUpload());
+          unawaited(backups.pickAndUpload().catchError(_reportBackupError));
         },
       ),
     );
@@ -601,7 +608,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
         ]),
         onPressed: () {
           if (backups.creating()) return;
-          unawaited(backups.newBackup());
+          unawaited(backups.newBackup().catchError(_reportBackupError));
         },
       ),
     );
@@ -644,7 +651,11 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                 child: Txt(txt("restore")),
                 onPressed: () async {
                   Navigator.pop(context);
-                  await backups.restore(element.key);
+                  try {
+                    await backups.restore(element.key);
+                  } catch (error, stack) {
+                    _reportBackupError(error, stack);
+                  }
                 },
               ),
             ],
@@ -663,7 +674,8 @@ class _BackupsSettingsState extends State<BackupsSettings> {
           preview: Txt("${txt("backup")}: ${DF.full(element.date)}"),
           restorable: false,
           onConfirm: () {
-            unawaited(backups.delete(element.key));
+            unawaited(
+                backups.delete(element.key).catchError(_reportBackupError));
           },
           child: const Icon(WindowsIcons.delete),
         ),
@@ -680,9 +692,13 @@ class _BackupsSettingsState extends State<BackupsSettings> {
           icon: const Icon(FluentIcons.download),
           onPressed: () async {
             if (backups.downloading().containsKey(element.key)) return;
-            final uri = await backups.downloadUri(element.key);
-            if (context.mounted) {
-              unawaited(showDownloadDialog(context, uri));
+            try {
+              final uri = await backups.downloadUri(element.key);
+              if (context.mounted) {
+                unawaited(showDownloadDialog(context, uri));
+              }
+            } catch (error, stack) {
+              _reportBackupError(error, stack);
             }
           },
         ),

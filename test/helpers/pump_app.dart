@@ -16,12 +16,13 @@ Future<void> pumpApexoApp(
   Widget child, {
   ThemeMode theme = ThemeMode.light,
   bool scopeRipple = false,
+  TextDirection direction = TextDirection.ltr,
 }) async {
   debugPauseScopeRipple = !scopeRipple;
   await tester.pumpWidget(
     FluentApp(
       home: material.Directionality(
-        textDirection: TextDirection.ltr,
+        textDirection: direction,
         child: FluentTheme(
           data: theme == ThemeMode.dark
               ? FluentThemeData.dark()

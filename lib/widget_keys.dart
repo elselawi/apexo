@@ -6,6 +6,7 @@ class WK {
   static const builder = Key("builder");
   static const loginScreen = Key("loginScreen");
   static const dashboardScreen = Key("dashboardScreen");
+  static const bookingScreen = Key("bookingScreen");
   static const patientsScreen = Key("patientsScreen");
   static const calendarScreen = Key("calendarScreen");
   static const labworksScreen = Key("labworksScreen");

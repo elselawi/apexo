@@ -15,6 +15,7 @@ import 'package:apexo/utils/logger.dart';
 import 'package:apexo/app/app.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
 import 'package:apexo/utils/dicom_init.dart';
+import 'package:apexo/app/data/initialize_booking.dart';
 import 'package:apexo/app/data/initialize_stores.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
@@ -49,6 +50,10 @@ void main() async {
 
   // initialize stores
   initializeStores();
+
+  // Online booking discovery: silent, non-blocking, and absent unless the build
+  // names a trusted booking origin.
+  initializeBooking();
 
   // What the app does with a session — the service announces it, the app tears
   // down the screen it owns and shows the first dialogs. `login` therefore

@@ -1,11 +1,18 @@
 @Tags(['serial'])
 library;
 
+import 'dart:convert';
+
+import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/notifications/notification_session.dart';
+import 'package:apexo/services/notifications/push_platform.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 void main() {
@@ -244,6 +251,103 @@ void main() {
     test('returns false when accounts list is empty', () {
       login.savedPermissions = Perm.zeroes;
       expect(login.currentLoginIsOperator, false);
+    });
+  });
+
+  group('Login service — schema initialization', () {
+    test('server errors during collection checks do not continue as first run',
+        () async {
+      final originalPushPlatformResolver = PushPlatform.resolve;
+      final originalLoginError = loginCtrl.loginError();
+      final originalFirstLaunch = launch.isFirstLaunch();
+      final originalActivators =
+          Map<String, Future<Future<void> Function()> Function()>.from(
+              login.activators);
+      final expiration =
+          DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
+              1000;
+      final payload = base64Url
+          .encode(utf8.encode(jsonEncode({'exp': expiration})))
+          .replaceAll('=', '');
+      final token = 'header.$payload.signature';
+
+      Future<void> checkFailure(String failingPath) async {
+        var failureReturned = false;
+        var probesContinued = false;
+        final client = MockClient((request) async {
+          http.Response response(Object body, [int status = 200]) =>
+              http.Response(jsonEncode(body), status,
+                  headers: const {'content-type': 'application/json'});
+
+          final path = request.url.path;
+          if (path.endsWith('/_superusers/auth-refresh')) {
+            return response({'code': 401, 'message': 'unauthorized'}, 401);
+          }
+          if (path.endsWith('/users/auth-refresh')) {
+            return response({
+              'token': token,
+              'record': {
+                'id': 'user-id',
+                'collectionId': 'users-collection',
+                'collectionName': 'users',
+                'email': 'user@example.com',
+                'permissions': '[2,2,2,2,2,2,2,2,2]',
+              },
+            });
+          }
+          if (request.method == 'GET' && path.endsWith(failingPath)) {
+            failureReturned = true;
+            return response({'code': 503, 'message': 'unavailable'}, 503);
+          }
+          if (failureReturned &&
+              request.method == 'GET' &&
+              (path.endsWith('/profiles/records') ||
+                  path.endsWith('/profiles_view/records'))) {
+            probesContinued = true;
+          }
+          return response({
+            'page': 1,
+            'perPage': 1,
+            'totalItems': 0,
+            'totalPages': 0,
+            'items': [],
+          });
+        });
+
+        login
+          ..pb = PocketBase(
+            'https://clinic.test',
+            httpClientFactory: () => client,
+          )
+          ..url = 'https://clinic.test'
+          ..token = '';
+        login.activators.clear();
+        launch.open(Open.staff);
+
+        try {
+          await login.activate('https://clinic.test', [token], true);
+
+          expect(failureReturned, isTrue, reason: failingPath);
+          expect(probesContinued, isFalse, reason: failingPath);
+          expect(loginCtrl.loginError(), isNotEmpty, reason: failingPath);
+        } finally {
+          client.close();
+        }
+      }
+
+      PushPlatform.resolve = () => PushPlatform.wns;
+      try {
+        await checkFailure('/public/records');
+        await checkFailure('/profiles/records');
+      } finally {
+        PushPlatform.resolve = originalPushPlatformResolver;
+        login.activators
+          ..clear()
+          ..addAll(originalActivators);
+        loginCtrl.finishedLoginProcess(originalLoginError);
+        launch.isFirstLaunch(originalFirstLaunch);
+        notificationSessions.invalidate();
+      }
     });
   });
 

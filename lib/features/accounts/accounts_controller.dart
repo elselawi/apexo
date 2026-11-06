@@ -78,9 +78,9 @@ class _Accounts extends ObservablePersistingObject {
           .collection(profilesCollectionName)
           .getFirstListItem('account_id = "$userID"');
       return record.id;
-    } catch (e) {
-      login.askForLoginAgain(e);
-      return "";
+    } on ClientException catch (e) {
+      if (e.statusCode == 404) return "";
+      rethrow;
     }
   }
 

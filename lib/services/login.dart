@@ -263,7 +263,8 @@ class _LoginService extends ObservablePersistingObject {
             await pb!
                 .collection(publicCollectionName)
                 .getList(page: 1, perPage: 1);
-          } catch (e) {
+          } on ClientException catch (e) {
+            if (e.statusCode != 404) rethrow;
             launch.isFirstLaunch(true);
             if (isAdmin) {
               loginCtrl
@@ -291,7 +292,8 @@ class _LoginService extends ObservablePersistingObject {
             await pb!
                 .collection(profilesViewCollectionName)
                 .getList(page: 1, perPage: 1);
-          } catch (e) {
+          } on ClientException catch (e) {
+            if (e.statusCode != 404) rethrow;
             if (isAdmin) {
               loginCtrl.loadingIndicator("Creating profiles collections");
               await initializeProfiles(pb!);

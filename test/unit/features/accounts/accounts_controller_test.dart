@@ -2,8 +2,11 @@
 library;
 
 import 'package:apexo/features/accounts/accounts_controller.dart';
+import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/services/login.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 void main() {
@@ -114,5 +117,55 @@ void main() {
       login.pb = oldPb;
       login.token = oldToken;
     });
+  });
+
+  test('profile lookup server errors do not create another profile', () async {
+    final oldPb = login.pb;
+    final oldToken = login.token;
+    final oldErrorDialogShown = errorDialogShown;
+    var profileCreates = 0;
+    final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.queryParameters['filter']?.contains('account_id') ==
+              true) {
+        return http.Response(
+          '{"code":500,"message":"temporary failure"}',
+          500,
+          headers: const {'content-type': 'application/json'},
+        );
+      }
+      if (request.method == 'POST') profileCreates++;
+      return http.Response(
+        '{"id":"user"}',
+        200,
+        headers: const {'content-type': 'application/json'},
+      );
+    });
+
+    login.pb = PocketBase(
+      'https://accounts.test',
+      httpClientFactory: () => client,
+    );
+    login.token = '';
+    errorDialogShown = true;
+    try {
+      await accounts.update(
+        id: 'user',
+        isAdmin: false,
+        email: 'user@example.com',
+        password: '',
+        name: 'User',
+        permissions: const [],
+        operates: false,
+      );
+
+      expect(profileCreates, 0);
+      expect(accounts.updating(), isEmpty);
+    } finally {
+      login.pb = oldPb;
+      login.token = oldToken;
+      errorDialogShown = oldErrorDialogShown;
+      client.close();
+    }
   });
 }

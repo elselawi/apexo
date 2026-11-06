@@ -52,6 +52,9 @@ dependencies:
   # Imported directly by lib/services/g_audio_transcription.dart and
   # lib/utils/ws_platform/*; named here to satisfy depend_on_referenced_packages.
   web_socket_channel: ^2.4.0
+  crypto: 3.0.3
+  timezone: 0.11.0
+  unorm_dart: 0.3.3
 
 dependency_overrides:
   intl: 0.20.2

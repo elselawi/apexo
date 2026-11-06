@@ -32,12 +32,20 @@ class NewAppointmentDialog extends StatefulWidget {
     super.key,
     required this.onSave,
     this.day,
+    this.initialMoment,
     this.patientID,
   });
 
   /// The day — or, when the caller has one, the exact moment — to start from.
   /// A moment is kept, a bare day takes the current time of day.
   final DateTime? day;
+
+  /// An exact start instant that takes precedence over [day].
+  ///
+  /// Booking hands over a clinic-local preference converted to the device's
+  /// zone; that instant must survive untouched, including an exact midnight,
+  /// which the bare-day path deliberately replaces with the current clock time.
+  final DateTime? initialMoment;
 
   /// The patient the sheet starts with: a list opened for one patient already
   /// knows whose visit it is.
@@ -68,7 +76,8 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
       if (_assignsItself) "operatorsIDs": [login.currentAccountID],
     });
     final from = widget.day;
-    _draft.date = from == null ? DateTime.now() : _atCurrentTime(from);
+    _draft.date = widget.initialMoment ??
+        (from == null ? DateTime.now() : _atCurrentTime(from));
     _notes.text = _draft.preOpNotes;
   }
 
@@ -250,6 +259,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
 Future<Appointment?> addAppointment(
   BuildContext context, {
   DateTime? day,
+  DateTime? initialMoment,
   String? patientID,
 }) async {
   Appointment? collected;
@@ -259,6 +269,7 @@ Future<Appointment?> addAppointment(
     dismissWithEsc: true,
     builder: (_) => NewAppointmentDialog(
       day: day,
+      initialMoment: initialMoment,
       patientID: patientID,
       onSave: (appointment) => collected = appointment,
     ),

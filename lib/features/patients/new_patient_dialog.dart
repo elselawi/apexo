@@ -17,9 +17,19 @@ import 'package:flutter/cupertino.dart';
 /// [onSave] receives a patient that can be stored as it is. Nothing is opened
 /// as a draft.
 class NewPatientDialog extends StatefulWidget {
-  const NewPatientDialog({super.key, required this.onSave});
+  const NewPatientDialog({
+    super.key,
+    required this.onSave,
+    this.initialName,
+    this.initialPhone,
+  });
 
   final void Function(Patient patient) onSave;
+
+  /// Contact details a booking request already carries. Prefill only: staff
+  /// still confirm the record, and an unverified name/phone never auto-merges.
+  final String? initialName;
+  final String? initialPhone;
 
   @override
   State<NewPatientDialog> createState() => _NewPatientDialogState();
@@ -28,6 +38,13 @@ class NewPatientDialog extends StatefulWidget {
 class _NewPatientDialogState extends State<NewPatientDialog> {
   final TextEditingController _name = TextEditingController();
   final TextEditingController _phone = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _name.text = widget.initialName ?? "";
+    _phone.text = widget.initialPhone ?? "";
+  }
 
   @override
   void dispose() {
@@ -120,13 +137,19 @@ class _NewPatientDialogState extends State<NewPatientDialog> {
 /// Returns the stored patient, or null when the sheet was dismissed. Callers
 /// open the record — or use it — afterwards: the patient already exists, so
 /// nothing they do can leave a draft behind.
-Future<Patient?> addPatient(BuildContext context) async {
+Future<Patient?> addPatient(
+  BuildContext context, {
+  String? initialName,
+  String? initialPhone,
+}) async {
   Patient? collected;
   await showDialog(
     context: context,
     barrierDismissible: true,
     dismissWithEsc: true,
     builder: (_) => NewPatientDialog(
+      initialName: initialName,
+      initialPhone: initialPhone,
       onSave: (patient) => collected = patient,
     ),
   );

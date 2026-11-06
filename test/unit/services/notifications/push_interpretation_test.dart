@@ -552,5 +552,25 @@ void main() {
       expect(tuple.length, 2);
       expect(push.uninterpretableReported, isTrue);
     });
+
+    test('note status fields without a boolean value use generic text', () {
+      for (final field in ['done', 'archived']) {
+        final push = PushData(
+          store: 'notes',
+          id: 'test',
+          readableIdentifier: 'Note',
+          isCreation: false,
+          isUpdate: true,
+          updatedFields: [field],
+          oldVals: [],
+          newVals: [],
+          targetIDs: [],
+        );
+
+        expect(push.interpret(), PushInterpretation.newNotification,
+            reason: field);
+        expect(push.uninterpretableReported, isTrue, reason: field);
+      }
+    });
   });
 }

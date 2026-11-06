@@ -32,12 +32,22 @@ const Duration staticNotificationDedupeWindow = Duration(seconds: 30);
 final Map<String, DateTime> _seenNotifications = {};
 
 /// The key two notices for the *same* change share: store, record,
-/// create-or-update and the changed fields (sorted, since the two producers may
-/// list them in any order).
+/// create-or-update and the changed field/value tuples (sorted by field, since
+/// the two producers may list them in any order).
 String staticNotificationKey(PushData data) {
-  final fields = [...data.updatedFields]..sort();
+  final indices = List<int>.generate(
+      data.updatedFields.length, (index) => index)
+    ..sort((a, b) => data.updatedFields[a].compareTo(data.updatedFields[b]));
+  final changes = [
+    for (final index in indices)
+      [
+        data.updatedFields[index],
+        index < data.oldVals.length ? data.oldVals[index] : null,
+        index < data.newVals.length ? data.newVals[index] : null,
+      ],
+  ];
   return '${data.store}|${data.id}|'
-      '${data.isCreation ? 'create' : 'update'}|${fields.join(',')}';
+      '${data.isCreation ? 'create' : 'update'}|${jsonEncode(changes)}';
 }
 
 /// Forgets every dedupe key (e.g., on logout or between tests).
@@ -231,11 +241,15 @@ abstract class PushListeners {
     PushData pushData, {
     bool openedFromNotification = false,
   }) async {
+    await login.ready;
+    await patientSide.ready;
     if (login.token.isEmpty && patientSide.patientID.isEmpty) {
       return;
     }
 
-    final sessionRevision = notificationSessions.revision;
+    final session = await notificationSessions.waitForUsableSession();
+    if (session == null || !notificationSessions.isCurrent(session)) return;
+    final sessionRevision = session.generation;
     if (pushData.store == "appointments") {
       await appointments.synchronize();
     }
@@ -341,8 +355,6 @@ abstract class PushListeners {
   /// they are display events, and a local-toast click uses
   /// [handleLocalNotificationClick] and the explicit session coordinator.
   static Future<void> causedTheAppToOpen(RemoteMessage message) async {
-    await login.ready;
-    await patientSide.ready;
     final parsed = pushPayloadOf(message);
     if (parsed == null) return;
     await handlePushData(parsed.data, openedFromNotification: true);

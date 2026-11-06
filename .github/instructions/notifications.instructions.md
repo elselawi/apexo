@@ -189,8 +189,9 @@ same envelope within `staticNotificationDedupeWindow`, in either arrival order (
 or the stream winning the race). Two identical stream-only pushes are both delivered.
 
 The **in-app notice** is deduplicated separately: `dispatchStaticNotification` keys on
-`staticNotificationKey` (`store|id|create-or-update|sorted fields`) for
-`staticNotificationDedupeWindow`, so a redelivery does not add a second list entry. The **local
+`staticNotificationKey` (`store|id|create-or-update|sorted field/old-value/new-value tuples`) for
+`staticNotificationDedupeWindow`, so a redelivery does not add a second list entry while rapid
+edits to the same fields with different values remain distinct. The **local
 toast** is not deduplicated — a genuine redelivery shows a second toast. Suppressing that would
 need an event id in the wire format, which the payload does not have.
 

@@ -42,11 +42,28 @@ class FirebaseMessagingService {
     FirebaseMessaging.onBackgroundMessage(backgroundMsg);
 
     // Listen for messages when the app is open (foreground)
-    FirebaseMessaging.onMessage.listen(PushListeners.foregroundMsg);
+    FirebaseMessaging.onMessage.listen((message) {
+      unawaited(
+        PushListeners.foregroundMsg(message).catchError(
+          (Object error, StackTrace stack) => logger(
+            'Could not handle a foreground push notification: $error',
+            stack,
+          ),
+        ),
+      );
+    });
 
     // 3. listen for when a message caused the app to open
-    FirebaseMessaging.onMessageOpenedApp
-        .listen(PushListeners.causedTheAppToOpen);
+    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      unawaited(
+        PushListeners.causedTheAppToOpen(message).catchError(
+          (Object error, StackTrace stack) => logger(
+            'Could not open the record from a push notification: $error',
+            stack,
+          ),
+        ),
+      );
+    });
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
       // Awaits the session restore, so it cannot be awaited here: this runs

@@ -58,7 +58,19 @@ void main() {
   late bool promoted;
   late List<String?> shown;
 
-  setUp(() {
+  void publishStaffSession() {
+    notificationSessions.publishStaff(
+      server: 'https://clinic.test',
+      accountId: 'account-1',
+      pocketBase: null,
+      authToken: login.token,
+      email: 'test@example.com',
+    );
+  }
+
+  setUp(() async {
+    await login.ready;
+    await patientSide.ready;
     originalToken = login.token;
     originalPermissions = login.savedPermissions;
     originalOnline = network.isOnline();
@@ -77,6 +89,7 @@ void main() {
     staticNotifications.clear();
     resetStaticNotificationDedupe();
     notificationSessions.invalidate();
+    publishStaffSession();
 
     promoted = false;
     PushListeners.promoteWindowsInstanceIfApplicable = () async {
@@ -212,6 +225,7 @@ void main() {
     test('a push with no session is ignored', () async {
       login.token = '';
       patientSide.patientID = '';
+      notificationSessions.invalidate();
 
       await PushListeners.handlePushData(appointmentPush());
 
@@ -227,6 +241,22 @@ void main() {
 
       expect(shown, hasLength(1));
       expect(routes.currentRoute(), AppRoute.dashboard);
+    });
+
+    test('foreground push waits for the session being restored', () async {
+      notificationSessions.beginRestoring();
+      final handling = PushListeners.foregroundMsg(messageFor(notePush()));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      expect(shown, isEmpty);
+      expect(staticNotifications.notifications, isEmpty);
+      expect(routes.currentRoute(), AppRoute.dashboard);
+
+      publishStaffSession();
+      await handling;
+
+      expect(shown, hasLength(1));
+      expect(staticNotifications.notifications, hasLength(1));
     });
 
     test('causedTheAppToOpen delegates to the notification-open behaviour',
@@ -299,16 +329,6 @@ void main() {
               NotificationResponseType.selectedNotification,
           payload: jsonEncode(data.toJson()),
         );
-
-    void publishStaffSession() {
-      notificationSessions.publishStaff(
-        server: 'https://clinic.test',
-        accountId: 'account-1',
-        pocketBase: null,
-        authToken: 'test-token',
-        email: 'test@example.com',
-      );
-    }
 
     test('a click promotes the window, waits for the session and navigates',
         () async {

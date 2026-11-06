@@ -177,6 +177,40 @@ void main() {
       );
     });
 
+    test('keeps rapid edits to the same fields as distinct notices', () async {
+      PushData dateChange(int before, int after) => PushData.fromChange(
+            store: 'appointments',
+            id: 'appt-1',
+            readableIdentifier: 'Ada Lovelace',
+            isCreation: false,
+            changed: const ['date'],
+            before: {'date': before},
+            after: {'date': after},
+            targets: const ['op1'],
+          );
+
+      final t0 = DateTime(2026, 1, 1, 12);
+      final firstEdit = dateChange(100, 200);
+      final secondEdit = dateChange(200, 300);
+
+      expect(await dispatchStaticNotification(firstEdit, clock: t0), isTrue);
+      expect(
+        await dispatchStaticNotification(
+          secondEdit,
+          clock: t0.add(const Duration(seconds: 5)),
+        ),
+        isTrue,
+      );
+      expect(
+        await dispatchStaticNotification(
+          secondEdit,
+          clock: t0.add(const Duration(seconds: 6)),
+        ),
+        isFalse,
+      );
+      expect(staticNotifications.notifications, hasLength(2));
+    });
+
     test('tryParsePushPayload and pushPayloadOf reject missing/corrupt data',
         () {
       expect(tryParsePushPayload(null), isNull);

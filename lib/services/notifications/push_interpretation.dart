@@ -136,7 +136,8 @@ extension PushDataDisplay on PushData {
         final vals = _valsTuple("done");
         if (vals.$2 == true) {
           return PushInterpretation.noteHasBeenMarkedAsDone;
-        } else {
+        }
+        if (vals.$2 == false) {
           return PushInterpretation.noteHasBeenMarkedAsPending;
         }
       }
@@ -163,7 +164,8 @@ extension PushDataDisplay on PushData {
         final vals = _valsTuple("archived");
         if (vals.$2 == true) {
           return PushInterpretation.yourNoteHasBeenArchived;
-        } else {
+        }
+        if (vals.$2 == false) {
           return PushInterpretation.yourNoteHasBeenUnarchived;
         }
       }

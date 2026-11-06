@@ -2,6 +2,12 @@
 
 - Reliability & Bug Fixes
     - **Clearer AI service errors.** Authentication and request failures with non-JSON response bodies now report the HTTP status instead of a JSON decoding error.
+    - **Session-safe push handling.** Pushes wait for session restoration, and FCM callback failures are logged instead of going unhandled.
+    - **Distinct notification updates.** Rapid edits to the same fields are no longer deduplicated as one event, and incomplete note-status payloads use a generic notice.
+    - **Patient-side logout.** Logging out during a pending request now clears the spinner; previously the cancelled request skipped its cleanup.
+    - **Reliable record setup.** Only not-found responses trigger profile or booking record creation and first-run schema setup; other failures no longer cause duplicates or partial login.
+    - **Visible cleanup failures.** Backup action errors and incomplete local booking credential deletion are surfaced instead of escaping or being reported as success.
+    - **Awaited audio cleanup.** Transcription disposal waits for the recorder plugin to release its platform resources.
 
 ### ____0.17.1____
 
@@ -537,4 +543,3 @@ This is one of the most feature-rich updates yet!
 
 -   Initial release
 -   Distributed for windows, APK and web
-

@@ -77,17 +77,19 @@ Set<TxtCall> _scanTxtCalls(Directory root) {
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
 
-      // Match txt("literal") — captures the string key
-      final literalRegex = RegExp(r'''txt\(\s*"((?:[^"\\]|\\.)*)"\s*\)''');
+      // Match txt("literal") or txt('literal'); interpolated ones are dynamic
+      final literalRegex = RegExp(
+          r'''txt\(\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*\)''');
       for (final m in literalRegex.allMatches(line)) {
-        results.add(TxtCall(entity.path, i + 1, m.group(1)!, m.group(0)!));
+        final key = m.group(1) ?? m.group(2)!;
+        results.add(TxtCall(entity.path, i + 1,
+            key.contains(r'$') ? null : key, m.group(0)!));
       }
 
       // Match txt(variable) or txt("${...}") — non-literal argument
-      final dynamicRegex = RegExp(r'''txt\(\s*([^"][^)]*?)\s*\)''');
+      final dynamicRegex = RegExp(r'''txt\(\s*([^'"][^)]*?)\s*\)''');
       for (final m in dynamicRegex.allMatches(line)) {
         final arg = m.group(1)!.trim();
-        if (arg.startsWith('"')) continue; // already matched as literal
         final excerpt = arg.length > 50 ? '${arg.substring(0, 47)}...' : arg;
         results.add(TxtCall(entity.path, i + 1, null, 'txt($excerpt)'));
       }
@@ -197,18 +199,12 @@ void main() {
           }
         }
 
-        if (unlocalized.isNotEmpty) {
-          final msg = StringBuffer(
-              '${unlocalized.length} txt() key(s) not in en.dart:\n');
-          for (final e in unlocalized.entries) {
-            msg.writeln('  "${e.key}" → ${e.value.join(', ')}');
-          }
-          // This is informational — don't fail, just print
-          // (keys may be dynamically generated)
-          // ignore: avoid_print
-          print(msg.toString());
+        final msg = StringBuffer(
+            '${unlocalized.length} txt() key(s) not in en.dart:\n');
+        for (final e in unlocalized.entries) {
+          msg.writeln('  "${e.key}" → ${e.value.join(', ')}');
         }
-        // Note: we don't assert isEmpty because dynamic keys are valid
+        expect(unlocalized, isEmpty, reason: msg.toString());
       });
     });
 

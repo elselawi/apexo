@@ -3,6 +3,12 @@
 - New Features & Improvements
     - **Follow-ups, if you want them.** A dentist can note the day a patient should come back — and what the visit is for — while writing a visit's notes or from the patient's own page. It is a reminder, not a booking: no time is taken, and on that day the patient appears in the calendar's due list so reception can call and book the real visit. Booking a visit on that day or later clears the follow-up. Switch it on in **Settings › Optional features**, which now holds the AI settings as well.
 
+- Reliability & Bug Fixes
+    - **Readable save errors.** The "Saving failed" message was missing from every language, so error dialogs showed the raw key `savingFailed`. It is now translated in all ten supported languages.
+
+- Testing & Developer Experience
+    - **Missing translations are caught.** The localization test now fails when code uses a translation key that no language defines, instead of only printing it. The audit scripts no longer report interpolated keys such as `bookingWeekday${n}` as unlocalized.
+
 - UI & UX Polish
     - redesigned settings screen.
     - Redesigned insights, with new charts, new performance and new features.

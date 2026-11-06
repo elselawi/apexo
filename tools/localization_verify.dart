@@ -147,11 +147,15 @@ void main() {
 
   if (initiallyUnused.isNotEmpty) {
     // Blind search: for each key not seen as txt("..."), check if the raw
-    // key string appears ANYWHERE in the codebase (variable, comment, etc.)
+    // key string appears ANYWHERE in the codebase (variable, comment, etc.),
+    // or starts with the prefix of an interpolated txt("prefix${...}") call.
     final codeFiles = _collectCodeFiles(workspaceRoot);
+    final dynamicPrefixes =
+        dynamicUsages.map((c) => c.prefix).whereType<String>().toSet();
 
     for (final key in initiallyUnused) {
-      if (_keyAppearsInCodebase(key, codeFiles)) {
+      if (_keyAppearsInCodebase(key, codeFiles) ||
+          dynamicPrefixes.any((p) => key.startsWith(p))) {
         maybeDynamic.add(key);
       } else {
         definitelyUnused.add(key);
@@ -262,11 +266,12 @@ Map<String, String> _extractDictionary(File file) {
 
 class _TxtCall {
   // the matched txt(...) call snippet
-  _TxtCall(this.file, this.line, this.key, this.excerpt);
+  _TxtCall(this.file, this.line, this.key, this.excerpt, {this.prefix});
   final String file;
   final int line;
   final String? key; // null if argument is not a plain string literal
   final String excerpt;
+  final String? prefix; // text before `$` in an interpolated literal such as "bookingWeekday${n}"
 }
 
 /// Scan all .dart files under [root] for txt(...) calls.
@@ -297,7 +302,14 @@ List<_TxtCall> _scanCodebaseForTxtCalls(Directory root) {
       // Match txt("literal")
       final literalRegex = RegExp(r'''txt\(\s*"((?:[^"\\]|\\.)*)"\s*\)''');
       for (final m in literalRegex.allMatches(line)) {
-        results.add(_TxtCall(entity.path, i + 1, m.group(1)!, m.group(0)!));
+        final key = m.group(1)!;
+        final interpolation = key.indexOf(r'$');
+        if (interpolation >= 0) {
+          results.add(_TxtCall(entity.path, i + 1, null, m.group(0)!,
+              prefix: key.substring(0, interpolation)));
+          continue;
+        }
+        results.add(_TxtCall(entity.path, i + 1, key, m.group(0)!));
       }
 
       // Match txt(variable) or txt("${...}") — non-literal argument

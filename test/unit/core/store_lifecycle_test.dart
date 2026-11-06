@@ -93,6 +93,21 @@ class _PullRemote extends _GatedRemote {
   }
 }
 
+class _TimestampBoundaryRemote extends _GatedRemote {
+  final cursors = <int>[];
+
+  @override
+  Future<int> getVersion() async => 100;
+
+  @override
+  Future<VersionedResult> getSince({int version = 0}) async {
+    cursors.add(version);
+    return VersionedResult(100, [
+      Row(id: 'record', data: '{"id":"record","title":"remote"}', ts: 100),
+    ]);
+  }
+}
+
 void main() {
   late Directory directory;
   late _GatedLocal local;
@@ -165,6 +180,23 @@ void main() {
     remote.versionGate!.complete();
     expect(await first, same(await second));
     expect(starts, ends);
+  });
+
+  test('sync rereads remote rows sharing the saved timestamp', () async {
+    final remote = _TimestampBoundaryRemote();
+    store.remote = remote;
+    await local.putVersion(100);
+    await local.put({
+      'record': jsonEncode({'id': 'record', 'title': 'local'})
+    });
+    await store.reload();
+
+    final result = await store.synchronize();
+
+    expect(remote.cursors, [99, 99]);
+    expect(store.get('record')!.title, 'remote');
+    expect(result.first.pulled, 1);
+    expect(result.last.exception, 'nothing to sync');
   });
 
   test('deactivation waits for in-flight sync and prevents subsequent pulls',

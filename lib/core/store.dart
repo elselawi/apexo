@@ -374,20 +374,24 @@ class Store<G extends Model> {
 
       final Map<String, int> deferred = await local.getDeferred();
       final processedDeferred = Map<String, int>.of(deferred);
+      final hadDeferred = deferred.isNotEmpty;
       if (session != _persistenceSession) {
         return SyncResult(exception: 'persistence session ended');
       }
       int conflicts = 0;
 
-      if (localVersion == remoteVersion && deferred.isEmpty) {
-        return SyncResult(exception: "nothing to sync");
-      }
-
-      // fetch updates since our local version
+      // Re-read the cursor millisecond because PocketBase timestamps have
+      // millisecond precision and another row can share the saved timestamp.
+      final pullCursor = localVersion > 0 ? localVersion - 1 : localVersion;
       final VersionedResult remoteUpdates =
-          await remote.getSince(version: localVersion);
+          await remote.getSince(version: pullCursor);
       if (session != _persistenceSession) {
         return SyncResult(exception: 'persistence session ended');
+      }
+      if (localVersion == remoteVersion &&
+          !hadDeferred &&
+          remoteUpdates.rows.isEmpty) {
+        return SyncResult(exception: "nothing to sync");
       }
 
       if (remoteVersion == 0 &&
@@ -424,6 +428,13 @@ class Store<G extends Model> {
           return false;
         }
         final int remoteTimeStamp = remoteUpdates.rows[remoteConflictIndex].ts;
+        if (remoteTimeStamp <= localVersion) {
+          // The overlap must not turn an already-consumed timestamp into a
+          // conflict that resurrects default-omitted fields. Keep the complete
+          // pending local snapshot, as with the original strict cursor.
+          remoteLosersIndices.add(remoteConflictIndex);
+          return false;
+        }
         final bool localWins = deferredTimeStamp > remoteTimeStamp;
         conflictsFound.add(_ConflictInfo(
           dfID: dfID,
@@ -480,6 +491,19 @@ class Store<G extends Model> {
       // remote-only row of the same ID, but conflicting IDs were already
       // removed from remoteUpdates above via remoteLosersIndices).
       toLocalWrite.addAll(mergedConflictsToLocal);
+
+      if (localVersion == remoteVersion && !hadDeferred) {
+        var hasLocalChanges = false;
+        for (final entry in toLocalWrite.entries) {
+          if (await local.get(entry.key) != entry.value) {
+            hasLocalChanges = true;
+            break;
+          }
+        }
+        if (!hasLocalChanges) {
+          return SyncResult(exception: "nothing to sync");
+        }
+      }
 
       // those will be built in the for loop below
       final Map<String, String> toRemoteWrite = {};

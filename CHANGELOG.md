@@ -8,6 +8,7 @@
     - **Reliable record setup.** Only not-found responses trigger profile or booking record creation and first-run schema setup; other failures no longer cause duplicates or partial login.
     - **Visible cleanup failures.** Backup action errors and incomplete local booking credential deletion are surfaced instead of escaping or being reported as success.
     - **Awaited audio cleanup.** Transcription disposal waits for the recorder plugin to release its platform resources.
+    - **Same-millisecond sync updates.** Remote rows sharing the saved timestamp are re-read, while pending local snapshots remain authoritative for that overlap so offline field clears are not undone.
 
 ### ____0.17.1____
 

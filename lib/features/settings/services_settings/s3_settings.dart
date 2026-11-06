@@ -4,6 +4,7 @@ import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'responsive_row.dart';
@@ -28,6 +29,7 @@ class _S3SettingsState extends State<S3Settings> {
   final ValueNotifier<bool> s3Enabled = ValueNotifier(false);
   final ValueNotifier<bool> forcePathStyle = ValueNotifier(false);
   final ValueNotifier<bool> showSecretKey = ValueNotifier(false);
+  bool _settingsLoaded = false;
 
   @override
   void initState() {
@@ -48,13 +50,15 @@ class _S3SettingsState extends State<S3Settings> {
       secretKeyController.text = s3['secret'] as String? ?? '';
       s3Enabled.value = s3['enabled'] as bool? ?? false;
       forcePathStyle.value = s3['forcePathStyle'] as bool? ?? false;
-    } catch (e) {
-      // Controllers remain empty on error
+      _settingsLoaded = true;
+    } catch (e, s) {
+      logger('Could not load S3 settings: $e', s);
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _saveS3Settings() async {
+    if (!_settingsLoaded) return;
     try {
       await login.pb!.settings.update(body: {
         "s3": {
@@ -284,7 +288,7 @@ class _S3SettingsState extends State<S3Settings> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         FilledButton(
-                          onPressed: _saveS3Settings,
+                          onPressed: _settingsLoaded ? _saveS3Settings : null,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

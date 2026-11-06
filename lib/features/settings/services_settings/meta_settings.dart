@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -18,6 +19,7 @@ class MetaSettings extends StatefulWidget {
 class _MetaSettingsState extends State<MetaSettings> {
   final TextEditingController _appNameController = TextEditingController();
   final TextEditingController _appUrlController = TextEditingController();
+  bool _settingsLoaded = false;
 
   @override
   void initState() {
@@ -32,7 +34,9 @@ class _MetaSettingsState extends State<MetaSettings> {
       final meta = settings['meta'] as Map<String, dynamic>? ?? {};
       _appNameController.text = meta['appName'] as String? ?? '';
       _appUrlController.text = meta['appURL'] as String? ?? '';
-    } catch (e) {
+      _settingsLoaded = true;
+    } catch (e, s) {
+      logger('Could not load metadata settings: $e', s);
       return;
     }
     if (!mounted) return;
@@ -50,6 +54,7 @@ class _MetaSettingsState extends State<MetaSettings> {
   }
 
   Future<void> _saveSettings(bool dialog) async {
+    if (!_settingsLoaded) return;
     try {
       await login.pb!.settings.update(body: {
         "meta": {
@@ -167,7 +172,8 @@ class _MetaSettingsState extends State<MetaSettings> {
               Row(
                 children: [
                   FilledButton(
-                    onPressed: () => _saveSettings(true),
+                    onPressed:
+                        _settingsLoaded ? () => _saveSettings(true) : null,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

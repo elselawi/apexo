@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
@@ -20,6 +21,7 @@ class _AuthSettingsState extends State<AuthSettings> {
       TextEditingController();
   final TextEditingController _superusersDurationController =
       TextEditingController();
+  bool _settingsLoaded = false;
 
   @override
   void initState() {
@@ -38,13 +40,15 @@ class _AuthSettingsState extends State<AuthSettings> {
           usersSec > 0 ? (usersSec ~/ 86400).toString() : "";
       _superusersDurationController.text =
           superusersSec > 0 ? (superusersSec ~/ 86400).toString() : "";
-    } catch (e) {
-      // Controllers remain empty on error
+      _settingsLoaded = true;
+    } catch (e, s) {
+      logger('Could not load authentication settings: $e', s);
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _saveSettings() async {
+    if (!_settingsLoaded) return;
     try {
       final userDays =
           (int.tryParse(_usersDurationController.text) ?? 14).clamp(1, 36500);
@@ -186,7 +190,7 @@ class _AuthSettingsState extends State<AuthSettings> {
               Row(
                 children: [
                   FilledButton(
-                    onPressed: _saveSettings,
+                    onPressed: _settingsLoaded ? _saveSettings : null,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [

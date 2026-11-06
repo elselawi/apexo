@@ -41,6 +41,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
   final ValueNotifier<bool> _s3Enabled = ValueNotifier(false);
   final ValueNotifier<bool> _forcePathStyle = ValueNotifier(false);
   final ValueNotifier<bool> _showSecretKey = ValueNotifier(false);
+  bool _settingsLoaded = false;
 
   void _reportBackupError(Object error, StackTrace stack) {
     logger('Backup operation failed: $error', stack);
@@ -80,13 +81,15 @@ class _BackupsSettingsState extends State<BackupsSettings> {
       _accessKeyController.text = s3['accessKey'] as String? ?? '';
       _secretKeyController.text = s3['secret'] as String? ?? '';
       _forcePathStyle.value = s3['forcePathStyle'] as bool? ?? false;
-    } catch (e) {
-      // Controllers remain empty on error
+      _settingsLoaded = true;
+    } catch (e, s) {
+      logger('Could not load backup settings: $e', s);
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _saveSettings() async {
+    if (!_settingsLoaded) return;
     try {
       await login.pb!.settings.update(body: {
         "backups": {
@@ -429,7 +432,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 FilledButton(
-                  onPressed: _saveSettings,
+                  onPressed: _settingsLoaded ? _saveSettings : null,
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

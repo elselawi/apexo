@@ -3,6 +3,7 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../applies_to_indicator.dart';
 import '../settings_card.dart';
@@ -16,6 +17,7 @@ class FileUploadSettings extends StatefulWidget {
 
 class _FileUploadSettingsState extends State<FileUploadSettings> {
   final TextEditingController _maxSizeController = TextEditingController();
+  bool _settingsLoaded = false;
 
   @override
   void initState() {
@@ -32,13 +34,15 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
       _maxSizeController.text = maxSizeBytes > 0
           ? (maxSizeBytes / (1024 * 1024)).toStringAsFixed(0)
           : "";
-    } catch (e) {
-      // Controller remains empty on error
+      _settingsLoaded = true;
+    } catch (e, s) {
+      logger('Could not load file upload settings: $e', s);
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _saveSettings() async {
+    if (!_settingsLoaded) return;
     try {
       final mb = (int.tryParse(_maxSizeController.text) ?? 15).clamp(1, 1024);
       final maxSizeBytes = mb * 1024 * 1024;
@@ -144,7 +148,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
           Align(
             alignment: AlignmentDirectional.centerEnd,
             child: FilledButton(
-              onPressed: _saveSettings,
+              onPressed: _settingsLoaded ? _saveSettings : null,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [

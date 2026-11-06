@@ -4,6 +4,7 @@ import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -31,6 +32,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
   final ValueNotifier<bool> tlsEnabled = ValueNotifier(false);
   final ValueNotifier<bool> smtpEnabled = ValueNotifier(false);
   final ValueNotifier<bool> showPassword = ValueNotifier(false);
+  bool _settingsLoaded = false;
 
   @override
   void initState() {
@@ -55,13 +57,15 @@ class _SmtpSettingsState extends State<SmtpSettings> {
       localNameController.text = smtp['localName'] as String? ?? '';
       tlsEnabled.value = smtp['tls'] as bool? ?? false;
       smtpEnabled.value = smtp['enabled'] as bool? ?? false;
-    } catch (e) {
-      // Controllers remain empty on error
+      _settingsLoaded = true;
+    } catch (e, s) {
+      logger('Could not load SMTP settings: $e', s);
     }
     if (mounted) setState(() {});
   }
 
   Future<void> _saveSmtpSettings() async {
+    if (!_settingsLoaded) return;
     try {
       await login.pb!.settings.update(body: {
         "smtp": {
@@ -406,7 +410,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         FilledButton(
-                          onPressed: _saveSmtpSettings,
+                          onPressed: _settingsLoaded ? _saveSmtpSettings : null,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [

@@ -8,6 +8,7 @@ import 'package:apexo/features/settings/services_settings/meta_settings.dart';
 import 'package:apexo/features/settings/services_settings/s3_settings.dart';
 import 'package:apexo/features/settings/services_settings/smtp_settings.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -77,4 +78,39 @@ void main() {
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
+
+  for (final widget in widgets) {
+    testWidgets(
+        '${widget.runtimeType} cannot save after a failed settings read',
+        (tester) async {
+      final methods = <String>[];
+      final client = MockClient((request) async {
+        methods.add(request.method);
+        return http.Response('{"message":"Unavailable"}', 503);
+      });
+      addTearDown(client.close);
+      login.pb =
+          PocketBase('https://example.test', httpClientFactory: () => client);
+
+      await tester
+          .pumpWidget(FluentApp(home: SingleChildScrollView(child: widget)));
+      await tester.pumpAndSettle();
+
+      expect(methods, isNotEmpty);
+      expect(methods, everyElement('GET'));
+      final saveButton = find.ancestor(
+        of: find.text(txt('save')),
+        matching: find.byType(FilledButton),
+      );
+      expect(saveButton, findsWidgets);
+      expect(
+        tester
+            .widgetList<FilledButton>(saveButton)
+            .every((button) => button.onPressed == null),
+        isTrue,
+      );
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+  }
 }

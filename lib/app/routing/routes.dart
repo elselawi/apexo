@@ -4,6 +4,7 @@ import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/features/dicom/dicom_controller.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/notes/notes_store.dart';
@@ -21,6 +22,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 /// [AppRoute] declares them, this decides them.
 bool _accessible(AppRoute route) {
   if (route.windowsOnly && !DicomController.isSupported) return false;
+  if (route == AppRoute.booking) return booking.ready();
   if (route.adminOnly) return login.isAdmin;
   final int? requiredPerm = route.perm;
   if (requiredPerm != null) {
@@ -110,11 +112,15 @@ Future<void> _syncStores(AppRoute route) async {
       chartsCtrl.resetSelected();
       unawaited(patients.synchronize());
       unawaited(appointments.synchronize());
+      unawaited(booking.requests.refresh(status: "pending"));
 
     case AppRoute.patients:
       await accounts.reloadFromRemote();
       await patients.synchronize();
       unawaited(appointments.synchronize());
+
+    case AppRoute.booking:
+      unawaited(booking.requests.refresh());
 
     case AppRoute.calendar:
       if (login.perm(Perm.appointments).not(2)) {

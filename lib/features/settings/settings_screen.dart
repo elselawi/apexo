@@ -5,6 +5,7 @@ import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/booking/booking_settings_screen.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/features/notes/notes_store.dart';
@@ -19,6 +20,7 @@ import 'package:apexo/features/settings/services_settings/s3_settings.dart';
 import 'package:apexo/features/settings/services_settings/smtp_settings.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -57,13 +59,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         for (final item in _items(context)) {
           final section = item is SettingsItem
               ? settingsSectionFor(item.identifier)
-              : item is BackupsSettings
-                  ? SettingsSection.backups
-                  : item is MetaSettings ||
-                          item is AuthSettings ||
-                          item is SmtpSettings
-                      ? SettingsSection.server
-                      : SettingsSection.storage;
+              : item is BookingSettingsCard
+                  ? SettingsSection.booking
+                  : item is BackupsSettings
+                      ? SettingsSection.backups
+                      : item is MetaSettings ||
+                              item is AuthSettings ||
+                              item is SmtpSettings
+                          ? SettingsSection.server
+                          : SettingsSection.storage;
           grouped.putIfAbsent(section, () => []).add(item);
         }
         final sections =
@@ -205,6 +209,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   List<Widget> _items(BuildContext context) => [
+        if (bookingAvailable) const BookingSettingsCard(),
         if (login.isAdmin)
           SettingsItem(
             title: txt("currency"),

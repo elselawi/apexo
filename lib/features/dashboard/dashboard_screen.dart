@@ -8,6 +8,9 @@ import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment.dart';
+import 'package:apexo/features/booking/booking_labels.dart';
+import 'package:apexo/features/booking/booking_request_details.dart';
+import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/features/dashboard/dashboard_controller.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/open_expense_panel.dart';
@@ -55,6 +58,11 @@ class DashboardScreen extends StatelessWidget {
             appointments.observableMap.stream,
             patients.observableMap.stream,
             expenses.observableMap.stream,
+            booking.ready.stream,
+            booking.requests.pending.stream,
+            booking.requests.connected.stream,
+            booking.requests.items.stream,
+            booking.requests.lastSuccessfulAt.stream,
           ],
           builder: (context, asyncSnapshot) {
             return Column(
@@ -82,6 +90,32 @@ class DashboardScreen extends StatelessWidget {
                   width: constraints.maxWidth,
                   height: height,
                   child: ListView(scrollDirection: Axis.horizontal, children: [
+                    if (booking.ready())
+                      _buildDashboardList(
+                        context: context,
+                        id: 'bookingRequests',
+                        icon: WindowsIcons.calendar,
+                        onPressed: () => routes.navigate(AppRoute.booking),
+                        height: height,
+                        title:
+                            "${txt("bookingInbox")} (${booking.requests.connected() ? "${booking.requests.pending()}" : "—"})",
+                        items: booking.requests.cache
+                            .forFilter("pending")
+                            .where((request) => !request.isExpired)
+                            .take(20)
+                            .map((request) => ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  onPressed: () => unawaited(
+                                      openBookingRequestPanel(
+                                          context, request)),
+                                  title: Text(request.name,
+                                      overflow: TextOverflow.ellipsis),
+                                  subtitle: Text(
+                                      bookingPreferenceLabel(request),
+                                      overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                      ),
                     if (login.perm(Perm.patients).some &&
                         login.perm(Perm.appointments).some)
                       _buildDashboardList(

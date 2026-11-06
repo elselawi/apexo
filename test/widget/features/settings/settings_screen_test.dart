@@ -18,6 +18,7 @@ import 'package:apexo/features/settings/settings_section.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,6 +54,51 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpAndSettle();
   }
+
+  testWidgets('booking is a settings category with the hosted origin',
+      (tester) async {
+    await size(tester, const Size(1400, 900));
+    await pumpApexoApp(tester, const SettingsScreen());
+
+    expect(bookingAvailable, isTrue);
+    final category = find.byKey(const ValueKey('settings_category_booking'));
+    expect(category, findsOneWidget);
+
+    await tester.tap(category);
+    await tester.pumpAndSettle();
+    expect(find.text(txt('bookingSubtitle')), findsWidgets);
+    // Signed out: the card explains the feature instead of offering the claim
+    // form, which needs a superuser session.
+    expect(find.text(txt('bookingNotConfigured')), findsOneWidget);
+  });
+
+  testWidgets('compact picker offers the booking category', (tester) async {
+    await size(tester, const Size(360, 800));
+    await pumpApexoApp(tester, const SettingsScreen());
+
+    await tester.tap(find.byKey(const ValueKey('settings_category_picker')));
+    await tester.pumpAndSettle();
+    expect(find.text(txt('booking')), findsWidgets);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('claim form fills a narrow admin screen without the accent field',
+      (tester) async {
+    login.adminCollectionId = 'test-admin';
+    login.token = 'x.${base64Encode(utf8.encode('test-admin'))}.x';
+    await size(tester, const Size(360, 800));
+    await pumpApexoApp(tester, const SettingsScreen());
+
+    await tester.tap(find.byKey(const ValueKey('settings_category_picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(txt('booking')).last);
+    await tester.pumpAndSettle();
+
+    expect(find.text(txt('bookingClaimAction')), findsWidgets);
+    // The accent colour was dropped: the page keeps its own palette.
+    expect(find.text(txt('bookingAccentColor')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets('compact category picker exposes inline calendar controls',
       (tester) async {

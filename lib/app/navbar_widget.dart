@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
+import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
@@ -39,63 +40,68 @@ class BottomNavBar extends StatelessWidget {
         child: StreamBuilder(
           stream: routes.currentRoute.stream,
           builder: (context, snapshot) {
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                final availableWidth = constraints.maxWidth;
-                final offered = routes.visibleRoutes;
-                final int totalRoutes = offered.length;
+            // The booking route appears only once discovery finds a registered
+            // clinic, which happens after the shell is already on screen.
+            return StreamBuilder(
+              stream: booking.ready.stream,
+              builder: (context, _) => LayoutBuilder(
+                builder: (context, constraints) {
+                  final availableWidth = constraints.maxWidth;
+                  final offered = routes.visibleRoutes;
+                  final int totalRoutes = offered.length;
 
-                // Make it more compact to fit slightly more items
-                const double minItemWidth = 52.0;
-                final int maxVisibleItems =
-                    (availableWidth / minItemWidth).floor();
+                  // Make it more compact to fit slightly more items
+                  const double minItemWidth = 52.0;
+                  final int maxVisibleItems =
+                      (availableWidth / minItemWidth).floor();
 
-                var visibleRoutes = offered;
-                var overflowRoutes = <AppRoute>[];
-                bool showMore = false;
+                  var visibleRoutes = offered;
+                  var overflowRoutes = <AppRoute>[];
+                  bool showMore = false;
 
-                if (maxVisibleItems < totalRoutes) {
-                  showMore = true;
-                  int visibleCount =
-                      maxVisibleItems - 1; // Leave space for 'More'
-                  if (visibleCount < 1) visibleCount = 1; // Sanity check
+                  if (maxVisibleItems < totalRoutes) {
+                    showMore = true;
+                    int visibleCount =
+                        maxVisibleItems - 1; // Leave space for 'More'
+                    if (visibleCount < 1) visibleCount = 1; // Sanity check
 
-                  visibleRoutes = offered.sublist(0, visibleCount);
-                  overflowRoutes = offered.sublist(visibleCount);
-                }
+                    visibleRoutes = offered.sublist(0, visibleCount);
+                    overflowRoutes = offered.sublist(visibleCount);
+                  }
 
-                return Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ...visibleRoutes.map((r) => Expanded(
-                          child: BottomNavBarButton(
-                            key: WK.bottomNavButton(r.id),
-                            route: r,
-                            active: r == routes.currentRoute(),
-                          ),
-                        )),
-                    if (showMore)
-                      Container(
-                        width: 1,
-                        height:
-                            24, // Smaller height to look like a clean vertical divider
-                        margin: const EdgeInsets.symmetric(
-                            horizontal: 4, vertical: 16),
-                        color: FluentTheme.of(context)
-                            .resources
-                            .dividerStrokeColorDefault
-                            .withValues(alpha: 0.1),
-                      ),
-                    if (showMore)
-                      Expanded(
-                        child: BottomNavBarMoreButton(
-                          overflowRoutes: overflowRoutes,
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ...visibleRoutes.map((r) => Expanded(
+                            child: BottomNavBarButton(
+                              key: WK.bottomNavButton(r.id),
+                              route: r,
+                              active: r == routes.currentRoute(),
+                            ),
+                          )),
+                      if (showMore)
+                        Container(
+                          width: 1,
+                          height:
+                              24, // Smaller height to look like a clean vertical divider
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 4, vertical: 16),
+                          color: FluentTheme.of(context)
+                              .resources
+                              .dividerStrokeColorDefault
+                              .withValues(alpha: 0.1),
                         ),
-                      ),
-                  ],
-                );
-              },
+                      if (showMore)
+                        Expanded(
+                          child: BottomNavBarMoreButton(
+                            overflowRoutes: overflowRoutes,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
             );
           },
         ),

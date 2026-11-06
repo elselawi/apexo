@@ -1,6 +1,7 @@
 import 'package:apexo/features/accounts/accounts_screen.dart';
 import 'package:apexo/features/appointments/calendar_screen.dart';
 import 'package:apexo/features/archive/archive_screen.dart';
+import 'package:apexo/features/booking/booking_requests_screen.dart';
 import 'package:apexo/features/dashboard/dashboard_screen.dart';
 import 'package:apexo/features/dicom/dicom_screen.dart';
 import 'package:apexo/features/expenses/expenses_screen.dart';
@@ -45,6 +46,9 @@ enum AppRoute {
     FluentIcons.manufacturing,
     perm: Perm.appointments,
   ),
+  // The staff inbox for patient booking requests. Offered only once a clinic
+  // has claimed a public booking page; the router checks that separately.
+  booking('booking', 'bookingInbox', FluentIcons.globe),
   notes('notes', 'notes', WindowsIcons.quick_note),
   expenses(
     'expenses',
@@ -107,6 +111,7 @@ enum AppRoute {
   Widget buildScreen() => switch (this) {
         AppRoute.dashboard => const DashboardScreen(),
         AppRoute.patients => const PatientsScreen(),
+        AppRoute.booking => const BookingRequestsScreen(),
         AppRoute.calendar => const CalendarScreen(),
         AppRoute.labworks => const LabworksScreen(),
         AppRoute.notes => const NotesScreen(),

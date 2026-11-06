@@ -11,6 +11,7 @@ import 'package:apexo/ui/workspace/close_all_button.dart';
 import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:apexo/ui/workspace/window_defaults.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/back_button.dart';
@@ -204,6 +205,7 @@ class ApexoApp extends StatelessWidget {
         launch.open.stream,
         routes.currentRoute.stream,
         PanelsManager.active.stream,
+        booking.ready.stream,
       ],
       key: WK.builder,
       builder: (context, _) => PopScope(

@@ -94,6 +94,46 @@ Live-backend tests are separate and must be explicitly requested/configured. The
 
 ## Building & Distribution
 
+Online booking uses the hosted Worker at `https://book.apexo.app` by default.
+`--dart-define=BOOKING_ORIGIN=https://other-origin` targets a different
+deployment, and `--dart-define=BOOKING_ORIGIN=` (empty) compiles the feature out:
+its settings section, dashboard square and inbox route then never appear and no
+booking Worker call is made.
+
+Patients get a short reference for their request — the clinic-local submission
+day plus that day's ordinal, e.g. `1106-03`. It is what the inbox search and the
+request dialog show and what the patient quotes on the phone; the 32-hex
+`requestId` stays internal to app/Worker traffic. The Worker issues and numbers
+it (see its README), so the app only displays and searches it.
+
+Booking is a request inbox, not a reservation engine: staff confirm the patient
+and appointment through the normal PMS dialogs. A request is acknowledged only
+after the appointment is read back from clinic PocketBase. Same-session retries
+reuse an already-saved appointment, including when the first read-back failed;
+unconfirmed links are not automatically acknowledged. These links and request
+caches are memory-only and cleared on logout. Concurrent scheduling on separate
+staff devices can still create two appointments before the Worker's version
+check rejects the second acknowledgement; staff must reconcile that conflict.
+
+Enrollment, recovery and key rotation preserve candidate credentials before
+calling the Worker and resume interrupted publication without rotating again.
+A rejected handle can be changed, but an uncertain enrollment is retried with
+its original identity first. The public form stores only an idempotency key and
+SHA-256 body fingerprint before submitting, so re-entering unchanged fields
+after a lost response/reload reuses the same attempt without persisting patient
+fields. Editing the submission starts a new attempt.
+
+The Worker is a separate project: `apexo-booking-worker`, a sibling folder of
+this repository (its README covers deployment, migrations, secrets and local
+development). Its deployment is independent of the app build:
+
+- Production: `https://book.apexo.app` (D1 `apexo-booking`, custom domain).
+  Change the app's build only with `--dart-define=BOOKING_ORIGIN=…`.
+- The app never needs the Worker's secrets; it enrolls a clinic from
+  Settings → online booking and stores the issued keys in PocketBase.
+- A Worker change that alters a payload, a status code or a field name must land
+  on the Worker first (its migrations are additive), then in the app.
+
 - For the web:
    - Build with the command: `flutter build web --release`
    - deploy to wrangler: `wrangler pages deploy build/web --project-name=apexo-web`

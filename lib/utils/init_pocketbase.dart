@@ -7,7 +7,11 @@ import 'package:pocketbase/pocketbase.dart';
 
 /// This would initialize the server creating required collections, rules, and settings
 Future<void> initializePocketbase(PocketBase pb) async {
-  await pb.collections.import([dataCollectionImport, publicCollectionImport]);
+  await pb.collections.import([
+    dataCollectionImport,
+    publicCollectionImport,
+    ...bookingCollections,
+  ]);
   await pb.collections.update("users",
       body: {"createRule": '@request.auth.collectionName = "_superusers"'});
   await pb.settings.update(body: {
@@ -108,6 +112,7 @@ Future<void> reconcileSchema(
     publicCollectionImport,
     profilesCollectionImport,
     profilesViewCollectionImport,
+    ...bookingCollections,
   ];
 
   final withServerIds = definitions.map((model) {
@@ -125,4 +130,51 @@ Future<void> reconcileSchema(
   });
 
   await storeAppliedSchemaVersion(clinicKey, schemaVersion);
+}
+
+/// Explicit superuser repair of the booking collections.
+///
+/// Bypasses the version marker (the marker may already say the schema was
+/// applied while a collection is missing or drifted), preserves existing
+/// collection ids and records, and never deletes a field or a row. Booking
+/// setup offers this instead of teaching staff to re-import by hand.
+Future<void> ensureBookingSchema(PocketBase pb) async {
+  final existing = await pb.collections.getFullList();
+  final idByName = {for (final c in existing) c.name: c.id};
+  final withServerIds = bookingCollections.map((model) {
+    final serverId = idByName[model.name];
+    if (serverId == null || serverId.isEmpty) return model;
+    return CollectionModel.fromJson(model.toJson())..id = serverId;
+  }).toList();
+  await pb.collections.import(withServerIds);
+}
+
+/// Whether the ordinary PMS batch API is enabled on this server.
+///
+/// Booking-linked scheduling depends on the app's existing batch persistence,
+/// so setup checks this instead of assuming it. It is never changed by a Worker
+/// call or an ordinary staff login.
+Future<bool> pmsBatchApiEnabled(PocketBase pb) async {
+  try {
+    final settings = await pb.settings.getAll();
+    final batch = settings["batch"] as Map<String, dynamic>?;
+    return batch?["enabled"] == true;
+  } catch (_) {
+    return false;
+  }
+}
+
+/// Explicit superuser repair that only enables batching, preserving any custom
+/// sibling values the clinic already set.
+Future<void> ensurePmsBatchEnabled(PocketBase pb) async {
+  final settings = await pb.settings.getAll();
+  final current = settings["batch"] as Map<String, dynamic>? ?? {};
+  await pb.settings.update(body: {
+    "batch": {
+      "enabled": true,
+      "maxRequests": current["maxRequests"] ?? 101,
+      "timeout": current["timeout"] ?? 3,
+      "maxBodySize": current["maxBodySize"] ?? 0,
+    }
+  });
 }

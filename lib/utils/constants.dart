@@ -219,6 +219,265 @@ const ruleLoggedUsersExceptForSettings =
 const ruleEitherLoggedOrSettings =
     "@request.auth.id != \"\" || store = \"settings_global\"";
 
+// ---------------------------------------------------------------------------
+// Online booking (see online-booking.md §12)
+//
+// Three additive collections on a stock PocketBase:
+//  - booking_verification holds one operation-bound proof, readable only by
+//    the caller that knows the challenge.
+//  - booking_clinic is the staff-readable inbox credential.
+//  - booking_admin is superuser-only and never enters the ordinary staff cache.
+// ---------------------------------------------------------------------------
+
+const String bookingVerificationCollectionName = "booking_verification";
+const String bookingClinicCollectionName = "booking_clinic";
+const String bookingAdminCollectionName = "booking_admin";
+
+/// Stock PocketBase rejects underscores in record ids; these 15-character,
+/// lowercase alphanumeric ids are the tested singleton ids.
+const String bookingClinicRecordId = "bookingclinic01";
+const String bookingAdminRecordId = "bookingadmin001";
+
+/// Where the booking Worker lives. The hosted service is the default, like the
+/// push relay; `--dart-define=BOOKING_ORIGIN=…` points a build elsewhere and an
+/// empty value hides the feature, which is what the hosted service does here.
+const String bookingOrigin = String.fromEnvironment("BOOKING_ORIGIN",
+    defaultValue: "https://book.apexo.app");
+
+bool get bookingAvailable =>
+    bookingOrigin.startsWith("https://") &&
+    Uri.tryParse(bookingOrigin)?.host.isNotEmpty == true;
+
+final bookingVerificationCollectionImport = CollectionModel(
+  name: bookingVerificationCollectionName,
+  type: "base",
+  listRule: '@request.query.c != "" && @request.query.c = challenge',
+  viewRule: '@request.query.c != "" && @request.query.c = challenge',
+  createRule: null,
+  updateRule: null,
+  deleteRule: null,
+  indexes: [
+    "CREATE UNIQUE INDEX `idx_booking_verification_challenge` ON `$bookingVerificationCollectionName` (`challenge`)"
+  ],
+  fields: [
+    CollectionField({
+      "autogeneratePattern": "[a-z0-9]{15}",
+      "hidden": false,
+      "max": 15,
+      "min": 15,
+      "name": "id",
+      "pattern": "^[a-zA-Z0-9_]+\$",
+      "presentable": false,
+      "primaryKey": true,
+      "required": true,
+      "system": true,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 64,
+      "min": 64,
+      "name": "challenge",
+      "pattern": "^[0-9a-f]{64}\$",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 32,
+      "min": 32,
+      "name": "clinic_id",
+      "pattern": "^[0-9a-f]{32}\$",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 64,
+      "min": 64,
+      "name": "operation_hash",
+      "pattern": "^[0-9a-f]{64}\$",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "hidden": false,
+      "name": "created",
+      "onCreate": true,
+      "onUpdate": false,
+      "presentable": false,
+      "system": false,
+      "type": "autodate"
+    }),
+  ],
+);
+
+final bookingClinicCollectionImport = CollectionModel(
+  name: bookingClinicCollectionName,
+  type: "base",
+  listRule: '@request.auth.collectionName = "users"',
+  viewRule: '@request.auth.collectionName = "users"',
+  createRule: null,
+  updateRule: null,
+  deleteRule: null,
+  fields: [
+    CollectionField({
+      "autogeneratePattern": "[a-z0-9]{15}",
+      "hidden": false,
+      "max": 15,
+      "min": 15,
+      "name": "id",
+      "pattern": "^[a-zA-Z0-9_]+\$",
+      "presentable": false,
+      "primaryKey": true,
+      "required": true,
+      "system": true,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 63,
+      "min": 3,
+      "name": "handle",
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*\$",
+      "presentable": true,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 32,
+      "min": 32,
+      "name": "clinic_id",
+      "pattern": "^[0-9a-f]{32}\$",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 300,
+      "min": 0,
+      "name": "public_url",
+      "pattern": "^https://",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 128,
+      "min": 1,
+      "name": "inbox_key",
+      "pattern": "",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "hidden": false,
+      "onlyInt": true,
+      "max": null,
+      "min": 1,
+      "name": "key_revision",
+      "presentable": false,
+      "required": true,
+      "system": false,
+      "type": "number"
+    }),
+  ],
+);
+
+final bookingAdminCollectionImport = CollectionModel(
+  name: bookingAdminCollectionName,
+  type: "base",
+  listRule: null,
+  viewRule: null,
+  createRule: null,
+  updateRule: null,
+  deleteRule: null,
+  fields: [
+    CollectionField({
+      "autogeneratePattern": "[a-z0-9]{15}",
+      "hidden": false,
+      "max": 15,
+      "min": 15,
+      "name": "id",
+      "pattern": "^[a-zA-Z0-9_]+\$",
+      "presentable": false,
+      "primaryKey": true,
+      "required": true,
+      "system": true,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 32,
+      "min": 32,
+      "name": "clinic_id",
+      "pattern": "^[0-9a-f]{32}\$",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "autogeneratePattern": "",
+      "hidden": false,
+      "max": 128,
+      "min": 1,
+      "name": "admin_key",
+      "pattern": "",
+      "presentable": false,
+      "primaryKey": false,
+      "required": true,
+      "system": false,
+      "type": "text"
+    }),
+    CollectionField({
+      "hidden": false,
+      "maxSize": 32768,
+      "name": "pending_operation",
+      "presentable": false,
+      "required": false,
+      "system": false,
+      "type": "json"
+    }),
+  ],
+);
+
+final List<CollectionModel> bookingCollections = [
+  bookingVerificationCollectionImport,
+  bookingClinicCollectionImport,
+  bookingAdminCollectionImport,
+];
+
 /// The patient portal view is only reachable when the request carries a
 /// `pid` query param matching the row's patient ID. The patient ID thus
 /// becomes an unguessable, patient-scoped capability (server-enforced)
@@ -230,4 +489,4 @@ const rulePublicPatientScoped =
 /// change (rules, fields, indexes). On admin login the app re-imports the
 /// schema (pure upsert — never deletes) when this version is newer than the
 /// version last applied for the clinic.
-const int schemaVersion = 2;
+const int schemaVersion = 3;

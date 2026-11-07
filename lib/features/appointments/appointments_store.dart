@@ -11,8 +11,9 @@ import '../../core/store.dart';
 const _storeName = "appointments";
 
 class Appointments extends Store<Appointment> {
-  Appointments()
-      : super(
+  Appointments({DateTime Function()? now})
+      : _now = now ?? DateTime.now,
+        super(
           effects: applicationStoreEffects,
           loadDocuments: loadApplicationDocuments,
           modeling: Appointment.fromJson,
@@ -25,10 +26,18 @@ class Appointments extends Store<Appointment> {
           },
         );
 
+  final DateTime Function() _now;
   int _cacheRevision = -1;
+  DateTime? _cacheBuiltAt;
+  DateTime? _cacheExpiresAt;
 
   void _ensureCacheRevision() {
-    if (_cacheRevision == observableMap.revision) return;
+    final now = _now();
+    if (_cacheRevision == observableMap.revision &&
+        (_cacheBuiltAt == null || !now.isBefore(_cacheBuiltAt!)) &&
+        (_cacheExpiresAt == null || now.isBefore(_cacheExpiresAt!))) {
+      return;
+    }
     nullifyAppointmentsCache(null);
     _cacheRevision = observableMap.revision;
   }
@@ -41,7 +50,9 @@ class Appointments extends Store<Appointment> {
     _todayAppointments = [];
     _thisMonthAppointments = [];
 
-    final now = DateTime.now();
+    final now = _now();
+    _cacheBuiltAt = now;
+    _cacheExpiresAt = DateTime(now.year, now.month, now.day + 1);
 
     final today = DateTime(now.year, now.month, now.day);
 
@@ -50,6 +61,9 @@ class Appointments extends Store<Appointment> {
       final isDone = appointment.isDone;
       final isUpcoming = appointment.date.isAfter(now);
       final isPast = appointment.date.isBefore(now);
+      if (!isPast && appointment.date.isBefore(_cacheExpiresAt!)) {
+        _cacheExpiresAt = appointment.date;
+      }
 
       if (appointment.hasLabwork && appointment.labName.isNotEmpty) {
         _labs.add(appointment.labName);
@@ -163,6 +177,8 @@ class Appointments extends Store<Appointment> {
   }
 
   void nullifyAppointmentsCache(_) {
+    _cacheBuiltAt = null;
+    _cacheExpiresAt = null;
     _byPatientCache = null;
     _daysByPatientCache = null;
     _todayAppointments = null;

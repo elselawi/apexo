@@ -184,6 +184,37 @@ void main() {
       expect(appointments.allPrescriptions, isEmpty);
     });
 
+    test('time-dependent caches refresh as dates and visits pass', () {
+      var now = DateTime(2030, 1, 31, 23, 58);
+      final store = Appointments(now: () => now);
+      store.setAll([
+        testAppointment(
+          id: 'visit',
+          patientID: 'patient',
+          date: DateTime(2030, 1, 31, 23, 59),
+          isDone: true,
+        ),
+        testAppointment(id: 'tomorrow', date: DateTime(2030, 2, 1, 10)),
+      ]);
+
+      expect(store.byPatient['patient']!['upcoming']!.single.id, 'visit');
+      expect(store.todayAppointments.map((a) => a.id), ['visit']);
+      expect(store.thisMonthAppointments.map((a) => a.id), ['visit']);
+
+      now = DateTime(2030, 1, 31, 23, 59, 1);
+      expect(store.byPatient['patient']!['upcoming'], isEmpty);
+      expect(store.byPatient['patient']!['done']!.single.id, 'visit');
+      expect(store.byPatient['patient']!['past']!.single.id, 'visit');
+
+      now = DateTime(2030, 2, 1);
+      expect(store.todayAppointments.map((a) => a.id), ['tomorrow']);
+      expect(store.thisMonthAppointments.map((a) => a.id), ['tomorrow']);
+
+      now = DateTime(2030, 1, 31, 23, 58);
+      expect(store.byPatient['patient']!['upcoming']!.single.id, 'visit');
+      expect(store.todayAppointments.map((a) => a.id), ['visit']);
+    });
+
     test('cache invalidation includes prescriptions and labs', () {
       appointments.set(testAppointment(id: 'first', prescriptions: ['old']));
       expect(appointments.allPrescriptions, ['old']);
@@ -209,7 +240,8 @@ void main() {
       appointments.observableMap.set(appointment);
       expect(appointments.labs, {'First Lab'});
 
-      appointments.observableMap.set(appointment.copy(false)..labName = 'New Lab');
+      appointments.observableMap
+          .set(appointment.copy(false)..labName = 'New Lab');
       expect(appointments.labs, {'New Lab'});
 
       final reloaded = appointment.copy(false)..labName = 'Reloaded Lab';

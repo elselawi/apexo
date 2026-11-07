@@ -1,6 +1,10 @@
 ### ____LATEST____
 
 - Reliability & Bug Fixes
+    - **Safe staff logout.** Logging out during authentication, pending staff store activation, or sync prevents late credentials and activation callbacks from reopening the session.
+    - **Timely appointment caches.** Time-dependent appointment caches refresh when a visit time or day passes instead of remaining stale.
+    - **Safe back navigation.** Back falls back to an accessible route when permissions or booking readiness change for a historical route.
+    - **Reliable web image uploads.** Non-success HTTP source responses are rejected instead of uploading error pages as images.
     - **Clearer AI service errors.** Authentication and request failures with non-JSON response bodies now report the HTTP status instead of a JSON decoding error.
     - **Session-safe push handling.** Pushes wait for session restoration, and FCM callback failures are logged instead of going unhandled.
     - **Distinct notification updates.** Rapid edits to the same fields are no longer deduplicated as one event, and incomplete note-status payloads use a generic notice.

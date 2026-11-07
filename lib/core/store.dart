@@ -567,9 +567,14 @@ class Store<G extends Model> {
                       ? Uri.parse(pathOrName)
                       : Uri.parse(
                           'https://imgs.apexo.app/?url=${Uri.encodeComponent(pathOrName)}');
+                  final response = await http.get(uri);
+                  if (response.statusCode < 200 || response.statusCode >= 300) {
+                    throw http.ClientException(
+                        'File source returned HTTP ${response.statusCode}');
+                  }
                   multipart = MultipartFile.fromBytes(
                     "imgs+",
-                    (await http.get(uri)).bodyBytes,
+                    response.bodyBytes,
                     filename: filename,
                   );
                 } else {

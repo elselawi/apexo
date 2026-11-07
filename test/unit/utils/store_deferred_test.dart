@@ -10,6 +10,7 @@ import 'package:apexo/core/persistence/save_remote.dart';
 import 'package:apexo/core/store.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pocketbase/pocketbase.dart';
 import '../../helpers/hive_setup.dart';
@@ -63,6 +64,8 @@ class _SyncTestRemote extends SaveRemote {
   final int version;
   final VersionedResult updates;
   bool failUpload = false;
+  int uploadCalls = 0;
+  List<int>? uploadedBytes;
 
   @override
   Future<int> getVersion() async => version;
@@ -78,9 +81,29 @@ class _SyncTestRemote extends SaveRemote {
     XFile? file,
     http.MultipartFile? predefinedMultipart,
   }) async {
+    uploadCalls++;
     if (failUpload) throw StateError('upload unavailable');
+    if (predefinedMultipart != null) {
+      uploadedBytes = await predefinedMultipart.finalize().toBytes();
+    }
     return filename;
   }
+}
+
+class _ImmediateTestRemote extends SaveRemote {
+  _ImmediateTestRemote()
+      : super(
+          storeName: 'test',
+          pbInstance: PocketBase('http://fake-pocketbase'),
+        );
+
+  @override
+  Future<void> checkOnline() async {}
+
+  @override
+  Future<List<String>> getFileNames(String rowID,
+          {bool useCache = false}) async =>
+      [];
 }
 
 void main() {
@@ -335,16 +358,14 @@ void main() {
 
     test('accepts three-segment delete keys only', () {
       expect(isValidDeferredFileKey('FILE||row||scan.dcm', 0), isTrue);
-      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm', 0),
-          isFalse);
+      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm', 0), isFalse);
     });
 
     test('rejects malformed, unsupported, and negative-retry keys', () {
       expect(isValidDeferredFileKey('FILE||row', 1), isFalse);
+      expect(isValidDeferredFileKey('FILE||||path||scan.dcm', 1), isFalse);
       expect(
-          isValidDeferredFileKey('FILE||||path||scan.dcm', 1), isFalse);
-      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm||-1', 1),
-          isFalse);
+          isValidDeferredFileKey('FILE||row||path||scan.dcm||-1', 1), isFalse);
       expect(isValidDeferredFileKey('FILE||row||scan.dcm', 2), isFalse);
     });
 
@@ -356,18 +377,13 @@ void main() {
     });
 
     test('rejects extra upload segments and malformed retry values', () {
-      expect(
-          isValidDeferredFileKey(
-              'FILE||row||path||scan.dcm||1||extra', 1),
+      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm||1||extra', 1),
           isFalse);
       expect(
-          isValidDeferredFileKey(
-              'FILE||row||path||scan.dcm||not-a-number', 1),
+          isValidDeferredFileKey('FILE||row||path||scan.dcm||not-a-number', 1),
           isFalse);
-      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm||', 1),
-          isFalse);
-      expect(
-          isValidDeferredFileKey('FILE||row||file||extra', 0), isFalse);
+      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm||', 1), isFalse);
+      expect(isValidDeferredFileKey('FILE||row||file||extra', 0), isFalse);
     });
 
     test('accepts zero and positive retry counts only', () {
@@ -377,8 +393,8 @@ void main() {
           isTrue,
         );
       }
-      expect(isValidDeferredFileKey('FILE||row||path||scan.dcm||-0', 1),
-          isTrue);
+      expect(
+          isValidDeferredFileKey('FILE||row||path||scan.dcm||-0', 1), isTrue);
     });
   });
 
@@ -419,26 +435,23 @@ void main() {
 
   group('buildDeferredRetryKey', () {
     test('increments retries on 5-segment key', () {
-      final result =
-          buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm||2', 3);
+      final result = buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm||2', 3);
       expect(result, 'FILE||row1||/p/a||scan.dcm||3');
     });
 
     test('migrates 4-segment key to 5-segment', () {
-      final result =
-          buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm', 1);
+      final result = buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm', 1);
       expect(result, 'FILE||row1||/p/a||scan.dcm||1');
     });
 
     test('handles retries=0', () {
-      final result =
-          buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm||5', 0);
+      final result = buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm||5', 0);
       expect(result, 'FILE||row1||/p/a||scan.dcm||0');
     });
 
     test('replaces only the retry slot on a key with extra segments', () {
-      final result = buildDeferredRetryKey(
-          'FILE||row1||/p/a||scan.dcm||5||extra', 8);
+      final result =
+          buildDeferredRetryKey('FILE||row1||/p/a||scan.dcm||5||extra', 8);
       expect(result, 'FILE||row1||/p/a||scan.dcm||8||extra');
     });
 
@@ -620,6 +633,75 @@ void main() {
             'FILE||row-file||${source.path}||photo.png||0', 1),
         isTrue,
       );
+    });
+
+    test('immediate HTTP failure queues the original file for retry', () async {
+      final realUploadRemote = _ImmediateTestRemote();
+      final immediateStore =
+          _SyncTestStore(local: local, remote: realUploadRemote);
+      await immediateStore.loaded;
+      addTearDown(realUploadRemote.dispose);
+
+      final name = await http.runWithClient(
+        () => immediateStore.uploadImg(
+          rowID: 'row-file',
+          filename: 'photo.png',
+          file: XFile('blob:sample-file'),
+        ),
+        () => MockClient((_) async => http.Response('error page', 503)),
+      );
+
+      expect(name, 'photo.png');
+      expect(await local.getDeferred(), {
+        'FILE||row-file||blob:sample-file||photo.png||0': 1,
+      });
+      expect(immediateStore.deferredPresent, isTrue);
+    });
+
+    for (final source in ['blob:sample-file', 'https://files.example/photo']) {
+      for (final status in [302, 404, 500]) {
+        test('HTTP $status from $source stays deferred without uploading',
+            () async {
+          final key = 'FILE||row-file||$source||photo.png';
+          await local.putDeferred({'$key||0': 1});
+          remote.isOnline = true;
+          final requests = <Uri>[];
+
+          final result = await http.runWithClient(
+            () => store.debugSyncTry(),
+            () => MockClient((request) async {
+              requests.add(request.url);
+              return http.Response('error page', status);
+            }),
+          );
+
+          expect(result.exception, isNull);
+          expect(remote.uploadCalls, 0);
+          expect(await local.getDeferred(), {'$key||1': 1});
+          expect(
+              requests.single.toString(),
+              source.startsWith('blob:')
+                  ? source
+                  : 'https://imgs.apexo.app/?url=${Uri.encodeComponent(source)}');
+        });
+      }
+    }
+
+    test('successful response uploads exact bytes and clears deferred entry',
+        () async {
+      const key = 'FILE||row-file||blob:sample-file||photo.png||0';
+      await local.putDeferred({key: 1});
+      remote.isOnline = true;
+
+      final result = await http.runWithClient(
+        () => store.debugSyncTry(),
+        () => MockClient((_) async => http.Response.bytes([0, 1, 255], 200)),
+      );
+
+      expect(result.exception, isNull);
+      expect(remote.uploadCalls, 1);
+      expect(remote.uploadedBytes, [0, 1, 255]);
+      expect(await local.getDeferred(), isEmpty);
     });
 
     test('file-only deferred upload is processed on sync without path IO',

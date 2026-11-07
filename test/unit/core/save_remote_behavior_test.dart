@@ -6,6 +6,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/dicom/dicom_orphans_cleaner.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -391,7 +392,8 @@ void main() {
       );
     });
 
-    test('getImageLink rejects ambiguous or unrelated DICOM previews', () async {
+    test('getImageLink rejects ambiguous or unrelated DICOM previews',
+        () async {
       api.files = ['scan_ab12cd34.dcm.png', 'scan_ef56gh78.dcm.png'];
       expect(await remote.getImageLink('row-1', 'scan.dcm.png', false), isNull);
 
@@ -536,10 +538,13 @@ void main() {
       expect(result.deletedFiles, ['new-orphan.dcm', 'new-orphan.dcm.png']);
       expect(api.files, ['old-orphan.dcm']);
       expect(remote.fullNamesCache['row-1'], ['ordinary.jpg']);
-      expect((jsonDecode(api.requestBodies.single) as Map<String, dynamic>)['imgs-'], [
-        'new-orphan.dcm',
-        'new-orphan.dcm.png',
-      ]);
+      expect(
+          (jsonDecode(api.requestBodies.single)
+              as Map<String, dynamic>)['imgs-'],
+          [
+            'new-orphan.dcm',
+            'new-orphan.dcm.png',
+          ]);
     });
 
     test(
@@ -608,6 +613,52 @@ void main() {
   });
 
   group('upload and delete edge cases', () {
+    for (final source in ['blob:sample-file', 'https://files.example/photo']) {
+      for (final status in [302, 404, 500]) {
+        test('rejects HTTP $status from $source without uploading', () async {
+          final requests = <Uri>[];
+          await expectLater(
+            http.runWithClient(
+              () => remote.uploadImage(
+                rowID: 'row-1',
+                filename: 'photo.jpg',
+                file: XFile(source),
+              ),
+              () => MockClient((request) async {
+                requests.add(request.url);
+                return http.Response('error page', status);
+              }),
+            ),
+            throwsA(isA<http.ClientException>().having(
+              (error) => error.message,
+              'message',
+              contains('HTTP $status'),
+            )),
+          );
+          expect(
+              requests.single.toString(),
+              source.startsWith('blob:')
+                  ? source
+                  : 'https://imgs.apexo.app/?url=${Uri.encodeComponent(source)}');
+          expect(api.updateCount, 0);
+        });
+      }
+    }
+
+    test('uploads successful file response bytes', () async {
+      final name = await http.runWithClient(
+        () => remote.uploadImage(
+          rowID: 'row-1',
+          filename: 'photo.jpg',
+          file: XFile('blob:sample-file'),
+        ),
+        () => MockClient((_) async => http.Response('file contents', 200)),
+      );
+      expect(name, 'photo.jpg');
+      expect(api.updateCount, 1);
+      expect(api.requestBodies.single, contains('file contents'));
+    });
+
     test('empty PocketBase upload response is rejected', () async {
       api.returnEmptyUploadList = true;
       api.files = ['existing.dcm'];
@@ -749,7 +800,8 @@ void main() {
       });
     }
 
-    test('legacy basename deletion accepts generated hashes and stored suffixes',
+    test(
+        'legacy basename deletion accepts generated hashes and stored suffixes',
         () async {
       api.files = ['photo_h0123456789abcdef_ab12cd34ef.jpg'];
 
@@ -824,8 +876,7 @@ void main() {
       expect(api.files, ['photo2_hash.jpg']);
     });
 
-    test('ordinary deletion never falls back to a DICOM attachment',
-        () async {
+    test('ordinary deletion never falls back to a DICOM attachment', () async {
       api.files = ['photo_hash12.dcm.png'];
 
       final deleted = await remote.deleteImage('row-1', 'photo_hash12');
@@ -947,7 +998,8 @@ void main() {
       expect(api.uploadedNamesByRow, isEmpty);
       expect(api.files, ['dcm_scan.dcm', 'dcm_scan.dcm.png']);
       expect(remote.fullNamesCache['row-1'], api.files);
-      final deletion = jsonDecode(api.requestBodies.single) as Map<String, dynamic>;
+      final deletion =
+          jsonDecode(api.requestBodies.single) as Map<String, dynamic>;
       expect(deletion['imgs-'], [
         'dcm_scan_1.dcm',
         'dcm_scan_1.dcm.png',

@@ -435,13 +435,17 @@ class SaveRemote {
         filename: filename,
       );
     } else {
+      final response = await http.get(file!.path.startsWith("blob")
+          ? Uri.parse(file.path)
+          : Uri.parse(
+              'https://imgs.apexo.app/?url=${Uri.encodeComponent(file.path)}'));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw http.ClientException(
+            'File source returned HTTP ${response.statusCode}');
+      }
       multipart = http.MultipartFile.fromBytes(
         "imgs+",
-        (await http.get(file!.path.startsWith("blob")
-                ? Uri.parse(file.path)
-                : Uri.parse(
-                    'https://imgs.apexo.app/?url=${Uri.encodeComponent(file.path)}')))
-            .bodyBytes,
+        response.bodyBytes,
         filename: filename,
       );
     }

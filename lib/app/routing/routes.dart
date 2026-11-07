@@ -76,7 +76,10 @@ class AppRouter {
 
   void goBack() {
     if (_history.isEmpty) return;
-    final AppRoute target = _history.removeLast();
+    final AppRoute previous = _history.removeLast();
+    // Match the shell's currentIndex fallback if access changed in history.
+    final AppRoute target =
+        _accessible(previous) ? previous : visibleRoutes.first;
     currentRoute(target);
     unawaited(_syncStores(target));
   }

@@ -61,6 +61,12 @@ class _FollowUpBandState extends State<FollowUpBand> {
     if (!followUpsEnabled || widget.followUps.isEmpty) {
       return const SizedBox.shrink();
     }
+    final today = dayOnly(DateTime.now());
+    final onDay = <FollowUpDue>[];
+    final overdue = <FollowUpDue>[];
+    for (final followUp in widget.followUps) {
+      (followUp.date.isBefore(today) ? overdue : onDay).add(followUp);
+    }
     final theme = FluentTheme.of(context);
     final dark = theme.brightness == Brightness.dark;
     const accent = kFollowUpAccent;
@@ -110,11 +116,11 @@ class _FollowUpBandState extends State<FollowUpBand> {
           child: _expanded
               ? KeyedSubtree(
                   key: const ValueKey('follow-ups-sheet'),
-                  child: _sheet(context),
+                  child: _sheet(context, onDay, overdue),
                 )
               : KeyedSubtree(
                   key: const ValueKey('follow-ups-folded'),
-                  child: _folded(context),
+                  child: _folded(context, onDay, overdue),
                 ),
         ),
       ),
@@ -122,8 +128,15 @@ class _FollowUpBandState extends State<FollowUpBand> {
   }
 
   /// Folded: who is due, and their faces.
-  Widget _folded(BuildContext context) {
+  Widget _folded(
+    BuildContext context,
+    List<FollowUpDue> onDay,
+    List<FollowUpDue> overdue,
+  ) {
     const accent = kFollowUpAccent;
+    final overduePatientIDs = {
+      for (final followUp in overdue) followUp.patient.id,
+    };
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 6, 6),
       child: Row(
@@ -140,8 +153,11 @@ class _FollowUpBandState extends State<FollowUpBand> {
           // band's own edge, fading at whichever edge still has more behind it.
           Expanded(
             child: _FaceStrip(
-              followUps: widget.followUps,
-              faceBuilder: _face,
+              followUps: [...onDay, ...overdue],
+              faceBuilder: (followUp) => _face(
+                followUp,
+                overdue: overduePatientIDs.contains(followUp.patient.id),
+              ),
             ),
           ),
         ],
@@ -235,7 +251,11 @@ class _FollowUpBandState extends State<FollowUpBand> {
   /// It takes the band's **whole width**, exactly as the folded faces do: a
   /// sheet that narrowed while opening would make the band jump sideways on the
   /// page, and the band is one surface in two states, not two surfaces.
-  Widget _sheet(BuildContext context) {
+  Widget _sheet(
+    BuildContext context,
+    List<FollowUpDue> onDay,
+    List<FollowUpDue> overdue,
+  ) {
     const accent = kFollowUpAccent;
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -253,7 +273,9 @@ class _FollowUpBandState extends State<FollowUpBand> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                for (final followUp in widget.followUps) _row(followUp),
+                for (final followUp in onDay) _row(followUp, overdue: false),
+                if (overdue.isNotEmpty) _overdueDivider(),
+                for (final followUp in overdue) _row(followUp, overdue: true),
               ],
             ),
           ),
@@ -262,10 +284,44 @@ class _FollowUpBandState extends State<FollowUpBand> {
     );
   }
 
-  Widget _row(FollowUpDue followUp) {
+  Widget _overdueDivider() {
+    const accent = kFollowUpAccent;
+    return Padding(
+      key: WK.followUpsOverdueDivider,
+      padding: const EdgeInsetsDirectional.fromSTEB(10, 7, 10, 5),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 1,
+              color: accent.withValues(alpha: 0.22),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsetsDirectional.symmetric(horizontal: 8),
+            child: Txt(
+              txt('overdue'),
+              style: TextStyle(
+                fontSize: 9,
+                fontWeight: FontWeight.w700,
+                color: Colors.red,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 1,
+              color: accent.withValues(alpha: 0.22),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _row(FollowUpDue followUp, {required bool overdue}) {
     final theme = FluentTheme.of(context);
     const accent = kFollowUpAccent;
-    final overdue = calendarDaysBetween(DateTime.now(), followUp.date) < 0;
     final canEdit = login.perm(Perm.appointments).some;
     final onBook = canEdit ? widget.onBook : null;
     final patient = followUp.patient;
@@ -275,7 +331,7 @@ class _FollowUpBandState extends State<FollowUpBand> {
         );
 
     return Padding(
-      key: ValueKey(patient.id),
+      key: WK.followUpRow(patient.id),
       padding: const EdgeInsetsDirectional.only(bottom: 2),
       child: Padding(
         padding: const EdgeInsetsDirectional.fromSTEB(6, 3, 6, 3),
@@ -288,7 +344,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
               MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: GestureDetector(
-                  key: WK.followUpRow(patient.id),
                   behavior: HitTestBehavior.opaque,
                   onTap: openRecord,
                   child: ItemAvatar(item: patient, radius: 13),
@@ -315,10 +370,11 @@ class _FollowUpBandState extends State<FollowUpBand> {
                       ),
                       // What the promise is *for*: the clinic calls about the
                       // note, not about the word "tomorrow". A late one still
-                      // says so, beside the note it is late for.
+                      // says so, beside the note it is late for — and when there
+                      // is no note, the line itself is the one that says it.
                       Row(
                         children: [
-                          if (overdue)
+                          if (overdue && note.isNotEmpty)
                             Padding(
                               padding: const EdgeInsetsDirectional.only(end: 5),
                               child: Container(
@@ -399,7 +455,7 @@ class _FollowUpBandState extends State<FollowUpBand> {
   /// One patient's face in the folded band: hover says whose it is, a click
   /// opens their follow-up card (never a booking made behind their back), and on
   /// the timeline it can be dragged onto an hour.
-  Widget _face(FollowUpDue followUp) {
+  Widget _face(FollowUpDue followUp, {required bool overdue}) {
     final face = FollowUpCardTarget(
       key: WK.followUpAvatar(followUp.patient.id),
       patient: followUp.patient,
@@ -410,6 +466,7 @@ class _FollowUpBandState extends State<FollowUpBand> {
       builder: (context, open) => _FollowUpFace(
         patient: followUp.patient,
         date: followUp.date,
+        overdue: overdue,
         onTap: open,
       ),
     );
@@ -540,11 +597,13 @@ class _FollowUpFace extends StatefulWidget {
   const _FollowUpFace({
     required this.patient,
     required this.date,
+    required this.overdue,
     required this.onTap,
   });
 
   final Patient patient;
   final DateTime date;
+  final bool overdue;
   final VoidCallback onTap;
 
   @override
@@ -557,6 +616,7 @@ class _FollowUpFaceState extends State<_FollowUpFace> {
   @override
   Widget build(BuildContext context) {
     const accent = kFollowUpAccent;
+    final ringColor = widget.overdue ? Colors.red : accent;
     return Tooltip(
       message: widget.patient.followUpNote.isEmpty
           ? '${widget.patient.title} · ${followUpRelativeLabel(widget.date)}'
@@ -579,13 +639,13 @@ class _FollowUpFaceState extends State<_FollowUpFace> {
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: accent.withValues(alpha: _hovered ? 0.9 : 0.38),
+                  color: ringColor.withValues(alpha: _hovered ? 0.9 : 0.55),
                   width: _hovered ? 2 : 1.5,
                 ),
                 boxShadow: [
                   if (_hovered)
                     BoxShadow(
-                      color: accent.withValues(alpha: 0.35),
+                      color: ringColor.withValues(alpha: 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),

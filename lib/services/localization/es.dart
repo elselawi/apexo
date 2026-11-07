@@ -165,6 +165,8 @@ class Es implements En {
     "pause": "Pausa",
     "save": "Guardar",
     "savingFailed": "Error al guardar",
+    "followUpSavePermissionRequired": "Se necesita permiso de citas para guardar el seguimiento.",
+    "followUpSavePatientMissing": "El paciente del seguimiento ya no está disponible.",
     "reset": "Restablecer",
     "window": "Ventana",
     "colorMap": "Mapa de colores",

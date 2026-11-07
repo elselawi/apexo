@@ -168,6 +168,8 @@ class Tr implements En {
     "unsavedChanges": "Kaydedilmemiş değişiklikler",
     "save": "Kaydet",
     "savingFailed": "Kaydetme başarısız oldu",
+    "followUpSavePermissionRequired": "Takibi kaydetmek için randevu izni gerekir.",
+    "followUpSavePatientMissing": "Takip hastası artık mevcut değil.",
     "reset": "Sıfırla",
     "window": "Pencere",
     "colorMap": "Renk Haritası",

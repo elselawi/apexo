@@ -8,7 +8,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
-import 'package:fluent_ui/fluent_ui.dart' show Color;
+import 'package:fluent_ui/fluent_ui.dart' show ChangeNotifier, Color;
 
 /// Whether the clinic uses follow-ups at all — settings › optional features.
 ///
@@ -48,6 +48,17 @@ int calendarDaysBetween(DateTime from, DateTime to) =>
     DateTime.utc(to.year, to.month, to.day)
         .difference(DateTime.utc(from.year, from.month, from.day))
         .inDays;
+
+bool isFollowUpOverdue(DateTime day, {DateTime? asOf}) =>
+    calendarDaysBetween(asOf ?? DateTime.now(), day) < 0;
+
+/// The day a follow-up's visit is offered on: the promise's own day while it is
+/// still ahead, and today once it is late — a visit booked into the past keeps
+/// nothing, and the promise it was booked for would stay open.
+DateTime followUpBookingDay(DateTime followUpDay, {DateTime? asOf}) =>
+    isFollowUpOverdue(followUpDay, asOf: asOf)
+        ? dayOnly(asOf ?? DateTime.now())
+        : dayOnly(followUpDay);
 
 /// "Today", "Tomorrow", "in 12 days", "Overdue" — the words a follow-up chip,
 /// hover card and band all say, so one promise never reads two ways.
@@ -220,12 +231,62 @@ class FollowUpDue {
   final DateTime date;
 }
 
-/// Every follow-up due on [day] that still needs a visit, one per patient.
+/// A follow-up edit staged alongside another record's form.
+///
+/// The values remain patient-owned; [onChanged] lets the owning visit session
+/// include this draft in its dirty state and save action.
+class FollowUpDraft extends ChangeNotifier {
+  FollowUpDraft({this.onChanged});
+
+  final void Function()? onChanged;
+
+  String? patientID;
+  DateTime? day;
+  String note = '';
+  bool isDirty = false;
+
+  void stage({
+    required String patientID,
+    required DateTime? day,
+    required String note,
+  }) {
+    final normalizedDay = day == null ? null : dayOnly(day);
+    if (isDirty &&
+        this.patientID == patientID &&
+        this.day == normalizedDay &&
+        this.note == note) {
+      return;
+    }
+    this.patientID = patientID;
+    this.day = normalizedDay;
+    this.note = note;
+    isDirty = true;
+    onChanged?.call();
+    notifyListeners();
+  }
+
+  /// Drops the shared values, optionally only for the specified patient.
+  void clear({String? forPatientID}) {
+    if (forPatientID != null && patientID != forPatientID) return;
+    if (!isDirty && patientID == null && day == null && note.isEmpty) return;
+    patientID = null;
+    day = null;
+    note = '';
+    isDirty = false;
+    onChanged?.call();
+    notifyListeners();
+  }
+}
+
+/// Every follow-up due on [day], plus overdue follow-ups on today or a future
+/// day, that still needs a visit, one per patient.
 ///
 /// A patient who already has a visit that day is left out: the promise is being
 /// kept, and offering to book a second visit for them would book a duplicate.
 List<FollowUpDue> followUpsOn(DateTime day) {
   if (!followUpsEnabled) return const <FollowUpDue>[];
+  final today = dayOnly(DateTime.now());
+  final includeOverdue = !dayOnly(day).isBefore(today);
   final bookedPatients = <String>{};
   for (final visit in appointments.observableMap.docs.values) {
     if (visit.archived == true) continue;
@@ -238,7 +299,11 @@ List<FollowUpDue> followUpsOn(DateTime day) {
   for (final patient in patients.observableMap.docs.values) {
     if (patient.archived == true || patient.locked) continue;
     final followUp = patient.followUpDay;
-    if (followUp == null || !sameCalendarDay(followUp, day)) continue;
+    if (followUp == null ||
+        (!sameCalendarDay(followUp, day) &&
+            !(includeOverdue && followUp.isBefore(today)))) {
+      continue;
+    }
     if (bookedPatients.contains(patient.id)) continue;
     due.add(FollowUpDue(patient: patient, date: followUp));
   }

@@ -67,6 +67,7 @@ void main() {
     WidgetTester tester, {
     required void Function(Appointment) onSave,
     String? patientID,
+    String initialPreOpNotes = '',
   }) async {
     await pumpApexoApp(
       tester,
@@ -79,6 +80,7 @@ void main() {
               onSave: onSave,
               day: bareDay,
               patientID: patientID,
+              initialPreOpNotes: initialPreOpNotes,
             ),
           ),
           child: const Text('open'),
@@ -135,6 +137,28 @@ void main() {
     expect(find.byKey(WK.fieldNewAppointmentPatient), findsNothing);
   });
 
+  testWidgets('initial pre-op notes appear in the field and are saved',
+      (tester) async {
+    Appointment? created;
+    await openSheet(
+      tester,
+      patientID: patient.id,
+      initialPreOpNotes: 'Crown preparation',
+      onSave: (appointment) => created = appointment,
+    );
+
+    final notes = tester.widget<EditableText>(find.descendant(
+      of: find.byKey(WK.fieldNewAppointmentNotes),
+      matching: find.byType(EditableText),
+    ));
+    expect(notes.controller.text, 'Crown preparation');
+
+    await tester.tap(find.byKey(WK.btnCreateAppointment));
+    await tester.pumpAndSettle();
+
+    expect(created!.preOpNotes, 'Crown preparation');
+  });
+
   testWidgets('a visit already booked that day does not move the start',
       (tester) async {
     appointments.set(testAppointment(
@@ -183,10 +207,12 @@ void main() {
     tester.widget<DurationPill>(find.byType(DurationPill)).onSet(30);
     await tester.pump();
     final tomorrow = DateTime(day.year, day.month, day.day + 1);
-    tester.widget<DateTimePicker>(find.descendant(
-      of: find.byKey(WK.fieldNewAppointmentDate),
-      matching: find.byType(DateTimePicker),
-    )).onChange(tomorrow);
+    tester
+        .widget<DateTimePicker>(find.descendant(
+          of: find.byKey(WK.fieldNewAppointmentDate),
+          matching: find.byType(DateTimePicker),
+        ))
+        .onChange(tomorrow);
     await tester.pump();
     await tester.tap(find.byKey(WK.btnCreateAppointment));
     await tester.pumpAndSettle();

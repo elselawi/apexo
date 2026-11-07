@@ -417,7 +417,7 @@ class _VisitBandState extends State<_VisitBand> {
               if (dirty)
                 FilledButton(
                   key: WK.visitSave,
-                  onPressed: () => unawaited(session.save()),
+                  onPressed: () => unawaited(_saveVisit()),
                   child: ButtonContent(
                     WindowsIcons.save,
                     txt(session.saveLabel),
@@ -429,6 +429,15 @@ class _VisitBandState extends State<_VisitBand> {
         ],
       ),
     );
+  }
+
+  Future<void> _saveVisit() async {
+    try {
+      await widget.session.save();
+    } catch (e, st) {
+      logger('Saving "${widget.session.itemId}" failed', st);
+      showErrorMessage(e, 'savingFailed');
+    }
   }
 
   Future<void> _archiveOrRestore(bool archived) async {

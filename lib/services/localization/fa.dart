@@ -163,6 +163,8 @@ class Fa implements En {
     "pause": "مکث",
     "save": "ذخیره",
     "savingFailed": "ذخیره ناموفق بود",
+    "followUpSavePermissionRequired": "برای ذخیره پیگیری به مجوز نوبت‌ها نیاز است.",
+    "followUpSavePatientMissing": "بیمار پیگیری دیگر در دسترس نیست.",
     "reset": "بازنشانی",
     "window": "پنجره",
     "colorMap": "نقشه رنگ",

@@ -11,6 +11,8 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/appointments/appointment_windows.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
+import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
 import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
@@ -91,6 +93,11 @@ final class AppointmentSession implements HostedRecordSession {
   /// `toJson` hands out live maps, and a baseline that shared them would follow
   /// every edit and never report one.
   Map<String, dynamic> _baseline;
+
+  /// Follow-up changes staged inside the operative form. They remain patient
+  /// data, but the visit's Save owns the action while that form is open.
+  late final FollowUpDraft followUpDraft =
+      FollowUpDraft(onChanged: refreshDirty);
 
   @override
   final ObservableState<bool> inProgress = ObservableState(false);
@@ -205,10 +212,10 @@ final class AppointmentSession implements HostedRecordSession {
   @override
   bool get showBottomControls => true;
 
-  /// Whether the draft differs from what was last written — the visit's fields
-  /// **and** its teeth, because the chart edits the same draft.
+  /// Whether the visit draft, its teeth, or its staged patient follow-up changed.
   @override
-  bool get hasPendingEdits => _encode(item.toJson()) != _encode(_baseline);
+  bool get hasPendingEdits =>
+      followUpDraft.isDirty || _encode(item.toJson()) != _encode(_baseline);
 
   @override
   Future<void> get result => _result.future;
@@ -235,6 +242,24 @@ final class AppointmentSession implements HostedRecordSession {
     if (inProgress()) return;
     inProgress(true);
     try {
+      final pendingFollowUp = followUpDraft;
+      if (pendingFollowUp.isDirty) {
+        final patientID = pendingFollowUp.patientID;
+        if (!login.perm(Perm.appointments).some) {
+          throw StateError(txt('followUpSavePermissionRequired'));
+        }
+        if (patientID == null ||
+            patientID.isEmpty ||
+            patients.get(patientID) == null) {
+          throw StateError(txt('followUpSavePatientMissing'));
+        }
+        setFollowUp(
+          patientID,
+          pendingFollowUp.day,
+          note: pendingFollowUp.note,
+        );
+        pendingFollowUp.clear();
+      }
       final stored = appointments.get(item.id);
       final json = stored == null
           ? _detached(item.toJson())

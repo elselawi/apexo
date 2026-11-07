@@ -191,6 +191,7 @@ class WK {
 
   /// The day's follow-up band as a sheet: the band's own handle that unfolds it.
   static const followUpsBandToggle = Key("followUpsBandToggle");
+  static const followUpsOverdueDivider = Key("followUpsOverdueDivider");
 
   /// The patient's own follow-up row, under the band of the visit they may have
   /// open: the row itself and the button that gives a patient a follow-up.

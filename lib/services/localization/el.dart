@@ -165,6 +165,8 @@ class El implements En {
     "pause": "Παύση",
     "save": "Αποθήκευση",
     "savingFailed": "Η αποθήκευση απέτυχε",
+    "followUpSavePermissionRequired": "Απαιτείται άδεια ραντεβού για την αποθήκευση της παρακολούθησης.",
+    "followUpSavePatientMissing": "Ο ασθενής της παρακολούθησης δεν είναι πλέον διαθέσιμος.",
     "reset": "Επαναφορά",
     "window": "Παράθυρο",
     "colorMap": "Χάρτης χρωμάτων",

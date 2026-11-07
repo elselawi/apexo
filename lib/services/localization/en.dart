@@ -164,6 +164,8 @@ class En {
     "pause": "Pause",
     "save": "Save",
     "savingFailed": "Saving failed",
+    "followUpSavePermissionRequired": "Appointment permission is required to save the follow-up.",
+    "followUpSavePatientMissing": "The follow-up patient is no longer available.",
     "reset": "Reset",
     "window": "Window",
     "colorMap": "Color Map",

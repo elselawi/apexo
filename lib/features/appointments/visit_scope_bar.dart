@@ -464,8 +464,9 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
                         ? () async {
                             final created = await addAppointment(
                               context,
-                              day: followUp,
+                              day: followUpBookingDay(followUp),
                               patientID: patient.id,
+                              initialPreOpNotes: patient.followUpNote,
                             );
                             if (created == null || !mounted) return;
                             await openAppointment(

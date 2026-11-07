@@ -3,7 +3,10 @@ library;
 
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointment_sessions.dart';
+import 'package:apexo/features/appointments/appointment_session.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/appointment_windows.dart';
+import 'package:apexo/features/appointments/calendar_widget.dart';
 import 'package:apexo/features/appointments/events_agenda_widget.dart';
 import 'package:apexo/features/appointments/events_timeline_widget.dart';
 import 'package:apexo/features/appointments/follow_up_band.dart';
@@ -24,6 +27,7 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
@@ -144,6 +148,270 @@ void main() {
     expect(find.byIcon(WindowsIcons.subscription_add), findsNothing);
   });
 
+  testWidgets('the day band separates overdue follow-ups from that day',
+      (tester) async {
+    final today = dayOnly(DateTime.now());
+    final selectedDay = today.add(const Duration(days: 3));
+    final overdue = testPatient(id: 'overdue-patient', name: 'Overdue Patient');
+    final due = testPatient(id: 'due-patient', name: 'Due Patient');
+    patients.setAll([overdue, due]);
+    setFollowUp(overdue.id, today.subtract(const Duration(days: 2)));
+    setFollowUp(due.id, selectedDay);
+
+    final followUps = followUpsOn(selectedDay);
+    expect(
+      followUps.map((followUp) => followUp.patient.id),
+      containsAll([overdue.id, due.id]),
+    );
+
+    await pumpApexoApp(
+      tester,
+      Center(
+        child: SizedBox(
+          width: 700,
+          child: FollowUpBand(followUps: followUps),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(WK.followUpsBandToggle));
+    await tester.pumpAndSettle();
+
+    final divider = find.byKey(WK.followUpsOverdueDivider);
+    final dueRow = find.byKey(WK.followUpRow(due.id));
+    final overdueRow = find.byKey(WK.followUpRow(overdue.id));
+    expect(divider, findsOneWidget);
+    expect(
+      tester.getTopLeft(dueRow).dy,
+      lessThan(tester.getTopLeft(divider).dy),
+    );
+    expect(
+      tester.getTopLeft(overdueRow).dy,
+      greaterThan(tester.getTopLeft(divider).dy),
+    );
+  });
+
+  testWidgets('operative Save also persists its staged follow-up',
+      (tester) async {
+    final patient = testPatient(id: 'operative-follow-up');
+    patients.set(patient);
+    final visit = testAppointment(
+      id: 'operative-follow-up-visit',
+      patientID: patient.id,
+    );
+    appointments.set(visit);
+    final session = AppointmentSession(visit);
+    addTearDown(session.dispose);
+
+    await pumpApexoApp(
+      tester,
+      Center(
+        child: SizedBox(
+          width: 700,
+          child: AppointmentOperativeForm(
+            session.item,
+            followUpDraft: session.followUpDraft,
+            onEdited: session.refreshDirty,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(WK.followUpPreset('1w')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WK.fieldFollowUpNote), 'Crown recheck');
+    await tester.pumpAndSettle();
+
+    expect(session.hasUnsavedChanges(), isTrue);
+    expect(patients.get(patient.id)!.followUpDay, isNull);
+    expect(patients.get(patient.id)!.followUpNote, isEmpty);
+
+    await session.save();
+    await tester.pumpAndSettle();
+
+    expect(
+      patients.get(patient.id)!.followUpDay,
+      kFollowUpPresets.first.from(dayOnly(visit.date)),
+    );
+    expect(patients.get(patient.id)!.followUpNote, 'Crown recheck');
+    expect(session.hasUnsavedChanges(), isFalse);
+    expect(find.byKey(WK.followUpSave), findsNothing);
+  });
+
+  testWidgets('a row with nothing of its own keeps the other row\'s draft',
+      (tester) async {
+    final patient = testPatient(id: 'two-rows');
+    patients.set(patient);
+    // The same visit's draft, held by two rows: the operative window and the
+    // chart's post-op card can be on screen together.
+    final draft = FollowUpDraft();
+    Widget row() => SizedBox(
+          width: 400,
+          child: FollowUpField(
+            patientID: patient.id,
+            anchor: DateTime.now(),
+            draft: draft,
+          ),
+        );
+
+    await pumpApexoApp(
+      tester,
+      Center(child: Column(children: [row(), row()])),
+    );
+
+    await tester.tap(find.byKey(WK.followUpPreset('1w')).first);
+    await tester.pumpAndSettle();
+    expect(draft.isDirty, isTrue);
+
+    // The promise changes under both rows: a sync, another window, the phone.
+    setFollowUp(
+      patient.id,
+      dayOnly(DateTime.now()).add(const Duration(days: 30)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(draft.isDirty, isTrue,
+        reason: 'a row that changed nothing must not take the draft back');
+  });
+
+  testWidgets('both visit rows share edits and cancel the same draft',
+      (tester) async {
+    final patient = testPatient(id: 'shared-follow-up');
+    patients.set(patient);
+    final originalDay = DateTime(2026, 1, 1);
+    final chosenDay = DateTime(2026, 2, 1);
+    setFollowUp(patient.id, originalDay, note: 'Original');
+    final visit = testAppointment(id: 'shared-visit', patientID: patient.id);
+    appointments.set(visit);
+    final session = AppointmentSession(visit);
+    addTearDown(session.dispose);
+
+    Widget row() => SizedBox(
+          width: 400,
+          child: FollowUpField(
+            patientID: patient.id,
+            anchor: visit.date,
+            draft: session.followUpDraft,
+          ),
+        );
+    await pumpApexoApp(tester, Center(child: Column(children: [row(), row()])));
+    tester
+        .widget<DateTimePicker>(
+            find.byKey(WK.fieldAppointmentFollowUpDate).first)
+        .onChange(chosenDay);
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<DateTimePicker>(
+              find.byKey(WK.fieldAppointmentFollowUpDate).last)
+          .initValue,
+      chosenDay,
+    );
+    await tester.enterText(find.byKey(WK.fieldFollowUpNote).last, 'Review');
+    await tester.pumpAndSettle();
+    await session.save();
+    await tester.pumpAndSettle();
+    expect(patients.get(patient.id)!.followUpDay, chosenDay);
+    expect(patients.get(patient.id)!.followUpNote, 'Review');
+    expect(session.hasPendingEdits, isFalse);
+
+    await tester.enterText(find.byKey(WK.fieldFollowUpNote).first, 'Cancelled');
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(WK.followUpCancel).last);
+    await tester.pumpAndSettle();
+    expect(session.hasPendingEdits, isFalse);
+    expect(session.followUpDraft.isDirty, isFalse);
+    for (final field in tester.widgetList<EditableText>(find.descendant(
+      of: find.byKey(WK.fieldFollowUpNote),
+      matching: find.byType(EditableText),
+    ))) {
+      expect(field.controller.text, 'Review');
+    }
+  });
+
+  testWidgets('booking an overdue follow-up from a past day starts today',
+      (tester) async {
+    final today = dayOnly(DateTime.now());
+    final dueDay = DateTime(today.year, today.month, today.day - 2);
+    final patient = testPatient(id: 'past-calendar-follow-up');
+    patients.set(patient);
+    setFollowUp(patient.id, dueDay);
+    DateTime? bookedAt;
+
+    await pumpApexoApp(
+      tester,
+      SizedBox(
+        width: 900,
+        height: 650,
+        child: WeekAgendaCalendar<Appointment>(
+          items: const [],
+          startDay: StartingDayOfWeek.monday,
+          initiallySelectedDay: dueDay.millisecondsSinceEpoch,
+          onAddNew: (_) {},
+          onSetTime: (_) {},
+          onSelect: (_, __) {},
+          followUpsOnDay: followUpsOn,
+          onBookFollowUp: (_, {at}) => bookedAt = at,
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(WK.followUpsBandToggle));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(WindowsIcons.subscription_add));
+    expect(bookedAt, today);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('a newly opened visit row restores the shared follow-up draft',
+      (tester) async {
+    final patient = testPatient(id: 'reopened-follow-up');
+    patients.set(patient);
+    final draft = FollowUpDraft();
+    final showSecond = ValueNotifier(false);
+    addTearDown(showSecond.dispose);
+    final anchor = DateTime(2026, 3, 10);
+
+    Widget row() => SizedBox(
+          width: 400,
+          child: FollowUpField(
+            patientID: patient.id,
+            anchor: anchor,
+            draft: draft,
+          ),
+        );
+    await pumpApexoApp(
+      tester,
+      Center(
+        child: ValueListenableBuilder<bool>(
+          valueListenable: showSecond,
+          builder: (_, visible, __) =>
+              Column(children: [row(), if (visible) row()]),
+        ),
+      ),
+    );
+    await tester.tap(find.byKey(WK.followUpPreset('1w')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(WK.fieldFollowUpNote), 'Bring X-ray');
+    await tester.pumpAndSettle();
+    showSecond.value = true;
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(WK.fieldFollowUpNote), findsNWidgets(2));
+    for (final field in tester.widgetList<EditableText>(find.descendant(
+      of: find.byKey(WK.fieldFollowUpNote),
+      matching: find.byType(EditableText),
+    ))) {
+      expect(field.controller.text, 'Bring X-ray');
+    }
+    expect(
+      tester
+          .widget<DateTimePicker>(
+              find.byKey(WK.fieldAppointmentFollowUpDate).last)
+          .initValue,
+      kFollowUpPresets.first.from(anchor),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('history books the live follow-up rather than its stale draft',
       (tester) async {
     final stalePatient = testPatient(id: 'stale-history');
@@ -159,7 +427,11 @@ void main() {
               SingleChildScrollView(child: PatientAppointments(stalePatient)),
         )));
 
-    setFollowUp(stalePatient.id, DateTime(2026, 4, 12));
+    setFollowUp(
+      stalePatient.id,
+      dayOnly(DateTime.now()).add(const Duration(days: 40)),
+      note: 'Crown preparation',
+    );
     await tester.pumpAndSettle();
     expect(stalePatient.followUpDay, isNull);
     await tester.tap(find.byKey(WK.bookFollowUp));
@@ -167,8 +439,39 @@ void main() {
 
     final dialog =
         tester.widget<NewAppointmentDialog>(find.byType(NewAppointmentDialog));
-    expect(dialog.day, DateTime(2026, 4, 12));
+    expect(dialog.day, dayOnly(DateTime.now()).add(const Duration(days: 40)));
     expect(dialog.patientID, stalePatient.id);
+    expect(dialog.initialPreOpNotes, 'Crown preparation');
+    await tester.tap(find.byIcon(WindowsIcons.cancel));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('a late promise is booked from today, not from its own day',
+      (tester) async {
+    final patient = testPatient(id: 'late-booking');
+    patients.set(patient);
+    appointments.set(testAppointment(patientID: patient.id, isDone: true));
+
+    await pumpApexoApp(
+        tester,
+        Center(
+            child: SizedBox(
+          width: 620,
+          height: 600,
+          child: SingleChildScrollView(child: PatientAppointments(patient)),
+        )));
+
+    final late = dayOnly(DateTime.now()).subtract(const Duration(days: 9));
+    setFollowUp(patient.id, late);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(WK.bookFollowUp));
+    await tester.pumpAndSettle();
+
+    final dialog =
+        tester.widget<NewAppointmentDialog>(find.byType(NewAppointmentDialog));
+    expect(dialog.day, dayOnly(DateTime.now()),
+        reason: 'a visit booked into the past keeps nothing');
     await tester.tap(find.byIcon(WindowsIcons.cancel));
     await tester.pumpAndSettle();
   });
@@ -799,7 +1102,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Review the crown'), findsOneWidget);
-    expect(find.text(txt('overdue')), findsOneWidget,
+    expect(
+        find.descendant(
+          of: find.byKey(WK.followUpRow(patient.id)),
+          matching: find.text(txt('overdue')),
+        ),
+        findsOneWidget,
         reason: 'late is still said, next to what is late');
   });
 

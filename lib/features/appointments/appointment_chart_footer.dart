@@ -137,6 +137,7 @@ class AppointmentChartFooter extends StatelessWidget {
                                   key: ValueKey(
                                       'visit-operative-${appointment.id}'),
                                   appointment,
+                                  followUpDraft: visitSession?.followUpDraft,
                                   onEdited: visitSession?.refreshDirty,
                                 ),
                               ),

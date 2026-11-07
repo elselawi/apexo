@@ -163,6 +163,8 @@ class Fr implements En {
     "unsavedChanges": "Modifications non enregistrées",
     "save": "Enregistrer",
     "savingFailed": "Échec de l'enregistrement",
+    "followUpSavePermissionRequired": "L'autorisation de gérer les rendez-vous est nécessaire pour enregistrer le suivi.",
+    "followUpSavePatientMissing": "Le patient du suivi n'est plus disponible.",
     "reset": "Réinitialiser",
     "window": "Fenêtre",
     "colorMap": "Palette de couleurs",

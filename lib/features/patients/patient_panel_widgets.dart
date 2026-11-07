@@ -283,16 +283,19 @@ class PatientAppointments extends StatelessWidget {
         });
   }
 
-  /// Books a visit on the patient's follow-up day, with the patient already
+  /// Books a visit for the patient's follow-up, with the patient already
   /// chosen — the same sheet "add appointment" opens, minus the two questions
-  /// the promise already answered.
+  /// the promise already answered. A promise that is late is booked from today:
+  /// its own day is in the past.
   Future<void> _bookFollowUp(BuildContext context) async {
+    final currentPatient = patients.get(patient.id);
     final day = patientFollowUpDay(patient.id);
     if (day == null) return;
     final created = await addAppointment(
       context,
-      day: day,
+      day: followUpBookingDay(day),
       patientID: patient.id,
+      initialPreOpNotes: currentPatient?.followUpNote ?? '',
     );
     if (created == null) return;
     await openAppointment(created);

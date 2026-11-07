@@ -173,6 +173,7 @@ List<PanelWindow> appointmentSessionWindows(
             saveLabel: 'saveVisit',
             body: AppointmentOperativeForm(
               appointment,
+              followUpDraft: session.followUpDraft,
               onEdited: session.refreshDirty,
             ),
             // The operative details' own delete, in the window's footer beside
@@ -753,9 +754,17 @@ class _AppointmentDetailsFormState extends State<AppointmentDetailsForm> {
 /// them. Typing in it still completes the visit, exactly as it always did — the
 /// band says so at once (plan §8.1).
 class AppointmentOperativeForm extends StatefulWidget {
-  const AppointmentOperativeForm(this.appointment, {super.key, this.onEdited});
+  const AppointmentOperativeForm(
+    this.appointment, {
+    super.key,
+    this.followUpDraft,
+    this.onEdited,
+  });
 
   final Appointment appointment;
+
+  /// The visit session's patient-owned follow-up draft.
+  final FollowUpDraft? followUpDraft;
 
   /// Tells the visit's session that its draft changed, so the window's Save and
   /// the band's unsaved mark light up while the user types.
@@ -1121,6 +1130,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
                 child: FollowUpField(
                   patientID: appointment.patientID!,
                   anchor: appointment.date,
+                  draft: widget.followUpDraft,
                   onChanged: widget.onEdited,
                 ),
               );

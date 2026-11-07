@@ -79,6 +79,7 @@ class CalendarScreen extends StatelessWidget {
                 context,
                 day: at ?? followUp.date,
                 patientID: followUp.patient.id,
+                initialPreOpNotes: followUp.patient.followUpNote,
               );
               if (created == null) return;
               await openAppointment(created);

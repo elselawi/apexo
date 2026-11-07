@@ -163,6 +163,8 @@ class Ku implements En {
     "unsavedChanges": "گۆڕانکاری پاشەکەوتنەکراو",
     "save": "پاشەکەوتکردن",
     "savingFailed": "پاشەکەوتکردن سەرکەوتوو نەبوو",
+    "followUpSavePermissionRequired": "بۆ پاشەکەوتکردنی بەدواداچوون، دەسەڵاتی وادەکان پێویستە.",
+    "followUpSavePatientMissing": "نەخۆشی بەدواداچوونەکە چیتر بەردەست نییە.",
     "reset": "ڕێکخستنەوە",
     "window": "پەنجەرە",
     "colorMap": "نەخشەی ڕەنگ",

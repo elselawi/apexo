@@ -168,6 +168,8 @@ class It implements En {
     "unsavedChanges": "Modifiche non salvate",
     "save": "Salva",
     "savingFailed": "Salvataggio non riuscito",
+    "followUpSavePermissionRequired": "Per salvare il controllo è necessaria l'autorizzazione agli appuntamenti.",
+    "followUpSavePatientMissing": "Il paziente del controllo non è più disponibile.",
     "reset": "Reimposta",
     "window": "Finestra",
     "colorMap": "Mappa colori",

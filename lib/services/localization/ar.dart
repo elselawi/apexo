@@ -163,6 +163,8 @@ class Ar implements En {
     "pause": "إيقاف مؤقت",
     "save": "حفظ",
     "savingFailed": "فشل الحفظ",
+    "followUpSavePermissionRequired": "يلزم إذن المواعيد لحفظ المتابعة.",
+    "followUpSavePatientMissing": "مريض المتابعة لم يعد متاحًا.",
     "reset": "إعادة تعيين",
     "window": "النافذة",
     "colorMap": "خريطة الألوان",

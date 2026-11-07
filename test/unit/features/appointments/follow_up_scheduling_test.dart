@@ -3,6 +3,7 @@ library;
 
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/appointment_sessions.dart';
+import 'package:apexo/features/appointments/appointment_session.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -10,6 +11,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart'
     show globalSettings;
 import 'package:apexo/services/login.dart';
+import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
@@ -360,35 +362,138 @@ void main() {
   });
 
   group('the day\'s follow-ups', () {
-    test('are the patients whose promise falls on that day', () {
-      setFollowUp('follow-patient', DateTime(2026, 2, 1));
-      setFollowUp('other-patient', DateTime(2026, 2, 1));
-      patients.set(testPatient(id: 'elsewhere', name: 'Elsewhere'));
-      setFollowUp('elsewhere', DateTime(2026, 2, 2));
+    // The day's inbox is read against today: a promise has two readings — the
+    // day it is for, and how late it is — so these dates are relative.
+    final today = dayOnly(DateTime.now());
 
-      final due = followUpsOn(DateTime(2026, 2, 1, 15));
+    test('are the patients whose promise falls on that day', () {
+      setFollowUp('follow-patient', today);
+      setFollowUp('other-patient', today);
+      patients.set(testPatient(id: 'elsewhere', name: 'Elsewhere'));
+      setFollowUp('elsewhere', today.add(const Duration(days: 1)));
+
+      final due = followUpsOn(today.add(const Duration(hours: 15)));
 
       expect(due.map((d) => d.patient.id),
           containsAll(['follow-patient', 'other-patient']));
-      expect(due.any((d) => d.patient.id == 'elsewhere'), isFalse);
+      expect(due.any((d) => d.patient.id == 'elsewhere'), isFalse,
+          reason: 'a promise for tomorrow is not today\'s inbox');
+    });
+
+    test('keep a late promise in every day\'s inbox', () {
+      setFollowUp('follow-patient', today.subtract(const Duration(days: 4)));
+      patients.set(testPatient(id: 'ahead', name: 'Ahead'));
+      setFollowUp('ahead', today.add(const Duration(days: 6)));
+
+      final due = followUpsOn(today.add(const Duration(days: 3)));
+
+      expect(due.map((d) => d.patient.id), contains('follow-patient'),
+          reason: 'a promise nobody kept is not lost by turning the page');
+      expect(due.any((d) => d.patient.id == 'ahead'), isFalse);
+    });
+
+    test('a past day shows only the promises due on that day', () {
+      final dueDay = DateTime(today.year, today.month, today.day - 4);
+      final earlierDay = DateTime(today.year, today.month, today.day - 5);
+      final laterDay = DateTime(today.year, today.month, today.day - 3);
+      setFollowUp('follow-patient', dueDay);
+      setFollowUp('other-patient', laterDay);
+
+      expect(followUpsOn(earlierDay), isEmpty);
+      expect(
+          followUpsOn(dueDay).map((due) => due.patient.id), ['follow-patient']);
+      expect(followUpsOn(laterDay).map((due) => due.patient.id),
+          ['other-patient']);
+      expect(followUpsOn(today).map((due) => due.patient.id),
+          containsAll(['follow-patient', 'other-patient']));
     });
 
     test('skip a patient who is already booked that day', () {
-      setFollowUp('follow-patient', DateTime(2026, 2, 1));
+      setFollowUp('follow-patient', today);
       appointments.set(testAppointment(
         id: 'booked',
         patientID: 'follow-patient',
-        date: DateTime(2026, 2, 1, 9),
+        date: today.add(const Duration(hours: 9)),
       ));
 
-      expect(followUpsOn(DateTime(2026, 2, 1)), isEmpty);
+      expect(followUpsOn(today), isEmpty);
+    });
+
+    group('saving a visit with a staged follow-up', () {
+      late AppointmentSession session;
+      final day = DateTime(2026, 5, 1);
+
+      setUp(() {
+        final visit = testAppointment(
+          id: 'follow-up-save',
+          patientID: 'follow-patient',
+        );
+        appointments.set(visit);
+        session = AppointmentSession(visit);
+        session.item.preOpNotes = 'Visit edit';
+        session.followUpDraft.stage(
+          patientID: 'follow-patient',
+          day: day,
+          note: 'Follow-up edit',
+        );
+      });
+
+      tearDown(() => session.dispose());
+
+      test('retains the draft when permission is lost and saves on retry',
+          () async {
+        login.savedPermissions = List<int>.from(Perm.full)
+          ..[Perm.appointments] = 0;
+        await expectLater(
+          session.save(),
+          throwsA(isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            txt('followUpSavePermissionRequired'),
+          )),
+        );
+        expect(session.hasPendingEdits, isTrue);
+        expect(session.followUpDraft.note, 'Follow-up edit');
+        expect(patients.get('follow-patient')!.followUpDay, isNull);
+        expect(appointments.get('follow-up-save')!.preOpNotes,
+            isNot('Visit edit'));
+
+        login.savedPermissions = Perm.full;
+        await session.save();
+        expect(patients.get('follow-patient')!.followUpDay, day);
+        expect(patients.get('follow-patient')!.followUpNote, 'Follow-up edit');
+        expect(appointments.get('follow-up-save')!.preOpNotes, 'Visit edit');
+        expect(session.hasPendingEdits, isFalse);
+      });
+
+      test('retains the draft when the patient is missing and saves on retry',
+          () async {
+        final patient = patients.get('follow-patient')!;
+        patients.observableMap.remove(patient.id);
+        await expectLater(
+          session.save(),
+          throwsA(isA<StateError>().having(
+            (error) => error.message,
+            'message',
+            txt('followUpSavePatientMissing'),
+          )),
+        );
+        expect(session.hasPendingEdits, isTrue);
+        expect(session.followUpDraft.note, 'Follow-up edit');
+
+        patients.set(patient);
+        await session.save();
+        expect(patients.get(patient.id)!.followUpDay, day);
+        expect(patients.get(patient.id)!.followUpNote, 'Follow-up edit');
+        expect(session.hasPendingEdits, isFalse);
+      });
     });
 
     test('ignore archived patients', () {
-      setFollowUp('follow-patient', DateTime(2026, 2, 1));
+      setFollowUp('follow-patient', today);
       patients.archive('follow-patient');
 
-      expect(followUpsOn(DateTime(2026, 2, 1)), isEmpty);
+      expect(followUpsOn(today), isEmpty);
     });
   });
 

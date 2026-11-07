@@ -39,6 +39,7 @@ class FollowUpField extends StatefulWidget {
     super.key,
     required this.patientID,
     required this.anchor,
+    this.draft,
     this.onChanged,
     this.enabled = true,
     this.onCollapse,
@@ -53,6 +54,10 @@ class FollowUpField extends StatefulWidget {
   /// written the same day but not always. On the patient's own record it is
   /// today, because there is no visit to count from.
   final DateTime anchor;
+
+  /// An optional draft owned by the surrounding visit session, so its Save can
+  /// keep the patient-owned follow-up with the rest of the form.
+  final FollowUpDraft? draft;
 
   /// Called after a write or a dropped draft, for a surface that has something
   /// of its own to say about it (the visit's dirty state, a band that folds).
@@ -110,6 +115,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
   void initState() {
     super.initState();
     _pull(notify: false);
+    widget.draft?.addListener(_onDraftChanged);
     _note.addListener(_onNoteTyped);
     // The promise can also change without this row: the day's band, the history
     // card, another window, a record synchronized down from the server.
@@ -121,7 +127,9 @@ class _FollowUpFieldState extends State<FollowUpField> {
   @override
   void didUpdateWidget(covariant FollowUpField oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.patientID != widget.patientID) {
+    if (oldWidget.patientID != widget.patientID ||
+        oldWidget.draft != widget.draft) {
+      oldWidget.draft?.removeListener(_onDraftChanged);
       _loaded = false;
       _savedDay = null;
       _savedNote = '';
@@ -129,11 +137,13 @@ class _FollowUpFieldState extends State<FollowUpField> {
       _setNoteText('');
       // A rebuild is already on its way; asking for another one is not.
       _pull(notify: false);
+      widget.draft?.addListener(_onDraftChanged);
     }
   }
 
   @override
   void dispose() {
+    widget.draft?.removeListener(_onDraftChanged);
     for (final subscription in _subscriptions) {
       unawaited(subscription.cancel());
     }
@@ -156,14 +166,24 @@ class _FollowUpFieldState extends State<FollowUpField> {
     // Whether the user has work in the draft is measured against the baseline
     // this pull is about to replace, not the one it brings: a clean draft
     // follows the store, a draft in flight keeps what was typed into it.
+    final pendingDraft = widget.draft;
+    final restoreDraft = !_loaded &&
+        pendingDraft?.isDirty == true &&
+        pendingDraft?.patientID == widget.patientID;
     final dirty = _dirty;
     _savedDay = day;
     _savedNote = note;
     if (!_loaded || !dirty) {
-      _day = day;
-      _setNoteText(note);
+      if (restoreDraft) {
+        _day = pendingDraft!.day;
+        _setNoteText(pendingDraft.note);
+      } else {
+        _day = day;
+        _setNoteText(note);
+      }
     }
     _loaded = true;
+    _syncDraft();
     if (notify && mounted) setState(() {});
   }
 
@@ -177,6 +197,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
       _day = _savedDay;
       _setNoteText(_savedNote);
     });
+    _syncDraft();
   }
 
   void _setNoteText(String text) {
@@ -192,6 +213,30 @@ class _FollowUpFieldState extends State<FollowUpField> {
   void _onNoteTyped() {
     if (_writingNote || !mounted) return;
     setState(() {});
+    _syncDraft();
+  }
+
+  void _onDraftChanged() {
+    final draft = widget.draft;
+    if (draft == null || !mounted) return;
+    if (draft.isDirty && draft.patientID != widget.patientID) return;
+    final patient = patients.get(widget.patientID);
+    final day = draft.isDirty ? draft.day : patient?.followUpDay;
+    final note = draft.isDirty ? draft.note : patient?.followUpNote ?? '';
+    final savedDay = draft.isDirty ? _savedDay : patient?.followUpDay;
+    final savedNote = draft.isDirty ? _savedNote : patient?.followUpNote ?? '';
+    if (_day == day &&
+        _note.text == note &&
+        _savedDay == savedDay &&
+        _savedNote == savedNote) {
+      return;
+    }
+    setState(() {
+      _savedDay = savedDay;
+      _savedNote = savedNote;
+      _day = day;
+      _setNoteText(note);
+    });
   }
 
   void _save() {
@@ -207,6 +252,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
       _day = _savedDay;
       _setNoteText(_savedNote);
     });
+    _syncDraft();
     widget.onChanged?.call();
   }
 
@@ -226,7 +272,26 @@ class _FollowUpFieldState extends State<FollowUpField> {
       firstDate: DateTime(from.year - 1),
       lastDate: DateTime(from.year + 10),
     );
-    if (picked != null && mounted) setState(() => _day = dayOnly(picked));
+    if (picked != null && mounted) _setDay(picked);
+  }
+
+  void _setDay(DateTime day) {
+    setState(() => _day = dayOnly(day));
+    _syncDraft();
+  }
+
+  void _syncDraft() {
+    final draft = widget.draft;
+    if (draft == null) return;
+    if (_dirty) {
+      draft.stage(
+        patientID: widget.patientID,
+        day: _day,
+        note: _note.text,
+      );
+    } else {
+      draft.clear(forPatientID: widget.patientID);
+    }
   }
 
   /// A preset's own day, in the user's language and calendar — the tooltip that
@@ -373,8 +438,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
                           fontWeight: FontWeight.w600,
                           color: dark ? Colors.white : accent,
                         ),
-                        onChange: (picked) =>
-                            setState(() => _day = dayOnly(picked)),
+                        onChange: _setDay,
                       ),
                     ),
                   ),
@@ -411,8 +475,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
                                 key: WK.followUpPreset(preset.label),
                                 label: long ? preset.longLabel : preset.label,
                                 onPressed: _enabled
-                                    ? () => setState(
-                                        () => _day = preset.from(anchor))
+                                    ? () => _setDay(preset.from(anchor))
                                     : null,
                               ),
                             ),

@@ -168,6 +168,8 @@ class Ur implements En {
     "unsavedChanges": "غیر محفوظ شدہ تبدیلیاں",
     "save": "محفوظ کریں",
     "savingFailed": "محفوظ کرنے میں ناکامی",
+    "followUpSavePermissionRequired": "فالو اپ محفوظ کرنے کے لیے اپائنٹمنٹس کی اجازت درکار ہے۔",
+    "followUpSavePatientMissing": "فالو اپ کا مریض اب دستیاب نہیں ہے۔",
     "reset": "ری سیٹ کریں",
     "window": "ونڈو",
     "colorMap": "رنگوں کا نقشہ",

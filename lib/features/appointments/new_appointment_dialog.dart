@@ -26,7 +26,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 ///
 /// The fields the sheet does not invent come from the caller: [day] says which
 /// day the caller came from, and a bare day starts at the time of day it is
-/// now.
+/// now. A follow-up booking can also supply [initialPreOpNotes].
 class NewAppointmentDialog extends StatefulWidget {
   const NewAppointmentDialog({
     super.key,
@@ -34,6 +34,7 @@ class NewAppointmentDialog extends StatefulWidget {
     this.day,
     this.initialMoment,
     this.patientID,
+    this.initialPreOpNotes = '',
   });
 
   /// The day — or, when the caller has one, the exact moment — to start from.
@@ -50,6 +51,9 @@ class NewAppointmentDialog extends StatefulWidget {
   /// The patient the sheet starts with: a list opened for one patient already
   /// knows whose visit it is.
   final String? patientID;
+
+  /// The pre-op notes the sheet starts with, such as a follow-up's note.
+  final String initialPreOpNotes;
 
   final void Function(Appointment appointment) onSave;
 
@@ -78,6 +82,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     final from = widget.day;
     _draft.date = widget.initialMoment ??
         (from == null ? DateTime.now() : _atCurrentTime(from));
+    _draft.preOpNotes = widget.initialPreOpNotes;
     _notes.text = _draft.preOpNotes;
   }
 
@@ -261,6 +266,7 @@ Future<Appointment?> addAppointment(
   DateTime? day,
   DateTime? initialMoment,
   String? patientID,
+  String initialPreOpNotes = '',
 }) async {
   Appointment? collected;
   await showDialog(
@@ -271,6 +277,7 @@ Future<Appointment?> addAppointment(
       day: day,
       initialMoment: initialMoment,
       patientID: patientID,
+      initialPreOpNotes: initialPreOpNotes,
       onSave: (appointment) => collected = appointment,
     ),
   );

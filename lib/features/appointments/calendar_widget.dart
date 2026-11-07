@@ -96,6 +96,17 @@ class WeekAgendaCalendarState<Item extends Appointment>
   bool isSameDay(DateTime a, DateTime b) =>
       a.day == b.day && a.month == b.month && a.year == b.year;
 
+  void _bookFollowUp(FollowUpDue followUp, {DateTime? at}) {
+    final today = dayOnly(DateTime.now());
+    final selectedDay = at ??
+        (isFollowUpOverdue(followUp.date, asOf: today)
+            ? (dayOnly(selectedDate).isBefore(today)
+                ? today
+                : dayOnly(selectedDate))
+            : null);
+    widget.onBookFollowUp?.call(followUp, at: selectedDay);
+  }
+
   @override
   Widget build(BuildContext context) {
     final itemsForSelectedDay = _getItemsForSelectedDay();
@@ -103,6 +114,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
     // day as the practice's inbox of faces to give one to.
     final followUps =
         widget.followUpsOnDay?.call(selectedDate) ?? const <FollowUpDue>[];
+    final onBookFollowUp = widget.onBookFollowUp == null ? null : _bookFollowUp;
     return Column(
       children: [
         _buildCommandBar(),
@@ -127,7 +139,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                         onSelect: widget.onSelect,
                         onSetTime: widget.onSetTime,
                         followUps: followUps,
-                        onBookFollowUp: widget.onBookFollowUp,
+                        onBookFollowUp: onBookFollowUp,
                       )
                     : CalendarTimelineView(
                         items: itemsForSelectedDay.cast<Appointment>().toList(),
@@ -139,7 +151,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
                             widget.onSetTime(appointment as Item),
                         onAddNew: widget.onAddNew,
                         followUps: followUps,
-                        onBookFollowUp: widget.onBookFollowUp,
+                        onBookFollowUp: onBookFollowUp,
                       ),
               ),
             ]),

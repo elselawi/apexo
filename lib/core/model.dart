@@ -65,28 +65,3 @@ class Model {
     return false;
   }
 }
-
-/**
- ********* Example usage
-
-class MyClass extends Doc {
-  String name = '';
-  int age = 0;
-
-  MyClass.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    name = json["name"] ?? name;
-    age = json["age"] ?? age;
-  }
-
-  @override
-  Map<String, dynamic> toJson() {
-    final json = super.toJson();
-    final d = MyClass.fromJson({});
-    if (name != d.name) json['name'] = name;
-    if (age != d.age) json['age'] = age;
-    return json;
-  }
-
-  get ageInDays => age * 365;
-}
-*/

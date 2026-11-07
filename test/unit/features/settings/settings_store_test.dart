@@ -8,11 +8,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-/// `settings_store_test.dart` covers what is left in `settings_stores.dart`:
-/// the device-scoped [LocalSettings]. The app-scoped settings moved to the
-/// `settings_global` localpocket store — their behaviour (the wire shape, the
-/// defaults fallback, the flag encoding, the ISO bridge and the local-rows
-/// drop) is asserted in `settings_global_store_test.dart`.
 void main() {
   group('LocalSettings', () {
     late Map<String, dynamic> saved;
@@ -82,8 +77,7 @@ void main() {
     });
 
     test('a settings blob without the kept windows remembers none of them', () {
-      // Empty means "this device has no opinion", so the next panel opens its
-      // own first picks rather than inheriting a stale list.
+      // Empty means "no opinion", so the next panel picks its own windows.
       localSettings.windowsPerKind = '{"patient":["dentalChart"]}';
       localSettings.fromJson({});
 

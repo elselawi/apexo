@@ -47,23 +47,19 @@ class _OpgToothColumn extends StatefulWidget {
   final bool isHovered;
   final ValueChanged<bool> onHoverChanged;
 
-  /// Whether the column is one cell of the compact arch: the drawing is turned
-  /// by [archRotation] so the root points outward along the curve, the notation
-  /// rides inside the crown instead of above or below it, and the beside-tooth
-  /// notes are left out — a phone has no room for them, and the tooltip and the
-  /// wheel carry the same records.
+  /// Compact cells drop the beside-tooth notes for width; the tooltip and the
+  /// wheel still carry the same records.
   final bool compact;
 
-  /// Room a compact cell keeps past the root tip (for the apex icons) and past
-  /// the crown (for the notation), so neither sits on the drawing.
+  /// Room kept past the root tip (apex icons) and past the crown (notation).
   final double compactBand;
 
-  /// The non-overlapping arc width the tooth owns on the curve (used to bound
-  /// its hit-test area so adjacent rotated cells never steal hovers or taps).
+  /// Arc width the tooth owns; it bounds the hit-test area so adjacent rotated
+  /// cells cannot steal each other's hovers and taps.
   final double compactSpan;
 
-  /// How wide that cell is drawn: slightly wider than [compactSpan] so
-  /// neighbouring crowns make interproximal contact.
+  /// Drawn slightly wider than [compactSpan] so neighbouring crowns make
+  /// interproximal contact.
   final double compactWidth;
   final double archRotation;
 
@@ -242,9 +238,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
                         clipBehavior: Clip.none,
                         alignment: Alignment.center,
                         children: [
-                          // 1. Original high-contrast anatomical tooth + clipped
-                          // overlapping treatment drawings (colored when registered
-                          // here, neutral when from another appointment/record).
                           Positioned.fill(
                             child: CustomPaint(
                               painter: _AnatomicalToothPainter(
@@ -260,11 +253,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
                               ),
                             ),
                           ),
-                          // 2. Apex icon(s): NO shadows, NO surrounding circle,
-                          // larger when a single treatment is applied, and wrapped
-                          // cleanly in a Wrap when multiple treatments are present.
-                          // Historical treatments lose their color and render in a
-                          // neutral tone.
                           if (layers.isNotEmpty)
                             Align(
                               alignment: widget.isUpper
@@ -282,9 +270,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
                                 ),
                               ),
                             ),
-                          // 3. Rotated 90° treatment text tucked right beside the
-                          // tooth (colored when registered here, neutral when from
-                          // another appointment).
                           if (hasHistoryText)
                             Positioned(
                               right: 0,
@@ -312,11 +297,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     );
   }
 
-  /// One cell of the compact arch. The tooth is turned so its root points
-  /// outward along the curve ([archRotation]) and keeps a band above it for its
-  /// apex icons and a band below it for its notation, so neither has to sit on
-  /// the drawing. The notation itself stays upright — a number that tilts with
-  /// the arch is a number nobody reads — while the icons turn with the tooth.
   Widget _buildCompactCell(
     BuildContext context,
     bool darkMode,
@@ -328,8 +308,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     Color? stateColor,
     Color notationColor,
   ) {
-    // Outward is the top of the cell for an upper tooth and its bottom for a
-    // lower one — the drawing is mirrored for the lower jaw.
     final outward =
         widget.isUpper ? Alignment.topCenter : Alignment.bottomCenter;
     final band = widget.compactBand;
@@ -385,8 +363,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
                           ),
                         ),
                       ),
-                      // 2. Apex icons, past the root tip where nothing else is
-                      // drawn.
                       if (layers.isNotEmpty)
                         Align(
                           alignment: Alignment(0, outward.y * 1.18),
@@ -398,9 +374,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
                             maxWidth: band + 6,
                           ),
                         ),
-                      // 3. The notation, tucked into the lingual/palatal side of
-                      // the arch well clear of the crown outline: turned back
-                      // upright, and scaled to fit its tooth slot.
                       if (showNotation)
                         Align(
                           alignment: Alignment(0, outward.y * -1.32),
@@ -432,13 +405,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     );
   }
 
-  /// Renders the treatment icon(s) at the root apex:
-  /// - No shadows at all
-  /// - Larger (`20px`) when only a single treatment is applied
-  /// - Shrunk to fit [maxWidth] in a compact cell, where a tooth is small and
-  ///   the icons have a band of their own to stay inside
-  /// - Neutral color when the treatment came from another appointment/record
-  /// - Deduplicates by icon glyph so the same icon is never shown twice
   Widget _buildApexIcons(
     List<_ToothOperationLayer> layers,
     bool darkMode,
@@ -503,9 +469,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     );
   }
 
-  /// Rotates the tooth's treatment label 90 degrees and places it immediately
-  /// beside the tooth. Entries from other appointments lose their color and
-  /// render in a neutral tone.
   Widget _buildBesideToothRotatedNotes(
     BuildContext context,
     bool darkMode,
@@ -542,8 +505,6 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
     Color neutralColor,
   ) {
     final condition = entry.condition;
-    // Current draft keeps its treatment color; notes/treatments from other
-    // appointments become neutral.
     final color = entry.isCurrentDraft
         ? (condition != null && condition.isNotEmpty
             ? labelToColor(condition)
@@ -623,11 +584,8 @@ class _OpgToothColumnState extends State<_OpgToothColumn> {
   }
 }
 
-/// Constrains pointer hit-testing of a rotated compact-arch tooth cell to a
-/// tapered wedge (wider at the crown/notation end, narrower at the root apex)
-/// bounded by the tooth's own arc share. This prevents adjacent rotated
-/// rectangular cells from overlapping in hit-test space and stealing hover or
-/// tap events from the tooth above or below them.
+/// Hit-tests a rotated compact cell as a tapered wedge inside its arc share, so
+/// neighbouring rectangular cells cannot overlap it and steal their taps.
 class _TaperedToothHitRegion extends SingleChildRenderObjectWidget {
   const _TaperedToothHitRegion({
     required this.isUpper,
@@ -686,6 +644,3 @@ class _RenderTaperedToothHitRegion extends RenderProxyBox {
     return super.hitTest(result, position: position);
   }
 }
-
-/// Draws subtle OPG radiograph anatomical guides (maxillary sinus floor,
-/// nasal fossa, and mandibular canal / alveolar crest contour).

@@ -1,11 +1,8 @@
 import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// PhoneNumberExtractor tests.
-///
-/// The extractor reads the global settings store for its default region, but
-/// national-number tests use the isolate override so that they remain
-/// independent of persisted application settings.
+/// National-number tests set the isolate override so they do not depend on the
+/// persisted default region.
 void main() {
   group('PhoneNumberExtractor — isolation helpers', () {
     test('setIsoCountryCodeForIsolate sets the override', () {

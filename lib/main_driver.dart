@@ -5,13 +5,8 @@ import 'package:flutter/widgets.dart';
 // ignore: depend_on_referenced_packages
 import 'package:flutter_driver/driver_extension.dart';
 
-/// Profiling entry point: the real app plus the flutter_driver extension, and
-/// one timestamp the framework cannot report from AOT code.
-///
-/// `enableFlutterDriverExtension` has to run before anything else touches a
-/// binding: it installs the driver's own binding, and a plain
-/// `WidgetsFlutterBinding` created first wins instead (the extension then
-/// throws and never answers the driver).
+/// Profiling entry point. `enableFlutterDriverExtension` must run before any
+/// binding exists, and the stderr timing covers what AOT can't report.
 void main() {
   final startup = Stopwatch()..start();
   enableFlutterDriverExtension();

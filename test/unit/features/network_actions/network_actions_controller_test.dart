@@ -85,10 +85,7 @@ void main() {
 
   group('Network actions controller — addError', () {
     setUp(() {
-      // Clear any errors added in previous tests via public means:
-      // We can't access _errors directly; the only way to clear is through
-      // performReconnect online (which requires login). Skip clearing and
-      // keep tests hermetic by using unique messages.
+      // No public way to clear errors, so tests use unique messages for hermeticity.
     });
 
     test('addError for a new error returns true (new unique)', () {
@@ -157,9 +154,7 @@ void main() {
   group('Network actions controller — performReconnect/resync gating', () {
     test('performReconnect is a no-op in demo mode', () async {
       final wasDemo = launch.isDemo;
-      // launch.isDemo is field-backed but immutable in tests; we cannot toggle
-      // it, so just verify performReconnect doesn't throw when called in
-      // whatever mode we're in.
+      // isDemo cannot be toggled in tests, so only that it does not throw is checked.
       try {
         await networkActions.performReconnect();
       } catch (e) {
@@ -188,13 +183,11 @@ void main() {
     });
 
     test('resync is callable without throwing in demo mode', () async {
-      // In test env, launch.open() == Open.login (default). resync's
-      // patient branch should not catch the staff branch.
+      // launch.open() defaults to Open.login in tests.
       try {
         await networkActions.resync();
       } catch (_) {
-        // The call may fail when login.pb is null; that's expected — we just
-        // verify the API contract holds together.
+        // Without a live server the call throws; only the settled isSyncing is asserted.
       }
       expect(networkActions.isSyncing(), 0); // back to 0 after resync
     });

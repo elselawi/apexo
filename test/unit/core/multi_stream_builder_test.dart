@@ -50,8 +50,6 @@ void main() {
         ),
       );
 
-      // `data` is a snapshot taken at build time, so the assertion has to wait for
-      // the frame the delivery triggers — not the pump that starts it.
       controller1.add('test1');
       await tester.pumpAndSettle();
       expect(capturedData, ['test1', null]);
@@ -237,8 +235,6 @@ void main() {
         ),
       );
 
-      // Now swap to entirely new streams. A single-subscription Dart stream
-      // cannot be subscribed to again after cancellation.
       await tester.pumpWidget(
         _dir(
           MStreamBuilder<int>(
@@ -316,8 +312,8 @@ void main() {
         )),
       );
 
-      // The old stream may still be completing cancellation asynchronously;
-      // it must not update the replacement widget.
+      // Cancellation is async, so an old stream's late event must not update
+      // the replacement widget.
       oldController.add(2);
       newController.add(3);
       await tester.pumpAndSettle();
@@ -329,8 +325,6 @@ void main() {
     });
 
     testWidgets('ignores events after the widget is disposed', (tester) async {
-      // A broadcast controller can be closed deterministically even when the
-      // widget has already cancelled its subscription.
       final controller = StreamController<int>.broadcast();
 
       await tester.pumpWidget(
@@ -398,8 +392,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('1-2'), findsOneWidget);
 
-      // The same two stream objects, positions swapped: matching by identity
-      // means both keep their subscription and the value each already held.
+      // Same two stream objects, positions swapped: identity matching keeps
+      // both subscriptions and their values.
       await tester.pumpWidget(build([s2, s1]));
       expect(find.text('2-1'), findsOneWidget);
 
@@ -413,8 +407,8 @@ void main() {
       final c2 = StreamController<int>.broadcast();
       final inserted = StreamController<int>.broadcast();
 
-      // A raw controller's `.stream` is a new wrapper on every access, so the
-      // instances have to be held for the reconciliation to see them again.
+      // A controller's `.stream` returns a new wrapper on every access, so the
+      // instances have to be held for reconciliation to see them again.
       final s1 = c1.stream;
       final s2 = c2.stream;
       final sInserted = inserted.stream;
@@ -434,8 +428,6 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('1-2'), findsOneWidget);
 
-      // Both existing streams shift one index to the right. They must not be
-      // torn down, and their values must move with them.
       await tester.pumpWidget(build([sInserted, s1, s2]));
       expect(find.text('_-1-2'), findsOneWidget);
 
@@ -455,9 +447,8 @@ void main() {
       final s1 = c1.stream;
       final s2 = c2.stream;
 
-      // One list instance, mutated in place: by the time didUpdateWidget runs,
-      // `oldWidget.streams` and `widget.streams` are the same object, so the
-      // check has to be against the slots that are actually subscribed.
+      // The list is mutated in place, so `oldWidget.streams` and `widget.streams`
+      // are the same object; compare against the subscribed slots instead.
       final streams = <Stream<int>>[s1];
       Widget build() => _dir(
             MStreamBuilder<int>(
@@ -486,9 +477,8 @@ void main() {
     });
 
     test('an observable hands out the same stream object every time', () {
-      // What makes the identity matching above work: a caller that writes
-      // `streams: [x.stream]` inside `build()` must not look like it swapped its
-      // stream on every rebuild.
+      // MStreamBuilder matches by identity, so repeated `.stream` access in
+      // `build()` must return the same object.
       final state = ObservableState<int>(0);
       expect(identical(state.stream, state.stream), isTrue);
       state.dispose();

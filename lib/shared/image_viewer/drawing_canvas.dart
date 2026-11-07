@@ -1,8 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 
-/// Whether [drawing] holds anything worth drawing — the stored form of a photo
-/// with no strokes on it is an empty list.
+/// Whether [drawing] holds strokes; a photo with no strokes is stored as `'[]'`.
 bool hasStrokes(String? drawing) =>
     drawing != null && drawing.isNotEmpty && drawing != '[]';
 
@@ -231,8 +230,7 @@ class _DrawingPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // We use saveLayer and restore to allow BlendMode.clear to act properly
-    // as an eraser over the other strokes
+    // saveLayer keeps BlendMode.clear erasers from punching through everything below.
     canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height), Paint());
 
     for (final stroke in strokes) {

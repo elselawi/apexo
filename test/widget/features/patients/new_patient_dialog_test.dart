@@ -28,8 +28,7 @@ void main() {
     patients.setAll(previousPatients);
   });
 
-  /// The sheet as the app shows it: asked for by a control, closed by its own
-  /// Save.
+  /// Opens the sheet through a button and `showDialog`, so it has a route to pop.
   Future<void> openSheet(
     WidgetTester tester, {
     required void Function(Patient) onSave,

@@ -17,11 +17,8 @@ class DicomAutoImportToggle extends StatelessWidget {
       checked: globalSettings.dicomAutoImport,
       onChanged: (v) {
         globalSettings.dicomAutoImport = v;
-        // The periodic timer has to mirror the toggle. It may not be running
-        // yet (e.g. the watch dirs were empty at login, or this is the first
-        // time auto-import was enabled), so start it when turning on and stop
-        // it otherwise. `startPeriodicScan` no-ops if dirs are still empty;
-        // the directory manager starts it once a folder is added.
+        // The timer mirrors the toggle: start it when enabling, stop it otherwise.
+        // `startPeriodicScan` no-ops while the watch dirs are empty.
         if (v) {
           dicomCtrl.startPeriodicScan();
         } else {

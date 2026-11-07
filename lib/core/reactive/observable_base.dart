@@ -3,8 +3,8 @@ import 'dart:developer' as developer;
 
 typedef ReactiveErrorReporter = void Function(Object error, StackTrace stack);
 
-/// The application installs its diagnostic policy at startup; isolated clients
-/// can instead provide a reporter on each observable.
+/// Global diagnostic reporter, installed at app startup; isolated clients can
+/// pass their own reporter to an observable instead.
 ReactiveErrorReporter reactiveErrorReporter = (error, stack) {
   developer.log('Observable callback failed', error: error, stackTrace: stack);
 };
@@ -19,8 +19,6 @@ void reportSilentReactiveError(Object error, StackTrace stack) =>
 
 typedef Observer<S> = void Function(S event);
 
-/// Base observable class
-/// the observable functionality of the application is all based on this class
 class ObservableBase<S> {
   ObservableBase(
       {this.onError = reportReactiveError,
@@ -42,12 +40,8 @@ class ObservableBase<S> {
   final StreamController<S> _controller = StreamController<S>.broadcast();
   final List<Observer<S>> observers = [];
 
-  /// The stream every listener subscribes to.
-  ///
-  /// Held rather than handed out by a getter: `StreamController.broadcast()`
-  /// returns a **new** stream object on every `.stream` access, so a getter
-  /// would make a `streams: [x.stream]` list written inside `build()` look like
-  /// it swapped its stream on every rebuild — and re-subscribe every time.
+  /// Cached because a broadcast `.stream` getter returns a new object each
+  /// access, which would make MStreamBuilder re-subscribe on rebuild.
   late final Stream<S> stream = _controller.stream;
   double _silent = 0;
   bool get isSilent => _silent != 0;
@@ -90,9 +84,6 @@ class ObservableBase<S> {
   }
 }
 
-/// Creates a standalone observable value
-/// this can be accessed by calling it "()"
-/// and can be set by passing a value when calling it "(value)"
 class ObservableState<T> extends ObservableBase<T> {
   ObservableState(this._value, {super.onError, super.onSilentError});
   T _value;

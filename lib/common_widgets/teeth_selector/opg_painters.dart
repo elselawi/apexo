@@ -51,9 +51,8 @@ class _OpgBackdropPainter extends CustomPainter {
       canvas.drawPath(rightSinus, sinusPaint);
       canvas.drawPath(leftSinus, sinusPaint);
 
-      // Inferior alveolar nerve (mandibular canal) running below the lower
-      // molars and curving up between the apices of the two premolars (45/44
-      // on the right, 35/34 on the left) to open at the mental foramen.
+      // Inferior alveolar nerve (mandibular canal): below the lower molars, then
+      // up between the premolar apices to the mental foramen.
       final rightIanUpper = Path()
         ..moveTo(w * 0.02, h * 0.89)
         ..cubicTo(
@@ -122,9 +121,6 @@ class _OpgBackdropPainter extends CustomPainter {
       oldDelegate.darkMode != darkMode || oldDelegate.isPrimary != isPrimary;
 }
 
-/// The compact arch's backdrop: the line the two jaws part along and the
-/// midline between the patient's two sides, which together split the mouth
-/// into its four quadrants.
 class _CompactArchPainter extends CustomPainter {
   const _CompactArchPainter({required this.darkMode});
 
@@ -196,11 +192,3 @@ class _OcclusalCurvePainter extends CustomPainter {
   bool shouldRepaint(covariant _OcclusalCurvePainter oldDelegate) =>
       oldDelegate.color != color || oldDelegate.isPrimary != isPrimary;
 }
-
-/// Anatomically distinct labial/buccal tooth painter for OPG panoramic view.
-///
-/// Preserves the rich, luminous tooth shading of the original OPG design
-/// while rendering crisp, anatomically clipped visual drawings for every
-/// treatment type. Operations from earlier appointments are drawn in a neutral
-/// radiographic grey/silver palette, whereas operations registered in the
-/// current record are drawn in their vibrant treatment colors.

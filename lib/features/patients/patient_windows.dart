@@ -3,17 +3,11 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The windows a patient's panel offers, in the order it offers them.
-///
-/// The panel builds its list from [patientWindows], and row menus and table
-/// cells name a window through [PatientWindow] rather than counting them, so
-/// none of them can drift when a window is added, removed or moved.
+/// Patient panel windows, in panel order; [patientWindows] applies permissions.
 enum PatientWindow {
   /// The patient's own details — the window that answers most questions.
   details('details', "patientDetails", FluentIcons.medication_admin),
 
-  /// The dental chart, beside the details: the record's own teeth — its history,
-  /// and the treatments planned on it.
   dentalChart(kDentalChartWindowId, kDentalChartTitleKey, FluentIcons.teeth),
 
   /// The visits of this patient.
@@ -34,21 +28,13 @@ enum PatientWindow {
   final IconData icon;
 }
 
-/// The height a patient's visit list wants: one card per visit, inside the
-/// window's floor and ceiling.
-///
-/// A visit's card is a fixed layout, so counting them is enough to say how much
-/// room the list needs — a patient with two visits gets a short window instead of
-/// a tall one with two cards and a gap, and one with eight is not squeezed into
-/// half a screen.
 double appointmentsListHeight(int count) =>
     (kAppointmentCardHeight * count + kAppointmentsListChrome).clamp(
       appointmentsListMinHeight,
       appointmentsListMaxHeight,
     );
 
-/// Roughly one visit's card — measured, not guessed: a visit card is 188 tall in
-/// the app's own layout — and what surrounds the list.
+/// A real visit card measures ~188px; the chrome is what surrounds the list.
 const double kAppointmentCardHeight = 190;
 const double kAppointmentsListChrome = 70;
 

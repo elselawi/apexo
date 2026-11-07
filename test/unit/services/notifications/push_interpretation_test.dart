@@ -146,8 +146,8 @@ void main() {
     test('web/fcm/fcm.js registers the device as a web token', () {
       final fcmSource = File('web/fcm/fcm.js').readAsStringSync();
 
-      // The relay only alerts iOS. A web registration must say so, or the
-      // relay would keep sending this browser the data push it already shows.
+      // Web shows the data push itself; the relay must know the platform so it
+      // does not also add an alert.
       expect(
         RegExp(r'platform\s*:\s*"web"').hasMatch(fcmSource),
         isTrue,
@@ -158,10 +158,8 @@ void main() {
     test('web/fcm/fcm.js never assigns self.lang', () {
       final fcmSource = File('web/fcm/fcm.js').readAsStringSync();
 
-      // `window.lang` is an accessor defined in this file, and `self` is
-      // `window` in the page, so writing `self.lang` re-enters that same
-      // setter until the call stack overflows. Reading it is fine — the getter
-      // serves `push_data.js` — but writing it is always a bug.
+      // `self` is `window`, so assigning `self.lang` re-enters the setter that
+      // fcm.js installs on `window.lang` and overflows the stack.
       expect(
         RegExp(r'\bself\.lang\s*=').hasMatch(fcmSource),
         isFalse,
@@ -539,8 +537,7 @@ void main() {
         readableIdentifier: 'Patient',
         isCreation: false,
         isUpdate: true,
-        // `date` is named but carries no value on either side: the short list
-        // must degrade to the generic notice instead of throwing.
+        // `date` named with no values: the short lists must degrade, not throw.
         updatedFields: ['date'],
         oldVals: [],
         newVals: [],

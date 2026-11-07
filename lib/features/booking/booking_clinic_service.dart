@@ -9,10 +9,8 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/init_pocketbase.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-/// A locally persisted enrollment/rotation/recovery attempt.
-///
-/// PocketBase enforces the JSON field's size, not its shape, so this is the
-/// typed allowlist the spec requires before an attempt is stored or used.
+/// A locally persisted enrollment/rotation/recovery attempt. PocketBase enforces
+/// the JSON field's size, not its shape, so this is the typed allowlist.
 class BookingPendingOperation {
   BookingPendingOperation({
     required this.action,
@@ -141,16 +139,12 @@ class BookingEnrollment {
 
   final BookingClinicRecord clinic;
 
-  /// True when a previously persisted attempt was completed rather than a new
-  /// identity being minted.
+  /// True when a persisted attempt was completed rather than a new identity minted.
   final bool resumed;
 }
 
-/// PocketBase side of online booking: discovery, enrollment, recovery, rotation
-/// and the staff-readable credential.
-///
-/// Setup requires a superuser; staff may read the published credential. Every
-/// failure here is non-fatal to ordinary PMS use.
+/// PocketBase side of booking: discovery, enrollment, recovery, rotation and the
+/// staff credential. Setup needs a superuser; failures never block ordinary PMS use.
 class BookingClinicService {
   BookingClinicService({String? origin, BookingApi? api})
       : api = api ?? BookingApi(origin: (origin ?? bookingOrigin).trim()),
@@ -163,8 +157,7 @@ class BookingClinicService {
 
   bool get isSuperuser => identical(_pb, login.pb) && login.isAdmin;
 
-  /// The clinic's canonical public origin, or null when the PMS is served from
-  /// a private/LAN address or a path prefix (which v1 cannot enroll).
+  /// The clinic's canonical public origin, or null for a private/LAN or path-prefixed URL.
   static String? canonicalServerOrigin(String url) {
     if (url.trim().length > 255) return null;
     final parsed = Uri.tryParse(url.trim());
@@ -217,9 +210,8 @@ class BookingClinicService {
     }
   }
 
-  /// Leaves the platform: the Worker erases the clinic and its requests, then
-  /// the app drops the credential records so the feature shows the claim form
-  /// again and the inbox route disappears.
+  /// Leaves the platform: the Worker erases the clinic and its requests, then the
+  /// app drops the credential records so the claim form and inbox route return.
   Future<void> deleteClinic() async {
     if (!isSuperuser) throw StateError("booking_setup_requires_admin");
     final clinic = await loadClinic();
@@ -383,11 +375,8 @@ class BookingClinicService {
         "initialConfig": attempt.initialConfig?.normalizedForProof().toJson(),
       });
 
-  /// Resumes a persisted attempt, or creates and persists a fresh one.
-  ///
-  /// An existing registration keeps its active `admin_key` while a rotation or
-  /// recovery candidate lives only inside `pending_operation`; only a first
-  /// enrollment writes the candidate as the required active key.
+  /// Resumes a persisted attempt or creates one. A registration keeps its active
+  /// `admin_key` while a rotation/recovery candidate lives in `pending_operation`.
   Future<BookingPendingOperation> _pendingAttempt({
     required String action,
     required String handle,
@@ -531,8 +520,7 @@ class BookingClinicService {
     if (existing == null || admin == null) {
       throw StateError("booking_not_registered");
     }
-    // Retry with the *new* admin key when the previous rotation already
-    // succeeded but publishing the staff credential failed.
+    // Retry with the new admin key when rotation succeeded but publishing failed.
     final pending = BookingPendingOperation.tryParse(admin.pendingOperation);
     final attempt = pending?.action == "rotate"
         ? pending!
@@ -545,9 +533,8 @@ class BookingClinicService {
     final activeAdminKey = admin.adminKey;
     var revision = -1;
     try {
-      // A retry authenticates with the candidate key: if the earlier call
-      // already replaced the hashes, the Worker returns success without
-      // incrementing again.
+      // A retry authenticates with the candidate key; if the earlier call already
+      // replaced the hashes, the Worker returns success without incrementing again.
       revision = await api.rotate(
         attempt.adminKey,
         expectedKeyRevision: existing.keyRevision,

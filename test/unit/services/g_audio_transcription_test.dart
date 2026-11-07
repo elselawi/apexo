@@ -7,11 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 const _recordChannel = MethodChannel('com.llfbandit.record/messages');
 
-/// Mocks the `record` plugin method channel so [WSVoiceTranscriptionService]
-/// can be constructed in unit tests without a real microphone backend.
-/// Covers the full plugin surface (create/dispose, permission, recording
-/// state, amplitude, device enumeration) so any code path the service uses
-/// is accounted for.
+/// Installs a fake `record` plugin channel so [WSVoiceTranscriptionService]
+/// can run without a microphone backend.
 void _installRecordChannelMock({
   bool hasPermission = true,
   Completer<void>? disposeStarted,
@@ -48,9 +45,8 @@ void _installRecordChannelMock({
   });
 }
 
-/// `AudioRecorder` constructor fires `create` asynchronously on a global
-/// semaphore. Give that queue a chance to drain before dispose/assertions
-/// so we don't race cleanup against test-end framework checks.
+/// `AudioRecorder` queues `create` on a global semaphore, so drain it before
+/// assertions or dispose can race the test-end framework checks.
 Future<void> _settleRecorder() async {
   await Future<void>.delayed(const Duration(milliseconds: 20));
 }
@@ -58,20 +54,15 @@ Future<void> _settleRecorder() async {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Keep the mock installed for the whole suite. `AudioRecorder` queues
-  // create/dispose on a global semaphore, so clearing the mock in tearDown
-  // races with disposal and produces MissingPluginException noise.
+  // Keep the mock installed for the whole suite: `AudioRecorder` queues
+  // create/dispose on a global semaphore, so clearing it in tearDown races.
   setUpAll(_installRecordChannelMock);
 
   setUp(() {
-    // Re-install the default (permission granted) mock before every test so
-    // tests that temporarily deny permission don't leak that setting.
+    // Default (permission granted) mock, so a test that denies it can't leak.
     _installRecordChannelMock();
   });
 
-  // =========================================================================
-  // TranscriptionState enum
-  // =========================================================================
   group('TranscriptionState enum', () {
     test('has 5 values', () {
       expect(TranscriptionState.values.length, 5);
@@ -135,9 +126,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // TranscriptionSession — construction
-  // =========================================================================
   group('TranscriptionSession — construction', () {
     test('const constructor with all defaults', () {
       const session = TranscriptionSession(state: TranscriptionState.idle);
@@ -253,9 +241,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // TranscriptionSession.copyWith
-  // =========================================================================
   group('TranscriptionSession.copyWith', () {
     test('creates a new instance with overridden fields', () {
       const original =
@@ -414,9 +399,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // WSVoiceTranscriptionService — class API
-  // =========================================================================
   group('WSVoiceTranscriptionService — class API', () {
     test('is a Type', () {
       expect(WSVoiceTranscriptionService, isA<Type>());
@@ -436,9 +418,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // WSVoiceTranscriptionService — construction & initial state
-  // =========================================================================
   group('WSVoiceTranscriptionService — construction and initial state', () {
     late TextEditingController controller;
 
@@ -518,9 +497,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // WSVoiceTranscriptionService — isActive matrix
-  // =========================================================================
   group('WSVoiceTranscriptionService — isActive matrix', () {
     test('idle is not active', () async {
       final ctrl = TextEditingController();
@@ -545,9 +521,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // WSVoiceTranscriptionService — stop and dispose lifecycle
-  // =========================================================================
   group('WSVoiceTranscriptionService — stop and dispose lifecycle', () {
     late TextEditingController controller;
     late WSVoiceTranscriptionService svc;
@@ -622,9 +595,6 @@ void main() {
     });
   });
 
-  // =========================================================================
-  // WSVoiceTranscriptionService — start paths
-  // =========================================================================
   group('WSVoiceTranscriptionService — start paths', () {
     test('denied mic permission emits error and rethrows', () async {
       _installRecordChannelMock(hasPermission: false);
@@ -679,8 +649,6 @@ void main() {
       await expectLater(svc.startTranscription(), throwsA(isA<Exception>()));
       await Future<void>.delayed(Duration.zero);
 
-      // clearOnStart is false, so controller text is preserved even after
-      // the failed start path.
       expect(controller.text, 'prior notes');
       expect(svc.session.state, TranscriptionState.error);
       // transcript was seeded from the controller when clearOnStart is false

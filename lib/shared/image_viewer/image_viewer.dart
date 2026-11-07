@@ -12,17 +12,6 @@ import 'drawing_canvas.dart';
 import 'image_page.dart';
 import 'viewer_tools.dart';
 
-/// The photo viewer: the photos of one record, one page at a time, with the
-/// tools that act on the page on screen.
-///
-/// It owns the whole photo experience — paging, zoom lock, the pen's state, the
-/// slideshow — and draws none of the frame: the window around it supplies the
-/// header, the title and the Close.
-///
-/// Everything it needs to be a viewer is [images]; everything else is optional
-/// and only turns a tool on: [imageIds] name the files (which is what a
-/// download, a delete and a stored drawing need), [onSaveDrawing] gives it a
-/// pen, [onPressedDelete] gives it a delete.
 class ImageViewer extends StatefulWidget {
   const ImageViewer(
     this.images, {
@@ -41,8 +30,7 @@ class ImageViewer extends StatefulWidget {
   /// The record whose files these are, which is what a download resolves by.
   final String? rowId;
 
-  /// The file names, page by page: what a download and a delete act on, and the
-  /// key its drawing is stored under.
+  /// File names, page by page; a page's drawing is keyed by its name.
   final List<String>? imageIds;
 
   /// The page to open on.
@@ -51,13 +39,10 @@ class ImageViewer extends StatefulWidget {
   /// Drawings already stored, by file name.
   final Map<String, String>? drawings;
 
-  /// Saves the drawing of the page it comes from. Null leaves every photo
-  /// unannotated and offers no pen.
+  /// Saves a page's drawing; null leaves every photo unannotated and offers no pen.
   final void Function(String imageId, String drawing)? onSaveDrawing;
 
-  /// Deletes a page, by its index: drawing, deleting and saving all name the
-  /// photo they act on by name, so the viewer never guesses. Null leaves every
-  /// photo undeletable and offers no delete.
+  /// Deletes the photo at that index; null hides the delete action.
   final ValueChanged<int>? onPressedDelete;
 
   @override
@@ -79,8 +64,8 @@ class _ImageViewerState extends State<ImageViewer> {
   );
   final FocusNode _keys = FocusNode();
 
-  /// Where the paged list is, in the controller's own numbering: with more than
-  /// one photo the list wraps, so its index is not the photo's index.
+  // The paged list's index: with more than one photo the list wraps, so it is
+  // not the photo's index.
   late int _at = math.max(0, math.min(widget.initialIndex, _pageCount - 1));
 
   /// The photo on screen.
@@ -91,8 +76,7 @@ class _ImageViewerState extends State<ImageViewer> {
   bool _showDrawings = true;
   Color _selectedColor = ViewerDrawingTools.colors.first;
 
-  /// False while a photo is zoomed in: the drag belongs to the photo then, not
-  /// to the pages beside it.
+  // False while a photo is zoomed in: the drag belongs to the photo.
   bool _pagingEnabled = true;
 
   Timer? _slideshow;
@@ -122,13 +106,11 @@ class _ImageViewerState extends State<ImageViewer> {
 
   @override
   Widget build(BuildContext context) {
-    // A viewer with nothing to show draws nothing: the loader that owns it has
-    // already said why there is no photo.
+    // The loader above reports why there is no photo, so draw nothing here.
     if (widget.images.isEmpty) return const SizedBox.shrink();
     return KeyboardListener(
       focusNode: _keys,
-      // The window is a viewer: the arrow keys page through it as soon as it
-      // opens, without a click to put focus there first.
+      // Autofocus: the arrow keys page as soon as the window opens, with no click.
       autofocus: true,
       onKeyEvent: _onKey,
       child: Stack(
@@ -145,11 +127,8 @@ class _ImageViewerState extends State<ImageViewer> {
             itemCount: _paged ? null : 1,
             onPageChanged: (index) => setState(() {
               _at = index;
-              // A photo that has just been paged in is at rest: it has not been
-              // zoomed, and it says nothing about itself — so the drag belongs
-              // to the pages again. Without this the viewer stayed locked out
-              // of paging for the rest of the session, because the flag was
-              // only ever written by the page that was zoomed.
+              // A newly paged-in photo is at rest and reports no scale, so reset
+              // the flag; otherwise paging stays locked once a zoomed page is left.
               _pagingEnabled = true;
             }),
             itemBuilder: (context, index) => _buildPage(index % _pageCount),
@@ -160,9 +139,8 @@ class _ImageViewerState extends State<ImageViewer> {
           ],
           if (widget.onSaveDrawing != null)
             Positioned(
-              // Above the paging controls: the pen's pill is wide, and it would
-              // otherwise sit on top of the "previous photo" chevron and eat
-              // its clicks.
+              // Above the paging controls: the wide pen pill would otherwise
+              // cover the "previous photo" chevron and eat its clicks.
               bottom: 60,
               left: 20,
               right: 20,
@@ -182,9 +160,8 @@ class _ImageViewerState extends State<ImageViewer> {
 
   Widget _buildPage(int index) {
     final imageId = widget.imageIds?.elementAtOrNull(index);
-    // A photo with no pen has no drawing layer: a canvas whose save does
-    // nothing would still draw the strokes that are stored on it — which is
-    // not what a photo the viewer may only look at should show.
+    // No pen means no drawing layer: a canvas that cannot save would still paint
+    // the stored strokes, which a view-only photo must not show.
     final canDraw = widget.onSaveDrawing != null;
     return ImageViewerPage(
       key: ValueKey(imageId ?? index),
@@ -232,8 +209,6 @@ class _ImageViewerState extends State<ImageViewer> {
           child: Padding(
             padding: const EdgeInsets.all(4),
             child: Tooltip(
-              // The button says what it will do: a play glyph on a running
-              // slideshow says the opposite of what it does.
               message: txt(playing ? 'pause' : 'play'),
               child: IconButton(
                 icon: Icon(
@@ -326,8 +301,8 @@ class _ImageViewerState extends State<ImageViewer> {
   }
 }
 
-/// Lets a mouse drag the pages, as a finger does on a touch screen: a photo
-/// browser on a desktop is driven by the mouse.
+// Lets a mouse drag the pages as a finger does on touch; this photo browser is
+// mouse-driven on desktop.
 class _DragAnywhereScrollBehavior extends MaterialScrollBehavior {
   const _DragAnywhereScrollBehavior();
 

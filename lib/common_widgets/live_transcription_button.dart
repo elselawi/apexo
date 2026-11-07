@@ -14,8 +14,6 @@ class LiveTranscriptionButton extends StatefulWidget {
   final TextEditingController textController;
   final void Function(String) onDone;
 
-  /// Tints the idle microphone, so a caller can dress it to match the controls
-  /// around it. Recording and connecting keep their own signals.
   final Color? iconColor;
 
   @override

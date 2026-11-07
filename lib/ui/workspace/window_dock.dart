@@ -4,21 +4,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// One row of window switches, drawn as a single joined control: under a panel's
-/// header for the windows it floats, and inside a record's body for its own
-/// workspaces. Each switch carries its window's icon, its name and the mark that
-/// says "this opens over here".
-///
-/// The row is drawn the same way in both places: equal segments filling the
-/// panel's width, joined with no gap, only the row's outer corners rounded, and a
-/// flat stroke instead of the library's per-button gradient so two neighbours
-/// share one hairline where they meet. It sits in the panel's own layout, so it
-/// can never cover an editor.
-///
-/// A window that is open is drawn as a filled button in the record's accent; the
-/// closed ones stay neutral, so the theme owns the colours in light and dark
-/// alike. A label too long for its segment is ellipsised — the tooltip carries
-/// it in full.
 class WindowDock extends StatelessWidget {
   const WindowDock({
     super.key,
@@ -36,8 +21,7 @@ class WindowDock extends StatelessWidget {
   final bool Function(PanelWindow window) isOpen;
   final void Function(PanelWindow window) onToggle;
 
-  /// Per-window permission to open it — false while a window needs the record
-  /// to be saved first.
+  /// False while the window needs the record to be saved first.
   final bool Function(PanelWindow window) enabled;
 
   /// The colour the record's kind is known by — the panel's own.
@@ -46,13 +30,10 @@ class WindowDock extends StatelessWidget {
   /// A second dock on the same screen can namespace its buttons.
   final Key Function(PanelWindow window)? keyForWindow;
 
-  /// Whether a window's switch carries the unsaved dot — for the one window that
-  /// leads to a record whose draft is dirty but whose windows are not on screen
-  /// (a patient's chart switch while a retained visit holds work, plan §2.4).
+  /// Whether the switch carries the unsaved dot for a record whose draft is
+  /// dirty but whose windows are not on screen.
   final bool Function(PanelWindow window)? dirty;
 
-  /// The row's inset from the panel. A bar drawn inside the record's body gives
-  /// it the body's spacing instead of the dock's.
   final EdgeInsetsDirectional padding;
 
   @override
@@ -98,9 +79,6 @@ class _WindowButton extends StatelessWidget {
   final PanelWindow window;
   final Key toggleKey;
 
-  /// Whether this button is at one end of the row. Only the ends keep rounded
-  /// corners; the corners that meet a neighbour stay square, which is what lets
-  /// the buttons touch as one shape.
   final bool first;
   final bool last;
   final bool open;
@@ -131,8 +109,8 @@ class _WindowButton extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: theme.typography.bodyStrong?.copyWith(
               fontSize: 12,
-              // The typography's own colour wins over the button's foreground,
-              // which is what left an open label dark on the accent fill.
+              // The typography colour overrides the button foreground, so set
+              // it here for the accent fill.
               color: open && enabled
                   ? theme.resources.textOnAccentFillColorPrimary
                   : null,
@@ -147,8 +125,7 @@ class _WindowButton extends StatelessWidget {
       ],
     );
 
-    // Only the corners facing out of the row are rounded; the ones meeting a
-    // neighbour stay square, which is what makes the buttons touch as one shape.
+    // Only the row's outer corners are rounded, so the segments join as one shape.
     const radius = Radius.circular(4);
     final corners = BorderRadiusDirectional.only(
       topStart: first ? radius : Radius.zero,
@@ -157,13 +134,9 @@ class _WindowButton extends StatelessWidget {
       bottomEnd: last ? radius : Radius.zero,
     );
     final style = ButtonStyle(
-      // Taller than a stock button: these are what the record is for, not one
-      // more action among many.
       padding: const WidgetStatePropertyAll(
         EdgeInsetsDirectional.fromSTEB(11, 8, 11, 8),
       ),
-      // The open segment is filled with the record's own accent, shaded for
-      // hover and press the way the library shades the theme's accent.
       backgroundColor: open
           ? WidgetStateProperty.resolveWith((states) {
               if (states.isDisabled) {
@@ -186,8 +159,8 @@ class _WindowButton extends StatelessWidget {
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(
           borderRadius: corners,
-          // A flat stroke instead of the library's per-button gradient: two
-          // gradients side by side would draw a seam where the pair joins.
+          // A flat stroke instead of the library's per-button gradient, which
+          // would draw a seam where two buttons meet.
           side: BorderSide(
             color: open
                 ? theme.resources.controlStrokeColorOnAccentDefault

@@ -13,9 +13,8 @@ void main() {
             width: 200, height: 80, child: LiveTranscribingTextField()));
     final field =
         tester.widget<CupertinoTextField>(find.byType(CupertinoTextField));
-    // CupertinoTextField paints its own box only when the decoration argument
-    // is left off entirely, so passing null here would strip the background
-    // from every field that does not ask for a decoration of its own.
+    // CupertinoTextField paints its own box only when `decoration` is omitted
+    // entirely; passing null would strip it from every caller that gives none.
     expect(field.decoration, isNotNull, reason: 'the default field box');
   });
 

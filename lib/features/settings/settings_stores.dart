@@ -43,23 +43,17 @@ class GlobalSettings extends Store<Setting> {
   String get isoCountryCode => get("ISO_country____").value;
   bool get aiServicesEnabled => get("ai_services_ena").value == "1";
 
-  /// Follow-ups are an **optional feature**: a clinic that does not chase
-  /// recalls should not be shown promises, bands or fields it never asked for.
-  /// Off until an admin turns it on — settings › optional features.
+  /// Opt-in feature, off by default: enabled in settings › optional features.
   bool get followUpsEnabled => get("follow_ups_enab").value == "1";
   set followUpsEnabled(bool enabled) => set(Setting.fromJson(
       {"id": "follow_ups_enab", "value": enabled ? "1" : "0"}));
 
-  // Windows-only feature: directory/directories where the Xray software
-  // stores `.dcm` files. Supports multiple directories separated by `;`.
-  // Empty string = not configured.
+  // Windows-only: `;`-separated directories where the Xray software stores
+  // `.dcm` files. Empty string = not configured.
   String get dicomWatchDir => get("dicom_watch_dir").value;
   set dicomWatchDir(String v) =>
       set(Setting.fromJson({"id": "dicom_watch_dir", "value": v}));
 
-  /// Parsed list of watch directories (split by `;`, trimmed, empty entries
-  /// filtered out). Use this for scanning — handles both single-dir legacy
-  /// values (no semicolons) and the new multi-dir format.
   List<String> get dicomWatchDirs {
     final raw = dicomWatchDir;
     if (raw.isEmpty) return const <String>[];
@@ -76,9 +70,7 @@ class GlobalSettings extends Store<Setting> {
         dirs.map((d) => d.trim()).where((d) => d.isNotEmpty).join(";");
   }
 
-  // When true, new `.dcm` files for already-linked patients are auto-imported
-  // during scans (startup + appointments resync). When false, the dentist
-  // opens the DICOM Import screen manually.
+  // On by default; scans auto-import new `.dcm` files for already-linked patients.
   bool get dicomAutoImport => get("dicom_auto_imp_").value == "1";
   set dicomAutoImport(bool v) =>
       set(Setting.fromJson({"id": "dicom_auto_imp_", "value": v ? "1" : "0"}));
@@ -136,14 +128,8 @@ class GlobalSettings extends Store<Setting> {
 
 String currency() => globalSettings.get("currency_______").value;
 
-/// The clinic's ISO country code, as the phone parser and `IsoCode.byName` want
-/// it: two letters, upper case.
-///
-/// The setting is free text — the card is a plain text field, and
-/// `getCountryCode` answers with one of the API's two-letter codes — so it can
-/// hold something else. `substring(0, 2)` on a pasted flag emoji (four code
-/// units) hands the rest of the app a string that ends in half a surrogate pair,
-/// which Flutter's paragraph builder refuses to draw.
+/// Two-letter uppercase country code; only ASCII letters are kept because the
+/// setting is free text and the phone parser expects a plain code.
 String isoCC() {
   final code = globalSettings.isoCountryCode;
   if (code.isEmpty) return "US";
@@ -157,8 +143,7 @@ class LocalSettings extends ObservablePersistingObject {
   LocalSettings() : super(_storeNameLocal) {
     if (kIsWeb) {
       observe((_) {
-        // We need to set the language in the JS bridge for the web
-        // this is to localize the permission requst & push notifications
+        // Localizes the web permission prompt and push notifications.
         JSBridge.setGlobalVariable("lang", locale.s.$code);
       });
     }
@@ -171,12 +156,8 @@ class LocalSettings extends ObservablePersistingObject {
   ThemeMode selectedTheme = ThemeMode.light;
   int _selectedLocale = 0;
 
-  /// The language the user picked, persisted with the rest of the device
-  /// settings — and pushed into [locale], which owns what is on screen.
-  ///
-  /// The setter is the only way in, so a stored preference, a settings dropdown
-  /// and a language button cannot leave the dictionary and the persisted value
-  /// disagreeing.
+  /// Persisted selected language index; the setter clamps it and is the only path
+  /// that updates [locale], so the dictionary and stored value cannot disagree.
   int get selectedLocale => _selectedLocale;
 
   set selectedLocale(int value) {
@@ -193,19 +174,12 @@ class LocalSettings extends ObservablePersistingObject {
   EventsViewMode calendarEventsViewMode = EventsViewMode.agenda;
   String lastSeenVersion = "";
 
-  // ── DICOM viewer preferences
-  // JSON string: {"windowCenter": double, "windowWidth": double,
-  //               "colorMap": String, "invert": bool, "rotationSteps": int}
-  // Empty string = use DICOM defaults. The viewer panel (Phase 6) reads this
-  // on open and writes back (debounced) when the dentist changes a setting,
-  // so the next image opens with the same preferences.
+  // JSON: {"windowCenter", "windowWidth", "colorMap", "invert", "rotationSteps"}.
+  // Empty string = DICOM defaults.
   String dicomViewerPrefs = "";
 
-  // ── Panels' floating windows
-  // JSON string: {"patient": ["dentalChart", "appointments"], ...} — the windows
-  // each kind of panel was left with, so the next panel of that kind opens the
-  // way the last one was left. Read and written through `WindowDefaults`; kept
-  // per device and deliberately not offered as a setting.
+  // JSON: {"patient": ["dentalChart", ...]} — windows each panel kind was left
+  // with. Per device, through `WindowDefaults`; not a user setting.
   String windowsPerKind = "";
 
   static const _aiTokenSafetyMargin = Duration(hours: 2);

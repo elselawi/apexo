@@ -11,8 +11,7 @@ class ToothHistory {
   final Map<String, String> notes;
   final DateTime? date;
 
-  /// The appointment this record came from, when it came from one. Records
-  /// that belong to the patient's own chart carry no id, and the card only
-  /// offers to open the ones that can be opened.
+  /// Null for records from the patient's own chart; only records with an id
+  /// can be opened.
   final String? appointmentId;
 }

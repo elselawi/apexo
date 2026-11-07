@@ -49,8 +49,8 @@ void main() {
     originalResolver = PushPlatform.resolve;
     originalFirebase = Messaging.firebase;
 
-    // The patient side needs no PocketBase session, so a registration here
-    // never reaches a real server.
+    // No PocketBase session; the empty login URL keeps `replaceToken` on the
+    // patient branch.
     login.url = '';
     login.email = '';
     signInPatient();

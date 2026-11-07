@@ -7,9 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/pump_app.dart';
 
-/// A tooth whose bounding-box centre is inside its own outline, and the two
-/// incisors whose centre falls outside it — the pair the web QA pass caught the
-/// accessibility node for: the node for tooth 11 opened 12, and 12 opened 13.
+/// Teeth under test: one whose bounding-box centre sits inside its outline and
+/// two incisors whose centre does not; 11's node opened 12, 12's opened 13.
 const incisorsAndNeighbours = ['11', '12', '13', '14', '21', '33'];
 
 Future<void> pumpTeethSelector(WidgetTester tester) => pumpApexoApp(
@@ -37,9 +36,8 @@ void main() {
       expect(finder, findsOneWidget, reason: 'tooth $iso must have a node');
 
       final data = tester.getSemantics(finder).getSemanticsData();
-      // The action is what makes an assistive activation open *this* tooth:
-      // without it the node is a label only, and the activation is delivered as
-      // a synthetic pointer event at the node's centre.
+      // Without the tap action the node is a label only, and activation is
+      // delivered as a synthetic pointer event at its centre.
       expect(
         data.hasAction(SemanticsAction.tap),
         isTrue,
@@ -57,8 +55,7 @@ void main() {
       await pumpTeethSelector(tester);
 
       final node = tester.getSemantics(find.bySemanticsLabel('Tooth $iso'));
-      // The action an assistive technology or a `flt-tappable` click dispatches
-      // — deliberately not a pointer tap, which is what used to land on the
+      // Dispatched through semantics, not a pointer tap, which landed on the
       // neighbouring tooth.
       node.owner!.performAction(node.id, SemanticsAction.tap);
       await tester.pumpAndSettle();

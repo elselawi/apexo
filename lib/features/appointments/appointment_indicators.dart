@@ -7,12 +7,7 @@ import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// One kind of information a visit can carry, as the icon that stands for it
-/// and the key that names it.
-///
-/// The icons are the ones the appointment card already uses for the same
-/// sections (`common_widgets/appointment_card.dart`), so a visit's labwork is a
-/// factory everywhere, its prescriptions a pill, and its photos a camera.
+/// A visit section and its icon; the icons match the appointment card's sections.
 enum AppointmentIndicator {
   dentalNotes(FluentIcons.teeth, "dentalNotes"),
   prescriptions(FluentIcons.pill, "prescription"),
@@ -34,12 +29,6 @@ enum AppointmentIndicator {
       };
 }
 
-/// Visit attachments in a bounded Fluent accessory strip, shared by the
-/// agenda and timeline. Every category and gallery preview stays visible,
-/// sharing the available width without collapsing into an overflow menu.
-/// Each segment uses the operator tint, opens its window, and shares one
-/// complete hover card.
-/// Set [embedded] to false for the legacy overlapping circular badges.
 class AppointmentIndicators extends StatefulWidget {
   const AppointmentIndicators({
     super.key,
@@ -55,23 +44,16 @@ class AppointmentIndicators extends StatefulWidget {
 
   final Appointment item;
 
-  /// The glyph inside each badge; the circle around it is larger by [overlap]
-  /// plus the ring it wears.
   final double iconSize;
 
   /// How far each badge sits on the one before it.
   final double overlap;
 
-  /// The agenda row draws the chart's treatments as `TreatmentLabels` chips;
-  /// the teeth badge there would be the same fact twice.
+  /// The agenda shows treatments as chips already, so it turns this badge off.
   final bool showDentalNotes;
 
-  /// A picture says more than a camera icon: the gallery badge is the visit's
-  /// first picture when there is one.
   final bool showGalleryThumbnail;
 
-  /// A flat, bounded Fluent accessory strip. Narrow strips drop labels and
-  /// compact their cells, but never hide a category.
   final bool embedded;
 
   /// The operator's chip color, used for a stronger fill.
@@ -83,8 +65,6 @@ class AppointmentIndicators extends StatefulWidget {
   /// The circle a badge of [iconSize] glyphs is drawn in.
   static double sizeFor(double iconSize) => iconSize + 10;
 
-  /// Whether [item] draws anything at all — for callers that would otherwise
-  /// leave a gap where the empty line is.
   static bool hasAny(Appointment item, {bool showDentalNotes = true}) =>
       (showDentalNotes && _hasDentalNotes(item)) ||
       _prescriptions(item).isNotEmpty ||
@@ -96,8 +76,6 @@ class AppointmentIndicators extends StatefulWidget {
 }
 
 class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
-  /// The badge the pointer is over: brought to the front of the pile and
-  /// tinted, so the part its neighbour covers is read in full.
   int? _hovered;
   bool _canOpen(AppointmentIndicator kind) =>
       appointmentWindows(widget.item).contains(kind.window);
@@ -148,8 +126,7 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
     final double size = AppointmentIndicators.sizeFor(widget.iconSize);
     final double step = size - widget.overlap;
 
-    // The one under the pointer is painted last, so all of its circle is on
-    // top of the pile while the card is open.
+    // Paint the hovered badge last so its full circle sits above the pile.
     final order = [for (var i = 0; i < badges.length; i++) i];
     final hovered = _hovered;
     if (hovered != null && hovered < badges.length) {
@@ -159,9 +136,7 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
     }
 
     return Tooltip(
-      // One card for the whole pile: the question is "what does this visit
-      // carry?", not four separate ones. Hover only, so it never competes with
-      // the row's long press.
+      // Hover only, so the card never competes with the row's long press.
       triggerMode: TooltipTriggerMode.manual,
       style: _tooltipStyle,
       richMessage: _card(context, badges),
@@ -174,9 +149,8 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
           children: [
             for (final i in order)
               PositionedDirectional(
-                // Keyed by kind, so lifting one to the front moves the
-                // element instead of rebuilding it — a rebuilt tooltip would
-                // close the one the hover just opened.
+                // Keyed by kind so reordering moves the element rather than
+                // rebuilding it; a rebuild would close the open tooltip.
                 key: ValueKey(badges[i].kind.name),
                 start: i * step,
                 top: 0,
@@ -291,8 +265,6 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
     );
   }
 
-  /// One circle of the pile: the glyph on the app's own surface, ringed and
-  /// lifted a little, so overlapping circles still read as separate tokens.
   Widget _badge(BuildContext context, _Badge badge, {required bool hovered}) {
     final theme = FluentTheme.of(context);
     final accent = widget.color ?? theme.accentColor;
@@ -388,8 +360,6 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
   }
 }
 
-/// One entry of the pile: what the badge stands for, what the card says about
-/// it, and — for the gallery — the picture drawn in the badge.
 class _Badge {
   const _Badge(this.kind, this.lines, {this.media});
 
@@ -398,8 +368,6 @@ class _Badge {
   final Widget? media;
 }
 
-/// Shared agenda/timeline detail line: notes retain a reserved leading area,
-/// while all accessory cells share the remaining width.
 class AppointmentInfoLine extends StatelessWidget {
   const AppointmentInfoLine({
     super.key,
@@ -418,8 +386,6 @@ class AppointmentInfoLine extends StatelessWidget {
   final double iconSize;
   final bool showDentalNotes;
 
-  /// False where indicators have their own space, such as the timeline's
-  /// embedded strip; this line then keeps the note alone.
   final bool showIndicators;
   final TextStyle? noteStyle;
   final Color? color;
@@ -486,11 +452,8 @@ class AppointmentInfoLine extends StatelessWidget {
   }
 }
 
-/// The card a badge opens: every kind the visit carries, each with its icon,
-/// its name and the whole of its information.
-///
-/// The icons are drawn as glyphs of the icon font rather than as widgets, so
-/// they take the tooltip's own text colour and sit on its baseline.
+/// The hover card. Icons are drawn as font glyphs rather than widgets so they
+/// take the tooltip's text colour and sit on its baseline.
 InlineSpan _card(BuildContext context, List<_Badge> badges) {
   final typography = FluentTheme.of(context).typography;
   return TextSpan(
@@ -516,8 +479,8 @@ InlineSpan _card(BuildContext context, List<_Badge> badges) {
   );
 }
 
-/// Wide enough for a prescription name and a tooth note, narrow enough to stay
-/// beside the row it belongs to.
+// Wide enough for a prescription name and a tooth note, narrow enough to stay
+// beside the row it belongs to.
 const _tooltipStyle = TooltipThemeData(maxWidth: 280);
 
 String _familyOf(IconData icon) {
@@ -536,9 +499,6 @@ bool _hasGallery(Appointment item) =>
 List<String> _prescriptions(Appointment item) =>
     item.prescriptions.where((p) => p.trim().isNotEmpty).toList();
 
-/// Each treated tooth on its own line: its ISO number, the treatment and, when
-/// one was written, the note. This is what the agenda's treatment chips keep
-/// behind their flyout, spelled out in one card.
 List<String> _dentalNoteLines(Appointment item) {
   final isos = {...item.teeth.keys, ...item.teethExtraNotes.keys}.toList()
     ..sort();
@@ -560,9 +520,6 @@ List<String> _labworkLines(Appointment item) => [
         "${txt("orderNotes")}: ${item.labworkNotes}",
     ];
 
-/// Counts rather than a list of names: a gallery can hold dozens, and "Photos:
-/// 12" is the fact the badge is asked for. The labels read the same in every
-/// locale whether there is one photo or many.
 List<String> _galleryLines(Appointment item) => [
       if (item.viewableImgs.isNotEmpty)
         "${txt("photos")}: ${item.viewableImgs.length}",
@@ -570,21 +527,15 @@ List<String> _galleryLines(Appointment item) => [
         "${txt("dcm")}: ${item.viewableDcmImgs.length}",
     ];
 
-/// The picture a visit's gallery previews: its first photo, or its first X-ray
-/// when it has no photos. `getImage` resolves a `.dcm` to the PNG preview beside it.
+// First photo, else first X-ray; `getImage` maps a `.dcm` to its PNG preview.
 String? _previewName(Appointment item) {
   if (item.viewableImgs.isNotEmpty) return item.viewableImgs.first;
   if (item.viewableDcmImgs.isNotEmpty) return item.viewableDcmImgs.first;
   return null;
 }
 
-/// The gallery's first picture, filling its badge.
-///
-/// The future is resolved once per visit (and again only when the visit's
-/// pictures change), because the timeline rebuilds every chip on the minute —
-/// a `FutureBuilder` fed a fresh future each build would restart the download
-/// each time. Until the picture lands (or if it never does) the camera icon
-/// stands in for it.
+/// Caches the picture future across rebuilds: the timeline rebuilds chips every
+/// minute, and a fresh future each build would restart the download.
 class _GalleryThumb extends StatefulWidget {
   const _GalleryThumb({
     required this.item,
@@ -598,8 +549,6 @@ class _GalleryThumb extends StatefulWidget {
   final double circleSize;
   final double iconSize;
 
-  /// What the badge shows until the picture lands — the icon the gallery
-  /// badge would have drawn on its own.
   final IconData fallbackIcon;
   final Color color;
 
@@ -610,8 +559,6 @@ class _GalleryThumb extends StatefulWidget {
 class _GalleryThumbState extends State<_GalleryThumb> {
   late Future<ImageProvider?> _image;
 
-  /// The picture the badge previews: the first photo, or the first X-ray —
-  /// whose PNG preview `getImage` resolves in its place.
   String? get _name => _previewName(widget.item);
 
   @override

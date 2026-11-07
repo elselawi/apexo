@@ -9,9 +9,7 @@ import 'package:apexo/services/dicom/dicom_lru.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A minimal [Store] subclass that records [deleteImg] calls without
-/// touching PocketBase or Hive — lets us verify [Store.deleteDcmImg]
-/// calls deleteImg exactly twice (`.dcm` + `.png`).
+/// Records [deleteImg] calls without touching PocketBase or Hive.
 class _RecordingStore extends Store<Appointment> {
   _RecordingStore() : super(modeling: Appointment.fromJson);
   final List<(String, String)> deletedCalls = [];
@@ -22,8 +20,7 @@ class _RecordingStore extends Store<Appointment> {
   }
 }
 
-/// Like [_RecordingStore] but throws on `.png` deletions — verifies that
-/// [Store.deleteDcmImg] swallows the error for the preview file.
+/// Throws on `.png` deletes: deleteDcmImg must swallow a missing preview.
 class _ThrowingOnPngStore extends _RecordingStore {
   @override
   Future<void> deleteImg(String rowID, String name) async {
@@ -159,8 +156,6 @@ void main() {
 
       final dir = testDirectory;
 
-      // Insert 3 entries, each 500 bytes → total 1500 > 1024 threshold.
-      // After eviction, the oldest should be evicted, keeping total ≤ 1024.
       final names = [
         'evict-old.dcm',
         'evict-mid.dcm',
@@ -179,8 +174,6 @@ void main() {
       now = now.add(const Duration(seconds: 1));
       await cache.touch(names[2], 500);
 
-      // After the 3rd touch (total 1500 > 1024), eviction should have
-      // removed the oldest entry (names[0]) to bring total to 1000 ≤ 1024.
       final active = await cache.activeEntries;
       final activeNames = active.map((e) => e.name).toSet();
 
@@ -238,12 +231,9 @@ void main() {
 
     test('swallows error on .png deletion (may not exist)', () async {
       final store = _ThrowingOnPngStore();
-      // Should not throw even though .png deletion fails — deleteDcmImg
-      // catches the error and returns normally.
       await store.deleteDcmImg('apt-1', 'dcm_abc.dcm');
 
-      // The .dcm call succeeded and was recorded; the .png call threw
-      // before recording (simulating a file that doesn't exist on PB).
+      // The .png delete threw before recording; the .dcm delete still stands.
       expect(store.deletedCalls.length, 1);
       expect(store.deletedCalls[0], ('apt-1', 'dcm_abc.dcm'));
     });
@@ -251,9 +241,7 @@ void main() {
 
   group('getImage — DCM redirect', () {
     test('isADcmName is checked before normal image path', () {
-      // Verify the redirect target: a .dcm name maps to .dcm.png
-      // This is a logic-level test — the actual getImage call requires
-      // PocketBase (remote.getImageLink) which isn't available in unit tests.
+      // Logic-level only: getImage needs PocketBase's remote.getImageLink.
       const dcmName = 'scan.dcm';
       expect(isADcmName(dcmName), isTrue);
       expect('$dcmName.png', 'scan.dcm.png');

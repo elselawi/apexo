@@ -7,21 +7,9 @@ import 'package:apexo/utils/logger.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
-/// Fetches the raw `.dcm` bytes for [dcmName] attached to appointment [rowId].
-///
-/// This is the **only** place the raw `.dcm` (5–20 MB) is downloaded — the
-/// gallery shows the small PNG preview; the viewer fetches the original on
-/// demand. The raw `.dcm` (5–20 MB) is only fetched when the dentist opens
-///
-/// - **Native**: `filesDir()` first (LRU cache hit). On a miss, downloads
-///   from the PocketBase file URL, saves to `filesDir()`, records the entry
-///   in [DicomLruCache] (which evicts LRU entries past 500 MB), and returns
-///   the bytes. A cache hit updates the LRU access timestamp.
-/// - **Web**: no filesystem — downloads from the PocketBase URL into memory
-///   only (held for the viewer session, never persisted).
-///
-/// Returns `null` if the file cannot be resolved (not local, no PB URL, or
-/// the download fails). Errors are logged, not thrown.
+/// Downloads the raw `.dcm` (5–20 MB) — the only place it is fetched; the gallery
+/// uses the PNG preview. Native caches bytes in [DicomLruCache] (500 MB LRU), web
+/// keeps them in memory. Returns null on failure and logs instead of throwing.
 Future<Uint8List?> fetchDcmBytes({
   required String rowId,
   required String dcmName,
@@ -30,8 +18,8 @@ Future<Uint8List?> fetchDcmBytes({
 }) async {
   final saveRemote = remote ?? appointments.remote!;
   final lru = lruCache ?? dicomLruCache;
-  // A PB filename is only unique within its source record/server. Namespacing
-  // the on-disk cache prevents stale cross-clinic bytes from being displayed.
+  // A PB filename is unique only within its record/server, so the on-disk cache
+  // is namespaced to prevent stale cross-clinic bytes.
   final cacheName =
       'dcm_${simpleHash('${saveRemote.pbInstance.baseURL}|$rowId|$dcmName')}_$dcmName';
 

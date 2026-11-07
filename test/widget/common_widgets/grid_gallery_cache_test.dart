@@ -14,11 +14,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
-/// A gallery is opened, closed and opened again all day: the second open must
-/// not go looking for the pictures the first one already has.
-///
-/// The pictures are asked for per tile, per open, so a lookup that reaches the
-/// server is the difference between a gallery that appears and one that spins.
+/// Pictures are resolved per tile, per open, so a reopened gallery must be
+/// answered from memory rather than by another round trip.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -133,8 +130,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await settle(tester);
 
-      // Nothing is on the disk from here on: only what the app remembered can
-      // answer, which is exactly what a reopened gallery has to rely on.
+      // The preview is gone from disk, so only the memory cache can answer now.
       await tester.runAsync(() async {
         final preview = await getOrCreateFile('reopen_preview_ab12cd.thumb640.jpg');
         await preview.delete();

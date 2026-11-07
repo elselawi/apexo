@@ -5,8 +5,6 @@ import 'package:apexo/services/changelog.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Shows the changelog for a given version. If [version] is omitted,
-/// the latest version's changelog is shown.
 Future<void> showChangelogDialog(
   BuildContext context, {
   ChangelogVersion? entry,

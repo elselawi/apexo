@@ -32,10 +32,6 @@ class SyncResult {
   }
 }
 
-/// A class that represents a store of documents
-/// This implements observableDict
-/// but adds ability to persist data as well as synchronize it with a remote server
-
 class Store<G extends Model> {
   Store({
     required this.modeling,
@@ -54,9 +50,8 @@ class Store<G extends Model> {
     loaded = deleteMemoryAndLoadFromPersistence();
   }
 
-  /// Callbacks invoked when a file upload permanently fails (dead-letter).
-  /// DICOM code registers here to clear the import registry so the file
-  /// can be re-discovered on the next directory scan.
+  /// Called when a file upload permanently fails (dead-letter); DICOM code
+  /// clears its import registry so the file can be re-discovered.
   static final List<void Function(String filename)> onFileDeadLettered = [];
 
   final StoreEffects effects;
@@ -150,9 +145,8 @@ class Store<G extends Model> {
     };
   }
 
-  /// reloads the store from the local database
-  /// DO NOT USE THIS METHOD UNLESS YOU'RE SURE THAT THERE ARE NO CHANGES PENDING TO BE SAVED
-  /// use "reload" method instead
+  /// Reloads from local storage, bailing out if unsaved changes are pending.
+  /// Use [reload] to drain pending persistence first.
   Future<void> deleteMemoryAndLoadFromPersistence() async {
     if (local == null) {
       return;
@@ -323,12 +317,9 @@ class Store<G extends Model> {
                 "Error sending push notifications (kept in deferred queue): $pushErr",
                 pushStack);
           }
-          // while we have the connection lets synchronize
-          // don't put "await" before synchronize() since we don't want catch the error
-          // if it gets caught it means the same file will be placed in deferred
+          // Don't await synchronize(): its failure would be caught by the
+          // catch below and re-defer the rows just written.
           if (manualSyncOnly != true) {
-            // this condition is especially helpful during testing
-            // to have fine grained control over synchronization steps
             unawaited(synchronize());
           }
           return;
@@ -339,12 +330,6 @@ class Store<G extends Model> {
         }
       }
 
-      /**
-	 * If we reached here, it means that its either
-	 * 1. we're offline
-	 * 2. there was an error during sending updates
-	 * 3. there are already deferred updates
-	 */
       changes.removeAll(changesToProcess);
     } finally {
       onSyncEnd?.call();
@@ -397,9 +382,8 @@ class Store<G extends Model> {
       if (remoteVersion == 0 &&
           localVersion > 0 &&
           remoteUpdates.rows.isEmpty) {
-        // since the above condition usually happens when the token is expired,
-        // we try to refresh the token
-        // if this fails the authentication will throw an exception and the user will be asked to login again
+        // Usually means the token expired; refresh it, and on failure the
+        // authentication error asks the user to log in again.
         try {
           await effects.refreshAuthentication();
         } catch (e) {
@@ -410,15 +394,12 @@ class Store<G extends Model> {
 
       final List<int> remoteLosersIndices = [];
 
-      // check conflicts: last write wins
-      // Collect merged results for conflicting records.  Each conflict is
-      // field-level-merged (see [mergeConflict]) rather than discarding one
-      // entire version.  The merged JSON goes to BOTH local and remote.
+      // Conflicts are merged field-level via [mergeConflict], not whole-row;
+      // the merged JSON goes to both local and remote.
       final Map<String, String> mergedConflictsToLocal = {};
       final Map<String, String> mergedConflictsToRemote = {};
 
-      // First pass: identify conflicts synchronously (removeWhere's
-      // callback cannot be async).  Collect the data needed for merging.
+      // First pass is sync because removeWhere's callback cannot await.
       final List<_ConflictInfo> conflictsFound = [];
       deferred.removeWhere((dfID, deferredTimeStamp) {
         final int remoteConflictIndex =
@@ -429,9 +410,8 @@ class Store<G extends Model> {
         }
         final int remoteTimeStamp = remoteUpdates.rows[remoteConflictIndex].ts;
         if (remoteTimeStamp <= localVersion) {
-          // The overlap must not turn an already-consumed timestamp into a
-          // conflict that resurrects default-omitted fields. Keep the complete
-          // pending local snapshot, as with the original strict cursor.
+          // A row at or below the cursor is overlap, not a conflict: merging it
+          // would resurrect default-omitted fields. Push the pending local one.
           remoteLosersIndices.add(remoteConflictIndex);
           return false;
         }
@@ -443,18 +423,14 @@ class Store<G extends Model> {
           remoteData: remoteUpdates.rows[remoteConflictIndex].data,
         ));
         conflicts++;
-        // Remove the conflicting remote row from the pull set — the
-        // merged version is written to local directly below.
+        // Drop the conflicting remote row; the merged version is written below.
         remoteLosersIndices.add(remoteConflictIndex);
-        // Remove from deferred — the merged version is pushed to remote
-        // directly below.
+        // Drop it from deferred too; the merged version is pushed below.
         return true;
       });
 
-      // Second pass: async field-level merge for each conflict.
-      // Pending uploads are row-scoped: the same filename can legitimately
-      // be queued for different appointments and must not protect a file
-      // reference on the wrong row.
+      // Second pass does the async merge; pending uploads are looked up per row
+      // because the same filename can be queued for different rows.
       for (final c in conflictsFound) {
         final localJson =
             jsonDecode(await local.get(c.dfID)) as Map<String, dynamic>;
@@ -477,8 +453,7 @@ class Store<G extends Model> {
         mergedConflictsToRemote[c.dfID] = mergedStr;
       }
 
-      // remove losers from remote updates
-      // Sort indices in descending order
+      // Remove descending so the remaining indices stay valid.
       remoteLosersIndices.sort((a, b) => b.compareTo(a));
       for (int index in remoteLosersIndices) {
         remoteUpdates.rows.removeAt(index);
@@ -487,9 +462,8 @@ class Store<G extends Model> {
       final Map<String, String> toLocalWrite = Map.fromEntries(
           remoteUpdates.rows.map((r) => MapEntry(r.id, r.data)));
 
-      // Merge in field-level-merged conflict results (these override any
-      // remote-only row of the same ID, but conflicting IDs were already
-      // removed from remoteUpdates above via remoteLosersIndices).
+      // Merged conflict rows override the pulled ones; their IDs were removed
+      // from remoteUpdates above.
       toLocalWrite.addAll(mergedConflictsToLocal);
 
       if (localVersion == remoteVersion && !hadDeferred) {
@@ -509,16 +483,15 @@ class Store<G extends Model> {
       final Map<String, String> toRemoteWrite = {};
 
       final List<Future<void> Function()> fileHandling = [];
-      // Track FILE keys whose operation succeeds so we can safely clear
-      // them at the end without wiping re-queued failure entries.
+      // FILE keys that succeeded, so the end-of-pass cleanup spares any
+      // re-queued failure entries.
       final succeededFileKeys = <String>{};
 
       for (var entry in deferred.entries) {
         if (entry.key.startsWith("FILE")) {
           final deferredFile = entry.key.split("||");
-          // Uploads have FILE||row||path||filename[||retries]. Deletes use
-          // FILE||row||filename. Ignore malformed entries rather than
-          // allowing one corrupt queue key to abort the entire sync pass.
+          // Key format: uploads FILE||row||path||filename[||retries], deletes
+          // FILE||row||filename. Malformed keys are skipped, not fatal.
           if (!isValidDeferredFileKey(entry.key, entry.value)) {
             effects.log(
                 'Deferred file: discarding malformed key "${entry.key}"',
@@ -543,8 +516,7 @@ class Store<G extends Model> {
           const maxRetries = 5;
           final newKey = buildDeferredRetryKey(entry.key, retries + 1);
 
-          // we will delay file handling since it takes too much time
-          // so we would run the document handling first then the file handling
+          // Files are handled after all document writes since uploads are slow.
           fileHandling.add(() async {
             if (upload) {
               // Dead-letter: too many retries.
@@ -590,19 +562,14 @@ class Store<G extends Model> {
                   predefinedMultipart: multipart,
                 );
                 if (session != _persistenceSession) return;
-                // PB may assign a different name — patch the model first
-                // so _ensureDcmInModel sees the correct name and avoids
-                // creating a duplicate entry.
+                // PB may rename the file, so patch the model first; otherwise
+                // _ensureDcmInModel adds a duplicate dcmImgs entry.
                 if (pbName != filename) {
                   _patchModelFilename(rowID, filename, pbName);
                 }
-                // DICOM files: ensure the model's dcmImgs lists the
-                // PB-confirmed filename.
                 if (_isDcmFile(pbName)) {
                   _ensureDcmInModel(rowID, pbName);
                 }
-                // Mark this entry as successfully uploaded so it gets
-                // cleaned up at the end of the sync cycle.
                 succeededFileKeys.add(entry.key);
               } catch (e, s) {
                 // Upload failed — keep in queue with incremented retries.
@@ -626,8 +593,7 @@ class Store<G extends Model> {
         }
       }
 
-      // Add field-level-merged conflict results to the remote write set.
-      // These were removed from `deferred` above and need to be pushed.
+      // Merged conflicts were dropped from deferred, so push them here.
       toRemoteWrite.addAll(mergedConflictsToRemote);
 
       if (session != _persistenceSession) {
@@ -664,9 +630,8 @@ class Store<G extends Model> {
         }
       }
 
-      // When all JSON-related updates are done, handle files serially. Each
-      // failed upload updates the shared deferred map; running these in
-      // parallel can cause one failure to overwrite another failure's retry.
+      // Files run serially after all JSON writes: each failed upload updates
+      // the shared deferred map, so parallel runs would clobber each other.
       for (final handleFile in fileHandling) {
         if (session != _persistenceSession) {
           return SyncResult(exception: 'persistence session ended');
@@ -674,11 +639,8 @@ class Store<G extends Model> {
         await handleFile();
       }
 
-      // Clean up deferred entries that were successfully processed.
-      // - Non-FILE entries were handled via toRemoteWrite above.
-      // - Succeeded FILE entries are tracked in succeededFileKeys.
-      // - Failed FILE entries were re-queued with incremented retries
-      //   by the catch block — those must NOT be cleared here.
+      // Clear only processed non-FILE keys and succeeded FILE keys; failed
+      // uploads were re-queued with incremented retries and must stay.
       if (session != _persistenceSession) {
         return SyncResult(exception: 'persistence session ended');
       }
@@ -689,21 +651,14 @@ class Store<G extends Model> {
       await local.putDeferred(currentDeferred);
       deferredPresent = currentDeferred.isNotEmpty;
 
-      // set local version to the version given by the current request
-      // this might be outdated as soon as this functions ends
-      // that's why this function will run on a while loop (below)
+      // Adopt the version this pull reported; it may already be stale, which is
+      // why _syncRequest loops until local and remote converge.
       await local.putVersion(remoteUpdates.version > localVersion
           ? remoteUpdates.version
           : localVersion);
 
-      // but if we had deferred updates then the remoteUpdates.version is outdated
-      // so we need to fetch the latest version again
-      // however, we should not do this in the same run since there might be updates
-      // from another client between the time we fetched the remoteUpdates and the
-      // time we sent deferred updates
-      // so every sync should be followed by another sync
-      // until the versions match
-      // this is why there's another sync method below
+      // Deferred writes make remoteUpdates.version stale. Re-read it in a new
+      // pass, not here: another client may write between the push and the read.
 
       // finally show a notification if the store or model has something notification worthy
 
@@ -806,11 +761,8 @@ class Store<G extends Model> {
 
   void cancelRealtimeSub() => _realtime.cancel();
 
-  /// Stops session-scoped persistence safely before its local/remote targets
-  /// are replaced (for example when a user signs into another clinic).
-  ///
-  /// Pending edits are captured for the old local adapter before session-bound
-  /// network work is invalidated. Drain that save before closing its Hive boxes.
+  /// Ends persistence before its targets are replaced (e.g. switching clinic).
+  /// Await it before closing Hive boxes; pending edits are saved to the old one.
   Future<void> deactivatePersistenceSession() async {
     _preserveSessionChanges();
     _persistenceSession++;
@@ -826,10 +778,8 @@ class Store<G extends Model> {
     await _realtime.drain();
   }
 
-  /// Ends session-bound listeners and queued persistence work on logout.
-  /// Unlike [deactivatePersistenceSession], this retains local storage so a
-  /// later login to the same clinic can load its offline data normally.
-  /// The latest edits are queued to that adapter without further network I/O.
+  /// Ends listeners and queued persistence on logout but keeps local storage,
+  /// so a later login to the same clinic still loads its offline data.
   void endSession() {
     _preserveSessionChanges();
     _persistenceSession++;
@@ -859,18 +809,8 @@ class Store<G extends Model> {
 
   Future<List<SyncResult>> _syncRequest(int session) async {
     if (session != _persistenceSession) return [];
-    // this would run multiple tries to be in sync with the server
-    // why multiple tries?
-    // well... if it gives the server data then it would outdate itself
-    // since the server is the one issues the version numbers
-    // so when it gives the server somethings
-    // it would need pull the same thing that it gave (to have its version)
-    // finally when it sees that the local and the remote version match
-    // it would end
-    // check the while loop below for more.
-
-    // regardless of that... on first sync
-    // we need to set up the realtime subscription
+    // A sync may take several passes: each push bumps the server-issued
+    // version, so the pushed rows must be pulled back before the two match.
     final sessionRemote = remote;
     if (sessionRemote != null && manualSyncOnly != true) {
       _realtime.start(() => sessionRemote.pbInstance
@@ -891,11 +831,8 @@ class Store<G extends Model> {
         final SyncResult result = await _syncTry(session);
         tries.add(result);
         if (result.exception != null) break;
-        // A pass that pushed, pulled and merged nothing left both sides exactly
-        // as it found them, so running it again can only repeat that work. That
-        // is what a remote whose store is empty (or was reset) looks like while
-        // the local cursor is ahead — the old loop spun here without end, and a
-        // login awaits this future, so the app never reached the shell.
+        // A pass that changed nothing will never converge, e.g. an empty remote
+        // with a local cursor ahead; login awaits this, so don't spin here.
         final progressed = (result.pushed ?? 0) > 0 ||
             (result.pulled ?? 0) > 0 ||
             (result.conflicts ?? 0) > 0;
@@ -1022,12 +959,6 @@ class Store<G extends Model> {
         }
       }
 
-      /**
-     * If we reached here it means that its either
-     * 1. we're offline
-     * 2. there was an error during sending updates
-     * 3. there are already deferred updates
-     */
       // DEFERRED Structure: "FILE||{rowID}||path:{0 for deleting, 1 for uploading}"
 
       await local.putDeferred({}
@@ -1039,15 +970,8 @@ class Store<G extends Model> {
     }
   }
 
-  /// Deletes a DCM X-ray and its PNG preview from PocketBase.
-  ///
-  /// Calls [deleteImg] for both the `.dcm` original and the `${dcmName}.png`
-  /// preview. If the PNG doesn't exist yet (still queued or generation
-  /// failed), the error for that call is swallowed — the `.dcm` deletion
-  /// still proceeds.
-  ///
-  /// The caller is responsible for removing `dcmName` from the model's
-  /// `dcmImgs` list and calling `set(model)`.
+  /// Deletes a DCM file and its PNG preview, ignoring a missing preview (still
+  /// queued or never generated). The caller must drop `dcmName` from `dcmImgs`.
   Future<void> deleteDcmImg(String rowID, String dcmName) async {
     // Delete the .dcm original.
     await deleteImg(rowID, dcmName);
@@ -1060,9 +984,8 @@ class Store<G extends Model> {
     }
   }
 
-  /// Upload an image with deferred retry support.
-  /// Returns the PB-assigned filename on success, or the client filename
-  /// if the upload was deferred (model will be corrected by next sync).
+  /// Uploads an image, deferring on failure. Returns the PB filename, or the
+  /// client filename if deferred (the next sync corrects the model).
   Future<String> uploadImg({
     required String rowID,
     required String filename,
@@ -1106,9 +1029,8 @@ class Store<G extends Model> {
         }
       }
 
-      // Defer: "FILE||{rowID}||{path}||{filename}||{retries}" → 1 (upload).
-      // Preserve an XFile's path when no native filesystem path was supplied;
-      // this is required for blob/web uploads to remain retryable.
+      // Key: FILE||row||path||filename||retries → 1. Keep the XFile path when no
+      // native path exists, or blob/web uploads cannot be retried.
       final deferredPath = path ?? file?.path ?? '';
       await local.putDeferred({
         ...lastDeferred,
@@ -1135,8 +1057,6 @@ class Store<G extends Model> {
     }
   }
 
-  /// Remove a dangling file reference from the local model after permanent
-  /// upload failure (retries exhausted or local file deleted).
   void _cleanDanglingFileRef(String rowID, String filename) {
     final model = observableMap.docs[rowID];
     if (model != null) {
@@ -1157,9 +1077,8 @@ class Store<G extends Model> {
         observableMap.set(modeling(json));
       }
     }
-    // If this was a DICOM file, notify listeners so the import registry
-    // can be cleared — otherwise the file stays locked as "imported" and
-    // never re-appears in the pending list.
+    // DICOM listeners clear the import registry; otherwise the file stays
+    // locked as imported and never reappears in the pending list.
     if (_isDcmFile(filename)) {
       for (final cb in List<void Function(String)>.from(onFileDeadLettered)) {
         cb(filename);
@@ -1167,9 +1086,6 @@ class Store<G extends Model> {
     }
   }
 
-  /// After a deferred upload succeeds, PB may assign a different filename
-  /// (e.g. collision suffix). Update the local model so other devices see
-  /// the correct filename.
   void _patchModelFilename(
       String rowID, String oldFilename, String newFilename) {
     final model = observableMap.docs[rowID];
@@ -1192,19 +1108,13 @@ class Store<G extends Model> {
     }
   }
 
-  /// True when [name] ends with `.dcm` or `.dicom` (case-insensitive).
-  /// Inlined here to avoid a circular dependency on `lib/utils/imgs.dart`.
+  // Inlined instead of importing lib/utils/imgs.dart, which would be circular.
   bool _isDcmFile(String name) {
     final lower = name.toLowerCase();
     return lower.endsWith('.dcm') || lower.endsWith('.dicom');
   }
 
-  /// Ensures [pbName] is listed in the model's `dcmImgs` field.
-  ///
-  /// Called after a deferred DICOM upload succeeds — at this point the file
-  /// is confirmed on PB but the model may not yet advertise it in `dcmImgs`
-  /// (because [DicomImporter.approveImport] intentionally deferred the
-  /// `dcmImgs` update until the upload is confirmed).
+  // The model may still hold the pre-upload name, so list the PB-confirmed one.
   void _ensureDcmInModel(String rowID, String pbName) {
     final model = observableMap.docs[rowID];
     if (model == null) return;
@@ -1220,10 +1130,8 @@ class Store<G extends Model> {
     }
   }
 
-  // ── @visibleForTesting wrappers ───────────────────────────────────
-  // Dart privacy is library-scoped, not class-scoped. These thin public
-  // wrappers let unit tests in other libraries exercise the logic without
-  // making the helpers part of the public API.
+  // @visibleForTesting wrappers: Dart privacy is library-scoped, so tests in
+  // other libraries need these to reach the private helpers.
 
   @visibleForTesting
   void debugCleanDanglingFileRef(String rowID, String filename) =>

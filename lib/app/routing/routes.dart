@@ -16,10 +16,6 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 
-/// Whether [route] may be opened in this session.
-///
-/// The one place the catalog's requirements are checked against the session:
-/// [AppRoute] declares them, this decides them.
 bool _accessible(AppRoute route) {
   if (route.windowsOnly && !DicomController.isSupported) return false;
   if (route == AppRoute.booking) return booking.ready();
@@ -31,17 +27,11 @@ bool _accessible(AppRoute route) {
   return true;
 }
 
-/// The screens the shell can show, and the little state the navbar itself
-/// needs.
-///
-/// Panels are not among those screens: they float above the routes, and the
-/// stack they live on belongs to [PanelsManager] — which is why nothing here
-/// mentions them.
+/// Panels are not routes: they float above them and `PanelsManager` owns their
+/// stack.
 class AppRouter {
-  /// The route on screen.
-  ///
-  /// The route itself is stored, not an index into a permission-filtered list,
-  /// so nothing can drift when the session's permissions change.
+  /// Stored as a route, not an index into the filtered list, so permissions
+  /// changing cannot make it drift.
   final currentRoute = ObservableState<AppRoute>(AppRoute.dashboard);
 
   final showBottomNav = ObservableState(false);
@@ -54,12 +44,7 @@ class AppRouter {
           if (_accessible(route)) route
       ];
 
-  /// Where [currentRoute] sits in [visibleRoutes] — the navigation pane's
-  /// selection.
-  ///
-  /// Falls back to the first route when the current one is no longer offered
-  /// (a permission change while it is open), which is the screen the shell drew
-  /// for that state before.
+  /// Falls back to the first route if permissions changed while it was open.
   int get currentIndex {
     final int index = visibleRoutes.indexOf(currentRoute());
     return index == -1 ? 0 : index;
@@ -89,12 +74,8 @@ class AppRouter {
     _history.clear();
   }
 
-  /// Puts [target] on screen with somewhere to go back to, **without** running
-  /// [_syncStores].
-  ///
-  /// [navigate] deliberately refreshes the stores on the way, which a unit test
-  /// neither wants nor can wait for — this is the seam that lets one observe
-  /// [reset] clearing real state. Production always goes through [navigate].
+  /// Test seam: pushes [target] without [_syncStores], which a unit test cannot
+  /// wait for.
   @visibleForTesting
   void navigateWithoutSync(AppRoute target) {
     _history.add(currentRoute());
@@ -104,11 +85,6 @@ class AppRouter {
 
 final routes = AppRouter();
 
-/// What a route change refreshes.
-///
-/// One switch beside the router, rather than a closure buried in each route's
-/// own data. It mirrors the old `onSelect` closures exactly — `await` where they
-/// awaited, `unawaited(...)` where they fired and forgot.
 Future<void> _syncStores(AppRoute route) async {
   switch (route) {
     case AppRoute.dashboard:

@@ -3,8 +3,6 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A pill-shaped widget that displays an appointment's duration and allows
-/// cycling through preset durations via a flyout menu.
 class DurationPill extends StatefulWidget {
   const DurationPill({
     super.key,

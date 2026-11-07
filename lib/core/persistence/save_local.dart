@@ -25,9 +25,7 @@ class SaveLocal {
   final String name;
   final String uniqueId;
 
-  /// Optional storage root used by tests and isolated clients.
-  ///
-  /// When omitted, the application data directory is used as before.
+  /// Storage root override for tests; defaults to the app data directory.
   final String? storagePath;
   late final Future<Box<String>> mainHiveBox;
   late final Future<Box<String>> metaHiveBox;
@@ -126,11 +124,8 @@ class SaveLocal {
     }
   }
 
-  /// Closes this instance's boxes and unregisters its global cleanup hook.
-  ///
-  /// Application code normally keeps a [SaveLocal] instance for the lifetime
-  /// of the session. Tests and short-lived clients should call this method to
-  /// prevent open Hive handles and stale callbacks from leaking between cases.
+  /// Closes this instance's boxes and drops its global cleanup hook; needed by
+  /// short-lived clients so Hive handles and callbacks do not leak.
   Future<void> dispose() async {
     removeAllLocalData.remove(_clearCallback);
     for (final boxFuture in [mainHiveBox, metaHiveBox]) {

@@ -15,25 +15,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show showDatePicker;
 
-/// **Next follow-up** — the one field of a patient that looks forward.
-///
-/// A dentist finishes the notes and says "come back in two weeks, bring the
-/// X-ray"; the row is therefore one thought, not three: the day (the band's own
-/// date picker, so it behaves and reads exactly like a visit's), the intervals a
-/// practice actually uses, which set that day in one click, and the note that
-/// says what the visit is *for*.
-///
-/// The value belongs to the **patient**, so the two places this field is drawn —
-/// the visit's operative record and the patient's own band — are two views of one
-/// record. Both read the store, so a promise written in one shows in the other.
-///
-/// **The row edits a draft, and saving is an act.** A note is text, and text is
-/// written a letter at a time: committing every keystroke to the patient would
-/// fill the sync queue with half-typed words and leave a half-typed note behind
-/// on any interruption. So the day, the note and their removal are gathered here
-/// and written together by **Save**, with **Cancel** to drop the draft and
-/// **Clear** to take the promise back — the same grammar, and the same buttons,
-/// as the visit band's footer.
+/// The patient's next follow-up: one record shared by the visit's record and the
+/// patient's band, edited in a draft so a half-typed note never reaches the store.
 class FollowUpField extends StatefulWidget {
   const FollowUpField({
     super.key,
@@ -47,29 +30,20 @@ class FollowUpField extends StatefulWidget {
 
   final String patientID;
 
-  /// The day the presets count from.
-  ///
-  /// In a visit's operative record that is the **visit's** day — "come back in
-  /// two weeks" means two weeks after the treatment, and notes are usually
-  /// written the same day but not always. On the patient's own record it is
-  /// today, because there is no visit to count from.
+  /// The day presets count from: the visit's day in a visit's record, today on
+  /// the patient's own band, where there is no visit to count from.
   final DateTime anchor;
 
-  /// An optional draft owned by the surrounding visit session, so its Save can
-  /// keep the patient-owned follow-up with the rest of the form.
+  /// Optional draft owned by the surrounding visit session, saved with its form.
   final FollowUpDraft? draft;
 
-  /// Called after a write or a dropped draft, for a surface that has something
-  /// of its own to say about it (the visit's dirty state, a band that folds).
+  /// Called after a write or a dropped draft, so the owner can refresh its state.
   final VoidCallback? onChanged;
 
-  /// Whether the row takes edits. Scheduling permission is also required;
-  /// setting this to true never grants access on its own.
+  /// Whether the row takes edits; appointment permission is required as well.
   final bool enabled;
 
-  /// Folds the row again, for a surface that opened it on purpose — the
-  /// patient's own band, whose folded button is the way in and must be the way
-  /// back out. Null where the row is part of a form and is always shown.
+  /// Folds the row again for a surface that opened it; null where it is always shown.
   final VoidCallback? onCollapse;
 
   @override
@@ -77,8 +51,7 @@ class FollowUpField extends StatefulWidget {
 }
 
 class _FollowUpFieldState extends State<FollowUpField> {
-  /// The type a chip wears, measured as well as drawn: [_longPresetsFit] has to
-  /// weigh the very glyphs the wrap will lay out.
+  // Label style of a chip; [_longPresetsFit] measures the glyphs with it.
   static const _chipTextStyle = TextStyle(
     fontSize: 10.5,
     fontWeight: FontWeight.w700,
@@ -87,8 +60,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
   final TextEditingController _note = TextEditingController();
   final List<StreamSubscription<dynamic>> _subscriptions = [];
 
-  /// The promise as the store holds it — what the draft is measured against,
-  /// and what Cancel goes back to.
+  // The stored promise: what the draft is measured against and Cancel restores.
   DateTime? _savedDay;
   String _savedNote = '';
 
@@ -117,8 +89,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
     _pull(notify: false);
     widget.draft?.addListener(_onDraftChanged);
     _note.addListener(_onNoteTyped);
-    // The promise can also change without this row: the day's band, the history
-    // card, another window, a record synchronized down from the server.
+    // The promise can change elsewhere: another window, or a record synced down.
     _subscriptions
       ..add(patients.observableMap.stream.listen((_) => _pull()))
       ..add(followUpRevision.stream.listen((_) => _pull()));
@@ -151,8 +122,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
     super.dispose();
   }
 
-  /// Takes the stored promise in as the baseline, and — while the draft carries
-  /// nothing of the user's — as the draft too.
+  // Takes the stored promise as baseline, and as the draft while that draft is untouched.
   void _pull({bool notify = true}) {
     final patient = patients.get(widget.patientID);
     final day = patient?.followUpDay;
@@ -163,9 +133,8 @@ class _FollowUpFieldState extends State<FollowUpField> {
         : saved != null && sameCalendarDay(day, saved);
     if (_loaded && sameDay && note == _savedNote) return;
 
-    // Whether the user has work in the draft is measured against the baseline
-    // this pull is about to replace, not the one it brings: a clean draft
-    // follows the store, a draft in flight keeps what was typed into it.
+    // Dirty is measured against the baseline this pull is replacing, not the one
+    // it brings: a clean draft follows the store, one in flight keeps the typing.
     final pendingDraft = widget.draft;
     final restoreDraft = !_loaded &&
         pendingDraft?.isDirty == true &&
@@ -187,8 +156,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
     if (notify && mounted) setState(() {});
   }
 
-  /// Re-reads the promise as it stands **now** — the write is synchronous, so
-  /// the baseline never lags a frame behind the value that was just written.
+  // Re-reads the promise now; the write is synchronous, so the baseline cannot lag.
   void _adoptStored() {
     final patient = patients.get(widget.patientID);
     setState(() {
@@ -256,8 +224,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
     widget.onChanged?.call();
   }
 
-  /// Takes the promise back at once: the same act as the day's band's trash, so
-  /// it can never be left waiting on a Save the user forgot to press.
+  // Clears at once rather than staging, so it cannot wait on a Save the user forgets.
   void _clear() {
     if (!_enabled) return;
     setFollowUp(widget.patientID, null);
@@ -294,8 +261,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
     }
   }
 
-  /// A preset's own day, in the user's language and calendar — the tooltip that
-  /// explains what "3m" will actually pick.
+  // A preset's own day, for the tooltip that shows what "3m" will pick.
   String _dayLabel(DateTime day) =>
       DF.commonDate(day).replaceAll('📅 ', '').trim();
 
@@ -326,8 +292,6 @@ class _FollowUpFieldState extends State<FollowUpField> {
           alpha: day != null ? (dark ? 0.13 : 0.06) : 0.03,
         ),
         borderRadius: BorderRadius.circular(8),
-        // A draft in flight is the one state that must not be missed: the row
-        // stays outlined in the follow-up colour until it is saved or dropped.
         border: Border.all(
           color: accent.withValues(
             alpha: dirty ? 0.62 : (day != null ? 0.42 : 0.20),
@@ -418,10 +382,6 @@ class _FollowUpFieldState extends State<FollowUpField> {
                   ],
                 ),
                 const SizedBox(height: 5),
-                // Either a day is set — and the row is that day and what the
-                // visit is for — or none is, and the row offers the intervals
-                // that set one. The presets have done their job once a date is
-                // chosen, so they step aside instead of crowding the answer.
                 if (day != null) ...[
                   Align(
                     alignment: AlignmentDirectional.centerStart,
@@ -447,10 +407,8 @@ class _FollowUpFieldState extends State<FollowUpField> {
                 ] else
                   LayoutBuilder(
                     builder: (context, constraints) {
-                      // "10d" is a compromise, not a preference: a row wide
-                      // enough to say "10 days" says it. Measured rather than
-                      // guessed — the same chips are 190px in English and 260
-                      // in Arabic.
+                      // Long labels only if the row fits them: chip widths differ
+                      // by locale, so they are measured, not guessed.
                       final long = _longPresetsFit(
                         context,
                         constraints.maxWidth,
@@ -492,9 +450,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
     );
   }
 
-  /// Whether every interval, spelled out, fits on one line of the width the row
-  /// was given — the date chip included, since it is the first thing a dentist
-  /// reaches for.
+  // Whether the spelled-out presets, date chip included, fit on one line.
   bool _longPresetsFit(
     BuildContext context,
     double maxWidth, {
@@ -515,8 +471,8 @@ class _FollowUpFieldState extends State<FollowUpField> {
         textScaler: textScaler,
         maxLines: 1,
       )..layout();
-      // The chip's padding and border — plus the calendar a chip with an icon
-      // carries — and the gap the wrap puts between two of them.
+      // Chip padding and border, plus the room the date chip's calendar icon
+      // needs; the extra 4 is the gap the wrap puts between two chips.
       total += painter.width + (i == 0 && showDateChip ? 32 : 18);
       painter.dispose();
       if (i > 0) total += 4;
@@ -524,11 +480,6 @@ class _FollowUpFieldState extends State<FollowUpField> {
     return total <= maxWidth;
   }
 
-  /// What the visit is for, as the patient will hear it when the clinic calls.
-  ///
-  /// Borderless inside the row, so the day above it and the note under it read
-  /// as one thought; the mic-less Cupertino field is what the rest of the app
-  /// uses for an inline line of text.
   Widget _noteField(BuildContext context) {
     final theme = FluentTheme.of(context);
     const accent = kFollowUpAccent;
@@ -558,11 +509,6 @@ class _FollowUpFieldState extends State<FollowUpField> {
     );
   }
 
-  /// The row's actions, in the visit band's own grammar: a standard button per
-  /// act, and the one that keeps the draft filled in the follow-up colour.
-  ///
-  /// Silent until there is something to do — a promise to take back, or a draft
-  /// to keep — so an empty row is not a row of dead buttons.
   Widget _footer(BuildContext context) {
     const accent = kFollowUpAccent;
     final theme = FluentTheme.of(context);
@@ -573,8 +519,6 @@ class _FollowUpFieldState extends State<FollowUpField> {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 5, 8, 6),
       decoration: BoxDecoration(
-        // A footer of its own, as on the visit band: the eye reads "actions",
-        // not one more row of the form.
         color:
             Color.alphaBlend(accent.withValues(alpha: 0.08), theme.menuColor),
         border: Border(top: BorderSide(color: accent.withValues(alpha: 0.22))),

@@ -23,20 +23,8 @@ import 'package:flutter/services.dart';
 
 part 'panel_visit_band.dart';
 
-/// The panel host: the chrome drawn around whatever [Panel] is on screen — its
-/// header, its record's editor, the switches for the record's other windows,
-/// and the archive/save/close bar.
-///
-/// A panel holds its **first** window inline, as its own body: what used to be
-/// the first tab is still the panel, so a panel is never an empty frame with a
-/// row of buttons. The windows after it are what the panel floats beside
-/// itself, drawn by `WindowsLayer` at the size their content needs and switched
-/// from the dock under the panel's header.
-///
-/// It reaches the panel only through [Panel] and never touches the records
-/// behind it. That is what lets one host draw a row panel, a delegated panel and
-/// a hand-written panel alike, and why this file must not learn about drafts,
-/// stores or account models.
+/// The chrome around whatever [Panel] is on screen: its first window is the body.
+/// Reaches the panel only through [Panel], never the records behind it.
 final class PanelScreen extends StatefulWidget {
   const PanelScreen({
     required this.panel,
@@ -70,9 +58,6 @@ class _PanelScreenState extends State<PanelScreen> {
     super.dispose();
   }
 
-  /// Copies the panel's verdict on [Panel.hasPendingEdits] — and its owned
-  /// visits' — into the observable the bottom controls watch, so Save is enabled
-  /// exactly while a save would write something.
   void _syncPendingEdits() {
     widget.panel.refreshDirty();
   }
@@ -81,13 +66,11 @@ class _PanelScreenState extends State<PanelScreen> {
   void initState() {
     super.initState();
     isNew = widget.panel.isNew;
-    // A safety net: the opener reads the title before showing the panel, so this
-    // costs nothing there, and covers a panel added without one.
+    // The opener reads the title first; this covers a panel added without one.
     unawaited(widget.panel.readTitle());
     final signal = widget.panel.pendingEditsSignal;
     if (signal == null) {
-      // Nothing to push: the kind's answer is its caller's callback, which can
-      // only be asked, so it is sampled. Every other kind says so at once.
+      // This kind can only be asked, not pushed, so it is sampled.
       saveButtonCheckTimer = Timer.periodic(
         const Duration(milliseconds: 750),
         (_) => _syncPendingEdits(),
@@ -95,9 +78,7 @@ class _PanelScreenState extends State<PanelScreen> {
     } else {
       pendingEditsSub = signal.stream.listen((_) => _syncPendingEdits());
     }
-    // A window of this panel saves with the panel's own write, so the panel is
-    // the only place that hears about it. A new record becomes an existing one
-    // there, and the dock and the archive button have to say so.
+    // A window saves with the panel's own write, so isNew is re-read after it.
     savingSub = widget.panel.inProgress.stream.listen((saving) {
       if (saving || !mounted) return;
       _syncPendingEdits();
@@ -144,9 +125,8 @@ class _PanelScreenState extends State<PanelScreen> {
             streams: [
               locale.selected.stream,
               PanelsManager.minimize.stream,
-              // A visit attached to (or detached from) this panel mutates it
-              // without replacing it: this is how the dock and the band hear it
-              // (plan §6.2-2).
+              // Attaching or detaching a visit mutates the panel in place; only this
+              // stream announces it.
               widget.panel.attachments.stream,
             ],
             builder: (context, snapshot) {
@@ -157,35 +137,22 @@ class _PanelScreenState extends State<PanelScreen> {
                   _buildPanelHeader(),
                   if (PanelsManager.minimize() == false ||
                       widget.layoutWidth >= kWindowsBreakpoint) ...[
-                    // The record's workspaces are part of the record, not of its
-                    // chrome: a prominent row inside the panel, where they are
-                    // seen with the content they open, instead of two icons lost
-                    // among the window controls.
                     if (widget.panel.workspaceWindows.isNotEmpty)
                       _buildWorkspaceBar(),
-                    // The visit bubble sits under the patient's workspaces: what
-                    // it carries is about the patient, but it is not the patient
-                    // record's own navigation.
                     if (widget.panel.attached case final session?)
                       _buildVisitBand(session),
-                    // ...and the record's own forward-looking fields follow the
-                    // band, so they stay reachable while it covers the record:
-                    // a visit sets the patient's next follow-up, and so does the
-                    // patient's own page.
                     if (widget.panel.carriedBandFooter case final footer?)
                       Padding(
                         padding:
                             const EdgeInsetsDirectional.fromSTEB(8, 0, 8, 4),
                         child: footer,
                       ),
-                    // A panel that presents its windows as attachments and header
-                    // actions has no dock: the same controls are already on the
-                    // name and on the frames themselves (plan §4.4).
+                    // Attachment-layout panels already show these controls on the
+                    // header and the frames.
                     if (!widget.panel.attachmentLayout &&
                         widget.panel.floatingWindows.isNotEmpty) ...[
-                      // Two docks can be on screen at once, so each says what it
-                      // answers: this one is the panel's own record. The visit's
-                      // band says its own line — the date and the state.
+                      // Two docks can be on screen at once, so this label says whose
+                      // windows it switches.
                       if (widget.panel.attached != null)
                         _buildDockLabel(txt('thisPatient')),
                       _buildWindowDock(),
@@ -203,8 +170,6 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The tray of windows hanging off the panel itself — a patient's photos and
-  /// page — drawn under the record and above the bottom bar, never as a dock.
   Widget _buildPanelAttachments() {
     return StreamBuilder<int>(
       stream: widget.panel.workspace.revision.stream,
@@ -219,13 +184,8 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The panel's first window: the record's own editor, drawn in the panel
-  /// itself just as the first tab used to be.
-  ///
-  /// While a record is carried beside this one — a visit on a patient — the
-  /// host's fields stay visible but stop taking edits: the visit is the thing
-  /// being worked on, and an accidental patient edit underneath it would be
-  /// written by a different Save. Their existing unsaved work is still savable.
+  /// The panel's first window, drawn inline. While a visit is carried, the record's
+  /// fields are read-only so the panel's Save cannot write an accidental edit.
   Widget _buildPrimaryWindow() {
     final window = widget.panel.primaryWindow;
     if (window == null) return const SizedBox.shrink();
@@ -268,8 +228,6 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// Why the fields below the visit are not editable: the visit is the open
-  /// record, and its Save writes the visit — never the patient underneath.
   Widget _buildReadOnlyNotice() {
     final theme = FluentTheme.of(context);
     return Container(
@@ -305,8 +263,6 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The line above a dock that says whose windows it switches, so two docks on
-  /// one screen are never read as one list (plan §4.4).
   Widget _buildDockLabel(String label) {
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(10, 4, 10, 0),
@@ -323,20 +279,6 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The record's own workspaces — the chart, the visits list — as a row of
-  /// labelled buttons at the top of its body, so they are seen with the record
-  /// they open instead of hiding among the window controls.
-  ///
-  /// The row is the panel's dock, drawn the same way and by the same widget
-  /// ([WindowDock]): equal segments filling the panel's width, joined with no
-  /// gap and only the outer corners rounded, so the two read as one control
-  /// naming the record's two workspaces rather than as two unrelated actions.
-  ///
-  /// Both are always drawn. Which one is *open* is the active state; the record
-  /// still has the other one, so hiding it would make the pair look like a single
-  /// control that changes identity. While a visit is attached, its chart is the
-  /// chart on screen, so the Dental Chart button switches that window instead of
-  /// looking in the patient's own slot.
   Widget _buildWorkspaceBar() {
     return MStreamBuilder(
       streams: [
@@ -379,8 +321,8 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The window a carried record puts in [window]'s place — a visit's chart for
-  /// the patient's — or null when the panel's own window is the one on screen.
+  /// The carried record's window standing in for [window] — a visit's chart for
+  /// the patient's — or null when [window] is not replaced.
   PanelWindow? _carriedWindowOf(PanelWindow window) {
     final attached = widget.panel.attached;
     final group = window.replacementGroup;
@@ -390,10 +332,8 @@ class _PanelScreenState extends State<PanelScreen> {
         .firstOrNull;
   }
 
-  /// The band the record this panel **carries** draws for itself.
-  ///
-  /// It reads the count of dirty carried records live — a draft hidden behind
-  /// another visit is exactly the one a close prompt has to name (§2.4).
+  /// The band a carried record draws for itself. It counts dirty carried records
+  /// live, so a draft hidden behind another visit is still named on close.
   Widget _buildVisitBand(HostedRecordSession session) {
     return StreamBuilder<bool>(
       stream: widget.panel.hasUnsavedChanges.stream,
@@ -407,16 +347,8 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The switches for everything the panel does not keep inline: one labelled
-  /// pill per window, showing whether it is on screen.
-  ///
-  /// The panel's own record only. A record it carries beside itself draws its own
-  /// dock — the visit band — with its own accent and its own label line, so two
-  /// docks cannot be mistaken for one list (plan §4.4).
-  ///
-  /// **One chart on screen**: while a visit is attached, the visit's chart *is*
-  /// the chart, so the patient's entry for the same editor is not offered again
-  /// (plan §4.3).
+  /// Switches for the panel's own floating windows. A carried record's chart takes
+  /// the place of the patient's, so that group is not offered twice.
   Widget _buildWindowDock() {
     return StreamBuilder<int>(
       stream: widget.panel.workspace.revision.stream,
@@ -439,8 +371,7 @@ class _PanelScreenState extends State<PanelScreen> {
             isOpen: (window) => widget.panel.workspace.isOpen(window.id),
             enabled: (window) => !(window.onlyIfSaved && isNew),
             accent: _accent,
-            // A retained draft whose windows are not on screen still has a mark
-            // here: the chart pill is what makes §2.4 visible.
+            // A carried draft whose windows are closed still marks its pill.
             dirty: (window) =>
                 draftWindow != null &&
                 window.id == draftWindow &&
@@ -452,8 +383,6 @@ class _PanelScreenState extends State<PanelScreen> {
     );
   }
 
-  /// The colour this kind of record is known by, so a patient's panel and a
-  /// visit's are told apart at a glance instead of by reading the header.
   Color get _accent =>
       widget.panel.accent ?? FluentTheme.of(context).accentColor;
 
@@ -478,9 +407,6 @@ class _PanelScreenState extends State<PanelScreen> {
               return Row(
                 children: [
                   _buildPanelHeaderStoreName(),
-                  // The record's name. Its workspaces are no longer header
-                  // icons: they are the labelled buttons at the top of the body,
-                  // where the record they open is.
                   Expanded(child: _buildPanelHeaderItemName()),
                   Row(children: [
                     if (PanelsManager.active().length > 1)
@@ -544,12 +470,8 @@ class _PanelScreenState extends State<PanelScreen> {
       width: 105,
       child: Row(
         children: [
-          // The record kind, as a badge in the kind's own colour: the header of
-          // a patient's panel and of a visit's look the same otherwise.
           Flexible(
             child: StreamBuilder<bool>(
-              // Whether this record holds work that has not been stored: the dot
-              // sits on the badge, above everything else the panel shows.
               stream: widget.panel.hasUnsavedChanges.stream,
               builder: (context, _) => Stack(
                 clipBehavior: Clip.none,
@@ -624,10 +546,8 @@ class _PanelScreenState extends State<PanelScreen> {
               padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
               child: widget.panel.inProgress()
                   ? const Center(child: ProgressBar())
-                  // A wrap rather than a row: three labelled buttons and a
-                  // language that spells them out at length are wider than a
-                  // 350-pixel panel, and a second line reads better than a bar
-                  // that clips its own Save.
+                  // Wrap, not Row: long translations overflow the 350-pixel minimum,
+                  // and a second line beats a bar that clips its own Save.
                   : Wrap(
                       alignment: WrapAlignment.spaceEvenly,
                       crossAxisAlignment: WrapCrossAlignment.center,
@@ -677,9 +597,8 @@ class _PanelScreenState extends State<PanelScreen> {
     return StreamBuilder<bool>(
         stream: widget.panel.hasUnsavedChanges.stream,
         builder: (context, _) {
-          // This button writes **this panel's** record and nothing else: a visit
-          // attached to the panel is saved by its own Save, in the band or in one
-          // of its windows. Only the workspace close command offers Save all.
+          // This writes this panel's record only; a carried visit is saved by its
+          // own Save. Save all is offered only by the close prompt.
           final hasChanges = widget.panel.hasPendingEdits;
           return IconButton(
             key: WK.panelSave,
@@ -759,9 +678,8 @@ class _PanelScreenState extends State<PanelScreen> {
       await flyoutFocusFix(context);
       if (!mounted) return;
       unawaited(confirmCancelController.showFlyout<void>(builder: (context) {
-        // Every record this panel is responsible for holding work: its own, and
-        // every visit it carries — including ones whose windows are not on
-        // screen (plan §2.4, §4.6).
+        // Includes carried visits whose windows are closed: their drafts still
+        // block a clean close.
         final dirtyVisits = widget.panel.owned
             .where((session) => session.hasPendingEdits)
             .toList();
@@ -816,15 +734,12 @@ class _PanelScreenState extends State<PanelScreen> {
                       ],
                     ),
                   ),
-                  // Offered whenever anything here is dirty — the panel's own
-                  // record as much as a visit it carries. Without it a panel
-                  // dirty only in its own fields would have no way out but Save.
+                  // Offered whenever anything is dirty, so a panel dirty only in
+                  // its own fields is not left with Save as its only way out.
                   FilledButton(
                     style: filledButtonStyle(Colors.warningPrimaryColor),
                     onPressed: () {
                       Flyout.of(context).close();
-                      // Discarding means the drafts go with the panel — the
-                      // only path that loses work, and it says so.
                       PanelsManager.close(widget.panel.itemId);
                     },
                     child: Row(
@@ -847,12 +762,8 @@ class _PanelScreenState extends State<PanelScreen> {
     }
   }
 
-  /// Writes every record this panel holds — its own and each carried visit —
-  /// and closes it once they are all written.
-  ///
-  /// Not atomic: a failure is reported by name and the panel stays open, so a
-  /// record that could not be written is not thrown away with the ones that
-  /// were (plan §4.6).
+  /// Saves every record this panel holds, then closes it. Not atomic: a failure is
+  /// named and the panel stays open, so written records are not thrown away.
   Future<void> _saveAllAndClose() async {
     final panel = widget.panel;
     final owners = <WindowRecordSession>[panel, ...panel.owned];
@@ -916,9 +827,8 @@ class _PanelScreenState extends State<PanelScreen> {
             trailing: panel.inProgress()
                 ? const SizedBox(height: 20, width: 20, child: ProgressRing())
                 : Icon(panel.isNew ? FluentIcons.add : FluentIcons.edit),
-            // `displayTitle` is a key while the record is new, so it is
-            // translated here like the header: a language switch relabels a
-            // panel that is already open.
+            // `displayTitle` is a translation key while the record is new, so it is
+            // passed through `txt` here as in the header.
             text: Txt("${txt(panel.singularName)}: ${txt(panel.displayTitle)}",
                 style: TextStyle(
                     fontWeight:

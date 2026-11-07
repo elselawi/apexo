@@ -24,8 +24,8 @@ FloatingWindow floating(String id,
 void main() {
   setUp(() {
     WindowsManager.closeAll();
-    // The pointer is the app's own: a test that leaves one behind places the
-    // next window where an earlier tap was.
+    // WindowOrigin is global: a pointer left behind places the next window at
+    // an earlier tap.
     WindowOrigin.clear();
   });
   tearDown(() {
@@ -41,8 +41,6 @@ void main() {
     WindowsManager.show(second);
     expect(WindowsManager.open(), [first, second]);
 
-    // The same editor for the same record is one window, not a second copy,
-    // and asking for it again moves it to the front.
     final again = floating('labwork', scope: 'appointment:a');
     WindowsManager.show(again);
     expect(WindowsManager.open(), [second, again]);
@@ -84,8 +82,8 @@ void main() {
   });
 
   test('closing a record leaves a window that still has work to lose', () {
-    // Opening the record's panel must not be what throws away what was typed
-    // into its window: the panel can live with both, a draft cannot.
+    // Closing a record must not discard a draft, so a window with unsaved work
+    // stays open.
     final draft = FloatingWindow(
       window: window('chart'),
       scope: 'patient:a',

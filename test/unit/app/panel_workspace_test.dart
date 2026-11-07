@@ -1,5 +1,4 @@
-/// The panel's window bookkeeping, pinned on its own: which windows the shell
-/// opens for a screen, and what a click on the panel's dock does to them.
+/// The windows the shell opens for a panel, and what its dock click does.
 library;
 
 import 'dart:async';
@@ -43,9 +42,8 @@ void main() {
   });
 
   test('asking for a window already on screen puts nothing away', () {
-    // Re-asking for a window is how a caller brings it forward: it must not
-    // cost a neighbour its place, which is what a full screen would otherwise
-    // make room for.
+    // re-asking brings the window forward, so it must not evict a neighbour
+    // even when the row is full.
     final workspace = PanelWorkspace()
       ..arrange(layout: wide, candidates: ['a', 'b'], focus: 'a');
 
@@ -83,8 +81,7 @@ void main() {
   });
 
   test('with the row full, the window asked for is the one shown', () {
-    // The screen shows two windows: asking for a third gives up the one that has
-    // been up longest, because a window nobody can see is not a window.
+    // a third window evicts the one up longest, not the one just asked for.
     final workspace = PanelWorkspace()
       ..arrange(layout: wide, candidates: ['a', 'b']);
 
@@ -138,8 +135,7 @@ void main() {
 
     workspace.arrange(layout: wide, candidates: ['a', 'b']);
     workspace.minimize('b');
-    // The two changes are waited for, not assumed: the stream is
-    // asynchronous, and a test that reads it too early sees nothing.
+    // the stream is async: wait for both changes instead of assuming them.
     await announced.future;
 
     // The second minimize changed nothing, so nothing is announced.
@@ -162,8 +158,7 @@ void main() {
     });
 
     test('restored windows keep the panel\'s order, not the stored one', () {
-      // The panel decides which window comes first on screen; the memory only
-      // says which ones to show.
+      // restored windows keep the panel's order; the memory only selects which.
       final workspace = PanelWorkspace()
         ..arrange(
           layout: wide,
@@ -237,8 +232,8 @@ void main() {
     });
 
     test('measuring the screen changes nothing on it', () {
-      // A panel that opens with no windows of its own still has to know how many
-      // its row holds, or the windows the user opens later would overlap.
+      // capacity must be measured before opening: toggle needs it to evict,
+      // otherwise the windows opened later overlap.
       final workspace = PanelWorkspace()..measure(single);
       workspace.show('a');
       workspace.toggle('b');
@@ -344,9 +339,8 @@ void main() {
     });
 
     test('opening from the dock moves the row over to make room by width', () {
-      // A 350 tool and a 960 chart take 1322 of 1550; one more 350 tool does
-      // not fit, so the window at the row's far end gives way — never the one
-      // just asked for.
+      // 350 + 12 + 960 = 1322 of 1550; a third 350 doesn't fit, so the
+      // window at the row's far end gives way.
       final workspace = PanelWorkspace()
         ..applyPlan(planOf(
           ['host/appointments', 'host/dentalChart'],

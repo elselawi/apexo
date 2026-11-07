@@ -12,12 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/model_factory.dart';
 
-/// One visit, one draft, one write (plan §2.2, I2 and I3).
-///
-/// The session is what makes a visit attachable to a patient panel without
-/// becoming a second panel: its windows all edit this draft, its Save is this
-/// write, and its registry makes a second opener return it rather than build a
-/// rival.
+/// One draft per visit: a second opener returns the same session.
 void main() {
   late List<Appointment> originalAppointments;
 
@@ -85,8 +80,8 @@ void main() {
     final session = appointmentSessions.getOrCreate(stored());
     session.item.preOpNotes = 'typed here';
 
-    // Another writer touches a field this draft never opened: a calendar drag, a
-    // sync, another window of the same visit.
+    // Another writer (calendar drag, sync, another window) changed a field
+    // this draft never touched.
     appointments.set(stored()..price = 250);
 
     await session.save();

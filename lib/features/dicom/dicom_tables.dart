@@ -273,10 +273,8 @@ class _DirectoryButtonState extends State<_DirectoryButton> {
     if (confirmed == true) {
       globalSettings.dicomWatchDirs = dirs;
       if (mounted) setState(() {});
-      // Keep the periodic timer in sync with the configured folders: start it
-      // when there is now something to watch and auto-import is on, stop it
-      // when the folders were all removed. Then scan immediately so the new
-      // folders are reflected without waiting for the next tick.
+      // Keep the periodic timer matching the new folder list, then scan now
+      // instead of waiting for the next tick.
       if (dicomCtrl.autoImport && dicomCtrl.watchDirs.isNotEmpty) {
         dicomCtrl.startPeriodicScan();
       } else {

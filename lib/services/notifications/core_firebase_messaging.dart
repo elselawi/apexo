@@ -15,8 +15,7 @@ class FirebaseMessagingService {
       FirebaseMessagingService._internal();
   AuthorizationStatus? authStatus = AuthorizationStatus.denied;
 
-  /// Apple platforms only hand out an FCM token once APNs has registered this
-  /// app, which happens asynchronously after launch.
+  // Apple platforms only issue an FCM token once APNs registers the app.
   static bool get _isApplePlatform => Platform.isIOS || Platform.isMacOS;
 
   /// Initialize Firebase Messaging and sets up all message listeners
@@ -29,8 +28,8 @@ class FirebaseMessagingService {
     }
     // 2. register listeners
 
-    // The app posts its own local notification for a foreground push, so iOS
-    // must not also present the alert FCM carries (no-op elsewhere).
+    // The app posts its own local notification for foreground pushes, so iOS must
+    // not also present FCM's alert (no-op elsewhere).
     await FirebaseMessaging.instance
         .setForegroundNotificationPresentationOptions(
       alert: false,
@@ -66,8 +65,8 @@ class FirebaseMessagingService {
     });
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
     if (initialMessage != null) {
-      // Awaits the session restore, so it cannot be awaited here: this runs
-      // before the first frame.
+      // Cannot be awaited: it waits for the session restore and this runs before
+      // the first frame.
       unawaited(
         PushListeners.causedTheAppToOpen(initialMessage).catchError(
           (Object error, StackTrace stack) => logger(
@@ -78,9 +77,8 @@ class FirebaseMessagingService {
       );
     }
 
-    // 4. Generate (and upload) token. This is not awaited: Apple platforms can
-    // take seconds to register with APNs, and init() runs before the first
-    // frame. A token that arrives later is still registered with the relay.
+    // Not awaited: Apple registration can take seconds and init() runs before the
+    // first frame; a late token is still registered by the refresh listener.
     unawaited(
       _handlePushNotificationsToken().catchError(
         (Object error, StackTrace stack) => logger(
@@ -94,24 +92,21 @@ class FirebaseMessagingService {
   }
 
   Future<void> _handlePushNotificationsToken() async {
-    // Subscribed before the token is fetched: FCM also emits a token through
-    // this stream the first time it issues one, and a token that arrives while
-    // APNs is still registering must not be missed.
+    // Subscribed before fetching: FCM also emits the first token on this stream,
+    // and one arriving while APNs still registers must not be missed.
     FirebaseMessaging.instance.onTokenRefresh.listen((newFCMToken) {
       if (newFCMToken.isEmpty) return;
       final previousToken = login.pushNotificationsToken;
       login.pushNotificationsToken = newFCMToken;
-      // An empty previous token registers this device for the first time
-      // instead of replacing one the relay never saw.
+      // Empty previous token: registers the device instead of replacing one the relay never saw.
       unawaited(PushRelay.replaceToken(previousToken, newFCMToken));
     }).onError((Object error) {
       logger('Error refreshing FCM token: $error', StackTrace.current);
     });
 
     if (_isApplePlatform && await _waitForAPNSToken() == null) {
-      // Not fatal: `getToken` throws `apns-token-not-set` until APNs registers,
-      // and the refresh listener above registers the device once FCM issues a
-      // token. identifyDevice() also retries on the next login.
+      // Not fatal: `getToken` throws `apns-token-not-set` until APNs registers; the
+      // refresh listener, or identifyDevice on the next login, registers the device.
       logger(
         'No APNs token yet; waiting for the FCM token refresh.',
         StackTrace.current,
@@ -120,8 +115,8 @@ class FirebaseMessagingService {
       return;
     }
 
-    // No vapidKey: it identifies a web push subscription
-    // (web/fcm/constants.js) and the native plugins ignore it.
+    // No vapidKey: it identifies a web push subscription (web/fcm/constants.js)
+    // and the native plugins ignore it.
     final String? token;
     try {
       token = await FirebaseMessaging.instance.getToken();

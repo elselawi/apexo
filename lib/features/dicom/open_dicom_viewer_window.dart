@@ -22,8 +22,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 part 'dicom_measure_overlay.dart';
 part 'dicom_viewport_controls.dart';
 
-/// Maps a `dicom_toolkit` English label to its localized equivalent via
-/// `txt()`. Keys are lowercase-without-spaces versions of the English labels.
+/// Keys are the toolkit's English labels lowercased with spaces removed;
+/// unknown labels fall through to `txt()`.
 String _dicomLabel(String englishLabel) {
   const map = {
     'Full Range': 'fullRange',
@@ -47,21 +47,17 @@ String _dicomLabel(String englishLabel) {
 /// Shows raw DICOM bytes the user picked, in a window of their own.
 void openDicomFromBytes(Uint8List bytes, {String? name}) {
   late final FloatingWindow floating;
-  // Each imported file is a window of its own: two files must not replace one
-  // another, and the user has to be able to tell which is which.
+  // Each imported file needs its own window, so the id has to be unique.
   final id = 'dicom:bytes:${_importedScans++}';
   floating = WindowsManager.showStandalone(
     PanelWindow(
       id: id,
       title: "xRayViewer",
       icon: FluentIcons.medical_care,
-      // Which file this is: several imported scans can be open at once, and
-      // they all carry the same title.
+      // All scan windows share one title, so the subtitle names the file.
       subtitle: () => name ?? '',
       padding: 0,
       scrollable: false,
-      // A scan is its own viewer, not a column of a panel: it asks for the room
-      // an X-ray needs.
       matchesPanelWidth: false,
       preferredWidth: 1100,
       body: DicomScanViewer(
@@ -72,12 +68,8 @@ void openDicomFromBytes(Uint8List bytes, {String? name}) {
   );
 }
 
-/// How many scans have been imported and opened in this session — what tells
-/// one imported file's window from another's.
 int _importedScans = 0;
 
-/// Shows one of a record's scans in a window of its own — beside the app, not
-/// over it: a scan is something you look at while you keep working.
 void openDicomViewerWindow(String rowId, String dcmName) {
   late final FloatingWindow floating;
   floating = WindowsManager.showStandalone(
@@ -92,8 +84,6 @@ void openDicomViewerWindow(String rowId, String dcmName) {
       },
       padding: 0,
       scrollable: false,
-      // A scan is its own viewer, not a column of a panel: it asks for the room
-      // an X-ray needs.
       matchesPanelWidth: false,
       preferredWidth: 1100,
       body: DicomScanViewer(
@@ -102,12 +92,10 @@ void openDicomViewerWindow(String rowId, String dcmName) {
         onClose: () => WindowsManager.close(floating),
       ),
     ),
-    // The scan belongs to a visit, and it is named the way the visit's own
-    // windows are: the panel of that visit takes the scan's place when it
-    // opens, and the scan wears the visit's colour.
+    // Visit scope: opening the visit's panel replaces this window, and the scan
+    // shares the visit's accent colour.
     scope: 'appointment:$rowId',
-    // A scan belongs to a visit: its window leads back to that record. A scan
-    // whose record is gone — an imported file — has nowhere to go.
+    // A deleted visit leaves nothing to open, so the window gets no record action.
     onOpenRecord: appointments.get(rowId) == null
         ? null
         : () async {

@@ -5,8 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'booking_models.dart';
 
-/// Stable, typed booking Worker errors. Codes mirror the Worker's response and
-/// are the only text the UI may show (never a submitted value).
+/// Typed Worker errors; codes are the only text the UI may show (never a value).
 class BookingApiException implements Exception {
   BookingApiException({
     required this.code,
@@ -118,8 +117,7 @@ class BookingRegistrationResult {
   final int keyRevision;
 }
 
-/// Thin client for the booking Worker. Every call has a bounded timeout and
-/// surfaces a typed error instead of a raw transport exception.
+/// Thin client: bounded timeout, typed error instead of a raw transport exception.
 class BookingApi {
   BookingApi({
     required String origin,

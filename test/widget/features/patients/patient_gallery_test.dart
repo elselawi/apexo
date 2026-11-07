@@ -24,8 +24,8 @@ import 'package:pocketbase/pocketbase.dart';
 import '../../../helpers/hive_setup.dart';
 import '../../../helpers/model_factory.dart';
 
-/// A remote that is never reached: deleting a file is journalled locally, which
-/// is exactly what the app does offline — and keeps these tests off the network.
+/// Never-online remote: file deletes are journalled locally, keeping tests off
+/// the network.
 class _OfflineRemote extends SaveRemote {
   _OfflineRemote()
       : super(
@@ -46,8 +46,7 @@ void _restore<T extends Model>(
   store.notifyView();
 }
 
-/// Puts a decodable image in the memory cache so a tile never reaches for the
-/// network to draw itself.
+/// Seeds the image cache so a tile never reaches for the network to draw.
 void _cacheImage(String name) {
   final previous = imgMemoryCache[name];
   imgMemoryCache[name] = MemoryImage(
@@ -61,8 +60,7 @@ void _cacheImage(String name) {
   });
 }
 
-/// Pumps the gallery the patient's window draws. Bounded pumps, not
-/// `pumpAndSettle`: a tile still loading never settles.
+/// Bounded pumps, not `pumpAndSettle`: a tile still loading never settles.
 Future<void> _pumpGallery(WidgetTester tester, Patient patient) async {
   await tester.pumpWidget(FluentApp(
     home: ScaffoldPage(
@@ -85,8 +83,6 @@ void main() {
   setUp(() async {
     originalPerms = login.savedPermissions;
     originalAppointments = {...appointments.observableMap.docs};
-    // Full permissions: the gallery is where its files are changed, and a
-    // user who may change them is the case worth testing.
     login.savedPermissions = Perm.full;
     local = SaveLocal(
       name: 'patient-gallery',
@@ -184,8 +180,8 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    // The delete is a command on the visit: it writes the record, not whichever
-    // copy the card happened to hold.
+    // The delete is a command on the visit: it writes the store record, not the
+    // copy the card held.
     expect(appointments.get(visit.id)!.imgs, isEmpty,
         reason: 'the photo is deleted from the visit, not from the window');
     expect(appointments.get(visit.id)!.drawings, isEmpty,

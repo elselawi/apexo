@@ -72,9 +72,8 @@ class _AnatomicalToothPainter extends CustomPainter {
     final rrootLayer = _layerForOp('rroot');
     final isRetainedRoot = rrootLayer != null;
 
-    // Base tooth colors: only tint the tooth body when there is a current
-    // draft note (`hasCurrent`). When the tooth only has history from another
-    // appointment (`hasOld`), keep the tooth in neutral radiographic tones!
+    // Only a current draft tints the tooth body; history from another
+    // appointment stays in neutral radiographic tones.
     final Color rootFillStart;
     final Color rootFillEnd;
     final Color enamelStart;
@@ -196,8 +195,7 @@ class _AnatomicalToothPainter extends CustomPainter {
       }
     }
 
-    // 3. Endodontic layers (RCT / Re-RCT / Pulpotomy) drawn inside the root/pulp
-    // space BEFORE the crown body is painted on top.
+    // Endodontic layers must precede the crown body, which paints over them.
     for (final layer in operationLayers) {
       if (layer.operation == 'rCT' || layer.operation == 're-RCT') {
         _paintRctObturation(
@@ -317,8 +315,6 @@ class _AnatomicalToothPainter extends CustomPainter {
     }
   }
 
-  /// Titanium implant fixture with realistic tapered body, apical roundness,
-  /// abutment collar, and fine screw threads.
   void _paintImplantRoots(
     Canvas canvas,
     Offset Function(double, double) pt,
@@ -364,9 +360,6 @@ class _AnatomicalToothPainter extends CustomPainter {
     }
   }
 
-  /// RCT / Re-RCT: When registered in the current draft, uses the vibrant
-  /// gutta-percha/treatment color; when from another appointment, uses neutral
-  /// radiographic silver-grey.
   void _paintRctObturation(
     Canvas canvas,
     Offset Function(double, double) pt,
@@ -403,9 +396,6 @@ class _AnatomicalToothPainter extends CustomPainter {
     }
   }
 
-  /// Pulpotomy: Distinct from RCT — only the coronal pulp chamber at the neck/
-  /// top of the root-crown junction is filled, while the root canals toward the
-  /// apex remain untouched!
   void _paintPulpotomy(
     Canvas canvas,
     Offset Function(double, double) pt,
@@ -465,8 +455,6 @@ class _AnatomicalToothPainter extends CustomPainter {
     );
   }
 
-  /// Filling: Clipped directly to `geometry.crown` so it hugs the natural tooth
-  /// enamel contour!
   void _paintFilling(
     Canvas canvas,
     Offset Function(double, double) pt,
@@ -528,8 +516,6 @@ class _AnatomicalToothPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// Overlay: Extends across the entire crown from mesial to distal, clipped
-  /// cleanly to `geometry.crown`.
   void _paintOverlayRestoration(
     Canvas canvas,
     Offset Function(double, double) pt,
@@ -631,8 +617,6 @@ class _AnatomicalToothPainter extends CustomPainter {
     canvas.restore();
   }
 
-  /// Crown & Temporary Crown: Enlarged anatomical crown contour (`1.13x`),
-  /// dashed when `temporary`.
   void _paintEnlargedCrown(
     Canvas canvas,
     Offset Function(double, double) pt,

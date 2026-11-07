@@ -5,14 +5,8 @@ import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:path/path.dart' as p;
 
-/// Native (`dart:io`) implementation of [DicomIOImpl].
-///
-/// Recursively lists `.dcm` files, stat-only (no file opens). Skips files
-/// modified within the last 5 seconds
-///
-/// On non-Windows native platforms (Android/iOS/macOS) this compiles and
-/// functions if given a path, but the UI never invokes it there — scanning
-/// is Windows-only by design.
+/// Native (`dart:io`) implementation of [DicomIOImpl]: stat-only, no file
+/// opens. Compiles on every native platform, but only Windows is scanned.
 class DicomIOImpl {
   /// Files modified within this window are skipped during a scan.
   static const _partialWriteSkipWindow = Duration(seconds: 5);
@@ -52,13 +46,9 @@ class DicomIOImpl {
           continue;
         }
 
-        // Partial-write lock protection: skip files that were
-        // modified within the last few seconds. The XRay software
-        // may still be writing; we'll pick them up on the next resync.
-        //
-        // A negative age (clock skew on the acquisition workstation or a NAS)
-        // must NOT be treated as "just modified": that would skip the file on
-        // every scan forever.
+        // Skip files modified seconds ago — the X-ray software may still be
+        // writing them. A negative age is clock skew, so it must not count as
+        // "just modified" or the file would be skipped on every scan.
         final age = now.difference(stat.modified);
         if (!age.isNegative && age < _partialWriteSkipWindow) {
           log.info(

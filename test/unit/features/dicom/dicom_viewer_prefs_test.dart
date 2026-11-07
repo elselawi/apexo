@@ -9,8 +9,6 @@ import 'package:apexo/services/localization/en.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A minimal [LocalSettings] that lets us set [dicomViewerPrefs] directly.
-/// [notifyAndPersist] is recorded for assertion.
 class _TestLocalSettings extends LocalSettings {
   final List<String> persistLog = [];
   @override
@@ -19,8 +17,6 @@ class _TestLocalSettings extends LocalSettings {
   }
 }
 
-/// Fake [SaveRemote] that resolves a fixed URL for known (rowId, name) pairs.
-/// Used to document the fetchDcmBytes null-URL contract without real network.
 class _FakeSaveRemote {
   _FakeSaveRemote({required this.urlFor});
   final Map<String, String> urlFor;
@@ -36,9 +32,6 @@ class _FakeSaveRemote {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // ─────────────────────────────────────────────────────────────────────
-  // DicomViewerPrefs — pure parse / serialize / apply logic.
-  // ─────────────────────────────────────────────────────────────────────
   group('DicomViewerPrefs — JSON parsing', () {
     test('empty string → empty prefs (fromLocalSettings)', () {
       final ls = _TestLocalSettings()..dicomViewerPrefs = '';
@@ -107,8 +100,7 @@ void main() {
     });
 
     test('int windowCenter accepted (not just double)', () {
-      // JSON numbers without a decimal arrive as int in Dart. The parser
-      // must coerce to double.
+      // JSON numbers without a decimal decode as int, so the parser coerces to double.
       final p = DicomViewerPrefs.fromJson(
           jsonDecode('{"windowCenter":40,"windowWidth":400}')
               as Map<String, dynamic>);
@@ -119,9 +111,6 @@ void main() {
 
   group('DicomViewerPrefs — fromController snapshot', () {
     test('captures the controller defaults', () {
-      // A bare controller (no DicomToolkit.init) has:
-      //   windowCenter = null, windowWidth = null, colorMap = grayscale,
-      //   invert = false, rotationSteps = 0.
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
       final p = DicomViewerPrefs.fromController(controller);
@@ -177,8 +166,7 @@ void main() {
 
     test('windowing is NOT applied when controller has no data (no crash)',
         () async {
-      // Without DicomToolkit.init + loadFromBytes, hasData is false.
-      // applyTo must skip the windowing branch rather than throw.
+      // Without DicomToolkit.init, hasData is false, so windowing must be skipped.
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
       await const DicomViewerPrefs(windowCenter: 50, windowWidth: 200)
@@ -190,8 +178,7 @@ void main() {
 
     test('grayscale color map (explicit) → no color LUT build needed',
         () async {
-      // Setting colorMap to grayscale is the no-op early-return path in the
-      // controller; applyTo must not choke on it even without data.
+      // grayscale takes the controller's no-op early return, so no LUT build is needed.
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
       await const DicomViewerPrefs(colorMap: DicomColorMap.grayscale)
@@ -200,16 +187,8 @@ void main() {
     });
 
     test('invert=true + colorMap=bone applies both settings', () async {
-      // Verify that opening the viewer with
-      // {invert: true, colorMap: bone} initializes invert on. (The bone
-      // color LUT build is async and requires the Rust backend; we assert
-      // the request is made without throwing, and invert is applied.)
       final controller = DicomViewerController();
       addTearDown(controller.dispose);
-      // setColorMap(bone) calls _buildColorLut → decodeImageFromPixels,
-      // which works without the Rust backend (pure dart:ui). If it throws
-      // in this test environment, we treat color-map application as
-      // best-effort and still verify invert.
       try {
         await const DicomViewerPrefs(
           colorMap: DicomColorMap.bone,
@@ -223,13 +202,8 @@ void main() {
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────
-  // fetchDcmBytes — null-URL contract (no network).
-  // ─────────────────────────────────────────────────────────────────────
   group('fetchDcmBytes null-URL contract', () {
     test('SaveRemote.getImageLink returning null means no download', () async {
-      // Documents the contract fetchDcmBytes relies on: when the PB file URL
-      // cannot be resolved, fetchDcmBytes returns null (no HTTP attempt).
       final fakeRemote = _FakeSaveRemote(urlFor: {});
       final url = await fakeRemote.getImageLink('apt-1', 'dcm_none.dcm');
       expect(url, isNull,
@@ -246,9 +220,6 @@ void main() {
     });
   });
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Localization keys.
-  // ─────────────────────────────────────────────────────────────────────
   group('localization keys present in En', () {
     test('viewer control keys exist', () {
       final en = En();

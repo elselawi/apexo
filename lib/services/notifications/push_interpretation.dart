@@ -1,20 +1,5 @@
-/// What a push payload *means*, and how it reads in each language.
-///
-/// `push_data.dart` is the wire shape; this is the presentation of it — which
-/// interpretation a payload calls for, and the title/body pair each
-/// interpretation has in every language the app ships.
-///
-/// All of it is an extension on the payload rather than members of it, so the
-/// payload itself stays a plain wire object. The cost is that a call site must
-/// **import this file** to use `displayTuple()`: an extension member is not
-/// brought into scope by the type alone.
-///
-/// ---------------------------------------------------------------------------
-///  !!!! IMPORTANT !!!!
-/// `web/fcm/push_data.js` mirrors `_interpret()` and its translations so the web
-/// app and its service worker read a push the same way this file does. The two
-/// must agree — the payload's own fields are mirrored in `push_data.dart`.
-/// ---------------------------------------------------------------------------
+/// Mirrors `web/fcm/push_data.js` for the interpretation and its translations;
+/// the two must stay in sync.
 library;
 
 import 'package:apexo/core/synchronization/push_data.dart';
@@ -31,11 +16,7 @@ String _activeAccountID() {
   return "";
 }
 
-/// The reading of a payload: the notification's title and body, as the OS
-/// notification and the in-app list both want them.
 extension PushDataDisplay on PushData {
-  /// The title and body to show for this payload, in the app's language, with
-  /// the record's readable identifier appended to the body.
   List<String> displayTuple() {
     final interpretation = interpret();
     final lang = _langForCode(locale.s.$code);
@@ -50,13 +31,8 @@ extension PushDataDisplay on PushData {
     return tuple;
   }
 
-  /// The old and new value of [field], as the payload carries them.
-  ///
-  /// Both are `null` when the payload does not carry the value. This is not a
-  /// defensive nicety: `updatedFields`, `oldVals` and `newVals` are three
-  /// independent lists on the wire, and this reads a payload a *remote* sender
-  /// produced, so a short list or a missing before-side must degrade to
-  /// "unknown" rather than throw.
+  /// Both values are null when absent: `updatedFields`, `oldVals` and `newVals`
+  /// are independent wire lists, so a short list must degrade to null, not throw.
   (Object?, Object?) _valsTuple(String field) {
     final i = updatedFields.indexOf(field);
     if (i < 0) return (null, null);
@@ -84,9 +60,8 @@ extension PushDataDisplay on PushData {
     if (isUpdate && store == "appointments") {
       if (updatedFields.contains("date")) {
         final (oldDate, newDate) = _valsTuple("date");
-        // `date` travels as minutes since the epoch (`Appointments.toWire`),
-        // so this is an integer comparison, not a chronological one, and both
-        // sides must be present before there is a direction to report.
+        // `date` is minutes since the epoch (`Appointments.toWire`), so this is
+        // an integer comparison and both sides must be present.
         if (oldDate is num && newDate is num) {
           if (oldDate > newDate) {
             return PushInterpretation.appointmentDateHasBeenMovedEarlier;
@@ -113,8 +88,7 @@ extension PushDataDisplay on PushData {
       }
       if (updatedFields.contains("operatorsIDs")) {
         final (_, newOperators) = _valsTuple("operatorsIDs");
-        // `List`, not `List<String>`: a payload that round-tripped through JSON
-        // holds a `List<dynamic>`, which is not a `List<String>`.
+        // `List`, not `List<String>`: a JSON round-trip holds `List<dynamic>`.
         if (currentAccount.isNotEmpty &&
             newOperators is List &&
             newOperators.contains(currentAccount)) {
@@ -171,11 +145,8 @@ extension PushDataDisplay on PushData {
       }
     }
 
-    // Nothing matched. For a store we *do* notify about, an update that reached
-    // this point is malformed — a field list or value list that is absent, the
-    // wrong type, or shorter than the field list it indexes. The wording below
-    // degrades to the generic "new notification", which is the right *display*
-    // but must not hide a sender-side regression, so it is reported once.
+    // A malformed update on a notifiable store still displays the generic
+    // notification, but the sender-side regression is reported once.
     if (isUpdate && (store == 'appointments' || store == 'notes')) {
       _reportUninterpretable();
     }
@@ -236,8 +207,6 @@ _Langs _langForCode(String code) {
 List<String> get supportedPushLanguageCodes =>
     _Langs.values.map((l) => l.name).toList(growable: false);
 
-/// Returns the translation pair `[title, body]` for [langCode] and
-/// [interpretation], falling back to English if [langCode] is unknown.
 @visibleForTesting
 List<String> pushTranslationFor(
   String langCode,

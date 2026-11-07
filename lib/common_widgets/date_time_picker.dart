@@ -5,8 +5,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart'
     show showTimePicker, showDatePicker, TimeOfDay;
 
-/// Locales whose CLDR time pattern is 24-hour, requiring an English override
-/// when 12-hour mode is selected in settings.
+/// Locales whose CLDR time pattern is 24-hour, so 12-hour mode overrides to
+/// English.
 const _localesWith24HourCldr = {"es", "el", "fa", "fr", "tr", "it"};
 
 Future<TimeOfDay?> showAppTimePicker(
@@ -62,10 +62,6 @@ class DateTimePicker extends StatefulWidget {
   final void Function(DateTime value) onChange;
   final TextStyle? textStyle;
 
-  /// Where the date sits in the space the picker leaves for it. A picker that
-  /// is one field of a row starts its date at the field's own edge — beside the
-  /// glyph the date carries — rather than floating it in a box wider than the
-  /// text.
   final AlignmentGeometry textAlignment;
 
   final bool enabled;
@@ -86,10 +82,8 @@ class DateTimePickerState extends State<DateTimePicker> {
   @override
   void didUpdateWidget(covariant DateTimePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The field is also a view of a record that another control can switch: the
-    // chart's scope bar can put another visit behind the same band, and the date
-    // on screen must be that visit's the moment it does. `initValue` is the only
-    // source of truth — the picker's own `value` is just the last thing it drew.
+    // `initValue` is the source of truth: another control can switch the record
+    // behind this field, so the shown date must follow it.
     if (widget.initValue != oldWidget.initValue) {
       value = widget.initValue;
     }
@@ -109,8 +103,6 @@ class DateTimePickerState extends State<DateTimePicker> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // The date shortens before the row overflows: a window is as narrow
-            // as its panel, and the button beside it does not shrink.
             Flexible(
               child: SizedBox(
                   height: 34,

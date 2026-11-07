@@ -14,16 +14,14 @@ void main() {
 
   setUp(() async {
     savedPatientSide = patientSide.toJson();
-    // Every instance of the class shares one box: a stored copy left by an
-    // earlier test would be read by the next one and start an activation of
-    // its own — a request the test never made.
+    // The class shares one box across instances, so a stored copy left by an
+    // earlier test would auto-activate on the next one.
     await patientSide.ready;
     await (await patientSide.box).delete('patient-side');
   });
 
   tearDown(() {
-    // Restore fields directly: fromJson can intentionally auto-activate a
-    // complete credential set, which is an integration concern.
+    // fromJson auto-activates on a complete credential set, so restore fields directly.
     patientSide.server = savedPatientSide['server'] as String;
     patientSide.name = savedPatientSide['name'] as String;
     patientSide.patientID = savedPatientSide['patientID'] as String;
@@ -270,9 +268,7 @@ void main() {
         },
       );
 
-      // The stored copy is read before anything is written: the box is shared,
-      // and a read that lands after an activation would find the state that
-      // activation wrote and start a second one.
+      // Await the shared box's read before activate writes, or it can start a second activation.
       await side.ready;
       await side.activate();
 
@@ -294,9 +290,6 @@ void main() {
         },
       );
 
-      // The stored copy is read before anything is written: the box is shared,
-      // and a read that lands after an activation would find the state that
-      // activation wrote and start a second one.
       await side.ready;
       await side.activate();
 

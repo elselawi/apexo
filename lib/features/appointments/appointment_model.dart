@@ -32,8 +32,7 @@ class Appointment extends Model {
 
   @override
   bool get locked {
-    // lock if only personal appointments are permissible
-    // and the appointment doesn't have the current account id as an operator
+    // Level 1 may edit only visits it operates; level 2 all; 0 none.
     if (login.perm(Perm.appointments).exact(2)) {
       return false;
     } else if (login.perm(Perm.appointments).exact(1)) {
@@ -117,8 +116,7 @@ class Appointment extends Model {
     return imgs.where((name) => isAnImageName(name)).toList();
   }
 
-  /// DCM X-ray filenames attached to this appointment, filtered to valid
-  /// `.dcm`/`.dicom` names. Guards against stale or corrupt entries.
+  /// X-ray filenames, filtered to valid `.dcm`/`.dicom` names; corrupt entries are skipped.
   List<String> get viewableDcmImgs {
     return dcmImgs.where(isADcmName).toList();
   }
@@ -229,9 +227,8 @@ class Appointment extends Model {
     };
   }
 
-  // Note: `dcmImgs` is intentionally NOT in pushIfChanged — adding X-rays
-  // to an appointment should not notify the patient. Other devices learn
-  // about new X-rays via the normal PocketBase sync, not push.
+  // `dcmImgs` is deliberately not in `pushIfChanged`: adding X-rays must not
+  // notify the patient; other devices pick them up through normal sync.
   @override
   List<String> get pushIfChanged =>
       ["date", "isDone", "archived", "operatorsIDs"];

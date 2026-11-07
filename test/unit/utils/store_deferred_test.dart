@@ -329,11 +329,9 @@ void main() {
 
     test('_patchModelFilename then _ensureDcmInModel does NOT create duplicate',
         () {
-      // Simulate: PB renamed xray.dcm → xray_a1b2.dcm
-      // Step 1: patch old→new
+      // PB renamed xray.dcm; patch before ensure, else a second entry is appended.
       store.debugPatchModelFilename(rowID, 'xray.dcm', 'xray_a1b2.dcm');
 
-      // Step 2: ensure DCM in model (should be no-op since already there)
       store.debugEnsureDcmInModel(rowID, 'xray_a1b2.dcm');
 
       final m = store.get(rowID)!;
@@ -758,9 +756,7 @@ void main() {
       final result = await store.debugSyncTry();
 
       expect(result.exception, isNull);
-      // The valid uploads are attempted and re-queued because their test
-      // sources are intentionally unavailable; malformed entries are
-      // discarded rather than aborting the synchronization pass.
+      // valid.dcm re-queues at retry 1 (missing source); malformed keys are dropped.
       expect(await local.getDeferred(), {
         'FILE||row||path||valid.dcm||1': 1,
       });

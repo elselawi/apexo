@@ -78,9 +78,7 @@ void main() {
     originalSink = PushListeners.showLocalNotification;
     originalPromote = PushListeners.promoteWindowsInstanceIfApplicable;
 
-    // A signed-in session, and every route reachable: navigation is what these
-    // tests are about, and a route the session cannot open is a different
-    // behaviour.
+    // Full permissions so navigation tests can reach every route.
     login.token = 'test-token';
     login.savedPermissions = Perm.full;
     network.isOnline(false);

@@ -3,11 +3,8 @@ import 'package:http/http.dart' as http;
 
 const String countryCodeApiUrl = 'https://api.country.is/';
 
-/// Fetches the caller's ISO country code from [countryCodeApiUrl].
-///
-/// Returns the two-letter `country` field when present and valid; otherwise
-/// falls back to `"US"`. Network and malformed-response failures are also
-/// non-fatal because this lookup must never block sign-in.
+/// Fetches the caller's ISO country code, falling back to "US"; failures are
+/// non-fatal because the lookup must never block sign-in.
 Future<String> getCountryCode({
   http.Client? client,
   Duration timeout = const Duration(seconds: 3),

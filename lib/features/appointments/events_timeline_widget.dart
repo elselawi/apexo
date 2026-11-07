@@ -20,10 +20,6 @@ import 'package:intl/intl.dart' as intl;
 import 'package:table_calendar/table_calendar.dart';
 import '../../utils/colors_without_yellow.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Calendar Timeline View (Google‑Calendar‑style time grid)
-// ─────────────────────────────────────────────────────────────────────────────
-
 /// Self-contained time-grid view that positions appointments by duration.
 class CalendarTimelineView extends StatefulWidget {
   const CalendarTimelineView({
@@ -47,8 +43,7 @@ class CalendarTimelineView extends StatefulWidget {
   /// The day's follow-ups that still need a visit — see [FollowUpBand].
   final List<FollowUpDue> followUps;
 
-  /// Books one of them. Its face can be dragged onto the grid, and the hour it
-  /// was dropped on comes back as [at]; a plain click keeps the day.
+  /// [at] is the hour a dragged face was dropped on; null keeps the day.
   final void Function(FollowUpDue followUp, {DateTime? at})? onBookFollowUp;
 
   @override
@@ -81,8 +76,6 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
   double _dragGridWCached = 0;
   Timer? _nowTimer;
 
-  /// Where the face being dragged would land, for the insertion line the grid
-  /// shows while it is over the day.
   final _gridKey = GlobalKey();
   DateTime? _dropTime;
 
@@ -353,13 +346,9 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
       _buildScrollableArea(neededW, gridW, totalH, gx, gw, stroke, showNow,
           nowY, visibleApps, layout, needsHorizScroll),
       _buildGutterOverlay(rtl, bg.withAlpha(100), timeGutter),
-      // Always in the tree, empty or not: inserting it only while a drag is
-      // over the day would shift the band along the Stack and rebuild the very
-      // face being dragged, which cancels the drag it is drawing for.
+      // Always in the tree: adding it only mid-drag would shift the Stack,
+      // rebuild the dragged face and cancel the drag.
       _buildDropIndicator(gx, gw),
-      // The day's follow-ups float over it: the faces of the patients who were
-      // asked to come back, waiting for an hour. Dragging one onto the grid is
-      // the other way to give them one.
       if (widget.followUps.isNotEmpty)
         PositionedDirectional(
           key: const ValueKey('calendar-follow-up-band'),
@@ -378,8 +367,6 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
     ]);
   }
 
-  /// Turns a global drag position into the hour it is over, and shows the line
-  /// the visit would start on.
   DateTime? _readDropTime(Offset global) {
     final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.attached || _totalH <= 0) return null;
@@ -399,9 +386,6 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
     setState(() => _dropTime = null);
   }
 
-  /// A teal line where the visit would begin, with the hour on it — the same
-  /// question the timeline answers for every block, asked before anything is
-  /// written.
   Widget _buildDropIndicator(double gx, double gw) {
     final time = _dropTime;
     if (time == null) {
@@ -867,10 +851,6 @@ class _CalendarTimelineViewState extends State<CalendarTimelineView> {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Timeline chip (appointment card in the time grid)
-// ─────────────────────────────────────────────────────────────────────────────
-
 class TimelineChip extends StatefulWidget {
   const TimelineChip({
     super.key,
@@ -888,8 +868,6 @@ class TimelineChip extends StatefulWidget {
   final bool showPayments;
   final VoidCallback onTap;
 
-  /// Opens one of the visit's windows — what the context menu offers. The chip
-  /// itself consumes the long press for dragging, so the menu is on right click.
   final void Function(AppointmentWindow window) onSelect;
   final void Function(LongPressStartDetails) onLongPressStart;
   final void Function(LongPressMoveUpdateDetails) onLongPressMove;
@@ -910,8 +888,7 @@ class _TimelineChipState extends State<TimelineChip> {
 
   @override
   Widget build(BuildContext context) {
-    // The chip is wrapped so a right click opens the same menu the agenda row
-    // does. Its long press is the drag: this one never claims that gesture.
+    // Long press is the drag, so the context menu is on right click only.
     return ContextMenuRegion(
       longPress: false,
       items: (context, controller) => appointmentMenuItems(
@@ -934,8 +911,6 @@ class _TimelineChipState extends State<TimelineChip> {
         ? widget.item.preOpNotes
         : widget.item.postOpNotes;
     final carries = AppointmentIndicators.hasAny(widget.item);
-    // The payment is what the card never drops for want of room: a visit that
-    // took money says so even in its shortest slot.
     final showsPayment = widget.showPayments && widget.item.paid > 0;
 
     return GestureDetector(
@@ -1049,14 +1024,9 @@ class _TimelineChipState extends State<TimelineChip> {
                                             )),
                                   ),
                                   const SizedBox(width: 8),
-                                  // The pill and the money stack taller
-                                  // than a fifteen-minute card. Rather
-                                  // than dropping the money, the whole
-                                  // column gives way a little: everything
-                                  // stays, a hair smaller.
+                                  // Pill and money scale down together
+                                  // rather than dropping the amount.
                                   ConstrainedBox(
-                                    // The row leaves its children room
-                                    // they cannot have: the card's height.
                                     constraints: BoxConstraints(
                                         maxWidth: room.maxWidth * 0.4,
                                         maxHeight: room.maxHeight),
@@ -1101,12 +1071,8 @@ class _TimelineChipState extends State<TimelineChip> {
     );
   }
 
-  /// Whether the card is tall enough for the operators under the duration
-  /// pill — the shortest card drops them rather than overflowing, and the pill
-  /// alone still says how long the visit is.
-  ///
-  /// The payment is never asked: it is drawn whether or not it fits, giving
-  /// the whole column a little less room instead (see [_buildChip]).
+  /// Whether the card is tall enough for the operators under the duration pill.
+  /// Payment is never asked: it is drawn anyway, the column just shrinks.
   bool _fitsSecondRow(BuildContext context, double available) {
     if (!available.isFinite) return true;
     final body = FluentTheme.of(context).typography.body;
@@ -1149,8 +1115,7 @@ class _TimelineChipState extends State<TimelineChip> {
     );
   }
 
-  /// The money the visit took. A long amount must not take the title's room:
-  /// past ~90px it scales down instead.
+  // A long amount must not take the title's room: past 90px it scales down.
   Widget _buildPaymentChip(BuildContext context) {
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 90),
@@ -1175,9 +1140,7 @@ class _TimelineChipState extends State<TimelineChip> {
   }
 
   Widget _buildOperatorsPill(bool isCurrentlyOpenInAPanel) {
-    // The names come from the visit as it reads now: a tick in the list beside
-    // this pill is a write to the draft and the store, not to the copy this
-    // chip was built with.
+    // Read live, not from widget.item: ticking writes to the draft and store.
     final visit = liveAppointment(widget.item.id) ?? widget.item;
     final selectedIds = visit.operatorsIDs.toSet();
     final ops = accounts.operators;
@@ -1197,8 +1160,7 @@ class _TimelineChipState extends State<TimelineChip> {
                   unawaited(_operatorsFlyout.showFlyout<void>(
                     builder: (_) => AppointmentOperatorsFlyout(
                       appointmentId: widget.item.id,
-                      // The pill names who is on the visit: it has to hear
-                      // about every tick, while the list is still open.
+                      // Rebuild on each tick so the pill tracks the open list.
                       onChanged: () => setState(() {}),
                     ),
                   ));
@@ -1225,10 +1187,6 @@ class _TimelineChipState extends State<TimelineChip> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Chair info (operator column metadata)
-// ─────────────────────────────────────────────────────────────────────────────
 
 class ChairInfo {
   const ChairInfo({required this.id, required this.name, required this.color});

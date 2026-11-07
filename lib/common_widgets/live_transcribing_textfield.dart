@@ -15,19 +15,10 @@ enum MicPlacement {
   none,
 }
 
-/// Whether dictation is available right now: the microphone is only offered
-/// when the app is online and AI services are switched on.
 bool get transcriptionAvailable =>
     network.isOnline() && globalSettings.aiServicesEnabled;
 
-/// A [CupertinoTextField] with a built-in live-transcription mic button.
-///
-/// The mic is positioned at the bottom-end of the text field (RTL-aware).
-/// When AI services are unavailable, it degrades to a plain text field
-/// with normal padding.
-///
-/// [onTranscriptionDone] is called when a transcription session finishes,
-/// with an automatic `mounted` guard — no need to check it yourself.
+/// Calls [onTranscriptionDone] only while mounted.
 class LiveTranscribingTextField extends StatefulWidget {
   const LiveTranscribingTextField({
     super.key,
@@ -59,9 +50,7 @@ class LiveTranscribingTextField extends StatefulWidget {
   final ValueChanged<String>? onSubmitted;
   final MicPlacement micPlacement;
 
-  /// Painted behind the text. Left null the platform's own grey field box is
-  /// used; pass a [BoxDecoration] to paint the field the caller's way — for
-  /// instance none at all, on a surface that already carries the colour.
+  /// Null keeps the platform's grey box; pass a [BoxDecoration] to replace it.
   final BoxDecoration? decoration;
 
   @override
@@ -81,12 +70,8 @@ class _LiveTranscribingTextFieldState extends State<LiveTranscribingTextField> {
     super.dispose();
   }
 
-  /// The text field itself.
-  ///
-  /// [CupertinoTextField] only applies its own box decoration when the
-  /// `decoration` argument is left off, so a field whose caller brought a
-  /// decoration — including `const BoxDecoration()`, which paints nothing — is
-  /// built without it, and every other field keeps the platform's own box.
+  // `CupertinoTextField.decoration` defaults to the platform box; an explicit
+  // null paints nothing, so null here means "omit the argument".
   Widget _field({required bool showMic}) {
     final decoration = widget.decoration;
     return decoration == null

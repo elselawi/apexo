@@ -34,11 +34,8 @@ class NetworkAction {
     this.badge,
   });
 
-  /// A stable id for this action (`notifications`, `theme`, `sync`, `errors`).
-  ///
-  /// The actions are anonymous icons, and a fluent `Tooltip` is not what
-  /// `find.byTooltip` matches, so this is the only handle a test can address one
-  /// by — `WK.globalAction(identifier)`.
+  /// Test handle for this action (`WK.globalAction(identifier)`): the icons are
+  /// anonymous, and a fluent `Tooltip` is not what `find.byTooltip` matches.
   final String identifier;
   String tooltip;
   Widget icon;
@@ -64,8 +61,8 @@ class _NetworkActions {
 
   List<ErrorItem> get errors => List.unmodifiable(_errors);
 
-  /// Returns true if it's a new unique error (caller should show dialog),
-  /// false if it's a duplicate (caller should skip dialog, we already pulse).
+  /// True for a new error (the caller shows the dialog), false for a duplicate
+  /// (already pulsed, so the caller skips it).
   bool addError(Object message, String when) {
     final msg = message.toString();
     final existing = _errors.where((e) => e.message == msg && e.when == when);
@@ -130,14 +127,6 @@ class _NetworkActions {
 
   List<NetworkAction> get actions {
     return [
-      // coming soon: chat with staff feature
-      // NetworkAction(
-      //   tooltip: "Chat",
-      //   icon: WindowsIcons.action_center,
-      //   onPressed: () {},
-      //   activeColor: Colors.transparent,
-      //   badge: "12",
-      // ),
       if (launch.open() != Open.login)
         NetworkAction(
           identifier: 'notifications',

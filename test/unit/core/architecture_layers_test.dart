@@ -3,13 +3,6 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
-/// The layers the window work introduced, and the edges neither may cross.
-///
-/// The window system is a framework: features open panels through it, it opens
-/// nothing of theirs. Keeping that one-way is what lets the layer sit below the
-/// app and be tested without a store, a feature or a session — and it is the
-/// edge that made a 56-line preference helper reach 268 of the 281 files under
-/// `lib/`.
 void main() {
   Set<String> importsUnder(String root) {
     final dir = Directory(root);

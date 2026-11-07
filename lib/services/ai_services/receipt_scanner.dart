@@ -3,10 +3,6 @@ import 'package:apexo/services/ai_services.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 
-// ============================================================================
-//  Models
-// ============================================================================
-
 class ReceiptItem {
   ReceiptItem({
     required this.name,
@@ -63,10 +59,6 @@ class ReceiptData {
         'totalPrice': totalPrice,
       };
 }
-
-// ============================================================================
-//  ReceiptScanner — uses the shared AIService token management
-// ============================================================================
 
 class ReceiptScanner extends AIService {
   /// Reads a receipt from an [XFile] (works on web + native).

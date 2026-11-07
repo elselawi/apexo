@@ -9,11 +9,8 @@ import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:hive_flutter/adapters.dart';
 
-/// Computes a stable deduplication key from the four UID/instance fields.
-///
-/// **Primary**: `sopInstanceUid` (tag 0008,0018) — globally unique per DICOM
-/// instance. **Fallback** (if SOP UID is empty/missing): composite of
-/// `studyInstanceUid + seriesInstanceUid + instanceNumber`.
+/// Stable dedup key persisted in the links box; falls back to a study/series/
+/// instance composite when the SOP UID is empty.
 String dedupKeyFromValues({
   required String sopInstanceUid,
   required String studyInstanceUid,
@@ -56,16 +53,8 @@ class _LinkEntry {
   String toJson() => jsonEncode({'p': patient, 'k': keys});
 }
 
-/// Single source of truth for DICOM patient links and imported-file dedup.
-///
-/// One Hive box (`dicom_links`). Each entry maps a DICOM patient ID to:
-/// ```json
-/// {"p": "apexo-patient-uuid", "k": ["sop:...", "sop:..."]}
-/// ```
-///
-/// - `p` is `null` until the dentist links the DICOM patient to an Apexo
-///   patient (approve or manual-match).
-/// - `k` is the list of imported dedup keys for that patient.
+/// The `dicom_links` box maps a DICOM patient ID to
+/// `{"p": apexoPatientId|null, "k": [dedupKey...]}`; `p` is null until linked.
 class DicomLinksStore {
   DicomLinksStore._({
     String boxName = 'dicom_links',
@@ -180,9 +169,8 @@ class DicomLinksStore {
           patient: current?.patient,
           keys: [...?current?.keys, key],
         );
-        // Persist first. Only update the process cache after Hive confirms the
-        // write, otherwise a storage error can permanently hide the file from
-        // the next scan until the application restarts.
+        // Persist before updating the cache: a Hive failure must not leave a
+        // cached key that hides the file from the next scan.
         await box.put(dicomPatientId, next.toJson());
         _cache[dicomPatientId] = next;
         _allKeysCache.add(key);
@@ -236,26 +224,16 @@ class DicomLinksStore {
     });
   }
 
-  /// Whether an entry without imported-file markers can be discarded.
-  ///
-  /// A confirmed DICOM-to-Apexo patient mapping must survive independently
-  /// so that a failed file can be rediscovered without requiring rematching.
+  /// A confirmed patient link must survive an empty key list, so a failed file
+  /// can be rediscovered without rematching.
   static bool canDeleteEmptyEntry({
     required String? patientId,
     required List<String> keys,
   }) =>
       keys.isEmpty && (patientId == null || patientId.isEmpty);
 
-  /// Removes a single dedup key from whichever patient entry owns it.
-  ///
-  /// Used when a DICOM file's upload permanently failed — clearing the
-  /// imported-file marker lets the source file be re-discovered on the next
-  /// directory scan.
-  ///
-  /// A DICOM patient link is independent from its imported-file markers.
-  /// In particular, removing the final marker must not discard [patient]:
-  /// doing so changes a recoverable failed upload into an unlinked patient
-  /// that must be manually matched again.
+  /// Removes one dedup key so a failed upload can be rediscovered on the next
+  /// scan. The patient link survives even when its last key is removed.
   Future<bool> removeKey(String dedupKey) {
     return _serializeMutation(() async {
       try {

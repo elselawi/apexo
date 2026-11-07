@@ -31,9 +31,8 @@ class LabworksScreen extends StatelessWidget {
           child: MStreamBuilder(
               streams: [
                 appointments.observableMap.stream,
-                // The not-delivered half of the table is filtered by the
-                // patients behind the visits, so their record is a source of
-                // change here too.
+                // not-delivered rows are filtered by their patient, so patient
+                // changes must refresh the table too.
                 patients.observableMap.stream,
               ],
               builder: (context, snapshot) {
@@ -68,11 +67,7 @@ class _LabworksTableState extends State<LabworksTable> {
     super.dispose();
   }
 
-  /// Whether the user may change the visits this table shows.
-  ///
-  /// One rule, shared with the visit's own panel: a labwork order is part of
-  /// the visit, so the gate for writing to it is the gate for writing to the
-  /// visit.
+  // labwork writes use the visit's write gate: an order is part of the visit.
   bool canEdit(List<String> operatorIDs) => canEditAppointments(operatorIDs);
 
   List<Appointment> get filteredAndSorted {
@@ -218,9 +213,8 @@ class _LabworksTableState extends State<LabworksTable> {
             child: HoverButton(
               onPressed: () {
                 if (canEditLabwork(apt) == false) return;
-                // The order, not the patient's record: opening the visit's panel
-                // as well buried the labwork window under the appointment it
-                // belongs to.
+                // open the labwork window on its own; the visit's panel buries
+                // it under the appointment.
                 unawaited(openAppointmentWindowOnItsOwn(
                     apt, AppointmentWindow.labwork));
                 return;
@@ -311,8 +305,6 @@ class _LabworksTableState extends State<LabworksTable> {
               apt.id, (draft) => draft.labworkReceived = received),
         ),
         const MenuFlyoutSeparator(),
-        // Deleting a labwork takes the order off the visit: the visit itself,
-        // and everything else it carries, stays.
         confirmDeleteMenuItem(
           controller: controller,
           restorable: false,

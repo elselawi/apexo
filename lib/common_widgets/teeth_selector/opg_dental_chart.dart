@@ -17,23 +17,13 @@ part 'opg_painters.dart';
 part 'opg_tooth_painter.dart';
 part 'opg_tooth_geometry.dart';
 
-/// Minimum viewport width at which the OPG panoramic dental chart activates.
-/// Narrower viewports (phones, small tablets) get the compact elliptical arch
-/// instead.
-///
-/// This is the width the chart is *drawn in*, not the width of the screen: a
-/// chart in a floating window measures its card. It sits below the widest a
-/// window may be so that the panoramic chart — the straight arches with the
-/// sinus and inferior alveolar nerve drawings — is what a desktop shows.
+/// Minimum width for the panoramic chart; narrower viewports fall back to the
+/// compact arch.
 const double kOpgViewportMinWidth = 900.0;
 
-/// Neutral silver-slate palette used for treatments/notes that came from
-/// another appointment or record (not registered in the current draft).
 Color _neutralHistoryColor(bool darkMode) =>
     darkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
 
-/// The radiographic wash the arch sits in: brighter through the middle of the
-/// mouth, where the jaws part, and cooler towards the bone at either end.
 const List<Color> _lightArchWellColors = [
   Color(0xFFEDF2F8),
   Color(0xFFF7FAFC),
@@ -42,7 +32,6 @@ const List<Color> _lightArchWellColors = [
   Color(0xFFEDF2F8),
 ];
 
-/// The same wash for dark mode, over a darker film.
 const List<Color> _darkArchWellColors = [
   Color(0xFF0A1018),
   Color(0xFF111A27),
@@ -51,18 +40,13 @@ const List<Color> _darkArchWellColors = [
   Color(0xFF0A1018),
 ];
 
-/// How far the wash is allowed to colour up: it takes the record kind's hue and
-/// only as much saturation as a pale radiograph can carry.
+// the base wash's low saturation is boosted so the tint's hue shows, then
+// clamped so it stays pale.
 double _wellTintSaturation(HSLColor wash, bool darkMode) =>
     (wash.saturation * (darkMode ? 2.0 : 1.9)).clamp(0.0, 1.0).toDouble();
 
-/// [base] washed with the record kind's [tint].
-///
-/// The wash keeps the brightness it always had — the chart stays the pale
-/// radiograph it was — and takes the kind's hue instead of its own blue-grey
-/// one: violet on a visit's treatments, blue on a patient's plan. Only the
-/// colour the background leans on says which scope these teeth are in; the
-/// teeth and everything recorded on them are drawn exactly as before.
+// recolours base to tint's hue, keeping its lightness and alpha so the wash
+// stays a pale radiograph.
 Color _tintedWell(Color base, Color? tint, bool darkMode) {
   if (tint == null) return base;
   final wash = HSLColor.fromColor(base);
@@ -86,47 +70,30 @@ LinearGradient _archWellGradient(bool darkMode, Color? tint) => LinearGradient(
       stops: const [0.0, 0.36, 0.5, 0.64, 1.0],
     );
 
-/// Upper permanent teeth in standard panoramic (OPG) order:
-/// patient's right (18..11) to patient's left (21..28).
+/// FDI order, patient's right to left (18..11 then 21..28).
 const List<String> kOpgUpperPermanent = [
   '18', '17', '16', '15', '14', '13', '12', '11', //
   '21', '22', '23', '24', '25', '26', '27', '28', //
 ];
 
-/// Lower permanent teeth in standard panoramic (OPG) order:
-/// patient's right (48..41) to patient's left (31..38).
+/// FDI order, patient's right to left (48..41 then 31..38).
 const List<String> kOpgLowerPermanent = [
   '48', '47', '46', '45', '44', '43', '42', '41', //
   '31', '32', '33', '34', '35', '36', '37', '38', //
 ];
 
-/// Upper primary (deciduous) teeth in panoramic order:
-/// patient's right (55..51) to patient's left (61..65).
+/// FDI order, patient's right to left (55..51 then 61..65).
 const List<String> kOpgUpperPrimary = [
   '55', '54', '53', '52', '51', //
   '61', '62', '63', '64', '65', //
 ];
 
-/// Lower primary (deciduous) teeth in panoramic order:
-/// patient's right (85..81) to patient's left (71..75).
+/// FDI order, patient's right to left (85..81 then 71..75).
 const List<String> kOpgLowerPrimary = [
   '85', '84', '83', '82', '81', //
   '71', '72', '73', '74', '75', //
 ];
 
-/// Panoramic (OPG-style) dental chart for wide screens (PCs and tablets).
-///
-/// Renders anatomically accurate labial/buccal silhouettes with roots, pulp
-/// chambers, cusps, and occlusal/incisal contours for every tooth type,
-/// layered clinical drawings for all treatment/state types (clipped cleanly to
-/// the tooth's own crown/root contours so multiple operations overlap
-/// harmoniously), flat shadow-free icons at the root apex (using a `Wrap` when
-/// multiple treatments are applied), and 90°-rotated treatment labels tucked
-/// beside each tooth.
-///
-/// Operations and notes from earlier appointments/records are rendered in a
-/// neutral radiographic grey/silver palette so only treatments registered in
-/// the current record carry vibrant colors.
 class OpgDentalChart extends StatefulWidget {
   const OpgDentalChart({
     super.key,
@@ -172,10 +139,8 @@ class OpgDentalChart extends StatefulWidget {
   final String historyTitle;
   final ValueChanged<String>? onOpenAppointment;
 
-  /// The colour the record kind this chart belongs to is known by — violet on
-  /// a visit's treatments, blue on a patient's plan. It washes the chart's
-  /// background only, never the teeth or what is recorded on them. Null for a
-  /// chart that stands for no record kind, which keeps the neutral wash.
+  /// Record-kind colour (violet for a visit, blue for a plan); it tints the
+  /// background only, never the teeth. Null keeps the neutral wash.
   final Color? tint;
 
   @override
@@ -185,12 +150,8 @@ class OpgDentalChart extends StatefulWidget {
 class _OpgDentalChartState extends State<OpgDentalChart> {
   String? _hoveredIso;
 
-  /// Collects all historical and current entries for [iso], ordered newest
-  /// first for the beside-tooth rotated labels.
-  ///
-  /// Deduplicates entries whose displayed text (condition + extra note) is
-  /// already shown by the current draft or a newer historical entry, so the
-  /// same treatment/note is never repeated twice beside the tooth.
+  // Entries for [iso], newest first; a condition already shown by a newer entry
+  // is dropped so the same treatment never repeats beside the tooth.
   List<_ToothHistoryEntry> _entriesForTooth(String iso) {
     final entries = <_ToothHistoryEntry>[];
     final seenConditions = <String>{};
@@ -201,10 +162,6 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
       final extra = candidate.extraNote?.trim() ?? '';
       if (cond.isEmpty && extra.isEmpty) return;
 
-      // If this historical entry has the same condition as the current chart
-      // (or a newer entry) and no distinct extra note, skip it altogether.
-      // If it has the same condition AND a different extra note, keep only the
-      // extra note so the treatment name isn't duplicated.
       final effectiveCond =
           (cond.isNotEmpty && seenConditions.contains(cond)) ? '' : cond;
       if (effectiveCond.isEmpty && extra.isEmpty) return;
@@ -267,13 +224,8 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     return entries;
   }
 
-  /// Collects all operations/states recorded on [iso] in chronological order
-  /// (oldest first, current draft last) so that multiple operations overlap
-  /// naturally on the tooth drawing.
-  ///
-  /// Historical operations (from other appointments/records) lose their bright
-  /// color and use a neutral radiographic tone, while the operation registered
-  /// in the current draft retains its full color.
+  // Operation layers for [iso], oldest first with the current draft last so it
+  // paints on top; history uses the neutral tone.
   List<_ToothOperationLayer> _operationLayersForTooth(
       String iso, bool darkMode) {
     final layers = <_ToothOperationLayer>[];
@@ -345,8 +297,8 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     }
 
     return Directionality(
-      // Standard OPG radiographic orientation: Patient Right on viewer left,
-      // Patient Left on viewer right, regardless of text directionality.
+      // OPG orientation: patient's right on viewer left, independent of text
+      // direction.
       textDirection: TextDirection.ltr,
       child: Container(
         key: const ValueKey('opg-dental-chart'),
@@ -492,15 +444,6 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     );
   }
 
-  /// Compact arch layout for phones and narrow panels
-  /// (`< kOpgViewportMinWidth`): both jaws are drawn as facing anatomical
-  /// arches — the two 16-tooth rows curve around the canines at the corners of
-  /// the arch, spending vertical room instead of width — with roots pointing
-  /// outward and crowns inward, the way an odontogram reads.
-  ///
-  /// One well holds the whole chart — the orientation markers, the switches,
-  /// both arches and the colour key — so none of the width the panel gives is
-  /// spent on padding, and the mouth is laid out in the space that is left.
   Widget _buildCompactChart({
     required BuildContext context,
     required bool darkMode,
@@ -508,9 +451,8 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     required Color borderColor,
   }) {
     final mediaHeight = MediaQuery.sizeOf(context).height;
-    // Give the compact arch generous vertical room so teeth are large, crisp,
-    // and clinical marks/icons/drawings are clearly visible, while still
-    // fitting a phone viewport without scrolling.
+    // the chart gets the viewport minus ~190px of chrome (or all of it when
+    // filling the screen); 380 is the floor that keeps teeth legible.
     final room = math.max(
         380.0, widget.fillCompactHeight ? mediaHeight : mediaHeight - 190.0);
 
@@ -591,9 +533,8 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     );
   }
 
-  /// The mouth itself: one facing pair of arches, and only ever one dentition —
-  /// a phone has room for the permanent teeth or the primary ones, not both, so
-  /// the switches pick between them.
+  // compact mode shows one dentition at a time: showPrimary is ignored, and
+  // the primary arch is the inverse of showPermanent.
   Widget _buildCompactCanvas({
     required double width,
     required double height,
@@ -609,10 +550,8 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
       lowerIsos: primary ? kOpgLowerPrimary : kOpgLowerPermanent,
       toothBand: (width * 0.048).clamp(12.0, 20.0),
       jawGap: 10.0,
-      // A drawn crown is narrower than its normalized [-1, 1] box, so drawing
-      // each cell slightly wider than its arc share lets adjacent crowns make
-      // realistic interproximal contact while leaving room for the ovoid/
-      // pyramidal arch splay out to the panel edges.
+      // a drawn crown is narrower than its normalized box, so cells are widened
+      // past their arc share to close the interproximal gaps.
       toothFill: 1.12,
     );
 
@@ -904,18 +843,11 @@ class _OpgDentalChartState extends State<OpgDentalChart> {
     );
   }
 
-  /// Anatomical mesiodistal width weights so molars are naturally broader than
-  /// premolars, canines, and incisors, and upper central incisors are broader
-  /// than upper lateral incisors, while lower central incisors are the
-  /// narrowest teeth in the mouth.
   int _columnFlexForIso(String iso) => _toothWidthWeight(iso);
 }
 
-/// Anatomical mesiodistal width weight of [iso]: molars are broader than
-/// premolars, canines, and incisors, an upper central incisor is broader than
-/// its lateral neighbour, and a lower central incisor is the narrowest tooth in
-/// the mouth. Used both to size a column of the flat chart and to hand a tooth
-/// its share of the compact arch's curve.
+// mesiodistal width weight for [iso]: molars broadest, lower central incisor
+// narrowest; sizes both a flat column and a compact tooth's share of the arc.
 int _toothWidthWeight(String iso) {
   final q = int.parse(iso[0]);
   final pos = int.parse(iso[1]);
@@ -942,8 +874,3 @@ int _toothWidthWeight(String iso) {
     _ => 10,
   };
 }
-
-/// One tooth's seat on a compact arch: the point of the ellipse its centre sits
-/// on (relative to the jaw's ellipse centre), the rotation that turns its root
-/// outward, and the arc length its share of the curve spans — which is what
-/// sizes the tooth.

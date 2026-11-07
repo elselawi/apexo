@@ -4,10 +4,6 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/ai_services.dart';
 import 'package:http/http.dart' as http;
 
-// ============================================================================
-//  Models
-// ============================================================================
-
 class PostOpData {
   PostOpData({
     required this.postOpNotes,
@@ -61,10 +57,6 @@ class PostOpData {
         'labworkNotes': labworkNotes,
       };
 }
-
-// ============================================================================
-//  PostOpNotes — audio-to-structured-notes via AIService
-// ============================================================================
 
 class PostOpNotes extends AIService {
   /// Processes an audio recording from raw bytes.

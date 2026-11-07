@@ -1,8 +1,5 @@
-/// The device's memory of which of a panel's windows the user left open: one
-/// note per kind of record, read back when the next panel of that kind opens.
-///
-/// Storage is a string here, which is all the class asks for: the settings store
-/// is one caller's answer, not a dependency of the class.
+/// WindowDefaults remembers which windows were left open per record kind; it
+/// takes read/write callbacks, so a plain string is all the test needs.
 library;
 
 import 'dart:convert';
@@ -74,8 +71,8 @@ void main() {
   });
 
   test('a memory written before slots existed is the host slot\'s', () {
-    // An upgrade must not rearrange anybody's screen: the entries written by an
-    // older build are read as the panel's own slot, and moved on the next write.
+    // Entries written before slots existed are read as the host slot, so an
+    // upgrade does not rearrange screens.
     stored = jsonEncode({
       'patient': ['appointments'],
     });
@@ -119,8 +116,6 @@ void main() {
   });
 
   test('nothing remembered when storage holds rubbish', () {
-    // A preference is not worth a crash: a panel that cannot read it opens the
-    // way it always did.
     for (final rubbish in ['not json', '[]', '{"patient": "appointments"}']) {
       stored = rubbish;
       expect(defaults.of('patient'), isNull);

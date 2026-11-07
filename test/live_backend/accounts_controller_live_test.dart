@@ -7,10 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketbase/pocketbase.dart';
 import '../secret.dart';
 
-/// Live PocketBase coverage for the account-controller remote boundary.
-///
-/// This is intentionally excluded from normal unit runs. Execute it with:
-/// `flutter test --tags live_backend test/live_backend/accounts_controller_live_test.dart`
+/// Runs against a real PocketBase using the credentials in `test/secret.dart`,
+/// so it stays out of unit runs (`flutter test --tags live_backend`).
 void main() {
   group('Accounts controller — PocketBase integration', () {
     setUpAll(() async {

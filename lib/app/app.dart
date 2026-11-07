@@ -40,11 +40,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
-/// One cached [GlobalObjectKey] per route, so a screen keeps its element and
-/// state (scroll offset, text controllers) when the shell rebuilds.
-///
-/// The key is the [AppRoute] itself — a `const` enum value, so [identical]
-/// holds across rebuilds.
+/// One cached key per route, so a screen keeps its state when the shell
+/// rebuilds. The key is a `const` enum value, so identity holds across them.
 final _bodyKeys = <AppRoute, GlobalKey>{};
 GlobalKey _bodyKeyFor(AppRoute route) =>
     _bodyKeys.putIfAbsent(route, () => GlobalObjectKey(route));
@@ -63,10 +60,8 @@ class ApexoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Where the last tap landed: a window opened from a row or a menu is put at
-    // that row, not at the panel's side of the screen. The recorder is global,
-    // because a menu lives in the navigator's overlay and a listener inside the
-    // app would never see the tap that chose a menu item.
+    // Global recorder: a menu's tap lands in the navigator overlay, so a local
+    // listener would never see it.
     WindowOrigin.install();
     return StreamBuilder(
         stream: localSettings.stream,
@@ -132,25 +127,11 @@ class ApexoApp extends StatelessWidget {
         });
   }
 
-  /// Set once the changelog dialog has been raised in this process.
-  ///
-  /// The check runs from **two** places now (startup's one-second timer and
-  /// `login.activate`, which is what makes the welcome dialog reachable), and a
-  /// second raise leaves two dialogs stacked — `upgrade 01` sets a stale
-  /// `lastSeenVersion` itself, and the timer then raised a second changelog over
-  /// the one the test was closing, so it waited 60s for `ContentDialog` to
-  /// disappear. The device value alone is not enough of a guard: the *test* is
-  /// allowed to make it stale.
+  // Guards against a second raise: both startup and session start run the check.
   static bool _changelogShown = false;
 
-  /// Shows the changelog / welcome dialogs if this launch owes one.
-  ///
-  /// **Static, because `login.activate` calls it too.** `createElement`'s
-  /// one-second timer runs *before* the login that creates a clinic can set
-  /// `launch.isFirstLaunch`, so the welcome dialog was unreachable: nothing
-  /// re-checked the flag (`login 12`, a 180s wait for a dialog that could never
-  /// come). Nothing here reads instance state — every value is a global — so a
-  /// class-level function is enough, and the check is idempotent.
+  /// Shows the changelog and welcome dialogs if this launch owes one. Static
+  /// because startup's session callback in `main` also calls it.
   static Future<void> showDialogsIfNeeded() async {
     await version.loadCurrentVersion();
 
@@ -169,8 +150,7 @@ class ApexoApp extends StatelessWidget {
       }
     }
 
-    // Show new version dialog only on macOS — all other platforms
-    // (MS Store, Play Store, App Store) handle updates automatically.
+    // Only macOS gets the update prompt; the stores update the other platforms.
     if (version.needsUpdateNotification &&
         version.isOutdated() &&
         !launch.dialogShown() &&
@@ -212,8 +192,7 @@ class ApexoApp extends StatelessWidget {
         canPop: false,
         onPopInvokedWithResult: (_, __) {
           if (launch.layoutWidth < kWindowsBreakpoint) {
-            // Out in order: the sheet, then the visit, then the panel itself
-            // (plan §4.2).
+            // Back dismisses in order: sheet, then visit, then panel.
             if (WindowsManager.dismissSheet?.call() ?? false) return;
             final panel = PanelsManager.active().lastOrNull;
             if (panel != null &&
@@ -266,8 +245,7 @@ class ApexoApp extends StatelessWidget {
                     },
                   ),
                 ),
-                // The workspace command stays above the windows, beside the
-                // panel, and asks before closing anything with unsaved work.
+                // Must stay after the windows in the Stack to draw above them.
                 if (launch.open() == Open.staff)
                   CloseAllButton(
                     screenWidth: constraints.maxWidth,
@@ -336,9 +314,8 @@ class ApexoApp extends StatelessWidget {
                   selected: routes.currentIndex,
                   displayMode: PaneDisplayMode.auto,
                   toggleable: false,
-                  // Every offered route's body is handed over up front (the pane
-                  // swaps between them by index), and each is keyed so its
-                  // element and state survive that swap.
+                  // The pane swaps bodies by index, so each is pre-built and
+                  // keyed to keep its element and state across the swap.
                   items: List<NavigationPaneItem>.from(routes.visibleRoutes.map(
                     (route) => PaneItem(
                       key: Key("${route.id}_screen_button"),

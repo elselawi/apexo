@@ -6,12 +6,8 @@ import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The teeth of a [DentalChartSession], with everything editing them needs.
-///
-/// Shared by the two places a chart is drawn — the floating window, and the
-/// section a panel shows in place of it on a small screen — so both always show
-/// the same chart and write to the same draft. Scope transitions animate only
-/// the teeth editor, leaving the header and window controls stationary.
+/// The teeth of a [DentalChartSession], drawn both in the floating window and in
+/// a small-screen panel; scope transitions animate only the teeth, not the chrome.
 class DentalChartBody extends StatelessWidget {
   const DentalChartBody({super.key, required this.session, this.overlay});
 
@@ -22,23 +18,20 @@ class DentalChartBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Notes are edited in place, so the chart listens to its own session: a
-    // panel's store stream cannot announce an edit to a draft that is not
-    // stored yet.
+    // Notes are edited in place, and a panel's store stream cannot announce an
+    // edit to a draft that is not stored yet, so listen to the session itself.
     return StreamBuilder<int>(
       stream: session.revision.stream,
       builder: (context, _) {
-        // Noted teeth are already drawn from the current notes; showing them
-        // again as "old" notes would double every one of them.
+        // Noted teeth are already drawn as current, so drop them from old notes
+        // to avoid doubling them.
         final oldNotes = Map<String, String>.from(session.oldNotes())
           ..removeWhere((iso, _) => session.teeth.containsKey(iso));
 
         final chart = TeethSelector(
           type: session.type,
-          // The session's id is the record's scope — `patient:<id>` or
-          // `appointment:<id>` — so the chart is washed in the same colour the
-          // panel and the window already use for that kind of record: blue on a
-          // patient's plan, violet on a visit's treatments.
+          // session.id is the record scope (`patient:<id>` / `appointment:<id>`),
+          // which is what tints the chart like the panel or window it sits in.
           tint: PanelAccents.ofScope(session.id),
           fillCompactHeight: overlay != null,
           historyTitle: session.historyTitle,

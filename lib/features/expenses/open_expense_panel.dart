@@ -24,35 +24,22 @@ import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
 
-/// The windows the orders panel offers beside it, in the order it offers them.
-///
-/// The panel builds its list from [expenseWindows] and a supplier row's context
-/// menu offers one item per entry, so neither can drift from the other. The
-/// supplier's own figures stay in the panel; the orders live in these windows.
 export 'package:apexo/features/expenses/expense_windows.dart'
     show ExpenseWindow, expenseWindows;
 
-/// The id of the panel's own body: the supplier's figures, which are not one of
-/// the floating windows.
+/// The panel's summary body, which is not one of [expenseWindows].
 const String expenseSummaryWindowId = 'summary';
 
-// NOTE: Unlike the row panels (patient, appointment) which track unsaved
-// changes on a single item, this panel manages multiple orders. It is a
-// [DelegatedPanel]: its [checkUnsavedChanges] and [onSave] callbacks make the
-// panel's footer Save button save ALL changed orders at once. New orders are
-// persisted immediately in [addOrderForSupplier] so photo uploads work right
-// away. Archive/restore is handled per-order via the more menu in [OrderRow].
+// Multi-order panel: the footer Save writes every changed order; new orders are
+// stored on creation (so photos can upload), and archive/restore happen per row.
 Future<String?> openExpenses(
     List<Expense> orders, String supplierName, String? supplierId,
     [bool? singleArchived, ExpenseWindow? window]) async {
   final itemId = supplierId ?? supplierName;
-  // A window of a supplier whose panel is already open is that panel's window:
-  // a second editor for the same orders would let the two disagree about what
-  // was saved, and the one saved last would win.
+  // An open panel owns this supplier's windows: a second editor would give the
+  // same orders two drafts, and whichever saved last would win.
   final panelIsOpen =
       PanelsManager.active().any((panel) => panel.itemId == itemId);
-  // A window that is not the panel's own body opens on its own: asking a
-  // supplier row for "the unpaid orders" should not unfold the supplier.
   if (!panelIsOpen && window != null && window != ExpenseWindow.order) {
     _showOrdersWindow(orders, supplierId, window, supplierName: supplierName);
     return null;
@@ -66,8 +53,6 @@ Future<String?> openExpenses(
   );
 }
 
-/// The supplier's own panel, led by their figures and offering their order lists
-/// beside them — [focus] is the window the caller asked for, if any.
 Future<String?> _openSupplierPanel(
   List<Expense> orders,
   String supplierName,
@@ -75,14 +60,11 @@ Future<String?> _openSupplierPanel(
   bool? singleArchived,
   String? focus,
 }) async {
-  // The panel holds these windows now, so the ones standing on their own for
-  // this supplier have nothing left to show.
+  // The panel holds this supplier's windows now, so the standalone ones close.
   final scope = _supplierScope(supplierId, supplierName);
 
-  // The supplier's panel may already be on screen. Then this is not a new
-  // panel: the editor is already there, and a panel built here would be thrown
-  // away — taking the baselines it had adopted with it, silently. So the
-  // question is asked *before* any window state is touched.
+  // The panel may already be on screen; building another would be discarded along
+  // with the baselines it had adopted, so check before touching window state.
   final itemId = supplierId ?? supplierName;
   final existing = PanelsManager.find(itemId);
   if (existing != null) {
@@ -91,25 +73,19 @@ Future<String?> _openSupplierPanel(
     return existing.savedId;
   }
 
-  // Work a window of this supplier still holds comes in with the panel: the
-  // panel takes the baselines the window opened with, so the orders it touched
-  // are dirty here and its own Save is the one write.
+  // A window's work comes in with the panel: its older baselines make the touched
+  // orders dirty here, so the panel's Save is the one write.
   final carried = WindowsManager.adoptBaselines(scope);
   WindowsManager.closeScope(scope);
 
-  // Snapshot of each order's JSON at panel-open time.
-  // Updated after each save so we only re-save what changed. A window's older
-  // baseline wins over a snapshot taken now — that is what makes the panel start
-  // dirty on the work the window was holding.
+  // Per-order JSON baseline, re-taken after each save. A carried window baseline
+  // wins over the fresh snapshot, so the work it held starts dirty.
   final savedSnapshots = {..._snapshotsOf(orders), ...?carried};
   void remember(Expense order) =>
       savedSnapshots[order.id] = jsonEncode(order.toJson());
 
-  /// Whether [order] differs from what the panel last knew of it.
-  ///
-  /// An order the panel did not see when it opened was added while the panel
-  /// was up — and such an order is written to the store as soon as it is
-  /// added, so it is only unsaved work when the store's copy differs from it.
+  // An order added while the panel was up has no snapshot; it is stored as soon
+  // as added, so it is unsaved only when the store's copy differs.
   bool isDirty(Expense order) {
     final snapshot = savedSnapshots[order.id];
     final current = jsonEncode(order.toJson());
@@ -120,20 +96,15 @@ Future<String?> _openSupplierPanel(
 
   late final DelegatedPanel panel;
   panel = DelegatedPanel(
-    // The supplier the panel is about, named by its id when there is one: two
-    // suppliers can share a name, and a rename must not leave the panel under an
-    // id nothing else can find again.
+    // Key the panel by supplier id when there is one: names can collide, and a
+    // rename would orphan a name-keyed panel.
     itemId: itemId,
-    // The window the caller asked for — a menu that names "the unpaid orders"
-    // means that window, not just the supplier it belongs to.
     initialWindow: focus,
     showBottomControls: true,
     singularName: "orders",
     accent: PanelAccents.orders,
     unicodeSymbol: "📁",
     icon: WindowsIcons.folder,
-    // The header keeps the supplier's name — as it is *now*: a rename writes the
-    // supplier's own record, and the header must follow it.
     recordTitle: () async =>
         _supplierNameOf(supplierId, supplierName),
     liveTitle: () => _supplierNameOf(supplierId, supplierName),
@@ -165,9 +136,6 @@ Future<String?> _openSupplierPanel(
           supplierId: supplierId,
           supplierName: supplierName,
           singleArchived: singleArchived == true,
-          // The figures are a way into the orders behind them: on a phone,
-          // where only one window is on screen at a time, the lists are
-          // otherwise a click away and no one would know it.
           onOpenWindow: (id) => panel.workspace.show(id),
         ),
       ),
@@ -183,18 +151,13 @@ Future<String?> _openSupplierPanel(
   return shown.savedId;
 }
 
-/// The supplier's name as it is now.
-///
-/// A rename writes the supplier's own record, so a name captured when the panel
-/// was opened would keep showing the old one — in the header, and in the line
-/// under a window's title.
+// Read the supplier's current record: a rename writes the supplier, so a captured
+// name would go stale in the header and window subtitles.
 String _supplierNameOf(String? supplierId, String fallback) {
   if (supplierId == null) return fallback;
   return expenses.get(supplierId)?.supplierName ?? fallback;
 }
 
-/// One supplier's orders as a window — the panel's, or one standing on its own
-/// when a row or a menu names it.
 PanelWindow _ordersWindow(
   List<Expense> orders,
   String? supplierId,
@@ -202,24 +165,18 @@ PanelWindow _ordersWindow(
   required String supplierName,
   void Function(Expense order)? onOrderSaved,
 }) {
-  // The single-order window a supplier-less list opens (an archived order) is
-  // the one that has no running totals to speak of.
+  // The `order` window is the single archived order, so no totals footer.
   final archived = window == ExpenseWindow.order;
   return PanelWindow(
     id: window.id,
     title: window.titleKey,
     icon: window.icon,
-    // Whose orders these are: the panel may be a supplier's, or the whole
-    // clinic's — several such windows can be open at once. The name is read
-    // when the window is drawn, so a rename shows up in it.
     subtitle: () => _supplierNameOf(supplierId, supplierName),
     padding: 0,
     scrollable: false,
     maxHeight: 640,
     // The orders are edited here, so the panel's write is offered here too.
     editsRecord: true,
-    // A list of orders: enough room for a few of them, and it scrolls itself for
-    // the rest. Too short and the window is all header and one row.
     minHeight: 440,
     body: _SupplierDetails(
       allOrders: orders,
@@ -232,8 +189,6 @@ PanelWindow _ordersWindow(
   );
 }
 
-/// Shows one of a supplier's order lists on its own, with the Save and Close a
-/// panel would have offered — the orders are edited in place, so it needs both.
 void _showOrdersWindow(
   List<Expense> orders,
   String? supplierId,
@@ -266,8 +221,8 @@ void _showOrdersWindow(
   );
 }
 
-/// The record a supplier's standalone windows belong to, named the way a panel
-/// names the supplier it edits: opening the panel closes the windows it holds.
+// Standalone windows share this scope with the panel for the same supplier, so
+// opening the panel closes them.
 String _supplierScope(String? supplierId, String supplierName) =>
     'supplier:${supplierId ?? supplierName}';
 
@@ -275,10 +230,8 @@ Map<String, String> _snapshotsOf(List<Expense> orders) => {
       for (final order in orders) order.id: jsonEncode(order.toJson()),
     };
 
-/// Writes every order that changed since [snapshots] was taken, and re-baselines
-/// it. Answering with the ids it wrote is what makes the panel's `savedId` mean
-/// something: this panel's caller holds the drafts, so it is the only one that
-/// can report them.
+// Writes the orders changed since `snapshots` and re-baselines each one, so a
+// second Save with no edits writes nothing.
 List<String> _saveOrders(
   List<Expense> orders,
   Map<String, String> snapshots,
@@ -309,8 +262,8 @@ class _SupplierDetails extends StatefulWidget {
   final String? supplierId;
   final bool? singleArchived;
 
-  /// An order was written on the spot — added here, or edited in a row — so the
-  /// owner's dirty check can be re-baselined without a Save.
+  // An order was written outside Save (added here or edited in a row), so the
+  // owner can re-baseline its dirty check.
   final void Function(Expense order)? onOrderSaved;
 
   @override
@@ -353,13 +306,8 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
     super.dispose();
   }
 
-  /// The orders this window lists: the panel's own list, cut down to the ones
-  /// this window is about and to the search.
-  ///
-  /// Worked out where the list is drawn, not where the window is built: an
-  /// order added here, marked paid in a row or deleted from its menu reaches
-  /// the store before it reaches [widget.allOrders], and a list taken once
-  /// would keep showing the window as it was until it was closed and reopened.
+  // Computed at draw time, not when the window is built: store changes reach this
+  // list before `widget.allOrders`, so a snapshot would keep showing stale rows.
   List<Expense> ordersFor(String search) {
     if (widget.singleArchived == true) return widget.allOrders;
     return (widget.processed
@@ -487,9 +435,7 @@ class _SupplierOrdersFooterState extends State<_SupplierOrdersFooter> {
       child: StreamBuilder(
           stream: expenses.observableMap.stream,
           builder: (context, asyncSnapshot) {
-            // The same figures the panel's summary shows, computed the same way:
-            // the panel and the window beside it must not report two different
-            // numbers for the same orders.
+            // The same totals the panel's summary uses, so both agree.
             final totals = OrderTotals.of(widget.orders);
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -4,9 +4,8 @@ import 'package:apexo/features/booking/booking_models.dart';
 import 'package:apexo/features/booking/booking_time.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Shared Dart/JS fixtures. The worker's `test/validate.test.ts` (sibling
-/// repository `apexo-booking-worker`) asserts the same canonical bytes, so a
-/// change on one side fails here too.
+/// Canonical fixtures are mirrored by `test/validate.test.ts` in
+/// `apexo-booking-worker`; changing one side fails here too.
 void main() {
   group("canonical JSON", () {
     test("sorts keys by UTF-16 code unit and keeps array order", () {

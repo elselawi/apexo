@@ -3,18 +3,7 @@ import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The editors a record carries with it, drawn as **attachments** on the frame
-/// they belong to.
-///
-/// A visit's labwork order and photos hang off its band and off the post-op card
-/// inside its chart; a patient's photos and page hang off the patient's panel.
-/// They are not row windows — they never take a place beside the panel — so they
-/// are not switches in a dock: they are a row of chips at the foot of the thing
-/// they are about, one click from the editor and one click back.
-///
-/// The tray is deliberately quiet: a paperclip, then a chip per attachment with
-/// its own label and whether its editor is on screen. It reads as a footer, not
-/// as another toolbar, so the window above it keeps the eye.
+/// A record's attached editors, as chips on the frame they belong to.
 class WindowAttachments extends StatelessWidget {
   const WindowAttachments({
     super.key,
@@ -36,8 +25,8 @@ class WindowAttachments extends StatelessWidget {
   /// Switches the attachment's editor on or off.
   final void Function(PanelWindow window) onToggle;
 
-  /// Per-attachment permission to open it — false while it needs a stored
-  /// record. Null means every attachment may be opened.
+  /// Per-attachment permission to open it; null means all may open. A caller
+  /// disables attachments that need the record stored first.
   final bool Function(PanelWindow window)? enabled;
 
   /// The colour the record is known by, so its attachments are tinted like it.
@@ -45,9 +34,6 @@ class WindowAttachments extends StatelessWidget {
 
   final Key Function(PanelWindow window)? keyForWindow;
 
-  /// Whether the tray leads with a paperclip. A tray that is the whole point of
-  /// its surface (the panel's) says what it is; one under a window that already
-  /// names its record can do without.
   final bool marker;
 
   final EdgeInsetsGeometry padding;
@@ -126,8 +112,6 @@ class _AttachmentChip extends StatelessWidget {
     final background = open
         ? Color.alphaBlend(tint.withValues(alpha: 0.10), idle)
         : Colors.transparent;
-    // What the attachment holds, not only what it is called: a gallery's first
-    // pictures, an order's state. Null for a chip with nothing to preview.
     final preview = window.chipPreview?.call();
 
     return Tooltip(
@@ -158,8 +142,6 @@ class _AttachmentChip extends StatelessWidget {
                   preview,
                   const SizedBox(width: 5),
                 ],
-                // The name gives way before the chip does: a preview makes the
-                // chip wider, and a tray is only as wide as the frame it is on.
                 Flexible(
                   child: Txt(
                     txt(window.title),
@@ -173,8 +155,6 @@ class _AttachmentChip extends StatelessWidget {
                 ),
                 if (open) ...[
                   const SizedBox(width: 5),
-                  // On screen now: the chip says so, and pressing it puts it
-                  // away — the same grammar as the dock it replaced.
                   Icon(WindowsIcons.chrome_minimize,
                       size: 10, color: foreground),
                 ],

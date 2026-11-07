@@ -40,55 +40,40 @@ void main() async {
     print('>>> ${record.level.name}: ${record.time}: ${record.message}');
   });
 
-  // initialize the dicom_toolkit native (Rust/WASM) engine
-  // non-fatal: app continues if the engine fails to load
   await initDicomToolkit();
 
-  // initialize receiving notifications
-  // on Android, iOS, macOS and Windows
   if (kIsWeb == false) await Messaging.initializeReceiving();
 
   // initialize stores
   initializeStores();
 
-  // Online booking discovery: silent, non-blocking, and absent unless the build
-  // names a trusted booking origin.
   initializeBooking();
 
-  // What the app does with a session — the service announces it, the app tears
-  // down the screen it owns and shows the first dialogs. `login` therefore
-  // imports no panel, no window and no app widget.
   SessionEvents.onEnded(() {
     routes.reset();
     PanelsManager.closeAll();
     WindowsManager.closeAll();
-    // A visit's draft belongs to the account that opened it: logout is a forced
-    // teardown, with nobody left to prompt (plan §4.6).
+    // A visit's draft belongs to the account that opened it; on logout there is
+    // nobody left to prompt.
     appointmentSessions.clear();
   });
   SessionEvents.onStarted(
     () => unawaited(ApexoApp.showDialogsIfNeeded()),
   );
 
-  // Where a record's files are resolved. Uploads go to the appointments
-  // collection, so that is the store the app binds; an image util asks this
-  // instead of importing the feature.
+  // Uploads live in the appointments collection; image utils call this instead
+  // of importing the feature.
   fileLinkResolver =
       (rowID, name) => appointments.remote!.getImageLink(rowID, name);
 
-  // Register the DICOM scan lifecycle (the login activator) *before* any
-  // login can run. `dicomCtrl` is a lazily-initialized top-level final, so
-  // nothing else touches it early enough: without this the periodic
-  // auto-scan timer is never started and X-rays are only picked up when the
-  // dentist opens the DICOM page.
+  // Must run before any login: `dicomCtrl` is a lazily-initialized top-level
+  // final, so without this the auto-scan timer never starts.
   initializeDicomScan();
 
   if (kIsWeb) {
     JSBridge.removeItemFromSessionStorage('canvaskit_reload_count');
-    // The browser's own context menu would open on top of the app's menus —
-    // and on the rows whose long press belongs to a drag, it was the *only*
-    // thing that opened, so the app's own menu could not be reached at all.
-    // The app knows what a row means; the browser does not.
+    // Web: the browser's context menu would cover the app's own, and on drag
+    // rows it was the only one that opened.
     await SystemChannels.contextMenu.invokeMethod('disableContextMenu');
   }
 
@@ -104,9 +89,8 @@ void main() async {
     await SentryFlutter.init(
       (options) {
         options.dsn = sentryDSN;
-        // A widget that fails every frame or on every pointer move would fill a
-        // default-sized buffer with one repeated line before the error worth
-        // reading is reported.
+        // Sized so a widget failing every frame doesn't flood the buffer before
+        // the error worth reading is recorded.
         options.maxBreadcrumbs = 300;
         options.beforeBreadcrumb = breadcrumbLimiter.limit;
       },

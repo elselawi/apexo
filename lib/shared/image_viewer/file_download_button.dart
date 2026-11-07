@@ -49,6 +49,3 @@ class _FileDownloadButtonState extends State<FileDownloadButton> {
     );
   }
 }
-
-/// The photo a delete prompt shows, taken from what is already on screen rather
-/// than fetched again.

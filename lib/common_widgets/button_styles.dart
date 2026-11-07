@@ -27,9 +27,7 @@ class ButtonContent extends StatelessWidget {
   final double? size;
   final bool inProgress;
 
-  /// Whether the icon says something directional — "open in", "next", "back" —
-  /// and must therefore be mirrored where the app reads right to left, the way
-  /// the text beside it already is.
+  /// Mirrors the icon in RTL; only for glyphs whose meaning has a direction.
   final bool flipInRtl;
 
   @override
@@ -52,8 +50,6 @@ class ButtonContent extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         mirrored,
-        // A long label wraps inside the button instead of overflowing it on a
-        // narrow screen.
         Flexible(
           child: Txt(
             txt,

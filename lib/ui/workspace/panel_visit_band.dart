@@ -1,17 +1,7 @@
 part of 'panel_screen.dart';
 
-/// The band: the record a panel **carries**, drawn as a bubble under the panel's
-/// own workspaces, with its own name, its own footer and its own editor.
-///
-/// A visit is not a panel, so it cannot draw a header — this is what says whose
-/// windows in the row are, where the visit stands, and what closes it
-/// (plan §4.1, §4.4). It is also where the visit's **appointment form** lives:
-/// when, how long, whose, and what was planned fit in a compact strip, so they
-/// need no window and no row slot of their own.
-///
-/// Everything it shows is read from the session's draft, so it is live: typing a
-/// post-op note flips `pending` to `completed` at once, and a line says so
-/// (plan §8.1).
+// The bubble for the visit a panel carries. A visit is not a panel and cannot
+// draw a header, so this stands in for its name, state and actions.
 class _VisitBand extends StatefulWidget {
   const _VisitBand({
     required this.panel,
@@ -58,12 +48,8 @@ class _VisitBandState extends State<_VisitBand> {
     });
   }
 
-  /// Notes a `pending → completed` transition the moment the band draws it, and
-  /// says so once the frame is done.
-  ///
-  /// The band is rebuilt from the session's own dirty stream rather than being
-  /// recreated, so this cannot live in `didUpdateWidget`: the widget the user
-  /// sees flip is this one, and it is the one that has to notice.
+  // Noticed in build, not didUpdateWidget: the band is rebuilt from the
+  // session's dirty stream rather than recreated.
   void _noticeCompletion(bool done) {
     if (done == _wasDone) return;
     _wasDone = done;
@@ -76,9 +62,8 @@ class _VisitBandState extends State<_VisitBand> {
   @override
   void didUpdateWidget(covariant _VisitBand oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A panel can carry a different visit without being rebuilt from scratch.
-    // The state that remembers *which* visit was last drawn belongs to the visit,
-    // not to the band's slot.
+    // The band survives a switch to a different visit, so the per-visit state
+    // resets here.
     if (!identical(oldWidget.session, widget.session)) {
       _transientTimer?.cancel();
       _transient = null;
@@ -96,17 +81,13 @@ class _VisitBandState extends State<_VisitBand> {
         stream: session.hasUnsavedChanges.stream,
         builder: (context, _) {
           final theme = FluentTheme.of(context);
-          // Blended over the panel's own opaque fill, not over
-          // `scaffoldBackgroundColor`: that one is a 25%-opaque acrylic layer in
-          // Fluent, and a bubble painted on it is translucent — its tail then
-          // washes out over the page while the bubble above it looks solid.
+          // Blend over the solid fill: Fluent's scaffold background is
+          // translucent acrylic, so a bubble painted on it would wash out.
           final background = Color.alphaBlend(
             accent.withValues(alpha: 0.055),
             theme.resources.solidBackgroundFillColorSecondary,
           );
           return Padding(
-            // Room above for the tail, so the bubble points up at the patient
-            // record above it instead of merely sitting under it.
             padding: const EdgeInsetsDirectional.fromSTEB(8, 10, 8, 4),
             child: Stack(
               clipBehavior: Clip.none,
@@ -143,10 +124,8 @@ class _VisitBandState extends State<_VisitBand> {
                           key: WK.visitContent,
                           padding:
                               const EdgeInsetsDirectional.fromSTEB(8, 2, 8, 2),
-                          // The form belongs to the visit: a different visit is a
-                          // different editor, never the old one relabelled. This
-                          // is what keeps its date, time and duration honest the
-                          // moment the chart switches scope.
+                          // Keyed by visit id: switching visits rebuilds the
+                          // form instead of keeping the old one's state.
                           child: KeyedSubtree(
                             key: ValueKey('visit-content-${session.itemId}'),
                             child: content,
@@ -192,10 +171,6 @@ class _VisitBandState extends State<_VisitBand> {
         children: [
           Txt(session.unicodeSymbol, style: const TextStyle(fontSize: 13)),
           const SizedBox(width: 6),
-          // Whose visit this is and when: a label, never a selector — a third
-          // control that changes the selection is how two controls start to
-          // disagree (plan §4.8). The band's actions live in its footer, so the
-          // identity line is only identity.
           Expanded(
             child: Txt(
               session.bandLabel,
@@ -247,8 +222,6 @@ class _VisitBandState extends State<_VisitBand> {
         ),
       );
 
-  /// `Marked completed`, for a moment, on its own line: the state changed while
-  /// the user was typing, and this is the sentence that says so (plan §8.1).
   Widget _buildTransient(BuildContext context) {
     if (_transient == null) return const SizedBox.shrink();
     final theme = FluentTheme.of(context);
@@ -274,28 +247,16 @@ class _VisitBandState extends State<_VisitBand> {
     );
   }
 
-  /// The editors hanging off the band — a visit's labwork order and its photos —
-  /// as the same attachment tray a panel draws under itself.
-  ///
-  /// They are the record's **parts**, not its tools: the dock above carries the
-  /// one thing that opens the record's own surface, and these sit at the band's
-  /// foot, one click from their editors and one click back. Empty for a record
-  /// that hangs nothing off its band.
   Widget _buildAttachments(Color accent) {
     final windows = <PanelWindow>[
       for (final window in widget.session.windows)
         if (window.attachedTo == PanelWindow.bandAttachment) window,
     ];
     if (windows.isEmpty) return const SizedBox.shrink();
-    // The record's windows live in the row's attached slot; the tray switches
-    // exactly what the dock would have switched.
     return WindowAttachments(
       key: WK.visitBandAttachments,
       windows: windows,
       accent: accent,
-      // The band has an edge of its own: no paperclip ahead of the chips, and
-      // the same small inset every field above them starts at, so the tray reads
-      // as the band's foot rather than as an indent under it.
       marker: false,
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 6),
       keyForWindow: (window) =>
@@ -308,12 +269,7 @@ class _VisitBandState extends State<_VisitBand> {
     );
   }
 
-  /// The band's footer: the retained-draft hint and its way back to that visit,
-  /// then the record's own actions — the same grammar as a panel's bottom bar.
-  ///
-  /// The count changes what is shown, never which visit is selected (plan §2.4).
-  /// Save and Delete are standard Fluent buttons, so their colours follow the
-  /// theme; Close keeps its draft and says so in its tooltip.
+  // Close keeps the draft; its tooltip says so.
   Widget _buildFooter(BuildContext context, Color accent) {
     final session = widget.session;
     final theme = FluentTheme.of(context);
@@ -327,8 +283,6 @@ class _VisitBandState extends State<_VisitBand> {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 7),
       decoration: BoxDecoration(
-        // A footer of its own: a different surface from the fields above it, so
-        // the eye reads "actions" rather than one more row of the form.
         color:
             Color.alphaBlend(accent.withValues(alpha: 0.08), theme.menuColor),
         border: Border(
@@ -450,8 +404,7 @@ class _VisitBandState extends State<_VisitBand> {
       showErrorMessage(e, 'savingFailed');
       return;
     }
-    // Deleting takes the visit off this panel as well; restoring keeps it open
-    // where it is.
+    // Deleting also detaches the visit; restoring leaves it open.
     if (!archived && identical(panel.attached, session)) panel.detach();
   }
 
@@ -464,9 +417,7 @@ class _VisitBandState extends State<_VisitBand> {
       builder: (context) => MenuFlyout(items: [
         MenuFlyoutItem(
           key: WK.visitMenuDone,
-          // The toggle that already exists in the visit's menu, routed through
-          // the session so it edits the open draft — and is reversible in place
-          // (plan §8.1).
+          // Goes through the session so the toggle edits the open draft.
           text: Txt(txt(session.isDone ? 'markAsPending' : 'markAsDone')),
           leading: Icon(
             session.isDone ? FluentIcons.hour_glass : WindowsIcons.completed,
@@ -481,14 +432,8 @@ class _VisitBandState extends State<_VisitBand> {
   }
 }
 
-/// The small tail on top of the visit bubble, pointing up at the patient
-/// record — its name and its workspaces — that the band belongs to.
-///
-/// The band is not another field group: it is a card *about* the visit the
-/// patient panel carries. The tail is what makes that relation visible without a
-/// label saying so. It is drawn at the post-op card's size and depth — the same
-/// gesture over the same kind of bubble — so the two cards of the app cannot
-/// grow two different arrows.
+// Same 14x6 tail as the post-op card's, so the two bubbles cannot grow
+// different arrows.
 class _VisitBandArrow extends CustomPainter {
   const _VisitBandArrow({required this.background, required this.border});
 
@@ -503,8 +448,7 @@ class _VisitBandArrow extends CustomPainter {
       ..lineTo(size.width, size.height)
       ..close();
     canvas.drawPath(tail, Paint()..color = background);
-    // Only the two upper edges are drawn: the bottom edge is the bubble's own
-    // border, and stroking it would draw a line across the tail.
+    // Only the two upper edges are stroked; the bubble's border draws the base.
     final edge = Path()
       ..moveTo(0, size.height)
       ..lineTo(size.width / 2, 0)

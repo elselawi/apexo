@@ -28,8 +28,7 @@ class NotificationAction {
   final String label;
   final VoidCallback action;
 
-  /// The route this action is pointless on — the notice hides its button
-  /// there. `null` means it never hides.
+  /// Hides this action's button on this route; null means it never hides.
   final AppRoute? hideOnRoute;
 }
 
@@ -122,9 +121,8 @@ class _NotificationsService {
     );
 
     if (kIsWeb || Platform.isWindows == false) {
-      // the sound and should only be visible on windows
-      // since there are currently no other way to support
-      // windows notifications other than this
+      // Toast and sound are Windows-only: nothing else surfaces Windows
+      // notifications.
       return;
     }
 

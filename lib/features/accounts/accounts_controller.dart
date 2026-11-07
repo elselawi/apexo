@@ -10,10 +10,8 @@ import 'package:apexo/services/login.dart';
 import 'package:pocketbase/pocketbase.dart';
 
 class _Accounts extends ObservablePersistingObject {
-  /// **Not encrypted.** The audit found no credential here: this object holds
-  /// the cached `profiles_view` records (name, email, permissions, operate),
-  /// and PocketBase never returns a password or a PIN to the client — the
-  /// passwords in `newAccount`/`update` travel the other way, into the server.
+  // Not encrypted: only cached `profiles_view` records live here. PocketBase
+  // never returns passwords or PINs, which only travel to the server.
   _Accounts() : super("accounts");
   final list = ObservableState(
       List<RecordModel>.from(launch.isDemo ? demoAccounts(10) : []));

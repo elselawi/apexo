@@ -19,16 +19,8 @@ import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// One visit's **one** draft, for as long as the app session lasts.
-///
-/// A visit is not a panel: it is a session — a draft, a Save, an identity and a
-/// close — that a patient panel may carry beside itself (plan §0). Every window
-/// of the visit edits this draft, so two windows cannot disagree; and the
-/// registry (`appointmentSessions`) guarantees one session per stored visit, so
-/// two *openers* cannot disagree either.
-///
-/// The session is not a `Panel` and never becomes one: it owns no screen, no
-/// dock and no header. What it owns is the record.
+/// One draft per visit for the whole app session: every window of the visit edits
+/// it, and `appointmentSessions` keeps it to one session per stored visit.
 final class AppointmentSession implements HostedRecordSession {
   AppointmentSession._({
     required this.item,
@@ -38,12 +30,8 @@ final class AppointmentSession implements HostedRecordSession {
   })  : _baseline = _detached(baseline),
         _onDispose = onDispose;
 
-  /// The session for [appointment] — the visit as it is stored **now**.
-  ///
-  /// The draft is taken from the store rather than from the caller's copy: a
-  /// caller may hold a record it read before a sync moved it, and the one thing
-  /// a fresh draft must not do is open over yesterday's version. The caller's
-  /// record is the fallback for a visit that is not stored at all.
+  /// The session for [appointment]. The draft comes from the store, not the
+  /// caller's copy, which may predate a sync; the copy is used only if unstored.
   factory AppointmentSession(
     Appointment appointment, {
     void Function()? onDispose,
@@ -54,8 +42,6 @@ final class AppointmentSession implements HostedRecordSession {
     late final AppointmentSession session;
     final chart = appointmentDentalChart(
       draft,
-      // The chart writes the draft's teeth; its own Save is the visit's Save, so
-      // a chart opened on its own writes this visit and nothing else.
       onSave: () => session.save(),
     );
     session = AppointmentSession._(
@@ -74,28 +60,22 @@ final class AppointmentSession implements HostedRecordSession {
   /// The visit's draft: the one thing every window of this visit edits.
   final Appointment item;
 
-  /// The visit's chart, owned here so a chart opened on its own writes this
-  /// draft rather than a second copy of the visit, and so a save re-baselines it
-  /// with everything else.
+  /// The visit's chart, owned here so its own Save writes this draft, not a second
+  /// copy of the visit, and a visit save re-baselines it too.
   final DentalChartSession chart;
 
   /// Called when this session is dropped for good — the registry forgets it.
   final void Function()? _onDispose;
 
-  /// The windows this visit offers, built once: they edit [item], so a window
-  /// rebuilt on every read would be a second editor of the same draft.
+  /// Built once: the windows edit [item], so a rebuilt one would be a second editor.
   @override
   late final List<PanelWindow> windows = appointmentSessionWindows(this);
 
-  /// The visit as it was last written — the `asOpened` side of the delta write.
-  ///
-  /// Held as detached JSON rather than as a map of the draft's own sub-maps:
-  /// `toJson` hands out live maps, and a baseline that shared them would follow
-  /// every edit and never report one.
+  /// The visit as last written — `asOpened` in the delta write. Detached JSON,
+  /// because `toJson` hands out live maps that a baseline would follow.
   Map<String, dynamic> _baseline;
 
-  /// Follow-up changes staged inside the operative form. They remain patient
-  /// data, but the visit's Save owns the action while that form is open.
+  /// Follow-up changes staged by the operative form; the visit's Save applies them.
   late final FollowUpDraft followUpDraft =
       FollowUpDraft(onChanged: refreshDirty);
 
@@ -117,8 +97,6 @@ final class AppointmentSession implements HostedRecordSession {
   /// The visit's stable scope, for windows and for work adopted from them.
   String get scope => 'appointment:${item.id}';
 
-  /// Whose visit this is, and where it stands — what a band and an owner line
-  /// say. Read on build, so a rescheduled visit relabels at once.
   @override
   String get displayTitle => appointmentOwnerLine(item);
 
@@ -130,8 +108,6 @@ final class AppointmentSession implements HostedRecordSession {
   @override
   String get unicodeSymbol => '📅';
 
-  /// The colour a visit's windows are drawn in, so a patient's windows and the
-  /// visit's are told apart at a glance.
   @override
   Color? get accent => PanelAccents.appointment;
 
@@ -139,20 +115,10 @@ final class AppointmentSession implements HostedRecordSession {
   @override
   String get saveLabel => 'saveVisit';
 
-  /// `Visit · 24/10/2026` — the band's own line. The panel already names the
-  /// patient, so the band spends its line on the day the visit is for.
   @override
   String get bandLabel =>
       txt('visitOf').replaceAll('{date}', DF.allNumbers(item.date));
 
-  /// The appointment's whole form, drawn inside the band: when, how long, whose
-  /// and what was planned, without a window or a row slot of its own; then the
-  /// visit's operative details as the band's own dock, which opens the chart
-  /// those fields live at the foot of, so they are reachable without leaving the
-  /// patient.
-  ///
-  /// The labwork order and the gallery are not dock chips: they hang off the band
-  /// as attachments, and the post-op card inside the chart offers them again.
   @override
   Widget? get bandContent => Column(
         key: ValueKey('visit-form-${item.id}'),
@@ -168,13 +134,9 @@ final class AppointmentSession implements HostedRecordSession {
         ],
       );
 
-  /// Whether the visit is finished, read from the draft so the band flips at
-  /// once — no save needed to see it (plan §8.1).
   @override
   bool get isDone => item.isDone;
 
-  /// The band's own toggle, applied to the one draft through the same door every
-  /// other local change uses (plan §8.1).
   @override
   void markDone(bool done) {
     item.isDone = done;
@@ -193,14 +155,13 @@ final class AppointmentSession implements HostedRecordSession {
       appointments.unarchive(item.id);
     }
     item.archived = archived;
-    // The archive write is the record's, not the draft's: only that field is
-    // acknowledged, so unsaved text survives a restore.
+    // Only the archived flag was written, so acknowledge that field alone and
+    // leave the draft's unsaved text dirty.
     markFieldsSaved(const ['archived']);
   }
 
-  /// A visit is created by the dialog that stores it, so a session is never a
-  /// new record — but a session opened over a visit that is no longer stored is
-  /// the one case where nothing can be written, and it says so.
+  /// Visits are stored by the create dialog, so this is true only once the record
+  /// has been removed from the store.
   @override
   bool get isNew => appointments.get(item.id) == null;
 
@@ -230,13 +191,8 @@ final class AppointmentSession implements HostedRecordSession {
     if (hasUnsavedChanges() != dirty) hasUnsavedChanges(dirty);
   }
 
-  /// Writes the **delta** of this draft against the visit as it is stored now.
-  ///
-  /// The store is re-read first: a sync, a calendar drag or another window may
-  /// have written the visit since this session opened, and writing the whole
-  /// draft back would undo that. Only the fields the user changed are written
-  /// (see [mergeAppointmentJson]) — a stale draft can no longer revert a field
-  /// it never touched.
+  /// Writes the delta of this draft against the visit as stored now: the store is
+  /// re-read first, so a sync or another window's write is not undone.
   @override
   Future<void> save() async {
     if (inProgress()) return;
@@ -284,9 +240,6 @@ final class AppointmentSession implements HostedRecordSession {
     refreshDirty();
   }
 
-  /// Re-baselines only [fields]: a write that landed outside [save] — the
-  /// gallery's photos, for instance — without acknowledging the rest of the
-  /// draft.
   @override
   void markFieldsSaved(Iterable<String> fields) {
     final current = item.toJson();
@@ -301,19 +254,9 @@ final class AppointmentSession implements HostedRecordSession {
     refreshDirty();
   }
 
-  /// Applies [mutate] to the draft and stores **exactly the fields it changed**,
-  /// acknowledging those fields and nothing else.
-  ///
-  /// What a control outside the visit's windows needs (the visits list's
-  /// checkbox, a calendar drag, a labwork toggle): the control reads the record
-  /// from the store, so a change held only in the draft is a change the user
-  /// cannot see — and one that is dropped if the panel closes before the visit's
-  /// Save. The draft still takes the change, because the windows beside the
-  /// control are editing that draft and must agree with it.
-  ///
-  /// Only the mutated fields are written: whatever else the draft holds unsaved —
-  /// typed notes, teeth — is neither stored nor acknowledged, so it stays the
-  /// user's until the visit's own Save.
+  /// Applies [mutate] to the draft and stores only the fields it changed, for a
+  /// control that reads the store rather than the draft (a checkbox, a calendar
+  /// drag). The rest of the draft stays dirty, so typed text is still the user's.
   void writeThrough(void Function(Appointment appointment) mutate) {
     final before = _detached(item.toJson());
     mutate(item);
@@ -324,8 +267,8 @@ final class AppointmentSession implements HostedRecordSession {
     ];
     if (changed.isEmpty) return;
     final stored = appointments.get(item.id);
-    // A visit that is not stored has nothing to write into: the draft is the
-    // only copy, so it stays dirty rather than pretending to be written.
+    // Nothing stored to write into: the draft stays dirty rather than pretending
+    // to be written.
     if (stored == null) return;
     appointments.set(appointments.modeling(
       mergeAppointmentJson(item, asOpened: before, into: stored.toJson()),
@@ -333,8 +276,6 @@ final class AppointmentSession implements HostedRecordSession {
     markFieldsSaved(changed);
   }
 
-  /// Finishes this session for good: the registry dropped it, so nothing can
-  /// attach it again. The draft is not written — disposing is not saving.
   @override
   void dispose() {
     if (_disposed) return;
@@ -346,19 +287,9 @@ final class AppointmentSession implements HostedRecordSession {
   bool get isDisposed => _disposed;
 }
 
-/// [draft]'s work, written over [into] — the visit as it is stored now.
-///
-/// Only the fields that differ from [asOpened] are written: another window of
-/// the same visit, a calendar drag or a sync may have saved the rest while this
-/// draft was open, and writing the whole draft back would undo it. A field back
-/// at the model's default is absent from `toJson`, so writing that back means
-/// dropping the key.
-///
-/// The round-trips through JSON are not ceremony: `toJson` hands out the draft's
-/// own maps, so the answer is detached from [draft] — it can be stored, or handed
-/// to a panel as its item, without the two sharing state.
-///
-/// Called from exactly one place: [AppointmentSession.save].
+/// Copies [draft]'s fields that differ from [asOpened] into [into], the visit as
+/// stored now, leaving every other stored field alone. A field reset to its model
+/// default is absent from `toJson`, so the key must be removed rather than written.
 Map<String, dynamic> mergeAppointmentJson(
   Appointment draft, {
   required Map<String, dynamic> asOpened,
@@ -377,14 +308,11 @@ Map<String, dynamic> mergeAppointmentJson(
   return _detached(merged);
 }
 
-/// A deep copy of [json], so nothing handed back shares a map with the draft it
-/// came from.
+/// Deep copy of [json]: `toJson` hands out live maps, which must not be shared.
 Map<String, dynamic> _detached(Map<String, dynamic> json) =>
     jsonDecode(jsonEncode(json)) as Map<String, dynamic>;
 
-/// Whether two JSON values are equal, in a way a draft can be compared to a
-/// stored copy by: key order is not a difference, and neither is the order the
-/// encoder happens to walk.
+/// Key-order-insensitive JSON encoding, so a draft compares cleanly to a stored copy.
 String _encode(Object? json) => jsonEncode(_canonical(json));
 
 Object? _canonical(Object? value) {

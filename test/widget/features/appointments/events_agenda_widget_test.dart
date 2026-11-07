@@ -100,13 +100,11 @@ void main() {
     // The action that takes the visit away comes last.
     expect(item("delete"), findsWidgets);
 
-    // The counts the menu appends: two treated teeth, three pictures in the
-    // gallery (two photos and one X-ray), one visit in the patient's history.
     expect(suffix(find.text('(2)')), findsWidgets);
+    // The gallery count includes X-rays: two photos plus one X-ray is (3).
     expect(suffix(find.text('(3)')), findsWidgets);
     expect(suffix(find.text('(1)')), findsWidgets);
-    // No labwork order and no patient web page: both say so with an empty
-    // ring, not an error.
+    // No labwork order and no web page: both show an empty ring, not an error.
     expect(suffix(find.byIcon(FluentIcons.circle_ring)), findsWidgets);
     expect(tester.takeException(), isNull);
   });
@@ -220,8 +218,6 @@ void main() {
     );
     expect(find.byType(Checkbox), findsOneWidget);
 
-    // The record is opened in a panel: the row swaps its checkbox for "bring
-    // that panel forward".
     final panel = DelegatedPanel(
       itemId: appointment.id,
       singularName: 'appointment',
@@ -237,8 +233,8 @@ void main() {
     // Both of the row's controls hand over to the open panel.
     expect(find.byIcon(FluentIcons.open_in_new_tab), findsWidgets);
 
-    // Closing it puts the checkbox back — without waiting for the list to
-    // change, which is what used to leave the button on a closed record.
+    // Closing the panel puts the checkbox back; waiting for the list to change
+    // used to leave the button behind on a closed record.
     PanelsManager.closeAll();
     await tester.pumpAndSettle();
     expect(find.byType(Checkbox), findsOneWidget);
@@ -255,8 +251,8 @@ void main() {
 
     await pumpApexoApp(
       tester,
-      // A chip is a fixed-width card; the suite's synthetic font is wider than
-      // any real one, so the harness scales text down to keep the card intact.
+      // The test font is wider than a real one and would overflow the chip's
+      // fixed-width card, so text is scaled down.
       MediaQuery(
         data: const MediaQueryData(textScaler: TextScaler.linear(0.6)),
         child: SizedBox(
@@ -288,7 +284,6 @@ void main() {
       ),
       findsWidgets,
     );
-    // A chip is a fixed-width card, so the test's synthetic font can overflow
-    // it; what matters here is that the menu opened at all.
+    // The test font can overflow the fixed-width chip; only the menu opening matters.
   });
 }

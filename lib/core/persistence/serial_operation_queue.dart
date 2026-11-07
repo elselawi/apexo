@@ -1,7 +1,7 @@
 import 'dart:async';
 
-/// An instance-owned lane for writes, sync passes and attachment operations.
-/// Failures are returned to the caller without poisoning subsequent work.
+/// Serial lane for writes, sync and attachment work; a failing operation is
+/// still returned to its caller and does not block later ones.
 class SerialOperationQueue {
   Future<void> _tail = Future<void>.value();
 

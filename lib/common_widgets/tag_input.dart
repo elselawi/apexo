@@ -48,11 +48,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   late List<TagInputItem> _suggestions;
   bool _isFocused = false;
 
-  /// The suggestion the keyboard has landed on, for the dropdown's highlight.
-  ///
-  /// `AutoSuggestBox` keeps that for itself (`AutoSuggestBoxItem._selected` is
-  /// private), so the rows — which this widget draws — track it through
-  /// `onFocusChange` instead.
+  // AutoSuggestBox keeps its selected item private, so these custom rows track
+  // the highlight themselves via `onFocusChange`.
   String? _focusedSuggestion;
 
   bool get tapable {
@@ -60,8 +57,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   }
 
   void _onSuggestionSelected(AutoSuggestBoxItem<String> suggestion) {
-    // Defensive: this is the user's own tap or Enter, but a callback after our
-    // element is gone would still be a `setState` on a dead State.
     if (!mounted || !context.mounted) return;
     setState(() {
       _tags.add(TagInputItem(value: suggestion.value, label: suggestion.label));
@@ -73,9 +68,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       if (mounted) _controller.text = '';
     });
 
-    // The list is done with. Leaving the overlay open after a selection left a
-    // stranded "No results found" flyout floating over the panel, which then
-    // swallowed clicks meant for the panel's own tabs.
+    // Leaving the overlay open strands a "No results found" flyout over the
+    // panel and swallows clicks meant for its tabs.
     autoSuggestBoxRef.currentState?.dismissOverlay();
 
     widget.onChanged(_tags);
@@ -84,26 +78,9 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     }
   }
 
-  /// Runs [fn] as a rebuild: now when the tree can take one, at the end of the
-  /// frame when it cannot.
-  ///
-  /// `setState` is illegal while the framework is locked — during build, layout,
-  /// paint, and the microtasks between them:
-  ///
-  ///     setState() or markNeedsBuild() called when widget tree was locked.
-  ///
-  /// `AutoSuggestBox` reaches our callbacks from places that are not the user's
-  /// own keystroke: `_select()` when the highlight moves, `_unselectAll()` from
-  /// `dismissOverlay()` (which runs when the box loses focus), and its own
-  /// `dispose()`. A focus change applied in a mid-frame microtask, or a teardown
-  /// inside the locked part of a frame, therefore arrives while a rebuild is not
-  /// allowed. Neither `State.mounted` nor `context.mounted` can express that
-  /// window — both stay true until `dispose()`/`unmount()` return — so the guard
-  /// is the scheduler phase.
-  ///
-  /// Deferring rather than dropping matters: a lock that is not a teardown still
-  /// needs the repaint, and a frame is in progress by definition, so the
-  /// callback runs at the end of it.
+  // `setState` is illegal while the tree is locked, and AutoSuggestBox calls us
+  // from mid-frame (focus changes, dismissOverlay, dispose). `mounted` does not
+  // cover that window, so the rebuild waits for the frame to end.
   void _rebuild(VoidCallback fn) {
     void apply() {
       if (!mounted) return;
@@ -120,10 +97,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     }
   }
 
-  /// Moves the dropdown's keyboard highlight.
-  ///
-  /// Several focus changes can queue up behind one lock, so the answer is
-  /// recomputed when the rebuild finally runs rather than captured here.
+  // Several focus changes can queue behind one lock, so the rebuild recomputes
+  // the highlight instead of capturing it here.
   void _setFocusedSuggestion(String label, {required bool focused}) {
     final next = focused
         ? label
@@ -139,22 +114,14 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     });
   }
 
-  /// Commits whatever is in the text box as a tag, returning whether one was
-  /// added.
-  ///
-  /// `AutoSuggestBox` only submits an item the user highlighted with the arrow
-  /// keys — with nothing highlighted, Enter falls through to the text box's own
-  /// submit handling, which drops focus and closes the dropdown. The manual
-  /// says "type and press Enter to add", and it did nothing at all. Matching the
-  /// typed text against the suggestions first keeps a strict picker (the doctor
-  /// selector) honest: there, only a known value can be added.
+  // `AutoSuggestBox` only submits an arrow-key-highlighted item; Enter otherwise
+  // closes the dropdown, so the typed text is matched against suggestions first.
   bool _commitTypedText() {
     final text = _controller.text.trim();
     if (text.isEmpty) return false;
     final folded = text.toLowerCase();
-    // Already a tag: pressing Enter again must not add a second copy of it.
-    // The suggestion list hides it, but in a non-strict box the typed text is
-    // also mirrored into the suggestions, so the check has to be explicit.
+    // The suggestion list hides existing tags, but a non-strict box mirrors the
+    // typed text into the suggestions, so the duplicate check is explicit.
     if (_tags.any((tag) => tag.label.toLowerCase() == folded)) {
       _controller.clear();
       return true;
@@ -179,10 +146,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
 
     _focusNode = FocusNode(onKeyEvent: (node, event) {
       if (event is! KeyDownEvent) return KeyEventResult.ignored;
-      // Enter commits the typed text. Handled here — on the text box's own
-      // focus node — so the event never reaches the editable's submit path,
-      // which would unfocus the box and close the dropdown instead of adding
-      // the tag.
+      // Enter is caught on the text box's focus node so it never reaches the
+      // editable's submit path, which would unfocus and close the dropdown.
       if (event.logicalKey == LogicalKeyboardKey.enter ||
           event.logicalKey == LogicalKeyboardKey.numpadEnter) {
         return _commitTypedText()
@@ -202,8 +167,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   @override
   void didUpdateWidget(TagInputWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Sync internal _tags when the parent updates initialValue externally
-    // (e.g. after AI receipt scanning populates items).
     if (oldWidget.initialValue != widget.initialValue &&
         !_listEquals(_tags, widget.initialValue)) {
       _tags = List.of(widget.initialValue);
@@ -211,11 +174,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       // Don't mark dirty if the widget is no longer mounted
       if (mounted) setState(() {});
     }
-    // A picker whose list is read asynchronously (patients, labs, operators) is
-    // built with no suggestions and gets them a moment later. `AutoSuggestBox`
-    // only paints its dropdown when the *text* changes, and it reads the items
-    // it was last given, so a list that arrives late is never shown: the field
-    // keeps saying "no results found" until another key is pressed.
+    // `AutoSuggestBox` repaints its dropdown only when the text changes, so a
+    // list that arrives late is hidden until the overlay reopens.
     if (!_listEquals(oldWidget.suggestions, widget.suggestions)) {
       _updateSuggestions();
       if (mounted) {
@@ -225,11 +185,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     }
   }
 
-  /// Reopens the dropdown so a list that arrived after the field was built is
-  /// the list the user sees.
-  ///
-  /// Deferred to a frame: inserting an overlay entry from `didUpdateWidget`
-  /// would mark the tree dirty while it is being built.
+  // Deferred to a frame: inserting an overlay entry from `didUpdateWidget`
+  // would mark the tree dirty while it is being built.
   void _reopenOverlay() {
     if (!mounted || !_focusNode.hasFocus || _controller.text.isEmpty) return;
     final box = autoSuggestBoxRef.currentState;
@@ -324,13 +281,11 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         const tokenPadding = EdgeInsets.symmetric(horizontal: 8);
         const tokenSpacing = 4.0;
         const collapseWidth = 36.0;
-        // What this widget's own container spends on its padding and border on
-        // each side, so the row inside it knows its real width.
+        // The container below spends 3px padding and 1px border per side;
+        // subtract it to get the row's real width.
         const fieldChrome = 3.0 * 2 + 1.0 * 2;
-        // The chips are laid out by a row that hands them unbounded width, so
-        // the widest one decides the row's width: cap each chip so the row can
-        // still hold the input next to it (or fit the field when the input is
-        // gone because the limit is reached).
+        // The chip row is unbounded, so the widest chip sets the row width; cap
+        // it to leave room for the input, or to fit the field at the limit.
         final inputVisible = _tags.length < widget.limit && widget.enabled;
         final availableWidth =
             math.max(0.0, constraints.maxWidth - fieldChrome);
@@ -368,16 +323,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
         return FlyoutTarget(
           controller: _hiddenTappedFlyoutController,
           child: Container(
-            // **Multiline fields size themselves.** The height used to be
-            // `visibleTags.length * 40 + 40` for both modes — a number that
-            // ignores three things: the border and padding (4px a side, 8px
-            // together, not the 6 the formula assumed), the `spacing: 3` between
-            // the chips in a `Column`, and the 250ms its `AnimatedSize` spends
-            // still taller than its target after a tag is removed. Adding then
-            // removing a prescription (the appointment panel's field) reported
-            // `A RenderFlex overflowed by 4.0 pixels on the bottom` for exactly
-            // that window (`appointments 14`). The row case keeps its height: it
-            // is one line by construction.
+            // Multiline fields size themselves: a fixed height ignored the
+            // chrome, chip spacing and `AnimatedSize`'s settle, and overflowed.
             height: widget.multiline ? null : 40,
             padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
             decoration: BoxDecoration(
@@ -402,19 +349,14 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                                       visibleTags, tokenSpacing)),
                         ),
                         if (_tags.length < widget.limit && widget.enabled)
-                          // Not an `Expanded`: the field is only bounded in the
-                          // row case, and a flex child of an unbounded `Column`
-                          // is an error. `AutoSuggestBox` knows its own height.
+                          // Not an `Expanded`: a flex child of an unbounded
+                          // `Column` is an error; the box sizes itself.
                           _buildAutoSuggestInputTextBox(expand: false),
                       ])
                 : Row(
                     children: [
-                      // A chip is sized by its text, and one long value (a
-                      // patient's name in a `limit: 1` picker) can be wider than
-                      // the field itself — which the row then overflows, since
-                      // the input next to it is already gone. Cap the chip at the
-                      // width the row actually has: `fieldChrome` is what the
-                      // container below spends on its own padding and border.
+                      // A long chip (a patient's name in a `limit: 1` picker)
+                      // can outgrow the field, so cap it at the row's width.
                       ConstrainedBox(
                         constraints: BoxConstraints(maxWidth: availableWidth),
                         child: AnimatedSize(
@@ -422,26 +364,14 @@ class _TagInputWidgetState extends State<TagInputWidget> {
                           curve: Curves.easeInOut,
                           child: _tags.isEmpty
                               ? const SizedBox.shrink()
-                              // A focused field folds its chips away to leave
-                              // the input room. A field that has reached its
-                              // limit has no input left to leave room for, so
-                              // the chips stay: a `limit: 1` picker (the
-                              // patient selector) folded the name it had just
-                              // taken to "+1" and kept it folded until focus
-                              // went somewhere else.
+                              // A focused field folds its chips to leave the
+                              // input room, but at the limit they stay visible.
                               : (_isFocused && inputVisible
                                   ? _buildHiddenTagsIndicator(
                                       tokenSpacing, _tags)
                                   : Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        // A row lays its non-flexible children
-                                        // out with unbounded width, so the widest
-                                        // chip decides the row's width and can
-                                        // push it past the field. Cap each chip at
-                                        // what the row has, minus the spacing it
-                                        // also adds (and the input's room, while
-                                        // there is an input).
                                         _buildVisibleTags(
                                             visibleTags, tokenSpacing,
                                             maxWidth: chipLimit),
@@ -462,12 +392,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     );
   }
 
-  /// The box the user types a new tag into.
-  ///
-  /// [expand] is the **row** case: there the field shares one line with the
-  /// chips and takes what is left of it. A multiline field sizes itself (see the
-  /// container above), so there the box keeps its own height — a flex child of
-  /// an unbounded `Column` is a layout error, not a layout.
   Widget _buildAutoSuggestInputTextBox({bool expand = true}) {
     final box = AutoSuggestBox<String>(
       clearButtonEnabled: _tags.isEmpty ? true : false,
@@ -530,9 +454,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
             (s) => AutoSuggestBoxItem(
               value: s.value,
               label: s.label,
-              // The rows are drawn by [_buildSuggestionRow], so the selection
-              // callback has to travel with the item: `AutoSuggestBox` only
-              // invokes `onSelected` from its own row widget.
+              // AutoSuggestBox only invokes `onSelected` from its own rows, so
+              // the callback has to travel with each item for ours.
               onSelected: () => _onSuggestionSelected(s),
               onFocusChange: (focused) =>
                   _setFocusedSuggestion(s.label, focused: focused),
@@ -551,14 +474,8 @@ class _TagInputWidgetState extends State<TagInputWidget> {
     return expand ? Expanded(child: box) : box;
   }
 
-  /// One row of the suggestion dropdown.
-  ///
-  /// `AutoSuggestBox` draws its own rows, and nothing in them keeps a long label
-  /// on one line: a patient's full name wraps to a second line, and the row —
-  /// only as tall as the list's item extent — then reports
-  /// "A RenderFlex overflowed by 14 pixels" (and clips the second line). The
-  /// rows are drawn here instead: one line, ellipsized, with the same hover and
-  /// keyboard highlight the library's row had.
+  // `AutoSuggestBox`'s own rows wrap a long label past the fixed item extent
+  // and overflow, so this draws one ellipsized line instead.
   Widget _buildSuggestionRow(
     BuildContext context,
     AutoSuggestBoxItem<dynamic> item,
@@ -673,10 +590,6 @@ class _TagInputWidgetState extends State<TagInputWidget> {
   }
 }
 
-/// One row of a suggestion dropdown (see `_buildSuggestionRow`).
-///
-/// A single line, ellipsized, highlighted on hover and while the keyboard is on
-/// it — the three things the library's own row cannot do without overflowing.
 class _SuggestionRow extends StatefulWidget {
   const _SuggestionRow({
     required this.label,

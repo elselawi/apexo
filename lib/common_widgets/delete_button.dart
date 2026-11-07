@@ -59,12 +59,8 @@ class _DeleteButtonState extends State<DeleteButton> {
   }
 }
 
-/// The last item of a row's context menu: it closes the menu, asks for
-/// confirmation where the menu was, and runs [onConfirm] when confirmed.
-///
-/// [controller] is the context menu's own controller. Reusing it anchors the
-/// confirmation to the row the menu belonged to instead of opening a flyout
-/// somewhere else on the screen.
+/// Reuse the menu's own [controller] so the confirmation flyout anchors to the
+/// row instead of opening somewhere else on screen.
 MenuFlyoutItem confirmDeleteMenuItem({
   required FlyoutController controller,
   required Widget preview,

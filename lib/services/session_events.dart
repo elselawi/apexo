@@ -1,10 +1,5 @@
-/// What the app does when a session begins or ends — published by [login]
-/// rather than performed by it.
-///
-/// Authenticating a clinic is a service's work; closing panels, resetting the
-/// route stack and showing the changelog are the app's. The service announces
-/// the event and the composition root registers what runs, so a service never
-/// imports a widget, a panel, a window or a feature to tear them down.
+/// Session start/end callbacks: services publish them and the composition root
+/// registers what runs, so no service imports UI to tear it down.
 abstract final class SessionEvents {
   static final List<void Function()> _ended = <void Function()>[];
   static final List<void Function()> _started = <void Function()>[];

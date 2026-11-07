@@ -14,11 +14,8 @@ import 'package:apexo/utils/open_external.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The staff inbox, laid out like every other list in the app: command bar,
-/// search, filter bar, then one divider-separated row per request.
-///
-/// Newest first, one filter at a time, with a badge count that is only ever as
-/// fresh as the last successful pending refresh.
+/// The staff inbox. The pending badge is only as fresh as the last successful
+/// refresh.
 class BookingRequestsScreen extends StatefulWidget {
   const BookingRequestsScreen({super.key});
 
@@ -38,8 +35,7 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
 
   List<BookingRequest> _visible(List<BookingRequest> source) {
     final needle = _search.text.trim().toLowerCase();
-    // Patients quote the reference, so digits-only typing (`110603`) finds the
-    // same request as the printed `1106-03`.
+    // Patients quote the reference, so `110603` must match `1106-03`.
     final digits = needle.replaceAll(RegExp(r"[^0-9]"), "");
     final items = source
         .where((request) =>
@@ -258,8 +254,6 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
 
   Widget _buildRow(FluentThemeData theme, BookingRequest request) {
     final canSchedule = canScheduleBooking && request.isPending && !request.isExpired;
-    // Phone-width windows keep the name and status; the detail cells and the
-    // quick-schedule button live in the request dialog there.
     final compact = MediaQuery.sizeOf(context).width < 700;
     return ContextMenuRegion(
       items: (context, controller) => [
@@ -365,8 +359,6 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                   _statusChip(theme, request),
                   const SizedBox(width: 6),
                   Icon(
-                    // The affordance points along the reading order, so an RTL
-                    // layout gets the opposite chevron.
                     Directionality.of(context) == TextDirection.rtl
                         ? FluentIcons.chevron_left
                         : FluentIcons.chevron_right,

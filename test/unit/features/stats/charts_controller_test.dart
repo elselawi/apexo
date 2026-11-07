@@ -36,9 +36,8 @@ void main() {
   }
 
   setUpAll(() async {
-    // initializeDateFormatting is required by _ChartsController._getLabel
-    // which constructs DateFormat(pattern, locale.s.$code) for non-days
-    // intervals (weeks, months, quarters, years).
+    // `_ChartsController._getLabel` builds locale DateFormats for
+    // week/month/quarter/year intervals, so their locale data must be loaded.
     await initializeDateFormatting('en', null);
     await initializeDateFormatting('ar', null);
     await initializeDateFormatting('es', null);

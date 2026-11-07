@@ -5,15 +5,8 @@ import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 
-/// Hive-backed set of DICOM patient IDs that the dentist explicitly
-/// rejected.  Schema: key = `dicomPatientId`, value = `""` (unused).
-///
-/// At scan time, if a DICOM patient is in this set, fuzzy name matching is
-/// skipped — the pending import surfaces with "No matching patient found"
-/// instead of the old (rejected) suggestion.  Survives app restarts.
-///
-/// Entries are removed when the dentist manually matches the patient
-/// (overriding the rejection) or approves the import.
+/// Rejected DICOM patient IDs stored as keys with an unused `''` value; a scan
+/// skips fuzzy matching for them. A manual match or approve clears the entry.
 class DicomUnmatchedStore {
   DicomUnmatchedStore._();
   static final DicomUnmatchedStore _instance = DicomUnmatchedStore._();
@@ -28,9 +21,8 @@ class DicomUnmatchedStore {
 
     final initialization = _initialize();
     _initialization = initialization;
-    // If opening fails, clear the memoized future so a later call retries and
-    // no half-open box is left behind (which would throw
-    // LateInitializationError on every subsequent access).
+    // Clear the memoized future on failure so a later call retries instead of
+    // reusing a half-open box.
     unawaited(initialization.catchError((_) {
       if (identical(_initialization, initialization)) {
         _initialization = null;
@@ -70,8 +62,7 @@ class DicomUnmatchedStore {
     }
   }
 
-  /// Returns all unmatched DICOM patient IDs as a flat set.
-  /// Snapshot at scan time — passed as plain data into the isolate.
+  /// Snapshot taken at scan time; the IDs cross into the isolate as plain data.
   Future<Set<String>> get all async {
     final box = await _openBox;
     return box.keys.whereType<String>().toSet();

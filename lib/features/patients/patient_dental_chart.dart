@@ -16,12 +16,8 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The chart a patient record edits: the patient's own baseline, with every
-/// appointment of theirs as history. It is the record's **Dental Chart**.
-///
-/// This is the patients feature's half of the dental chart: the shared editor
-/// knows teeth, not patients. Everything that reads a [Patient] lives here, so
-/// `lib/shared/dental_chart/` never imports a feature back.
+/// The patient half of the shared chart editor; `lib/shared/dental_chart/`
+/// must not import a feature back.
 DentalChartSession patientDentalChart(
   Patient patient, {
   ValueChanged<String>? onOpenAppointment,
@@ -55,12 +51,8 @@ DentalChartSession patientDentalChart(
   );
 }
 
-/// Shows [patient]'s dental chart on its own — a window with the Save and Close
-/// a panel would have offered, and those are the only way out of it.
-///
-/// Reuses the panel's chart when that panel is visible. A background panel
-/// lends its existing session instead, preserving one draft without moving
-/// the panel the clinician is currently using.
+/// Shows the chart on its own with its own Save/Close; an open panel's
+/// session is reused so there is only ever one draft.
 Future<void> openPatientDentalChart(
   Patient patient, {
   ValueChanged<String>? onOpenAppointment,
@@ -129,8 +121,8 @@ Future<void> openPatientDentalChart(
   );
 }
 
-/// The plan tab's way into the patient's whole list of visits, which is a
-/// property of the patient and not of whichever chart scope is selected.
+/// The plan tab's way into the patient's visits list; the list belongs to the
+/// patient, not to the chart scope.
 List<Widget> _visitsActions(Patient patient) => <Widget>[
       PatientVisitsButton(
         onPressed: () => unawaited(showPatientVisits(patient.id)),

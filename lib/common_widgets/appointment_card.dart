@@ -67,21 +67,14 @@ class AppointmentCard extends StatelessWidget {
   final Color openButtonColor;
   final AppointmentWindow openOnWindow;
 
-  /// How the card and its preview sections open the visit. A window that is
-  /// itself a list of visits can supply its own opener. Defaults to
-  /// [openAppointment], which opens charts and galleries beside the patient.
   final void Function(Appointment appointment, AppointmentWindow window)?
       onOpen;
 
-  /// Opens a `.dcm` X-ray. The card shows the thumbnails; the viewer belongs to
-  /// the feature that owns the visit, and is handed in by it.
   final void Function(BuildContext context, String rowId, String dcmName)?
       onTapDcm;
 
-  /// Whether the pictures in this card may be deleted. Null keeps the photos
-  /// permission alone; a caller that shows a visit's files elsewhere says here
-  /// that the visit itself must also be one the user may change — a file
-  /// belongs to its visit, so deleting it is a write to that visit.
+  /// Null uses the photos permission alone; deleting a file writes to its
+  /// visit, so callers showing files elsewhere check the visit permission too.
   final bool? canDeletePhotos;
 
   void _open(AppointmentWindow window) {
@@ -548,8 +541,8 @@ class AppointmentCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
           )),
         ),
-        // A section is one preview target, including its photo thumbnails;
-        // editing and individual-image actions remain in the gallery it opens.
+        // one tap target per section: thumbnails open the gallery, where files
+        // are edited.
         child: IgnorePointer(child: row),
       ),
     );
@@ -559,9 +552,6 @@ class AppointmentCard extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // The date gives way before the button does: a visit's card is drawn in
-        // a 350-pixel list window, and the full date is the first thing that no
-        // longer fits at that width.
         Flexible(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

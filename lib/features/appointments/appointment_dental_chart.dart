@@ -11,12 +11,8 @@ import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:flutter/widgets.dart';
 
-/// The chart an appointment edits: this visit's treatments, with the patient's
-/// baseline and the other visits as history. It is the visit's **Treatments** —
-/// the same window as the record's chart, named for the scope it writes.
-///
-/// The appointments feature's half of the dental chart: the shared editor knows
-/// teeth, not visits.
+/// The visit's treatments chart: it writes this visit's treatments, with the
+/// patient's baseline and other visits as read-only history.
 DentalChartSession appointmentDentalChart(
   Appointment appointment, {
   ValueChanged<String>? onOpenAppointment,
@@ -59,9 +55,8 @@ DentalChartSession appointmentDentalChart(
               session: session,
               currentAppointment: appointment,
             ),
-    // The default is the standalone shape; the windows built for a visit beside
-    // its patient override it with the visit's own footer, so the post-op record
-    // sits under the teeth (see `appointmentSessionWindows`).
+    // The standalone chart's footer; the visit's window overrides it with one
+    // attached to the patient's panel, so the post-op record sits under the teeth.
     footer: (session) => AppointmentChartFooter(
       key: ValueKey('chart-footer-${appointment.id}'),
       appointment: appointment,
@@ -71,12 +66,8 @@ DentalChartSession appointmentDentalChart(
   );
 }
 
-/// Opens the visit's chart — beside its patient, where the visit lives.
-///
-/// A visit's chart is one of its windows, so opening it is opening the visit
-/// focused on the chart: same patient panel, same draft, same Save (plan §4.3).
-/// With no patient the account may see, the chart stands on its own with the rest
-/// of the visit's windows.
+/// Opens the visit focused on its chart, so it shares the visit's panel and draft;
+/// a visit whose patient this account may not see opens standalone.
 Future<void> openAppointmentDentalChart(
   Appointment appointment, {
   BuildContext? context,

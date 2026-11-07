@@ -169,9 +169,8 @@ class PatientSide extends ObservablePersistingObject {
 
     loginCtrl.loginError("");
 
-    // The patient ID comes from an untrusted link/QR and is interpolated
-    // into a PocketBase filter + query param. Restrict it to a safe
-    // identifier charset so it can never inject filter syntax.
+    // The patient ID comes from an untrusted link and is interpolated into the
+    // PocketBase filter, so restrict it to a charset that cannot inject syntax.
     if (!RegExp(r'^[a-zA-Z0-9_-]{1,64}$').hasMatch(patientID)) {
       loginCtrl.loginError("Invalid patient link");
       loginCtrl.loadingPatientSide(false);
@@ -181,8 +180,7 @@ class PatientSide extends ObservablePersistingObject {
     notificationSessions.beginRestoring();
 
     try {
-      // Initialize deferred push storage early so stores can safely
-      // defer push notifications throughout the rest of activate().
+      // Must run before any store can defer a push notification.
       deferredPush.init(server);
 
       // getting currency
@@ -239,18 +237,15 @@ class PatientSide extends ObservablePersistingObject {
 
       launch.open(Open.patient);
 
-      // The patient data is loaded, persisted and the patient screen is open.
-      // Only now is this session usable for notification dispatch/registration.
+      // Publish only once the data is loaded and persisted; dispatch needs both.
       notificationSessions.publishPatient(
         server: server,
         accountId: patientID,
         clinicKey: relayKey,
       );
 
-      // Patient data has loaded and the patient screen is open at this point.
-      // Device registration is useful for push notifications but is not a
-      // prerequisite for using patient-side, so a registration failure must
-      // not turn a successful activation into a failed login.
+      // Registration is optional for patient-side, so its failure must not
+      // turn a successful activation into a failed login.
       try {
         await _identifyDevice();
         if (activation != _activationGeneration) return;

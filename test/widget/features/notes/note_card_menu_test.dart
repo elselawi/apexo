@@ -14,8 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// The note card's context menu: right click only — the long press belongs to
-/// the drag — with the note's own actions, and only the ones this user may do.
+/// The menu is right-click only; the long press belongs to the card's drag.
 void main() {
   late List<Note> previousNotes;
   late List<int> previousPermissions;
@@ -79,8 +78,7 @@ void main() {
     expect(item(txt("assignedTo")), findsWidgets);
     expect(item(txt("changeDueDate")), findsWidgets);
     expect(item(txt("delete")), findsWidgets);
-    // The attachment count rides in the suffix slot, parenthesised like the
-    // other counts.
+    // The count rides in the suffix slot, parenthesised like the other counts.
     expect(item('(2)'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

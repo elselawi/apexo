@@ -10,12 +10,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// What a supplier's orders add up to, and the one thing a summary is good for:
-/// renaming them.
-///
-/// The panel keeps this in front of the user — what is owed and what has been
-/// paid — and leaves the orders themselves to the windows beside it, so the
-/// panel is never a second copy of the lists.
+/// A supplier's order totals; the orders themselves stay in their own windows.
 class ExpenseSummary extends StatelessWidget {
   const ExpenseSummary({
     super.key,
@@ -28,24 +23,16 @@ class ExpenseSummary extends StatelessWidget {
 
   final List<Expense> orders;
 
-  /// The supplier these orders belong to, by id — null for the whole clinic's
-  /// orders, which belong to no one supplier.
+  /// Null means the whole clinic's orders, which belong to no supplier.
   final String? supplierId;
 
-  /// The supplier's name, as it was when the panel opened. The line below
-  /// prefers the name the supplier's own record holds now.
+  /// Snapshot name; the live supplier record wins while it still exists.
   final String supplierName;
 
-  /// A single archived order: it has no running totals to speak of, so the
-  /// figures describe that order alone.
+  /// Covers one archived order, which the totals would otherwise skip.
   final bool singleArchived;
 
-  /// Opens the window that lists the orders behind a figure, by the window's
-  /// own id.
-  ///
-  /// The figures are a summary of orders the user cannot see from here — on a
-  /// phone, where only one window is on screen at a time, the order lists are
-  /// a click away. So the figures are the way in.
+  /// Opens the order list behind a figure, by id; null leaves figures inert.
   final void Function(String windowId)? onOpenWindow;
 
   /// What the orders add up to — the same figures the windows' footers show.
@@ -54,8 +41,7 @@ class ExpenseSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The orders these add up are edited in the windows beside the panel, so
-    // the figures follow the store the way the lists do.
+    // Orders are edited in other windows, so the figures must follow the store.
     return MStreamBuilder(
       streams: [expenses.observableMap.stream],
       builder: (context, _) => Column(
@@ -101,13 +87,8 @@ class ExpenseSummary extends StatelessWidget {
     );
   }
 
-  /// The supplier these orders belong to: one record, so one name and one place
-  /// a rename is written to.
-  ///
-  /// Null when the panel is about the whole clinic's orders — where the panel's
-  /// own title is the right name and there is nothing to rename. The supplier
-  /// is named by its id, not worked out from the orders: a supplier with no
-  /// orders at all is still a supplier, and the clinic's orders are nobody's.
+  /// Resolved by id, not from [orders]: a supplier with no orders is still a
+  /// supplier, and null means the clinic's own orders.
   Expense? get _supplier {
     final id = supplierId;
     if (id == null) return null;
@@ -149,12 +130,8 @@ class ExpenseSummary extends StatelessWidget {
   }
 }
 
-/// What a set of orders adds up to.
-///
-/// One computation for the panel's summary and for the windows' footers: the
-/// same orders must never be reported two different ways — a panel and the
-/// window beside it showing two different totals for one supplier is a number
-/// the user cannot explain.
+/// One totals computation shared by the panel and the window footers, so the
+/// same orders are never reported two different ways.
 class OrderTotals {
   const OrderTotals({
     required this.outstanding,
@@ -162,14 +139,8 @@ class OrderTotals {
     required this.count,
   });
 
-  /// The figures of [orders]: what is still owed on them, what has been paid
-  /// on them, and how many there are.
-  ///
-  /// Archived orders are left out — they are history, not a position — unless
-  /// [singleArchived] says this is about the one archived order on its own.
-  ///
-  /// What is owed is never negative: an order that was paid more than it cost
-  /// owes nothing, and must not make the total smaller than it is.
+  /// Archived orders are skipped unless [singleArchived]; an order paid above
+  /// its cost contributes zero, never a negative amount.
   factory OrderTotals.of(
     List<Expense> orders, {
     bool singleArchived = false,
@@ -211,8 +182,7 @@ class _SummaryTile extends StatelessWidget {
   final String value;
   final Color color;
 
-  /// Opens the list behind the figure. Null for a figure with no list — the
-  /// number of orders, which is the two lists together.
+  /// Null for the order-count tile, which has no single list behind it.
   final VoidCallback? onPressed;
 
   @override
@@ -255,9 +225,7 @@ class _SummaryTile extends StatelessWidget {
     );
     final onPressed = this.onPressed;
     if (onPressed == null) return tile;
-    // The figure is a way into the orders behind it: on a phone, where only
-    // one window is on screen at a time, they are otherwise a click away and
-    // no one would know it.
+    // On a phone the lists are off-screen, so the figure is the way into them.
     return Tooltip(
       message: txt('showOrders'),
       child: MouseRegion(

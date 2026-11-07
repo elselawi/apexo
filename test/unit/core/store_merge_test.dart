@@ -223,8 +223,8 @@ void main() {
             localWins: localWins,
           );
 
-          // Without an ancestor, a loser-only addition and a deletion look
-          // identical. The winner's snapshot must be authoritative for both.
+          // No ancestor distinguishes a loser-only addition from a deletion, so
+          // the winner's snapshot is authoritative for both.
           expect(merged[field], {
             '11': 'winning edit',
             '13': 'winning addition',
@@ -426,9 +426,8 @@ void main() {
         ],
       );
 
-      // DICOM originals are excluded from imgs. The preview is also absent
-      // from the model's imgs candidates, while the raw DICOM stays in
-      // dcmImgs only.
+      // imgs filters DICOM server files out; dcmImgs keeps only raw
+      // .dcm/.dicom names, so the preview is dropped.
       expect(merged['imgs'], ['local.jpg', 'remote.png']);
       expect(merged['dcmImgs'], ['scan.dcm']);
     });

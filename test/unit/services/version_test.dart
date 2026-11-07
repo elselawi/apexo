@@ -86,8 +86,6 @@ void main() {
 
   group('_VersionService', () {
     test('version service initializes with defaults', () {
-      // The global 'version' singleton is already initialized.
-      // Just verify it exists.
       expect(version, isNotNull);
     });
 

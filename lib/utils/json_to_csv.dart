@@ -1,8 +1,5 @@
-/// Converts a JSON list into a fully escaped CSV string.
-/// Preserves structural null values and optimizes memory allocation.
-///
-/// [includeColumns] is an optional list of column indices (0-indexed)
-/// to include in the final output (e.g., [0, 2, 5]). Invalid indices are safely ignored.
+/// Converts JSON to CSV, flattening nested values into slash paths;
+/// [includeColumns] keeps only those 0-indexed columns.
 String jsonListToCsv(List<dynamic> data,
     {List<int>? includeColumns, bool withHeader = true}) {
   if (data.isEmpty) return '';

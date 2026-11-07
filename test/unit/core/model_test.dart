@@ -318,12 +318,8 @@ void main() {
 
     test('copy(false) on subclass — title serialized via toJson survives', () {
       final original = _TestModel.fromJson({'id': 'sub-1'});
-      // copy(false) goes through Model.fromJson(toJson()). The `title`
-      // override returns 'Test Title' (non-empty), so Model.toJson()
-      // serializes it — and the new Model parses it back into the
-      // default `title` field. Overridden GETTERS that are NOT
-      // serialized by Model.toJson (locked, avatar, labels, etc.) are
-      // lost because copy() returns a base Model.
+      // copy() round-trips through Model.fromJson(toJson()), so overridden
+      // getters that toJson drops are lost.
       final copy = original.copy(false);
       expect(copy.id, 'sub-1');
       expect(copy.title, 'Test Title'); // passed through via toJson
@@ -346,10 +342,7 @@ void main() {
     test('toJson from subclass — only id, title, archived serialized', () {
       final m = _TestModel.fromJson({'id': 't-1'});
       final json = m.toJson();
-      // Model.toJson serializes id (always), archived (if not null),
-      // title (if not empty). _TestModel overrides `title` getter to
-      // 'Test Title', which is non-empty → written. Overridden getters
-      // like avatar/labels are NOT serialized by the base class.
+      // Model.toJson writes archived only if non-null, title only if non-empty.
       expect(json['id'], 't-1');
       expect(json['title'], 'Test Title');
       expect(json.containsKey('avatar'), isFalse);

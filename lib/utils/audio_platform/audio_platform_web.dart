@@ -1,8 +1,8 @@
 import 'package:http/http.dart' as http;
 
 class AudioPlatformImpl {
-  /// On web the `path` parameter to `AudioRecorder.start()` is ignored —
-  /// the browser's MediaRecorder API manages its own buffer.
+  /// On web the `path` given to `AudioRecorder.start()` is ignored; MediaRecorder
+  /// keeps its own buffer.
   static String getTempAudioPath() => 'audio_recording.m4a';
 
   /// Fetches the recorded blob from its object URL.

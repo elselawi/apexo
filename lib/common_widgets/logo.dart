@@ -52,10 +52,8 @@ class _AppLogoState extends State<AppLogo> {
         padding: const EdgeInsets.all(8.0),
         child: GestureDetector(
           onTap: _onVersionTap,
-          // `scaleDown`: the logo also sits in the navigation pane's header,
-          // and a pane that has gone compact (a panel open on a 1280px window)
-          // is narrower than the icon, the name and the version together. It
-          // used to overflow the row by ~99px there.
+          // The logo also sits in the navigation pane header, which can be
+          // narrower than the icon, name and version together.
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Row(

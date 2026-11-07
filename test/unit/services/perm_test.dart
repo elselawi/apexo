@@ -94,8 +94,8 @@ void main() {
     });
 
     test('an already-decoded JSON array is understood, not read as zeroes', () {
-      // `jsonDecode('[2,1,0]')` is a `List<dynamic>`, not a `List<int>`. It used
-      // to fall through to `zeroes`, which silently granted the account nothing.
+      // `jsonDecode` yields a `List<dynamic>`, not a `List<int>`. Before, that
+      // fell through to `zeroes` and silently denied every permission.
       final decoded = jsonDecode('[2, 1, 0]');
       expect(decoded, isA<List<dynamic>>());
       expect(decoded, isNot(isA<List<int>>()));

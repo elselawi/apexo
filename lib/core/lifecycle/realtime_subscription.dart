@@ -2,8 +2,7 @@ import 'dart:async';
 
 typedef CancelSubscription = Future<void> Function();
 
-/// Owns both a subscription and pending registration/cancellation work.
-/// Invalidated registrations cancel themselves instead of becoming current.
+/// A registration invalidated while starting cancels its own subscription.
 class RealtimeSubscription {
   RealtimeSubscription({required this.onError});
   final void Function(Object, StackTrace) onError;

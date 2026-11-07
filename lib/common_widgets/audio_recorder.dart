@@ -4,13 +4,6 @@ import 'package:record/record.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/audio_platform/audio_platform.dart';
 
-// ============================================================================
-//  AudioRecorderButton — a footer-style button that opens a recording dialog.
-//  The caller provides [onRecordingComplete] which receives the raw audio
-//  bytes + MIME type and is responsible for calling the appropriate AI
-//  service (DentalHistory, PostOpNotes, etc.) and updating the model.
-// ============================================================================
-
 class AudioRecorderButton extends StatelessWidget {
   const AudioRecorderButton({
     super.key,
@@ -34,15 +27,11 @@ class AudioRecorderButton extends StatelessWidget {
   /// Background color of the circle. Defaults to red.
   final Color? buttonColor;
 
-  /// Called when the user stops recording and audio bytes are ready.
-  /// The dialog shows a processing spinner while this future is pending.
-  /// Throw inside this callback to surface errors — the dialog will still
-  /// close gracefully.
+  /// Runs while the dialog shows its processing spinner; the dialog closes once
+  /// it settles, even if it throws.
   final Future<void> Function(List<int> audioBytes, String mimeType)
       onRecordingComplete;
 
-  /// Shown while [onRecordingComplete] is running.
-  /// Defaults to the localized "transcribingYourAudio".
   final String? processingMessage;
 
   @override
@@ -102,12 +91,6 @@ class AudioRecorderButton extends StatelessWidget {
   }
 }
 
-// ============================================================================
-//  _AudioRecorderDialog — the recording bubble, self-contained.
-//  Records audio, shows waveform + controls, reads bytes, calls the
-//  callback, then closes itself.
-// ============================================================================
-
 class _AudioRecorderDialog extends StatefulWidget {
   const _AudioRecorderDialog({
     required this.onRecordingComplete,
@@ -154,8 +137,8 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
 
   Future<void> _startRecording() async {
     try {
-      // On native: writes to a temp file. On web: path is ignored (the
-      // browser's MediaRecorder manages its own buffer).
+      // native writes to a temp file; on web the path is ignored and
+      // MediaRecorder keeps its own buffer.
       await _recorder.start(const RecordConfig(),
           path: AudioPlatform.getTempAudioPath());
     } catch (_) {
@@ -208,8 +191,7 @@ class _AudioRecorderDialogState extends State<_AudioRecorderDialog> {
       final bytes = await AudioPlatform.readFileBytes(path);
       await widget.onRecordingComplete(bytes, mimeType);
     } catch (_) {
-      // Callback is responsible for its own error handling / user feedback.
-      // We just close the dialog.
+      // errors are the callback's to report; the dialog closes either way.
     }
 
     if (mounted) Navigator.of(context).pop();

@@ -10,8 +10,6 @@ import 'package:apexo/services/perm.dart';
 import 'package:flutter_test/flutter_test.dart';
 import '../../helpers/model_factory.dart';
 
-/// Verify that [Model.locked] correctly gates model visibility through
-/// [Store.present] based on [login.perm] permission levels.
 void main() {
   final injectedApptIds = <String>{};
   final injectedPatientIds = <String>{};
@@ -43,9 +41,6 @@ void main() {
     injectedNoteIds.clear();
   });
 
-  // ---------------------------------------------------------------------------
-  // Appointment locking
-  // ---------------------------------------------------------------------------
   group('Appointment.locked — permission-based', () {
     test('locked returns false when perm is full (2)', () {
       login.savedPermissions = Perm.full;
@@ -63,8 +58,6 @@ void main() {
         () {
       login.savedPermissions = [0, 1, 0, 0, 0, 0, 0, 0, 0]; // appointments=1
       login.token = ''; // no PB
-      // currentAccountID returns "" when no accounts — appointment
-      // operator check uses operatorsIDs.contains(login.currentAccountID)
       final appt = testAppointment(
         id: 'lock-appt-operator',
         operatorsIDs: [''],
@@ -86,14 +79,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // Patient locking — Patient.locked = login.perm(Perm.patients).not(2) &&
-  //   (allAppointments.isNotEmpty && no appointment has the current operator)
-  // Perm.patients = 0. If perm is full(2), .not(2) is false → not locked.
-  // If perm is some(1) or none(0), .not(2) is true → falls through to the
-  // appointment-operator check. An empty allAppointments list means the
-  // second clause is false → not locked regardless of perm.
-  // ---------------------------------------------------------------------------
   group('Patient.locked — permission-based', () {
     test('locked returns false when perm is full (patients=2)', () {
       login.savedPermissions = Perm.full;
@@ -102,8 +87,6 @@ void main() {
     });
 
     test('locked returns false when no appointments exist (some perm)', () {
-      // patients=1 (not 2) → first clause true, but empty allAppointments
-      // → second clause false → locked = false.
       final perms = Perm.zeroes;
       perms[Perm.patients] = 1;
       login.savedPermissions = perms;
@@ -133,14 +116,12 @@ void main() {
       appointments.set(appt);
       injectedApptIds.add(appt.id);
 
-      // currentAccountID returns "" in tests, operatorsIDs contains "" →
-      // appointment.operatorsIDs.contains(login.currentAccountID) is true.
+      // No signed-in account in tests, so currentAccountID is "" and
+      // operatorsIDs: [''] counts as the current user.
       expect(p.locked, false);
     });
 
     test('locked returns true when personal perm and no operator matches', () {
-      // patients=1 (not 2) and the patient's appointment has an operator
-      // other than the current account → locked.
       final perms = Perm.full;
       perms[Perm.patients] = 1; // patients=some
       login.savedPermissions = perms;
@@ -161,9 +142,6 @@ void main() {
     });
 
     test('locked returns false when one appt matches and another does not', () {
-      // patients=1 (not full). The first appointment is owned by another
-      // doctor, the second by the current account. Patient.locked should
-      // be false because at least one appointment has the current operator.
       final perms = Perm.full;
       perms[Perm.patients] = 1;
       login.savedPermissions = perms;
@@ -190,10 +168,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // Expense locking — Expense.locked = login.perm(Perm.expenses).none
-  // Perm.expenses = 4. So only the none(0)/some(>0) distinction matters.
-  // ---------------------------------------------------------------------------
   group('Expense.locked — permission-based', () {
     test('locked returns false when expenses perm is full (2)', () {
       login.savedPermissions = Perm.full;
@@ -213,8 +187,6 @@ void main() {
       perms[Perm.expenses] = 1;
       login.savedPermissions = perms;
       final e = testExpense(id: 'lock-exp-some');
-      // Expense.locked = login.perm(Perm.expenses).none
-      // .none means == 0 → 1 != 0 → locked = false
       expect(e.locked, false);
     });
 
@@ -238,13 +210,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // Note locking — Note.locked = login.perm(Perm.notes).none &&
-  //   isColumn == false && login.currentAccountID != createdBy &&
-  //   login.currentAccountID != assignedTo
-  // Perm.notes = 7. Column notes and notes authored by/assigned to the
-  // current user are always unlocked.
-  // ---------------------------------------------------------------------------
   group('Note.locked — permission-based', () {
     test('locked returns false when notes perm is full (2)', () {
       login.savedPermissions = Perm.full;
@@ -326,9 +291,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // Store.present filtering with locking
-  // ---------------------------------------------------------------------------
   group('Store.present — filters locked items', () {
     test('present includes unlocked items when permission is full', () {
       login.savedPermissions = Perm.full;

@@ -50,8 +50,7 @@ void main() {
   });
 
   test('matches when the account may not edit the appointment', () {
-    // Receptionist/assistant: personal appointments only, and this visit
-    // belongs to someone else.
+    // Perm 1 is personal-only: the visit belongs to another operator, so it stays locked.
     appointments.setAll([
       testAppointment(
         id: 'a1',

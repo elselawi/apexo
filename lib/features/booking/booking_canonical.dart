@@ -4,13 +4,8 @@ import 'dart:math';
 import 'package:crypto/crypto.dart' as crypto;
 import 'package:unorm_dart/unorm_dart.dart' as unorm;
 
-/// The constrained RFC 8785 subset the Worker also implements.
-///
-/// Only null, booleans, valid Unicode strings, arrays, objects and safe
-/// integers are accepted. Object keys are sorted by UTF-16 code unit — which is
-/// what Dart's [String.compareTo] compares — and strings use the same minimal
-/// escaping. Dart's `jsonEncode` is *not* a substitute: it escapes differently
-/// and would produce different bytes, hence a different operation hash.
+/// The RFC 8785 subset the Worker implements: sorted keys, minimal escaping, safe
+/// integers. `jsonEncode` would escape differently and produce a different hash.
 String canonicalJson(Object? value) => _encode(value, 0);
 
 const int _maxDepth = 64;
@@ -105,13 +100,9 @@ List<int> _randomBytes(int length) =>
 String generateBookingKey() =>
     base64Url.encode(_randomBytes(32)).replaceAll("=", "");
 
-/// A 256-bit key encoded as base64url (43 characters).
-///
-/// Length and alphabet are the contract; the Worker's `isKey` checks exactly
-/// the same two things. Decoding is deliberately not required here — Dart's
-/// decoder rejects non-zero trailing bits, which JavaScript's `atob` accepts,
-/// so a decode-based check would disagree with the server about which strings
-/// are keys.
+/// A 256-bit key as base64url (43 characters). Length and alphabet are the
+/// contract; decoding is not, because Dart rejects trailing bits that `atob`
+/// accepts, so a decode-based check would disagree with the server.
 bool isBookingKey(Object? value) =>
     value is String && RegExp(r"^[A-Za-z0-9_-]{43}$").hasMatch(value);
 

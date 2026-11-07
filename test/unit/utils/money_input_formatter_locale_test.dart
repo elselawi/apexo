@@ -9,10 +9,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 
-/// Money only survives a round trip if the text a field shows reads back as the
-/// amount that was typed, in the separators of every locale the app ships:
-/// Greek and Spanish group thousands with a dot, Persian writes the digits in
-/// its own script, and English and Arabic group with a comma.
+/// Locale round trip: a field's text must parse back to the amount typed, even
+/// where a dot groups thousands (Greek, Spanish) or the digits are Persian.
 void main() {
   ensureCustomIntlLocalesInitialized();
   MoneyInputFormatter formatterFor(String localeCode) =>
@@ -109,8 +107,7 @@ void main() {
     await tester.enterText(find.byType(TextField), '2650');
     await tester.pump();
 
-    // The field groups the amount as "2.650" — a dot that means thousands, not
-    // the 2.65 the same text used to be read as.
+    // "2.650" is a grouped 2650, not 2.65: the dot is a thousands separator here.
     expect(price, 2650);
   });
 

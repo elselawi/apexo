@@ -6,17 +6,15 @@ abstract class PanelsManager {
 
   static final minimize = ObservableState(false);
 
-  /// Shows [panel], or brings the panel it duplicates to the front, and returns
-  /// the panel now on screen.
+  /// Shows [panel], or focuses and returns the already-open panel that duplicates
+  /// it.
   static Panel open(Panel panel) {
     final foundPanel = active()
         .indexWhere((element) => element.identifier == panel.identifier);
     if (foundPanel > -1) {
       final kept = active()[foundPanel];
-      // The caller may have asked for a window this time (a table cell that
-      // means "the appointments of this patient"), so honour it on the panel
-      // that is already open. The panel's first window is inline, so only a
-      // floating one has anything to bring back.
+      // The caller may have asked for a window this time; only a floating one can
+      // be brought back, because the first window is inline.
       final requested = panel.initialWindow;
       if (requested != null &&
           kept.floatingWindows.any((w) => w.id == requested)) {
@@ -32,11 +30,8 @@ abstract class PanelsManager {
     }
   }
 
-  /// The panel already showing [identifier], if there is one.
-  ///
-  /// The same rule [open] uses, so "is this record's panel already open?" and
-  /// "open it" can never disagree — an opener that answered this question
-  /// before it built a panel must get the same answer [open] would.
+  /// The panel already showing [identifier]. Same rule as [open], so a caller
+  /// that asks before building a panel gets the answer [open] would give.
   static Panel? find(String identifier) {
     for (final panel in active()) {
       if (panel.identifier == identifier) return panel;
@@ -49,15 +44,8 @@ abstract class PanelsManager {
     minimize(false);
   }
 
-  /// Takes the matching panels off the screen, settling each one: a removed
-  /// panel will never be saved.
-  ///
-  /// The visits a panel carries go with it. That is the panel's **teardown**, not
-  /// a detach — so every path a user can take asks first: the ✕ prompt names each
-  /// dirty record and offers to write them, and `CloseAllButton` asks whether
-  /// to save or discard every dirty owner. A programmatic caller
-  /// that must not lose a draft detaches the visits (`detachVisits`) instead of
-  /// closing the panel behind them.
+  /// Removal is teardown, not detach: the panel settles and its sessions are
+  /// released, so nothing it carried is saved; `detachVisits` keeps a draft.
   static void close(String targetToClose) {
     for (final panel in active().toList()) {
       if (_matches(panel, targetToClose)) {
@@ -68,11 +56,8 @@ abstract class PanelsManager {
     active(active()..removeWhere((p) => _matches(p, targetToClose)));
   }
 
-  /// Closes every panel — logout, and the tests' clean slate. Each is settled,
-  /// and the visits they carry are dropped with them.
-  ///
-  /// The UI's own "close everything" is [CloseAllButton], which confirms unsaved
-  /// work before reaching this forced teardown. Logout also uses this method.
+  /// Closes every panel without asking — logout, and the tests' clean slate.
+  /// `CloseAllButton` is the UI path that confirms unsaved work first.
   static void closeAll() {
     for (final panel in active()) {
       panel.releaseSessions();
@@ -82,8 +67,7 @@ abstract class PanelsManager {
     active([]);
   }
 
-  /// How the caller names a panel: by the record it edits, or by its identifier
-  /// while the record is not stored yet.
+  /// Matches by stored record id, or by identifier while the record is new.
   static bool _matches(Panel panel, String target) =>
       panel.itemId == target || target == panel.identifier;
 }

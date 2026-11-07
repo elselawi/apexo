@@ -8,11 +8,8 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:flutter/widgets.dart';
 
-/// The app-level booking session: discovery, the inbox controller, and the
-/// push hint entry point.
-///
-/// Nothing here may block a normal PMS login; a clinic that never registers,
-/// or a Worker that is down, leaves ordinary use untouched.
+/// The app-level booking session. Nothing here may block a normal PMS login; a
+/// missing registration or a down Worker leaves ordinary use untouched.
 class BookingSession with WidgetsBindingObserver {
   BookingSession({BookingClinicService Function()? createService})
       : _createService = createService ?? BookingClinicService.new;

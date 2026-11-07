@@ -5,13 +5,8 @@ import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A record a panel can carry, with no feature behind it: what the window
-/// system's own tests need to prove hosting without an appointment model, a
-/// store or a chart (plan §9, P3).
-///
-/// It answers the same questions a real session does — one draft, one write, one
-/// identity — and nothing else, so a failure here is a failure of the hosting
-/// machinery and not of a record.
+/// A session with no feature behind it, so a failing window test implicates
+/// the hosting machinery, not a record model.
 final class FakeSession implements HostedRecordSession {
   FakeSession({
     required this.itemId,
@@ -93,8 +88,7 @@ final class FakeSession implements HostedRecordSession {
 
   bool isDisposed = false;
 
-  /// Every write this session was asked for, in order — what a test counts to
-  /// prove which record a window's Save went to.
+  /// Ids each [save] wrote, in order: proves which record a window's Save hit.
   final List<String> saves = <String>[];
 
   /// Every field set acknowledged outside the Save, in order.
@@ -183,8 +177,7 @@ final class FakeSession implements HostedRecordSession {
       );
 }
 
-/// The accent colours the window system's tests use, spelled out rather than
-/// borrowed from a feature.
+/// Accents for window tests, hardcoded so no feature palette is imported.
 abstract final class PanelAccentsStub {
   static const Color appointment = Color(0xFF7C4DFF);
   static const Color patient = Color(0xFF1E88E5);

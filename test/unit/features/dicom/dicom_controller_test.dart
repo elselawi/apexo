@@ -25,15 +25,11 @@ import 'package:pocketbase/pocketbase.dart';
 
 import '../../../helpers/hive_setup.dart';
 
-/// A minimal [Patient] for tests — only the fields that [DicomImporter]
-/// reads during approval.
+/// Patient fixture carrying only the fields approval reads.
 Patient _testPatient(String id) =>
     Patient.fromJson({'id': id, 'archived': false});
 
-/// A [DicomImporter] that records calls to [approveImport] and returns
-/// controlled scan results. All store-dependent parameters are replaced
-/// with in-memory fakes so the tests run without Hive, PocketBase, or
-/// the FFI engine.
+/// Importer fake: records approvals and returns controlled results; no Hive/PocketBase/FFI.
 class _MockImporter {
   /// Accumulates the [DicomPendingImport] items passed to [approveImport].
   final List<DicomPendingImport> approvedItems = [];
@@ -43,8 +39,7 @@ class _MockImporter {
   final Map<String, bool> unregisterResults = {};
   Completer<DicomApprovalResult>? approvalGate;
 
-  /// The pending list that [scanAndBuildPending] will return on the next
-  /// call. Set this before calling [refresh] / [_tick].
+  /// Pending list returned by the next scan; set before calling [refresh] or [_tick].
   List<DicomPendingImport> nextScanResult = const [];
   int scanCalls = 0;
   Completer<List<DicomPendingImport>>? scanGate;
@@ -172,8 +167,6 @@ class _MockImporter {
   }
 }
 
-/// A test-only [DicomController] that uses a fake importer and disables
-/// the periodic timer (we test timer logic separately).
 class _TestController {
   _TestController() {
     ctrl = DicomController(importer: mock.build());
@@ -315,8 +308,7 @@ DicomPendingImport _pending({
         ),
       ];
 
-  // autoLinked items need a real Patient reference — approveImport resolves
-  // the target via matchedPatient?.id.
+  // autoLinked items need a real Patient: approveImport resolves via matchedPatient?.id.
   final patient = autoLinked ? _testPatient('patient-$dicomPatientId') : null;
 
   return DicomPendingImport(
@@ -642,10 +634,6 @@ void main() {
 
     setUp(() {
       t = _TestController();
-      // Ensure globalSettings has valid Hive state.  In unit tests Hive is
-      // auto-initialised by hive_flutter, but the store's Hive boxes may
-      // not exist.  We use the controller directly and only test paths that
-      // do not depend on globalSettings persistence.
     });
 
     tearDown(() {
@@ -669,9 +657,6 @@ void main() {
     test(
         'stopPeriodicScan after startPeriodicScan sets isTimerRunning to '
         'false', () {
-      // startPeriodicScan may fail here because watch dirs are empty
-      // (guard). That is expected — we test the guards separately.
-      // Just verify that stopPeriodicScan does not crash.
       t.ctrl.stopPeriodicScan();
       expect(t.ctrl.isTimerRunning, isFalse);
     });
@@ -1083,8 +1068,7 @@ void main() {
       second.matchedPatient = _testPatient('patient-second');
       t.ctrl.pending([first, second]);
 
-      // Anonymous batches are selected by their stable selectionKey, not the
-      // (shared, empty) DICOM patient ID.
+      // Anonymous batches are keyed by selectionKey, not the shared empty DICOM patient ID.
       final count =
           await t.ctrl.batchApprove({first.selectionKey, second.selectionKey});
 

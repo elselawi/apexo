@@ -88,9 +88,6 @@ void main() {
 
   group('dicomPngReady stream', () {
     test('emits the bumped value to subscribers', () async {
-      // The gallery's DCM tile subscribes to this stream and re-fetches the
-      // PNG preview on each emission. Verify the contract: a listen registered
-      // before the bump receives it.
       final received = <int>[];
       final StreamSubscription<int> sub =
           dicomPngReady.stream.listen(received.add);
@@ -126,11 +123,6 @@ void main() {
   });
 
   group('gallery routing decision matrix', () {
-    // The GridGallery routes each cell by name classification:
-    //   DCM  → openDicomViewerWindow (viewer)
-    //   img  → photo slideshow
-    //   else → download
-    // These tests pin the classification the routing branches rely on.
     test('DCM names → viewer (isDcm true, isImage false)', () {
       for (final name in ['x.dcm', 'x.DCM', 'scan.dicom', 'SCAN.DICOM']) {
         expect(isADcmName(name), isTrue,
@@ -165,12 +157,8 @@ void main() {
   });
 
   group('backward compatibility — .dcm in imgs is NOT a DCM X-ray', () {
-    // GridGallery routes DCM behaviour by membership in `dcmImgs`, NOT by
-    // name pattern. A `.dcm` file attached to a note/expense (passed via
-    // `imgs`) must keep regular-file behaviour (download on tap, file
-    // thumbnail display) — otherwise non-DCM galleries regress.
-    //
-    // This test pins the membership contract the gallery relies on.
+    // Routing keys off membership in `dcmImgs`, not the name, so a .dcm in
+    // `imgs` keeps regular-file behaviour for notes and expenses.
     test('a .dcm name not in dcmImgs is treated as a regular file', () {
       final imgs = ['report.pdf', 'scan.dcm', 'note.txt'];
       final dcmImgs = <String>[]; // notes/expenses pass no dcmImgs
@@ -194,8 +182,6 @@ void main() {
     });
 
     test('dcmImgs defaults to empty (non-appointment callers unaffected)', () {
-      // Mirrors the GridGallery.dcmImgs default. With dcmImgs empty, the
-      // derived _dcmNames set is empty and no cell gets DCM treatment.
       const defaultDcmImgs = <String>[];
       expect(defaultDcmImgs.toSet(), isEmpty);
     });
@@ -214,9 +200,6 @@ void main() {
   });
 
   group('ObservableState stream contract (gallery rebuild primitive)', () {
-    // The DCM tile rebuilds by re-fetching on stream emission. Verify a fresh
-    // ObservableState behaves identically to dicomPngReady so the pattern is
-    // sound independent of the global singleton's prior state.
     test('emits each written value', () async {
       final state = ObservableState<int>(0);
       final received = <int>[];

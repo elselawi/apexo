@@ -93,9 +93,8 @@ class NetworkActions extends StatelessWidget {
         message: action.tooltip,
         child: IconButton(
           icon: action.icon,
-          // A disabled action is *offered* and cannot be pressed: passing
-          // `onPressed` through regardless left the flag meaningless and a tap
-          // silently did nothing (todo.md §6.1).
+          // disabled actions stay visible but inert; the flag is enforced here,
+          // not by hiding them.
           onPressed: action.disabled == true ? null : action.onPressed,
           iconButtonMode: IconButtonMode.large,
           style: ButtonStyle(

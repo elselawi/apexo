@@ -20,10 +20,6 @@ import 'open_appointment.dart' show AppointmentWindow;
 import 'events_agenda_widget.dart';
 import 'events_timeline_widget.dart';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Main widget
-// ─────────────────────────────────────────────────────────────────────────────
-
 class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   const WeekAgendaCalendar({
     super.key,
@@ -47,12 +43,9 @@ class WeekAgendaCalendar<Item extends Appointment> extends StatefulWidget {
   /// Opens [item], optionally on a specific panel window — see [AppointmentWindow].
   final void Function(Item item, AppointmentWindow? window) onSelect;
 
-  /// The follow-ups waiting on a day, drawn as the day's floating band — see
-  /// [FollowUpBand]. Null when the caller has none to offer.
   final List<FollowUpDue> Function(DateTime day)? followUpsOnDay;
 
-  /// Books a follow-up's visit. The patient and the day come with it; [at] is
-  /// the hour a face was dropped on, and null keeps the day's own.
+  /// [at] is the hour a dragged face was dropped on; null keeps the day.
   final void Function(FollowUpDue followUp, {DateTime? at})? onBookFollowUp;
 
   @override
@@ -110,8 +103,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
   @override
   Widget build(BuildContext context) {
     final itemsForSelectedDay = _getItemsForSelectedDay();
-    // A follow-up has no hour, so it is not a block or a row: it floats over the
-    // day as the practice's inbox of faces to give one to.
+    // No hour to place them by, so follow-ups float over the day instead.
     final followUps =
         widget.followUpsOnDay?.call(selectedDate) ?? const <FollowUpDue>[];
     final onBookFollowUp = widget.onBookFollowUp == null ? null : _bookFollowUp;
@@ -166,10 +158,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
     return ScreenCommandBar(
       mainButton: IconButton(
         key: WK.btnNewAppointment,
-        // The day, not the moment the calendar happens to be on: a visit added
-        // from here lands on the selected day at the time of day it is now,
-        // while a click on the timeline (which does carry a time) keeps the
-        // hour it landed on.
+        // Date only, so the visit starts at the current time of day; a timeline
+        // click keeps the hour it landed on.
         onPressed: () => widget.onAddNew(
             DateTime(selectedDate.year, selectedDate.month, selectedDate.day)),
         icon: ButtonContent(FluentIcons.add, txt("newAppointment")),
@@ -186,8 +176,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
           color: Colors.transparent,
           elevation: 0,
           child: LayoutBuilder(builder: (context, constraints) {
-            // Integer page extents avoid accumulated fractional scroll errors
-            // without making older appointments inaccessible.
+            // Integer width: fractional page extents accumulate scroll drift.
             return Align(
               alignment: Alignment.topCenter,
               child: SizedBox(
@@ -284,11 +273,8 @@ class WeekAgendaCalendarState<Item extends Appointment>
               key: WK.calendarDay(day), day: day, type: DayCellType.today);
         },
         selectedBuilder: (context, day, focusedDay) {
-          // The *selected* cell carries `calendarSelected` instead of its date
-          // key — `table_calendar` builds it from `selectedBuilder`, and a
-          // fixture that wants a day taps `calendarDay(day)` (so the day already
-          // selected has nothing to tap; `Fixtures.selectDay` is idempotent for
-          // exactly this reason).
+          // The selected cell carries `calendarSelected`, not its date key:
+          // `table_calendar` builds it from `selectedBuilder`.
           return DayCell(
               key: WK.calendarSelected, day: day, type: DayCellType.selected);
         },
@@ -374,10 +360,6 @@ class WeekAgendaCalendarState<Item extends Appointment>
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Shared leaf widgets
-// ─────────────────────────────────────────────────────────────────────────────
 
 class AppointmentsNumberIndicator extends StatelessWidget {
   const AppointmentsNumberIndicator({

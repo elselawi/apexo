@@ -2,9 +2,6 @@ import '../model.dart';
 import 'observable_base.dart';
 export 'observable_base.dart';
 
-/// creates an observable dictionary
-/// values of this dictionary should extend Model
-/// this is typically used by stores (dictionaries of models)
 class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
   final Map<String, Map<String, dynamic>> _jsonCopies = {};
   final Map<String, G> _dictionary = {};
@@ -32,9 +29,6 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
     _dictionary[item.id] = item;
 
     if (item.targetsToPushTo.isNotEmpty) {
-      // the following gymnastics would only
-      // be done when the item is meant to be pushed
-      // otherwise it's just a waste of time and resources
       final newJson = _copyJsonMap(item.jsonCopyForPush);
       final oldJson = _jsonCopies[item.id] ??
           _copyJsonMap(item.copy(true).jsonCopyForPush);
@@ -89,11 +83,8 @@ class ObservableDict<G extends Model> extends ObservableBase<List<DictEvent>> {
         items.map((item) => DictEvent.add(item.id, document: null)).toList());
   }
 
-  /// Like setAll but more optimized
-  /// accepts map as arguments
-  /// & accepts the pre-decoded JSON maps so that _jsonCopies
-  /// can be populated directly, avoiding a redundant re-serialization of every
-  /// Use this when loading from persistence.
+  /// Like [setAll], but takes pre-decoded JSON so the change-detection copies
+  /// skip re-serialization. Use when loading from persistence.
   void setAllWithJson(
       Map<String, G> items, Map<String, Map<String, dynamic>> jsonMaps) {
     assert(
@@ -204,8 +195,7 @@ class DictEvent {
   final List<dynamic> oldVals;
 }
 
-/// Checks if two objects (including Lists and Maps) are deeply equal.
-/// Required because Dart's `==` on Collections only checks reference.
+/// Deep equality: Dart's `==` on collections compares references.
 bool _areEqual(Object? a, Object? b) {
   if (identical(a, b)) return true;
   if (a is List && b is List) {
@@ -225,8 +215,6 @@ bool _areEqual(Object? a, Object? b) {
   return a == b;
 }
 
-/// Performs a 1-level diff and returns a Set of keys that were
-/// added, removed, or modified.
 Set<String> diffJson(
   Map<String, dynamic> oldJson,
   Map<String, dynamic> newJson,

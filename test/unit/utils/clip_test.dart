@@ -1,12 +1,8 @@
 import 'package:apexo/utils/clip.dart';
 import 'package:test/test.dart';
 
-/// Every string Flutter's paragraph builder will accept has a surrogate pair
-/// written *whole*; a string that ends in half of one makes
-/// `RenderParagraph` throw `Invalid argument(s): string is not well-formed
-/// UTF-16` and the frame is lost. `substring` counts code units, so it is the
-/// way an app produces one — `clipCodePoints` is what several screens use
-/// instead.
+/// Whether every surrogate pair is whole. A split pair makes `RenderParagraph`
+/// throw `string is not well-formed UTF-16` and lose the frame.
 bool wellFormed(String text) {
   for (var i = 0; i < text.length; i++) {
     final unit = text.codeUnitAt(i);
@@ -35,8 +31,6 @@ void main() {
     });
 
     test('never returns half of a surrogate pair', () {
-      // The dashboard-style label: an emoji prefix plus a name. `substring(0, 14)`
-      // would land inside whatever emoji the name holds.
       const labels = [
         '👥 patients today',
         '🦷 a patient with a tooth emoji',
@@ -55,8 +49,6 @@ void main() {
     });
 
     test('counts an emoji as one character, so the cut is where it looks', () {
-      // Nine code points: the emoji, a space, and the seven letters of
-      // "patient" — `substring(0, 9)` would stop after "patie" and a half.
       expect(clipCodePoints('👥 patients today', 9), '👥 patient');
       expect(clipCodePoints('👥 patients today', 9).runes.length, 9);
       expect(clipCodePoints('👥 patients today', 8), '👥 patien');
@@ -70,8 +62,7 @@ void main() {
 
   group('fitsInCodePoints', () {
     test('counts code points, not code units', () {
-      // Ten code points, eleven code units: the old `name.length > 17` guard
-      // counts the emoji twice.
+      // The emoji is two code units in `label.length`, so a length-based cap clips too early.
       const label = '👥 patients';
       expect(label.length, 11);
       expect(label.runes.length, 10);

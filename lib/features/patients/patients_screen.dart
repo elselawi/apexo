@@ -103,12 +103,8 @@ class _PatientsPageState extends State<_PatientsPage> {
     final words =
         searchString.toLowerCase().replaceAll(RegExp("أ|إ"), "ا").split(" ");
 
-    // `every` over a list of empty words is always true, so an empty query
-    // matches every patient whatever their `searchString` says. Asking for it
-    // anyway makes each patient build its table labels: during a sync batch this
-    // method runs again for every store notification, and at clinic size that is
-    // a thousand label builds per pass (measured at ~135 ms each) for a result
-    // that is thrown away.
+    // an empty query matches everyone; short-circuiting it avoids building every
+    // patient's table labels again on each store notification during a sync.
     final matchesEverything = words.every((word) => word.isEmpty);
 
     List<Patient> candidates = [];
@@ -219,8 +215,7 @@ class _PatientsPageState extends State<_PatientsPage> {
         key: WK.btnNewPatient,
         icon: ButtonContent(FluentIcons.add, txt("newPatient")),
         onPressed: () async {
-          // The patient exists before the record opens: the sheet asks for the
-          // name and phone, and the panel edits a stored patient, never a draft.
+          // store first: the panel edits a stored patient, never a draft.
           final patient = await addPatient(context);
           if (patient == null) return;
           await openPatient(patient);
@@ -329,9 +324,6 @@ class _PatientsPageState extends State<_PatientsPage> {
     );
   }
 
-  /// Long press (touch) or right click (mouse) on a row: one item per window of
-  /// the patient panel, then the ways to reach the patient, then the action that
-  /// takes the record away.
   List<MenuFlyoutItemBase> _patientMenuItems(
       FlyoutController controller, Patient patient) {
     return [
@@ -339,8 +331,6 @@ class _PatientsPageState extends State<_PatientsPage> {
         MenuFlyoutItem(
           text: menuTitleSuffix(
             Txt(txt(window.titleKey)),
-            // What the window holds, appended after the title: how many visits
-            // the patient has, and whether their web page exists yet.
             switch (window) {
               PatientWindow.appointments =>
                 menuCountSuffix(patient.allAppointments.length),
@@ -356,8 +346,8 @@ class _PatientsPageState extends State<_PatientsPage> {
         ),
       if (patient.phone.isNotEmpty || patient.email.isNotEmpty)
         ...contactMenuItems(phones: patient.phone, email: patient.email),
-      // Archiving a patient takes their whole history out of the app: full
-      // access to patients, not the personal level that may edit their own.
+      // archiving takes the whole history out of the app, so it needs full
+      // patient access, not the personal level that may edit their own.
       if (login.perm(Perm.patients).full) ...[
         const MenuFlyoutSeparator(),
         confirmDeleteMenuItem(

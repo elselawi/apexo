@@ -130,8 +130,7 @@ void main() {
         store.linkFile('P100', 'sop:after'),
       ]);
 
-      // Whichever mutation runs second is authoritative, but the store must
-      // remain internally consistent and never lose a persisted marker.
+      // Mutations serialize: whichever runs second wins, and keys/count stay consistent.
       final keys = await store.allImportedKeys;
       expect(keys, anyOf(isEmpty, {'sop:after'}));
       expect(store.importedCount, keys.length);
@@ -443,9 +442,7 @@ void main() {
     });
 
     test('last marker removal must not delete a confirmed patient link', () {
-      // This is the exact invariant required by dead-letter and healing
-      // recovery: clearing the file marker must not turn an auto-link into a
-      // manual-match item.
+      // Clearing the file marker must not drop the confirmed patient link that recovery relies on.
       expect(
         DicomLinksStore.canDeleteEmptyEntry(
           patientId: 'patient-42',

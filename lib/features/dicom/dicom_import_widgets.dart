@@ -486,8 +486,6 @@ class _FileList extends StatelessWidget {
 
 // ── Match pill ────────────────────────────────────────────────────────────
 
-/// A tiny green ✓ or red ✗ indicating whether a single study date matches
-/// an existing appointment for the matched patient.
 class _DateMatchIcon extends StatelessWidget {
   const _DateMatchIcon({required this.matches});
   final bool matches;

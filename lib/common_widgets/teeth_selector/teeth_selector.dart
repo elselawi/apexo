@@ -40,8 +40,7 @@ class TeethSelector extends StatefulWidget {
   final ValueChanged<String>? onOpenAppointment;
   final StateType type;
 
-  /// The colour of the record kind the chart belongs to (see
-  /// [OpgDentalChart.tint]). Null keeps the neutral radiographic wash.
+  /// Record-kind tint; null keeps the neutral radiographic wash.
   final Color? tint;
 
   /// Keeps the chart surface behind a floating operative card.
@@ -88,8 +87,8 @@ class _TeethSelectorState extends State<TeethSelector> {
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final compact = screenWidth < kOpgViewportMinWidth;
-    // A narrow chart only has room for one dentition, so there the switches
-    // read as a single choice between the permanent teeth and the primary ones.
+    // A narrow chart only fits one dentition, so compact mode makes the two
+    // switches a single either/or choice.
     final primaryShown = compact ? showPrimary && !showPermanent : showPrimary;
     return OpgDentalChart(
       isCompactArch: compact,
@@ -103,8 +102,6 @@ class _TeethSelectorState extends State<TeethSelector> {
       showPermanent: compact ? !primaryShown : showPermanent,
       showPrimary: compact ? primaryShown : showPrimary,
       onShowPermanentChanged: (checked) => setState(() {
-        // One dentition is on show at a time: picking this one drops the other,
-        // and switching this one off hands the chart to the other.
         showPermanent = checked;
         showPrimary = !checked;
       }),

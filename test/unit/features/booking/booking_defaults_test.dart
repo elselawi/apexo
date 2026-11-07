@@ -58,8 +58,7 @@ void main() {
         );
 
     test("an empty accent colour is valid", () {
-      // The reported failure: the hint text looked like a value, the field was
-      // empty, and the Worker rejected the empty string.
+      // Hint text looked like a value but the field was empty, which the Worker rejected.
       expect(claim().validate(), isNull);
       expect(claim(accent: "  ").validate(), isNull);
       expect(claim(accent: "#0078d4").validate(), isNull);

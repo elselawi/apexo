@@ -5,10 +5,7 @@ import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Renames the supplier [supplierID], everywhere it appears.
-///
-/// A supplier is a record of its own and each of their orders points at it by
-/// id, so renaming is one write rather than a pass over their orders.
+/// Renaming is one write: orders point at the supplier by id, not by name.
 Future<void> renameSupplierDialog(
   BuildContext context,
   String supplierID,

@@ -38,18 +38,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
-/// Pauses the ring that radiates from the record the chart has open.
-///
-/// The ring repeats for as long as the record stays open, which never lets a
-/// widget test settle; [pumpApexoApp] turns it off unless a test asks for it.
+/// Stops the ripple that never ends, which would keep widget tests from settling.
 @visibleForTesting
 bool debugPauseScopeRipple = false;
 
 DentalChartSession? _sessionIn(Widget body) =>
     body is DentalChartBody ? body.session : null;
 
-/// The app's context, when there is one: a test drives these openers with no app
-/// shell, and asking an uninitialized global would throw.
+/// App context if initialized; tests have no app shell and the global would throw.
 BuildContext? get _appContextForPrompt {
   try {
     return bContext;
@@ -62,12 +58,8 @@ BuildContext? get _appContextForPrompt {
 DentalChartSession? _chartOf(HostedRecordSession session) =>
     session is AppointmentSession ? session.chart : null;
 
-/// The chart of the record [scope] names, whether it is a patient's panel, a
-/// visit attached to one, or a chart standing on its own.
 DentalChartSession? panelDentalChart(String scope) {
   for (final panel in PanelsManager.active()) {
-    // A visit's chart belongs to the visit's session, and the panel that carries
-    // the visit is the panel that draws it (plan §4.3).
     final attached = panel.attached;
     if (attached != null &&
         '${attached.singularName}:${attached.itemId}' == scope) {
@@ -81,8 +73,7 @@ DentalChartSession? panelDentalChart(String scope) {
   return null;
 }
 
-/// A borrowed editor already writes its panel's draft, so returning it to that
-/// panel is not a discard or a second adoption of the same work.
+/// A borrowed editor already writes its panel's draft, so closing it is not a discard.
 void closeBorrowedDentalChart(String scope) {
   final hosted = panelDentalChart(scope);
   if (hosted == null) return;
@@ -104,8 +95,8 @@ DentalChartSession? get _visibleChart {
   if (panel == null) return null;
   final attached = panel.attached;
   if (attached != null) {
-    // One chart on screen: while a visit is attached its chart *is* the chart,
-    // and a patient chart the row is not drawing is not the one the user sees.
+    // A visit's chart wins while attached; the panel's own only when no visit
+    // is attached and the row draws it.
     return panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot)
         ? _chartOf(attached)
         : null;
@@ -114,13 +105,8 @@ DentalChartSession? get _visibleChart {
   return panelDentalChart('${panel.singularName}:${panel.itemId}');
 }
 
-/// The chart whose work leaving would throw away: one standing on its own, or
-/// the chart a panel draws for its own record.
-///
-/// A visit's chart is deliberately absent. The visit keeps its draft — teeth,
-/// operative details and the band's fields alike — when another visit takes the
-/// row, so leaving it is not a discard and must not ask; the band already says
-/// which visits still hold work (see [AppointmentSession.hasPendingEdits]).
+/// The chart a close would throw away: a floating one, or a panel's own.
+/// A visit's chart is absent because the visit keeps its draft.
 DentalChartSession? get _discardableChart {
   for (final floating in WindowsManager.open().reversed) {
     if (floating.window.id == kDentalChartWindowId) {
@@ -152,9 +138,8 @@ int dentalChartNavigationDirection(String targetScope) {
 
 bool _closingCharts = false;
 
-/// All entry points (including history and the dock) use the same dirty guard.
-/// Hidden panels keep their drafts; only a chart that is not held by a record
-/// that outlives it — see [_discardableChart] — is reset.
+/// Every entry point shares this guard. A visit's chart keeps its draft;
+/// only a chart no record outlives is reset.
 Future<bool> closeOpenDentalChartWindows({
   required String exceptScope,
   BuildContext? context,
@@ -177,8 +162,7 @@ Future<bool> closeOpenDentalChartWindows({
     };
     if (dirty.isNotEmpty ||
         floating.any((w) => w.hasChanges?.call() ?? false)) {
-      // No context means nobody to ask — a test, or a caller with no screen.
-      // Then the answer is no: work is never discarded silently.
+      // No context means nobody to ask: work is never discarded silently.
       final promptContext = context ?? _appContextForPrompt;
       if (promptContext == null ||
           !promptContext.mounted ||
@@ -200,8 +184,7 @@ Future<bool> closeOpenDentalChartWindows({
         panelDentalChart(scope)?.navigationDirection = -direction;
         panel.workspace.hide(kDentalChartWindowId);
       }
-      // A visit's chart is a window of the visit, so leaving it means taking it
-      // out of the visit's slot — the draft it edits stays in the session.
+      // A visit's chart is a slot of the visit; hiding it leaves the draft in the session.
       final attached = panel.attached;
       if (attached != null &&
           '${attached.singularName}:${attached.itemId}' != exceptScope) {
@@ -223,21 +206,6 @@ void openAppointmentChartFromHistory(String id) {
   unawaited(openAppointmentDentalChart(appointment));
 }
 
-/// A fixed-height scope strip above the arches: the plan stays pinned while
-/// appointments are laid out along a horizontal timeline where the first dot is
-/// the first appointment, the last dot is the last appointment, and the
-/// distances between dots reflect the time duration between appointments.
-///
-/// Hovering any dot displays a rich clinical preview card (date, interval,
-/// treatments, notes, prescriptions, labwork, doctors, price and payment
-/// status). When the number of visits fits within the bar, no scrolling is
-/// needed; when the number of visits grows too large, the timeline scrolls and
-/// displays a smooth edge transparency fade indicating additional visits.
-/// Drag anywhere on the track to preview the nearest visit with selection
-/// haptics; release to open it through the usual unsaved-work guard. Holding
-/// near an edge scrolls through longer histories. Arrow keys and Home/End
-/// preview visits, Enter opens the preview, and Escape cancels. Accessibility
-/// adjustment actions select visits directly.
 class VisitScopeBar extends StatefulWidget {
   const VisitScopeBar({
     super.key,
@@ -308,13 +276,7 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
     }
   }
 
-  /// Starts a visit for this patient and puts it in the chart.
-  ///
-  /// The new visit is the one the user came for, so it becomes the selected
-  /// scope: the same call an opener makes from the calendar, with the patient
-  /// and the day already known (the design brief). Only the day is carried
-  /// over — a new visit at the current visit's exact hour would be a second
-  /// booking of the same slot.
+  // Only the day is carried over: the current visit's hour would double-book the slot.
   Future<void> _addVisit(BuildContext context) async {
     final current = widget.currentAppointment?.date;
     final created = await addAppointment(
@@ -367,9 +329,8 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
             .indexWhere((v) => 'appointment:${v.id}' == widget.session.id);
         void openVisit(int i) {
           final visit = visits[i];
-          // One control for the selection: the same call the Visits list makes,
-          // so the chart's scope bar and the list can never disagree (§4.8).
-          // The context lets the dirty guard ask over the chart being left.
+          // Same call the Visits list makes, so bar and list cannot disagree; the
+          // context lets the dirty guard ask over the chart being left.
           unawaited(_selectScope(
               'appointment:${visit.id}',
               () => selectVisit(patient.id, visit.id,
@@ -377,11 +338,7 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
         }
 
         final theme = FluentTheme.of(context);
-        // The one promise on this bar that is not a visit yet: the day the
-        // patient was asked to come back, drawn past the newest dot.
         final followUp = followUpsEnabled ? patientFollowUpDay(patient.id) : null;
-        // With no visits there is no timeline beside it, so the button can
-        // afford its whole name instead of the short "new".
         final addLabel = visits.isEmpty ? txt('addAppointment') : txt('new');
         return SizedBox(
           height: 40,
@@ -422,9 +379,8 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
                         final offset = _scroll.hasClients
                             ? _scroll.offset.clamp(0.0, maxExtent)
                             : 0.0;
-                        // With `reverse: true`, offset 0 is anchored at the
-                        // trailing (newest) end and maxExtent is at the leading
-                        // (oldest) start.
+                        // `reverse: true` anchors offset 0 at the newest end, so
+                        // maxExtent is the oldest start.
                         final canScrollStart =
                             layout.overflows && offset < maxExtent - 1.0;
                         final canScrollEnd = layout.overflows && offset > 1.0;
@@ -451,10 +407,7 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
                     ),
                   ),
                 ],
-                // The follow-up sits at the leading end of the bar — past the
-                // newest visit, where the patient's history stops and their
-                // future starts. It is not a visit: it is larger, it wears the
-                // phone, and it opens contact details rather than a chart.
+                // The follow-up is not a visit: it opens contact details, not a chart.
                 if (followUp != null)
                   FollowUpScopeDot(
                     key: WK.chartFollowUpDot,
@@ -474,18 +427,14 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
                           }
                         : null,
                   ),
-                // A visit is started from the record it belongs to: one button
-                // beside the visits it will join, not a trip back to the calendar
-                // and a new dialog with the patient typed in again. The space
-                // the chronological arrows used to take now carries its word.
                 if (login.perm(Perm.appointments).some)
                   Padding(
                     padding: const EdgeInsetsDirectional.only(start: 6),
                     child: Tooltip(
                       message: txt('addAppointment'),
                       child: ConstrainedBox(
-                        // A long locale on a narrow window ellipsizes instead of
-                        // pushing the initial exam or the timeline off the bar.
+                        // Stops a long locale from pushing the initial exam or
+                        // timeline off the bar.
                         constraints: BoxConstraints(
                             maxWidth: constraints.maxWidth * 0.6),
                         child: Button(
@@ -532,26 +481,16 @@ final class TimelineLayout {
     required this.overflows,
   });
 
-  /// Total width of the timeline canvas. Equals `viewportWidth` unless the
-  /// number of visits exceeds what fits at minimum dot spacing.
   final double trackWidth;
 
-  /// Horizontal center coordinate of each visit dot (from start edge), ordered
-  /// chronologically from first appointment (`0`) to last appointment (`N-1`).
   final List<double> positions;
 
   /// True only when the number of visits is too large to fit without scrolling.
   final bool overflows;
 }
 
-/// Computes duration-proportional horizontal positions for [visits] (sorted
-/// oldest-first).
-///
-/// The first dot sits at the start of the horizontal line and the last dot sits
-/// at the end of the line. Intervals between consecutive dots are scaled in
-/// proportion to the time duration between those appointments, while preserving
-/// a minimum collision-free gap so same-day or back-to-back appointments stay
-/// distinct and clickable.
+/// Places dots in proportion to the time between visits, with a minimum gap so
+/// same-day or back-to-back visits stay distinct and clickable.
 TimelineLayout computeTimelineLayout({
   required List<Appointment> visits,
   required double viewportWidth,
@@ -642,8 +581,6 @@ TimelineLayout computeTimelineLayout({
   );
 }
 
-/// Applies a horizontal transparency gradient mask at the start and/or end
-/// edges when the timeline overflows and has more visits to scroll to.
 class _EdgeTransparencyFade extends StatelessWidget {
   const _EdgeTransparencyFade({
     super.key,
@@ -687,8 +624,7 @@ class _EdgeTransparencyFade extends StatelessWidget {
   }
 }
 
-/// Scrubbing previews a snapped visit without opening charts or prompting for
-/// unsaved work until release. The existing dots double as the slider thumb.
+/// Scrubbing only previews; opening and the unsaved-work guard wait for release.
 class _VisitTimelineSlider extends StatefulWidget {
   const _VisitTimelineSlider({
     super.key,
@@ -810,8 +746,7 @@ class _VisitTimelineSliderState extends State<_VisitTimelineSlider> {
     final box = _viewportKey.currentContext?.findRenderObject() as RenderBox?;
     if (pointer == null || box == null || !widget.scroll.hasClients) return;
     final x = box.globalToLocal(pointer).dx;
-    // Hold near either edge to reach visits beyond the viewport. Reverse scroll
-    // anchors the newest end; RTL reverses its physical direction once more.
+    // Reverse scroll anchors the newest end; RTL flips the physical direction again.
     final edge = math.min(28.0, box.size.width / 3);
     if (edge <= 0) return;
     final velocity = x < edge
@@ -928,8 +863,8 @@ class _VisitTimelineSliderState extends State<_VisitTimelineSlider> {
                   _finish(commit: true);
                 },
           child: Listener(
-            // An accepted DragGestureRecognizer reports pointer cancellation as
-            // onEnd, so clear the preview before it can commit the selection.
+            // An accepted DragGestureRecognizer reports cancellation as onEnd, so
+            // clear the preview before it can commit the selection.
             onPointerCancel: (_) {
               if (_scrubbing) _finish();
             },
@@ -987,8 +922,6 @@ class _VisitTimelineSliderState extends State<_VisitTimelineSlider> {
   }
 }
 
-/// Renders the horizontal time line, interval duration badges, compact endpoint
-/// date labels, and clickable appointment dots.
 class _VisitTimelineCanvas extends StatelessWidget {
   const _VisitTimelineCanvas({
     required this.visits,
@@ -1015,9 +948,7 @@ class _VisitTimelineCanvas extends StatelessWidget {
   static const double _trackY = 14.0;
   static const double _hitWidth = 26.0;
 
-  /// Picks which dot indices can display a micro-date label underneath without
-  /// overlapping adjacent labels. Always prioritizes the selected visit, then
-  /// the first and last visits.
+  // Chosen in priority order (selected, first, last, then rest) so labels never overlap.
   Set<int> _visibleDateIndices() {
     if (visits.isEmpty) return const {};
     const minLabelDistance = 58.0;
@@ -1066,17 +997,10 @@ class _VisitTimelineCanvas extends StatelessWidget {
     return '$days${txt('timelineDayUnit')}';
   }
 
-  /// The widest a dot reaches either side of its position — the selected dot at
-  /// 15 px — plus the air a label needs before it starts touching one.
+  // Half the widest dot (15 px when selected) plus the air a label needs.
   static const double _dotClearance = 10.0;
 
-  /// The duration between two visits, drawn above its segment.
-  ///
-  /// How much room a label needs is **measured**, not assumed: "3m" takes about
-  /// 14 px, so a segment less than half the old fixed 68 px still says it —
-  /// while "12m" keeps asking for the room it really needs. The label sits
-  /// between the two dots, far enough from each that a dot drawn at its largest
-  /// never runs into it.
+  /// Label widths are measured, so a short "3m" fits where a fixed width would skip.
   List<Widget> _intervalLabels(
     Color color,
     TextDirection direction,
@@ -1234,9 +1158,6 @@ class _VisitTimelineCanvas extends StatelessWidget {
   }
 }
 
-/// Paints the horizontal time line connecting the first appointment dot to the
-/// last appointment dot, using solid segments for completed/past history and
-/// dashed segments for upcoming scheduled visits.
 class _TimelineTrackPainter extends CustomPainter {
   const _TimelineTrackPainter({
     required this.positions,
@@ -1354,8 +1275,6 @@ class _TimelineTrackPainter extends CustomPainter {
       oldDelegate.textDirection != textDirection;
 }
 
-/// One clickable appointment dot on the horizontal timeline, with an anchored
-/// rich hover card.
 class _TimelineAppointmentDot extends StatefulWidget {
   const _TimelineAppointmentDot({
     super.key,
@@ -1394,8 +1313,7 @@ class _TimelineAppointmentDot extends StatefulWidget {
 class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
   final OverlayPortalController _portalController = OverlayPortalController();
 
-  /// How far the open visit's ring travels past its edge — enough to be seen,
-  /// short of reaching the neighbouring dot.
+  // Keeps the ring visible without reaching the neighbouring dot.
   static const double _rippleSpread = 8.0;
 
   @override
@@ -1480,8 +1398,6 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
             child: Stack(
               clipBehavior: Clip.none,
               children: [
-                // The open visit radiates: a slow ring grows out of it so the
-                // bar says which visit the chart shows without being read.
                 if (widget.selected)
                   Positioned(
                     top: widget.trackY - (size + 2 * _rippleSpread) / 2,
@@ -1496,8 +1412,6 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
                       spread: _rippleSpread,
                     ),
                   ),
-                // Hover keeps a soft pad behind the dot. The open visit has
-                // nothing fixed: its ring is what marks it.
                 if (widget.hovered)
                   Positioned(
                     top: widget.trackY - (size + 7) / 2,
@@ -1634,8 +1548,6 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
   }
 }
 
-/// Rich clinical preview card displayed when hovering over an appointment dot
-/// on the dental chart's horizontal timeline.
 class _TimelineVisitHoverCard extends StatelessWidget {
   const _TimelineVisitHoverCard({
     super.key,
@@ -2090,8 +2002,6 @@ class _TimelineVisitHoverCard extends StatelessWidget {
   }
 }
 
-/// Compact treatment badge inside the rich hover card showing the tooth notation,
-/// treatment icon/color, localized treatment name, and any tooth note.
 class _HoverTreatmentChip extends StatelessWidget {
   const _HoverTreatmentChip({
     required this.iso,
@@ -2153,9 +2063,6 @@ class _HoverTreatmentChip extends StatelessWidget {
   }
 }
 
-/// A bounded vertical container that does not scroll unless its content exceeds
-/// [maxHeight], in which case it scrolls and applies a top/bottom transparency
-/// fade indicating there is more content to scroll to.
 class _VerticalScrollFadeBox extends StatefulWidget {
   const _VerticalScrollFadeBox({
     super.key,
@@ -2285,12 +2192,7 @@ class _HoverCardTailPainter extends CustomPainter {
       oldDelegate.background != background || oldDelegate.border != border;
 }
 
-/// A ring that keeps growing out of the record the chart has open, so the bar
-/// says which visit is on screen at a glance instead of on close reading.
-///
-/// The ring only carries attention: with reduced motion, or while the record is
-/// not the open one, nothing is drawn and the record keeps its static
-/// highlight.
+/// Ring that marks the record the chart has open; nothing is drawn under reduced motion.
 class _OpenScopeRipple extends StatefulWidget {
   const _OpenScopeRipple({
     super.key,
@@ -2301,8 +2203,7 @@ class _OpenScopeRipple extends StatefulWidget {
 
   final Color color;
 
-  /// How far a ring travels past the marker's own edge. The widget has to be
-  /// laid out `2 * spread` larger than the marker on both axes.
+  // The widget must be laid out `2 * spread` larger than the marker on both axes.
   final double spread;
 
   /// The marker's corner radius, or `null` for the round timeline dots.
@@ -2323,9 +2224,7 @@ class _OpenScopeRippleState extends State<_OpenScopeRipple>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // MediaQuery is a dependency, so a change in it lands here; a controller
-    // left running would repaint the bar for nothing. TickerMode silences the
-    // ticker on its own.
+    // MediaQuery changes land here; a controller left running would repaint the bar for nothing.
     _followMotion();
   }
 
@@ -2358,8 +2257,7 @@ class _OpenScopeRippleState extends State<_OpenScopeRipple>
   @override
   Widget build(BuildContext context) {
     if (!_running) return const SizedBox.shrink();
-    // The ring is the only thing that changes every frame: its own layer keeps
-    // the timeline's text and track out of the repaint.
+    // Own layer: the ring is the only thing that changes every frame.
     return IgnorePointer(
       child: RepaintBoundary(
         child: CustomPaint(
@@ -2376,8 +2274,6 @@ class _OpenScopeRippleState extends State<_OpenScopeRipple>
   }
 }
 
-/// Paints the rings of [_OpenScopeRipple]. Repainting from the animation keeps
-/// the timeline's widgets out of the loop: only this layer is redrawn.
 class _OpenScopeRipplePainter extends CustomPainter {
   _OpenScopeRipplePainter({
     required this.animation,
@@ -2409,8 +2305,7 @@ class _OpenScopeRipplePainter extends CustomPainter {
     for (var ring = 0; ring < _rings; ring++) {
       final phase = (animation.value + ring / _rings) % 1.0;
       final grow = spread * Curves.easeOut.transform(phase);
-      // Fading in and out over the travel keeps the ring from ever popping at
-      // the marker's edge.
+      // Fade in and out over the travel so the ring never pops at the marker's edge.
       final paint = Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2.2 - 1.0 * phase
@@ -2450,8 +2345,7 @@ class _InitialExamStop extends StatelessWidget {
   final bool selected;
   final VoidCallback? onPressed;
 
-  /// How far the open panel's ring travels past the pill, kept small so it
-  /// stays inside the bar's height.
+  // Kept small so the ring stays inside the bar's 40 px height.
   static const double _rippleSpread = 5.0;
 
   @override
@@ -2473,8 +2367,6 @@ class _InitialExamStop extends StatelessWidget {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // The same ring the open visit draws, once the chart is on
-                  // the patient rather than on a visit.
                   if (selected)
                     const PositionedDirectional(
                       start: 4 - _InitialExamStop._rippleSpread,

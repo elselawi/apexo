@@ -8,21 +8,16 @@ import 'package:apexo/ui/workspace/window_origin.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:apexo/core/reactive/observable.dart';
 
-/// Every window floating on its own, in the order they were opened.
-///
-/// A panel's windows are not here: they belong to its `PanelWorkspace` and leave
-/// with it. This is for everything else — a window a table asked for, a scan, a
-/// photo — so they can stack beside the app without owning the screen.
+/// Every standalone floating window, in the order opened. A panel's windows are
+/// not here: `PanelWorkspace` owns them and they leave with it.
 abstract final class WindowsManager {
   static final Map<String, FloatingWindow> _open = <String, FloatingWindow>{};
 
-  /// The window the app last asked for, for the layer to bring forward. Cleared
-  /// once read, so an unrelated change never re-raises a window the user has
-  /// since pushed back.
+  /// Window the layer should bring forward next; [takeFocus] clears it so an
+  /// unrelated change never re-raises a window the user pushed back.
   static String? _focus;
 
-  /// Not an `ObservableState`: it holds no value, only the news that the set
-  /// changed.
+  /// Not an `ObservableState`: it holds no value, only the news that the set changed.
   static final ObservableBase<List<FloatingWindow>> _changes =
       ObservableBase<List<FloatingWindow>>();
 
@@ -33,20 +28,8 @@ abstract final class WindowsManager {
 
   static bool isOpen(FloatingWindow window) => _open.containsKey(window.key);
 
-  /// Shows [window], replacing any window with the same key so a second request
-  /// brings the same window forward instead of stacking a duplicate.
-  ///
-  /// Shows [window], or brings the window it duplicates to the front.
-  ///
-  /// A window that is already up is moved to the end rather than rebuilt: the
-  /// draft it holds is the user's, and asking for the same editor again must not
-  /// throw away what has been typed into it. It is also the window to bring
-  /// forward, which the layer does from [takeFocus].
-  ///
-  /// A window with **nothing** typed into it is not the user's: keeping it would
-  /// show the record as it was when the window first opened, under the store's
-  /// newer copy. Asking for it again is asking for the record now, so the fresh
-  /// [window] takes its place.
+  /// Shows [window], or moves the open window with the same key to the front. A
+  /// window holding unsaved work keeps its draft; an untouched one is replaced.
   static FloatingWindow show(FloatingWindow window) {
     final existing = _open.remove(window.key);
     final shown = existing != null && (existing.hasChanges?.call() ?? false)
@@ -58,15 +41,9 @@ abstract final class WindowsManager {
     return shown;
   }
 
-  /// The sheet a phone is showing, registered by the windows layer.
-  ///
-  /// Back walks out in order — sheet, then the visit, then the panel (plan
-  /// §4.2) — and the sheet is the layer's, so the app asks it through here. Null
-  /// on a wide screen, where windows are not sheets.
+  /// Dismisses the sheet a phone is showing; null on a wide screen.
   static bool Function()? dismissSheet;
 
-  /// The window to bring in front of the others, once — null when there is no
-  /// such request waiting.
   static String? takeFocus() {
     final focus = _focus;
     _focus = null;
@@ -79,12 +56,8 @@ abstract final class WindowsManager {
     if (removed) _notify();
   }
 
-  /// Closes every window that belongs to [scope] — the record a panel is about
-  /// to be opened for, whose windows the panel now holds.
-  ///
-  /// A window still holding unsaved work is left alone: throwing the work away
-  /// to make room for the panel would be worse than having both on screen, and
-  /// it is the same rule a phone follows when a panel takes over.
+  /// Closes the windows of [scope]. A window still holding unsaved work is left
+  /// alone rather than thrown away.
   static void closeScope(String scope) {
     if (scope.isEmpty) return;
     final before = _open.length;
@@ -102,13 +75,8 @@ abstract final class WindowsManager {
     _notify();
   }
 
-  /// The work the windows of [scope] still hold, written over [stored] in the
-  /// order they were opened — and those windows put away, the caller carrying
-  /// it from here.
-  ///
-  /// Null when no window of the scope has anything to give. The record handed in
-  /// is not changed: the answer is a new map for the caller to build its draft
-  /// from.
+  /// Merges the unsaved work of [scope]'s windows over [stored], in the order they
+  /// opened, and closes them; [stored] itself is not changed. Null when none.
   static Map<String, dynamic>? adoptWork(
     String scope,
     Map<String, dynamic> stored,
@@ -129,10 +97,7 @@ abstract final class WindowsManager {
     return merged;
   }
 
-  /// The baselines the windows of [scope] took when they opened, for an owner
-  /// that tracks several records by JSON — and those windows put away.
-  ///
-  /// Null when no window of the scope has anything to give.
+  /// Merges the baselines of [scope]'s windows and closes them; null when none.
   static Map<String, String>? adoptBaselines(String scope) {
     if (scope.isEmpty) return null;
     Map<String, String>? merged;
@@ -150,14 +115,8 @@ abstract final class WindowsManager {
     return merged;
   }
 
-  /// Shows [window] on its own, with a Close that closes exactly it.
-  ///
-  /// The usual way to open a window that stands alone: a list or table asked
-  /// for it, a record was opened with it, a scan.
-  ///
-  /// [origin] is where it should appear — the tap that asked for it, by default —
-  /// so a window a row asked for comes from that row. [onOpenRecord] gives it
-  /// the way back to the panel that holds the record it edits.
+  /// Shows [window] standing on its own, with a Close that closes exactly it;
+  /// [origin] defaults to the last tap, so it appears where it was asked for.
   static FloatingWindow showStandalone(
     PanelWindow window, {
     String scope = '',
@@ -174,8 +133,7 @@ abstract final class WindowsManager {
       window: window,
       scope: scope,
       origin: origin ?? WindowOrigin.last,
-      // A window asked for with no panel behind it is standing on its own over
-      // the app, and a phone's panel replaces it.
+      // No panel behind it: it stands over the app, and a phone's panel replaces it.
       root: PanelsManager.active().isEmpty,
       onSave: onSave,
       hasChanges: hasChanges,
@@ -188,18 +146,8 @@ abstract final class WindowsManager {
     return show(floating);
   }
 
-  /// Shows [focus] on the panel that is already open for a record, and brings
-  /// that panel to the front.
-  ///
-  /// The record's editor is the panel's own: a second one would give the
-  /// record two drafts, and whichever was saved last would win. So the panel
-  /// is asked for the window the caller wanted, and the work a window of the
-  /// record still holds is taken in by it — the panel's draft becomes the
-  /// record's one draft, and the panel opens dirty on it.
-  ///
-  /// The windows of the record that hold nothing are put away: the panel holds
-  /// them now. One that still holds work is left alone — it is the user's, and
-  /// the panel cannot take it in.
+  /// Shows [focus] on [panel] and brings it forward. The panel is the record's
+  /// only draft, so the windows' work is adopted before they are closed.
   static void showOnPanel(
     Panel panel, {
     required String scope,
@@ -209,8 +157,7 @@ abstract final class WindowsManager {
     if (carried != null) panel.adoptDraft(carried);
     closeScope(scope);
     if (focus != null && panel.floatingWindows.any((w) => w.id == focus)) {
-      // The caller named a window of the record: the panel takes it as the one to
-      // show, so the next plan cannot put it away again.
+      // Force the named window into the plan so the panel does not dock it again.
       panel.showWindow(focus);
     }
     final index = PanelsManager.active().indexOf(panel);

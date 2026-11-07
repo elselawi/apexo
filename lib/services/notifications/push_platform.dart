@@ -1,15 +1,8 @@
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 
-/// How a device says it receives pushes, as the relay's `platform` field.
-///
-/// The relay keeps the transport and the OS apart: FCM carries the pushes for
-/// phones, the web and Apple's platforms, while Windows uses Windows
-/// Notification Services (WNS). The OS is recorded separately so the relay can
-/// shape an FCM message — an iOS alert the system displays, an Android
-/// high-priority data message — without changing what carries it.
-///
-/// These are the only values the relay accepts, besides omitting the field.
+/// The relay's `platform` field: FCM carries phones, web and Apple, while
+/// Windows uses WNS; the OS is recorded separately so the relay shapes the push.
 abstract final class PushPlatform {
   /// The relay's default: a legacy FCM registration with no OS recorded.
   static const String fcm = "fcm";
@@ -26,17 +19,12 @@ abstract final class PushPlatform {
   @visibleForTesting
   static String? Function() resolve = detect;
 
-  /// The platform this build runs on, or `null` when it is not one the relay
-  /// knows (Linux).
-  ///
-  /// Unknown is never guessed: the caller omits the field, and the relay keeps
-  /// its [fcm] default instead of being told an OS this build cannot verify.
+  /// Null for a platform the relay does not know (Linux); the caller omits the
+  /// field and the relay keeps its [fcm] default.
   static String? get current => resolve();
 
-  /// The real detection.
-  ///
-  /// `kIsWeb` comes first because on the web `defaultTargetPlatform` reports
-  /// the host OS, not the browser.
+  /// `kIsWeb` first: on the web `defaultTargetPlatform` reports the host OS, not
+  /// the browser.
   static String? detect() {
     if (kIsWeb) return web;
     switch (defaultTargetPlatform) {

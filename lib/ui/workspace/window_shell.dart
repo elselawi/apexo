@@ -2,12 +2,7 @@ import 'package:apexo/ui/workspace/unsaved_dot.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The frame every floating window shares: a header naming it, the editor, and
-/// anything the window pins under it.
-///
-/// One frame for a panel's windows and for a chart opened on its own keeps the
-/// app's windows looking like one another — the same corners, the same header,
-/// the same elevation — instead of as many near-copies as there are features.
+/// The frame every floating window shares: header, editor, optional footer.
 class WindowShell extends StatelessWidget {
   const WindowShell({
     super.key,
@@ -36,10 +31,7 @@ class WindowShell extends StatelessWidget {
   final String? subtitle;
 
   /// The glyph that marks the record's kind — 📅 for a visit, 👤 for a patient.
-  ///
-  /// Two records share one row, and their windows carry the same labels (both
-  /// have a "Gallery"), so the kind is marked on the frame itself: a window that
-  /// needs reading to know whose it is has already failed (plan §4.4).
+  /// Two records share a row and their windows share labels ("Gallery").
   final String? badge;
 
   /// Header buttons, drawn after the title, spaced apart.
@@ -52,18 +44,11 @@ class WindowShell extends StatelessWidget {
 
   final double padding;
 
-  /// Whether this frame scrolls [child]. `false` for a body that scrolls
-  /// itself.
+  /// Whether this frame scrolls [child]; false for a body that scrolls itself.
   final bool scrollable;
 
-  /// Whether the draft behind this window has work the record does not: a dot
-  /// beside the title says so, so the window holding it is recognisable at a
-  /// glance and from the panel's dock.
   final bool dirty;
 
-  /// The colour the record's kind is known by (a patient, a visit, an order):
-  /// the icon wears it, so two windows of the same label are still told apart by
-  /// which record they belong to.
   final Color? accent;
 
   /// The frontmost window has a raised surface, a stronger edge and shadow.
@@ -72,15 +57,13 @@ class WindowShell extends StatelessWidget {
   /// Touching the window anywhere brings it in front of the others.
   final VoidCallback? onRaise;
 
-  /// Dragging the header moves the window. Null where windows do not move — the
-  /// phone sheet, a window in a test.
+  /// Dragging the header moves the window; null where windows do not move (the
+  /// phone sheet, a window in a test).
   final ValueChanged<Offset>? onDragUpdate;
 
   @override
   Widget build(BuildContext context) {
-    // A window is as tall as its content, and never taller than the room it was
-    // given: without a ceiling the flexible body below has nothing to shrink
-    // against, and a body that fills its space would be asked to fill infinity.
+    // The body is flexible, so the host must cap the window's height.
     return LayoutBuilder(
       builder: (context, constraints) {
         assert(
@@ -134,8 +117,7 @@ class WindowShell extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Flexible(child: _buildBody()),
-                  // A window dragged near the bottom may have less room than
-                  // its tools need; the footer scrolls rather than overflowing.
+                  // The footer scrolls rather than overflowing a short window.
                   if (footer != null)
                     ConstrainedBox(
                       constraints:
@@ -243,8 +225,7 @@ class WindowShell extends StatelessWidget {
     if (onDragUpdate == null) return header;
     return MouseRegion(
       cursor: SystemMouseCursors.move,
-      // The whole header is the handle: the buttons in it still take their own
-      // taps, and a pan that starts anywhere else on it moves the window.
+      // The whole header drags; buttons in it still take their own taps.
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onPanStart: (_) => onRaise?.call(),

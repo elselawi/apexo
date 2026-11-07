@@ -152,9 +152,8 @@ class DashboardScreen extends StatelessWidget {
                           if (a == null) return const SizedBox.shrink();
                           return ListTile(
                             onPressed: () {
-                              // The patient, not one of their windows: a new
-                              // patient is a record to read, and its windows
-                              // would only crowd it.
+                              // Open the patient itself, not its windows, which
+                              // would crowd a new record.
                               unawaited(openPatientRecord(e));
                             },
                             title: ItemTitle(item: e),
@@ -174,9 +173,8 @@ class DashboardScreen extends StatelessWidget {
                         title: "${txt("labworks")} (${txt("due")})",
                         items: labworks.due
                             .map((e) => ListTile(
-                                  // Each row is one order: its labwork window is
-                                  // the thing that is due. Opening the patient's
-                                  // record beside it would bury the order.
+                                  // One row is one order: open its labwork window,
+                                  // not the patient's record, which would bury it.
                                   onPressed: () => unawaited(
                                       openAppointmentWindowOnItsOwn(
                                           e, AppointmentWindow.labwork)),
@@ -196,10 +194,8 @@ class DashboardScreen extends StatelessWidget {
                         onPressed: () => routes.navigate(AppRoute.labworks),
                         title: "${txt("labworks")} (${txt("undelivered")})",
                         items: labworks.notDeliveredPatients.map((e) {
-                          // The undelivered order belongs to the patient's
-                          // latest visit: that is the record whose labwork
-                          // window this opens. A patient whose visits have
-                          // all been archived has no visit to open.
+                          // The order belongs to the patient's latest visit, whose
+                          // labwork window opens; an all-archived patient has none.
                           final visit = e.allAppointments.lastOrNull;
                           if (visit == null) {
                             return const SizedBox.shrink();
@@ -232,8 +228,7 @@ class DashboardScreen extends StatelessWidget {
                                         .bodyStrong,
                                   ),
                                   onPressed: () {
-                                    // What is owed, not the supplier's record:
-                                    // the list of unpaid orders is the answer.
+                                    // Open the unpaid-orders list, not the supplier.
                                     unawaited(openExpenses(
                                       expenses.ordersPerSupplier[e.id]!,
                                       e.supplierName,

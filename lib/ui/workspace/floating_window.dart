@@ -4,14 +4,8 @@ import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:flutter/foundation.dart' show VoidCallback;
 
-/// A window the app floats on its own — a panel's window shown without its
-/// panel, or one that belongs to no panel at all (a scan, a photo).
-///
-/// A [PanelWindow] says what to draw; this adds the half a panel would otherwise
-/// provide: [onSave] and [onClose]. A window opened *for* a record the panel
-/// would have saved carries both; a window that is only looked at carries
-/// [onClose] alone, and that is what decides whether its card shows a Save
-/// button.
+/// A window the app floats without its panel: [PanelWindow] says what to draw,
+/// and [onSave]/[onClose] stand in for the panel. No [onSave] means no Save.
 final class FloatingWindow {
   const FloatingWindow({
     required this.window,
@@ -29,67 +23,46 @@ final class FloatingWindow {
 
   final PanelWindow window;
 
-  /// The shared draft owner, when this window edits or accompanies a session.
-  /// Closing the workspace counts and saves the owner once, not once per editor.
+  /// The shared draft owner; workspace close counts and saves it once, not once
+  /// per editor.
   final WindowRecordSession? recordSession;
 
-  /// The record this window belongs to (`patient:<id>`, `appointment:<id>`).
-  /// Windows of one record are replaced, not duplicated, and opening a record's
-  /// panel closes the windows the panel itself now holds.
+  /// The record it belongs to (`patient:<id>`, `appointment:<id>`). Windows of
+  /// one record are replaced, not duplicated.
   final String scope;
 
-  /// Where on the screen it was asked for: the tap that opened it. The layer
-  /// puts it there rather than at the panel's side of the screen.
   final Offset? origin;
 
-  /// Whether it was opened while the app had no panel — a list standing on its
-  /// own, say. On a phone a panel takes the whole screen, so a window like this
-  /// steps aside when one opens: it is what the panel replaced.
+  /// Opened with no panel behind it. On a phone a panel takes the whole screen,
+  /// so a root window steps aside when one opens.
   final bool root;
 
-  /// Writes the draft the window edits. Null for a window that reads rather than
-  /// writes — a list, a scan, a photo.
+  /// Writes the window's draft; null for a read-only window (a list, a scan).
   final Future<void> Function()? onSave;
 
   final VoidCallback? onClose;
 
-  /// Whether the draft has unsaved work, for the Close confirmation. Only asked
-  /// of a window that can save.
+  /// Unsaved-work check for the Close confirmation; only asked when [canSave].
   final bool Function()? hasChanges;
 
-  /// Opens the record this window belongs to — the panel that holds it — and
-  /// makes way for it. Null for a window with no record behind it: a photo, a
-  /// scan the user picked from a file, a list of everything.
-  ///
-  /// The card asks [hasChanges] first: leaving a window for its panel must not
-  /// be a way to lose what was typed into it.
+  /// Opens the panel holding this window's record and makes way for it; null
+  /// when no record is behind the window. The card confirms [hasChanges] first.
   final Future<void> Function()? onOpenRecord;
 
   /// Whether this window brings its own Save and Close.
   bool get standalone => onClose != null;
   bool get canSave => onSave != null;
 
-  /// Whether this window can hand its work to the record's panel: it has the
-  /// merge the panel would adopt.
-  ///
-  /// A window that only reads has nothing to hand over, and neither has one
-  /// whose owner tracks several records — that one hands over its
-  /// [baselines] instead, which the panel takes in the same way.
+  /// Whether it has work to hand to the record's panel: a single-record
+  /// [transfer], or multi-record [baselines].
   bool get canAdopt => transfer != null || baselines != null;
 
-  /// The work this window holds, written over the record as it is stored — the
-  /// same merge its own Save would do.
-  ///
-  /// A panel that opens over the window takes this instead of leaving two drafts
-  /// of one record on screen: the panel carries the work, starts dirty on it,
-  /// and its own Save is the only write. Null for a window with nothing to
-  /// merge — one that only reads, or one whose owner tracks several records
-  /// ([baselines] is its shape of the same idea).
+  /// The window's work as a merge over the stored JSON. A panel opening over the
+  /// window adopts it, starts dirty on it, and does the only write.
   final Map<String, dynamic> Function(Map<String, dynamic> stored)? transfer;
 
-  /// Each record's JSON as this window found it, for an owner that tracks
-  /// several records by JSON rather than one model — the orders panel, whose
-  /// write is a list of orders.
+  /// Each record's JSON as the window found it, for an owner that tracks several
+  /// records by JSON — the orders panel, whose write is a list of orders.
   final Map<String, String> Function()? baselines;
 
   /// Identity: one window per editor per record.

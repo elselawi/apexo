@@ -11,8 +11,7 @@ const List<String> bookingWeekdays = [
   "sun",
 ];
 
-/// Every locale the app ships, in the app's own order. The public page has a
-/// dictionary for each of these; the Worker rejects anything else.
+/// Locales the Worker accepts; the public page has a dictionary for each.
 const List<String> bookingLanguages = [
   "en",
   "ar",
@@ -67,8 +66,8 @@ String bookingMinutesToTime(int minutes) {
       "${(minutes % 60).toString().padLeft(2, "0")}";
 }
 
-/// A validated seven-day weekly schedule. Intervals are `[start, end)` clock
-/// strings, sorted and non-overlapping, at most four per day.
+/// A validated seven-day schedule of sorted, non-overlapping `[start, end)`
+/// clock intervals.
 class BookingWeeklyHours {
 
   factory BookingWeeklyHours.empty() => BookingWeeklyHours({
@@ -288,9 +287,8 @@ class BookingClinicConfig {
     return null;
   }
 
-  /// The exact shape the operation proof binds: NFC-normalized text, a
-  /// lowercased accent colour and `null` for an empty contact email. The Worker
-  /// runs the same normalization before hashing.
+  /// The exact shape the operation proof hashes: NFC text, lowercased accent
+  /// and `null` for an empty contact email. The Worker normalizes identically.
   BookingClinicConfig normalizedForProof() {
     String text(String value) => nfc(value.trim());
     final normalizedPhone = normalizeBookingPhone(profile.phone) ?? profile.phone;

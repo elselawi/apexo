@@ -58,8 +58,7 @@ void main() {
 
   group('DicomFileCache — Hive operations', () {
     test('isUnchanged returns false for uncached path', () async {
-      // The cache box is opened lazily; in flutter test it uses a temp dir.
-      // We use a unique path to avoid collisions with other tests.
+      // Shared singleton box, so a unique path keeps tests from colliding.
       final cache = DicomFileCache.instance;
       final result = await cache.isUnchanged(
         '/nonexistent/test-uncached-${DateTime.now().microsecondsSinceEpoch}.dcm',

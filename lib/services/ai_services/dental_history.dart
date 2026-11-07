@@ -3,10 +3,6 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/ai_services.dart';
 import 'package:http/http.dart' as http;
 
-// ============================================================================
-//  Models
-// ============================================================================
-
 class DentalHistoryData {
   DentalHistoryData({required this.teeth, required this.teethExtraNotes});
 
@@ -22,10 +18,6 @@ class DentalHistoryData {
   final Map<String, String> teeth;
   final Map<String, String> teethExtraNotes;
 }
-
-// ============================================================================
-//  DentalHistory — audio-to-dental-chart via AIService
-// ============================================================================
 
 class DentalHistory extends AIService {
   /// Processes an audio recording from raw bytes.

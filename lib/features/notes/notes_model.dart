@@ -78,9 +78,6 @@ class Note extends Model {
         );
   }
 
-  // id: id of the expense item (inherited from Model)
-  // title: title of the expense item (inherited from Model, used as note title)
-
   /* 1 */ bool isColumn = false;
   /* 2 */ String columnName = "";
   /* 3 */ Color? tint;

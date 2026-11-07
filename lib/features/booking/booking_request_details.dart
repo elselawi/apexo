@@ -13,8 +13,6 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 
-/// The request detail: everything the patient wrote, the resolved candidate
-/// dates, and the two transitions staff may take.
 Future<void> openBookingRequestPanel(
   BuildContext context,
   BookingRequest request,

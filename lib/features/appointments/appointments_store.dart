@@ -135,12 +135,7 @@ class Appointments extends Store<Appointment> {
   }
 
   /// Every stored appointment of [patientID], archived ones included.
-  ///
-  /// [byPatient] is built from [present], which hides appointments the signed-in
-  /// account may not edit ([Appointment.locked]). Use this method — not
-  /// [byPatient] — when the question is whether a visit already exists for a
-  /// patient, as DICOM matching and import ask: a scan must attach to the
-  /// existing visit even when this account's permission level hides it.
+  /// [byPatient] hides locked ones, so use this to check whether a visit exists.
   List<Appointment> allForPatient(String patientID) {
     return observableMap.docs.values
         .where((a) => a.patientID == patientID)
@@ -149,12 +144,8 @@ class Appointments extends Store<Appointment> {
 
   Map<String, Set<DateTime>>? _daysByPatientCache;
 
-  /// The calendar days that already have a (non-archived) appointment, per
-  /// patient id.
-  ///
-  /// Like [allForPatient] this ignores [Appointment.locked], so it answers
-  /// "does this patient already have a visit that day?" for accounts with
-  /// limited appointment permissions too.
+  /// Calendar days that already have a non-archived appointment, per patient id.
+  /// Like [allForPatient], locked appointments still count.
   Map<String, Set<DateTime>> get appointmentDaysByPatient {
     _ensureCacheRevision();
     if (_daysByPatientCache != null) return _daysByPatientCache!;

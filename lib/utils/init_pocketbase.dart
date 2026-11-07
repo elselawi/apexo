@@ -29,24 +29,9 @@ Future<void> initializeProfiles(PocketBase pb) async {
       .import([profilesCollectionImport, profilesViewCollectionImport]);
 }
 
-// ---------------------------------------------------------------------------
-// Schema reconciliation
-// ---------------------------------------------------------------------------
-//
-// Existing clinics never re-import their schema on their own, so rule/field
-// changes (eg. the patient portal scoping) would otherwise never reach them.
-// When an admin (superuser) logs in we reconcile the server schema with the
-// definitions in constants.dart, at most once per app schema version.
-//
-// Safety guarantees (verified against PocketBase's import implementation):
-//  - `deleteMissing` stays false → the import is a pure upsert (create or
-//    update); it can never delete collections or fields (PocketBase only
-//    deletes missing non-system collections when deleteMissing is true).
-//  - All app-owned collections are imported in a single call so the list is
-//    always complete and system/auth collections (users, _superusers) are
-//    never touched.
-//  - The import endpoint requires superuser auth, so this only ever runs for
-//    admins, and the caller never lets a failure block login.
+// Existing clinics never re-import their schema, so an admin login reconciles it
+// against constants.dart at most once per version. The import is a pure upsert
+// (`deleteMissing` false, so nothing is deleted) and requires superuser auth.
 
 const String _schemaVersionBoxPrefix = "schema-version-";
 
@@ -81,15 +66,11 @@ Future<void> storeAppliedSchemaVersion(String clinicKey, int version) async {
     final box = await _schemaVersionBox(clinicKey);
     await box.put("version", version.toString());
   } catch (_) {
-    // Marker failures are non-fatal: the import is idempotent and will
-    // simply be retried on the next admin login.
+    // Non-fatal: the import is idempotent and retries on the next admin login.
   }
 }
 
-/// Applies the schema defined in constants.dart to an existing clinic.
-///
-/// Safe by construction (see guarantees above) and version-gated so it runs
-/// at most once per app schema version per device.
+/// Reconciles the server schema with constants.dart, at most once per version.
 Future<void> reconcileSchema(
   PocketBase pb, {
   required String clinicServer,
@@ -97,13 +78,9 @@ Future<void> reconcileSchema(
   final clinicKey = simpleHash(clinicServer);
   if (await appliedSchemaVersion(clinicKey) >= schemaVersion) return;
 
-  // PB's import matches existing collections by id (falling back to name),
-  // but when the imported model carries an empty id the server unmarshals
-  // it on top of the existing collection and the real collection id is
-  // lost → the subsequent save fails with "failed to retrieve old cached
-  // collection: sql: no rows in result set" (verified against a live PB).
-  // So we attach the server's current ids to our definitions first; fresh
-  // collections keep an empty id and are created normally.
+  // PB matches collections by id, but an empty id makes it unmarshal onto the
+  // existing collection and lose the real id; attach the server's ids first.
+  // Fresh collections keep an empty id and are created normally.
   final existing = await pb.collections.getFullList();
   final idByName = {for (final c in existing) c.name: c.id};
 
@@ -123,8 +100,7 @@ Future<void> reconcileSchema(
 
   await pb.collections.import(withServerIds);
 
-  // Re-apply the users collection createRule hardening (idempotent) so a
-  // fresh or drifted install converges to the app's canonical schema.
+  // Re-apply the users createRule hardening so a drifted install converges.
   await pb.collections.update("users", body: {
     "createRule": '@request.auth.collectionName = "_superusers"',
   });
@@ -132,12 +108,9 @@ Future<void> reconcileSchema(
   await storeAppliedSchemaVersion(clinicKey, schemaVersion);
 }
 
-/// Explicit superuser repair of the booking collections.
-///
-/// Bypasses the version marker (the marker may already say the schema was
-/// applied while a collection is missing or drifted), preserves existing
-/// collection ids and records, and never deletes a field or a row. Booking
-/// setup offers this instead of teaching staff to re-import by hand.
+/// Explicit superuser repair of the booking collections. Bypasses the version
+/// marker (it may say applied while a collection is missing), preserves existing
+/// ids and records, and never deletes a field or row.
 Future<void> ensureBookingSchema(PocketBase pb) async {
   final existing = await pb.collections.getFullList();
   final idByName = {for (final c in existing) c.name: c.id};
@@ -149,11 +122,8 @@ Future<void> ensureBookingSchema(PocketBase pb) async {
   await pb.collections.import(withServerIds);
 }
 
-/// Whether the ordinary PMS batch API is enabled on this server.
-///
-/// Booking-linked scheduling depends on the app's existing batch persistence,
-/// so setup checks this instead of assuming it. It is never changed by a Worker
-/// call or an ordinary staff login.
+/// Whether the server has the PMS batch API enabled; booking scheduling needs it,
+/// so setup checks rather than assumes.
 Future<bool> pmsBatchApiEnabled(PocketBase pb) async {
   try {
     final settings = await pb.settings.getAll();
@@ -164,8 +134,7 @@ Future<bool> pmsBatchApiEnabled(PocketBase pb) async {
   }
 }
 
-/// Explicit superuser repair that only enables batching, preserving any custom
-/// sibling values the clinic already set.
+/// Enables batching while preserving any custom sibling values.
 Future<void> ensurePmsBatchEnabled(PocketBase pb) async {
   final settings = await pb.settings.getAll();
   final current = settings["batch"] as Map<String, dynamic>? ?? {};

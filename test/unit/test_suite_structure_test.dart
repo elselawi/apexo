@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards the boundary between deterministic unit tests and live backend
-/// tests. This prevents credentials and network setup from being pulled into
-/// ordinary `flutter test` discovery by accident.
+/// Keeps live-backend credentials and network setup out of ordinary `flutter test` discovery.
 void main() {
   test('unit tests do not import live backend credentials or helpers', () {
     final unitRoot = Directory('test/unit');

@@ -9,14 +9,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/model_factory.dart';
 
-/// Every local change to a visit goes through one door (plan §2.6a).
-///
-/// A control outside the visit's windows — the visits list's checkbox, a calendar
-/// drag, a labwork toggle — reads the record from the store. Its change must land
-/// in the open draft (the windows beside it are editing that draft) **and** in the
-/// store, or it is a change the user cannot see and can lose with the panel.
-/// These tests are the reason the 22 writers call this instead of
-/// `appointments.set`.
+/// Every local visit change goes through `appointmentCommand` so it reaches
+/// both the open draft and the store.
 void main() {
   late List<Appointment> originalAppointments;
 

@@ -41,26 +41,6 @@ class _FakeLinksStore {
   }
 }
 
-/// DicomImporter orchestration tests.
-///
-/// The importer is fully dependency-injected, so these tests run without
-/// Hive, PocketBase, login, or the FFI engine. Each test wires up an
-/// in-memory fake for every collaborator (scan / read / parse / registry /
-/// cache / skipped log / patients / settings / appointments / handleNewDcm)
-/// and drives `scanAndBuildPending` + `approveImport` end-to-end.
-///
-/// Coverage:
-///  - 2 files (same patient, diff dates) 1 pending import with 2 dates.
-///  - Re-scan dedups via registry AND hits the file cache (0 parses).
-///  - Nonexistent directory [] (graceful, no crash).
-///  - approveImport creates appointments with correct dcmImgs; registry +
-///    link map updated.
-///  - Idempotency: re-approve no duplicates, no new appointments.
-///  - Edge-case corpus: parse failures logged to skipped; dup SOP UID
-///    first-wins.
-
-/// A mutable bag of DICOM metadata keyed by file path. Lets tests describe a
-/// fake watch directory as data, then build the matching fakes from it.
 class _FakeFile {
   _FakeFile(this.path, this.meta, {int? size, DateTime? mtime})
       : size = size ?? 1024,
@@ -100,9 +80,6 @@ DicomParsedMeta _meta({
   );
 }
 
-/// Test harness: holds every in-memory collaborator and exposes a
-/// [DicomImporter] wired to them. Tests call [rebuild] after mutating the
-/// fake filesystem / registry to refresh the importer's view.
 class _Harness {
   _Harness() {
     importer = rebuild();
@@ -146,27 +123,18 @@ class _Harness {
   /// In-memory patient roster (id patient).
   final Map<String, Patient> patients = {};
 
-  /// In-memory appointment dates per Apexo patient (id dates), used by the
-  /// fuzzy matcher's date-proximity score. Lets tests supply appointment
-  /// dates without populating the global appointments store.
+  /// Injected appointment dates per Apexo patient: the matcher scores date
+  /// proximity from these instead of the global appointments store.
   final Map<String, Set<DateTime>> appointmentDates = {};
 
-  /// Paths whose readBytes should return null (simulating a locked/deleted
-  /// file). Populated by tests via [markUnreadable].
   final Set<String> _unreadable = {};
 
-  /// Paths whose parseMetadata should throw (simulating a corrupt file).
-  /// Populated by tests via [markCorrupt].
   final Set<String> _corrupt = {};
 
-  /// Side-channel: the path most recently handed to readBytes. The fake
-  /// parser is path-blind (the importer passes it only bytes), so it reads
-  /// this field to find the originating file. Safe because the importer's
-  /// scan loop is sequential (one `await` per file).
+  /// The fake parser receives only bytes, so it finds the file through this
+  /// path; safe because the scan loop reads one file at a time.
   String? _lastReadPath;
 
-  /// The watch directories this harness reports via getWatchDirs. Tests can
-  /// override (e.g. to a nonexistent path or [] to exercise edge cases).
   List<String> watchDirs = ['/fake/watch'];
 
   /// In-memory fake links store.
@@ -175,8 +143,6 @@ class _Harness {
   /// Cached metadata entries injected directly to exercise cache-hit paths.
   final Map<String, DicomCachedMeta> injectedCache = {};
 
-  /// The current importer. Reassign via [rebuild] after mutating the fake
-  /// filesystem / registry to refresh the closures' captured state.
   late DicomImporter importer;
 
   DicomImporter rebuild() {
@@ -205,8 +171,6 @@ class _Harness {
       },
       appointmentDayMap: () => appointmentDates,
       scanDirectory: (dir) async {
-        // Simulate scanDirectory: list files whose path starts with `dir`.
-        // An empty or nonexistent dir empty list (graceful handling).
         if (dir.isEmpty) return <DicomFileEntry>[];
         return fs.entries
             .where((e) => e.key.startsWith(dir))
@@ -222,8 +186,6 @@ class _Harness {
         if (_unreadable.contains(p)) return null;
         final f = fs[p];
         if (f == null) return null;
-        // Any non-empty payload the fake parser ignores bytes and resolves
-        // metadata via the _lastReadPath side-channel.
         return Uint8List.fromList([1, 2, 3, 4]);
       },
       parseMetadata: (bytes) async {
@@ -283,8 +245,6 @@ class _Harness {
     );
   }
 
-  /// Wires a fake file into the filesystem so scanDirectory discovers it
-  /// and readBytes/parseMetadata can resolve its metadata.
   void addFile(_FakeFile f) {
     fs[f.path] = f;
   }
@@ -299,8 +259,6 @@ class _Harness {
 /// Constructs a fresh harness.
 _Harness _newHarness() => _Harness();
 
-/// Constructs a harness whose watch dirs are [dirs] (use [] or a nonexistent
-/// path to exercise the missing-directory edge case).
 _Harness _harnessWithWatchDirs(List<String> dirs) {
   final h = _Harness()..watchDirs = dirs;
   h.importer = h.rebuild();
@@ -498,8 +456,6 @@ void main() {
       final parsesAfterFirst = h.parseCalls;
       expect(parsesAfterFirst, 1);
 
-      // Second scan with the same files (mtime/size unchanged) cache hit,
-      // zero additional parses. Registry empty so the file still surfaces.
       h.importer = h.rebuild();
       final pending = await h.importer.scanAndBuildPending();
 
@@ -627,11 +583,8 @@ void main() {
               patientName: 'A',
               studyDate: '20250102')));
 
-      // Both produce the same dedup key 'sop:dup'. The importer's _doScan
-      // does NOT dedup within a single scan (it dedups against the registry).
-      // So both surface in pending. The first-wins behaviour is enforced by
-      // the registry during approveImport verified in the approveImport
-      // idempotency test below. Here we verify both keys are equal.
+      // A scan dedups only against the registry, not within itself, so both
+      // files surface here; first-wins is enforced during approveImport.
       final pending = await h.importer.scanAndBuildPending();
       expect(pending.single.fileCount, 2);
       final keys = pending.single.files.map((f) => f.dedupKey).toSet();
@@ -843,8 +796,6 @@ void main() {
       final patient =
           Patient.fromJson({'id': 'apexo-1', 'title': 'John Smith'});
       h.patients['apexo-1'] = patient;
-      // An appointment on the exact study date dateProximity = 1.0.
-      // Supplied via the injected appointmentDates map (not the global store).
       h.appointmentDates['apexo-1'] = {DateTime(2025, 1, 1)};
 
       h.addFile(_FakeFile(
@@ -861,8 +812,7 @@ void main() {
       final p = pending.single;
       expect(p.autoLinked, isFalse);
       expect(p.matchedPatient?.id, 'apexo-1');
-      // nameScore = 1.0 (identical token sets), dateScore = 1.0 (same day)
-      // confidence = 0.6*1 + 0.4*1 = 1.0
+      // confidence = 0.6 * nameScore + 0.4 * dateScore, both 1.0 here.
       expect(p.confidence, closeTo(1.0, 1e-9));
       expect(p.isConfirmed, isFalse, reason: 'suggestion, not yet approved');
     });
@@ -894,8 +844,6 @@ void main() {
           Patient.fromJson({'id': 'apexo-1', 'title': 'John Smith'});
       h.patients['apexo-2'] =
           Patient.fromJson({'id': 'apexo-2', 'title': 'John Smith Jr'});
-      // Both patients have the name "John Smith", but only apexo-1 has an
-      // appointment on the X-ray study date.
       h.appointmentDates['apexo-1'] = {DateTime(2025, 1, 1)};
 
       h.addFile(_FakeFile(
@@ -909,10 +857,7 @@ void main() {
       h.importer = h.rebuild();
       final pending = await h.importer.scanAndBuildPending();
 
-      // apexo-1 should win because dates match.
       expect(pending.single.matchedPatient?.id, 'apexo-1');
-      // Confidence = 0.6 * nameScore + 0.4 * dateScore.
-      // Exact confidence depends on token overlap, but it must be > 0.
       expect(pending.single.confidence, greaterThan(0.0));
     });
 
@@ -937,10 +882,6 @@ void main() {
       h.importer = h.rebuild();
       final pending = await h.importer.scanAndBuildPending();
 
-      // "Smith^John" matches both "John Smith" and "James Smith" (share
-      // "Smith").  But James has the appointment → dates break the tie.
-      // Actually "Smith^John" matches "John Smith" more closely (both
-      // tokens "john" and "smith").  Let's verify it picks the right one.
       expect(pending.single.matchedPatient?.id, isNotNull);
     });
 
@@ -1214,8 +1155,7 @@ void main() {
       final pending = await h.importer.scanAndBuildPending();
       await h.importer.approveImport(pending.single, apexoPatientId: 'apexo-1');
 
-      // approveImport no longer resets progress to idle callers own that.
-      // Progress ends at (total, total) indicating all files completed.
+      // Progress ends at (total, total); callers reset it to idle.
       expect(h.importer.importProgress(), (current: 2, total: 2),
           reason:
               'progress stays at (total, total) after import callers reset to idle');
@@ -1305,8 +1245,6 @@ void main() {
               'an appointment created only for a failed upload is archived so '
               'it never lingers as an empty record in PocketBase');
 
-      // A subsequent scan must surface the file as auto-linked, not as an
-      // unlinked/manual-match import.
       h.importer = h.rebuild();
       final rediscovered = await h.importer.scanAndBuildPending();
       expect(rediscovered.single.autoLinked, isTrue);
@@ -1463,8 +1401,6 @@ void main() {
 
     test('offline-style persistence callback can complete locally', () async {
       final h = _newHarness();
-      // The injected callback is the offline/local path: it completes without
-      // requiring remote convergence.
       h.addFile(_FakeFile(
           '/fake/watch/offline.dcm',
           _meta(
@@ -1539,8 +1475,6 @@ void main() {
       final dcmCountAfterFirst =
           h.appointments.values.fold<int>(0, (s, a) => s + a.dcmImgs.length);
 
-      // Re-approve the SAME pending object. The registry now contains both
-      // keys, so both files are skipped.
       await h.importer.approveImport(pending.single, apexoPatientId: 'apexo-1');
 
       expect(h.appointments.length, countAfterFirst,
@@ -1603,9 +1537,8 @@ void main() {
       final pending = await h.importer.scanAndBuildPending();
       await h.importer.approveImport(pending.single, apexoPatientId: 'apexo-1');
 
-      // Both files share 'sop:dup'. The first is processed; the second is
-      // marked imported but its dedup key is already in the registry, so
-      // handleNewDcm runs only once.
+      // Both files share 'sop:dup'; once the first is linked the second is
+      // skipped, so handleNewDcm runs once.
       expect(h.handleNewDcmResults.length, 1,
           reason: 'duplicate dedup key only the first file is processed');
       // Only one appointment, with a single dcmImg.
@@ -1895,10 +1828,7 @@ void main() {
   });
 
   group('approveImport push exclusion', () {
-    // Adding dcmImgs to an EXISTING appointment must not trigger a push:
-    // `Appointment.pushIfChanged` excludes `dcmImgs`. This is pinned at the
-    // model level; here we verify the importer
-    // relies on that contract by NOT doing anything push-specific itself.
+    // pushIfChanged excludes dcmImgs, so attaching an X-ray never pushes.
     test('model excludes dcmImgs from pushIfChanged', () {
       expect(
           Appointment.fromJson({}).pushIfChanged, isNot(contains('dcmImgs')));
@@ -1996,8 +1926,7 @@ void main() {
       final pending = await h.importer.scanAndBuildPending();
 
       final p = pending.single;
-      // Unmatched patient should NOT get a fuzzy suggestion —
-      // even though "Smith^John" would have matched "John Smith".
+      // "Smith^John" would match "John Smith"; the unmatched flag blocks it.
       expect(p.matchedPatient, isNull,
           reason: 'unmatched patient skips fuzzy matching');
     });

@@ -6,9 +6,8 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The question a window asks before it goes away with unsaved work in it — for
-/// the dismissals that have no button to hang a flyout on, such as a tap beside
-/// a phone's sheet.
+/// The confirm for dismissals with no button to attach a flyout to, such as a
+/// tap beside a phone's sheet.
 Future<bool> confirmDiscardFloatingWindow(BuildContext context) async {
   final discard = await showDialog<bool>(
     context: context,
@@ -39,9 +38,6 @@ Future<bool> confirmDiscardFloatingWindow(BuildContext context) async {
   return discard == true;
 }
 
-/// The Close a window that stands on its own has, wherever it is drawn: the one
-/// in its header and the one in its footer are the same button, so both ask the
-/// same question — this has unsaved work, leave it? — and cannot drift apart.
 class WindowCloseButton extends StatefulWidget {
   const WindowCloseButton({
     super.key,
@@ -54,14 +50,12 @@ class WindowCloseButton extends StatefulWidget {
   /// Whether there is work that closing would throw away, as last sampled.
   final bool dirty;
 
-  /// The same question, asked again when the button is pressed: the sample can
-  /// be a beat behind the typing, and closing on a stale "clean" would lose it.
+  /// Re-checks on press: [dirty] can lag behind typing, and closing on a stale
+  /// "clean" would lose work.
   final bool Function()? hasChanges;
 
   final VoidCallback onClose;
 
-  /// The header's version: an icon with a tooltip, where a panel's window has
-  /// its minimize. The footer's version spells the word out.
   final bool compact;
 
   @override

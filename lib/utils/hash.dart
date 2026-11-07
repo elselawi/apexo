@@ -28,8 +28,6 @@ String simpleHash(String input, {int length = 17}) {
 }
 
 String secureHash(String input, {int length = 100}) {
-  // 1. Generate an initial 64-bit seed from the input string
-  // This ensures the "starting point" is unique to your input.
   int seed1 = 0x811c9dc5;
   int seed2 = 0x9e3779b1;
 
@@ -38,8 +36,7 @@ String secureHash(String input, {int length = 100}) {
     seed2 = ((seed2 ^ seed1) * 0x1b873593) & 0xFFFFFFFF;
   }
 
-  // 2. Use the seeds to generate a non-repeating sequence
-  // We use a simple Xorshift RNG which is fast and has no visible patterns.
+  // xorshift RNG: fast, no visible patterns in the output.
   final StringBuffer result = StringBuffer();
   const String chars =
       'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';

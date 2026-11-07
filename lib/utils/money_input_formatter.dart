@@ -2,15 +2,9 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 
-/// Formats money as it is typed, in the clinic's own number format: the integer
-/// part carries the locale's thousands separators and an optional fraction
-/// follows the locale's decimal separator.
-///
-/// Both directions agree on those two separators — the text a field shows is
-/// exactly what [formatDouble] writes in and what [parse] reads back — so an
-/// amount is never mistaken for a fraction of itself in the locales that group
-/// with a dot (Greek, Spanish), and it survives the locales that write the
-/// digits themselves in another script (Persian).
+/// Formats and parses money in the clinic's locale. Both directions share the
+/// same separators and digit script, so an amount round-trips even where a dot
+/// groups thousands (Greek, Spanish) or the digits are Persian.
 class MoneyInputFormatter extends TextInputFormatter {
   MoneyInputFormatter([NumberFormat? nf]) : _fixedNf = nf;
   final NumberFormat? _fixedNf;
@@ -33,8 +27,6 @@ class MoneyInputFormatter extends TextInputFormatter {
   /// The character the fields show, and accept, before a fractional part.
   String get decimalSeparator => _nf.symbols.DECIMAL_SEP;
 
-  /// The amount [text] stands for, whatever grouping, locale digits or stray
-  /// characters the field is carrying.
   double parse(String text) {
     return double.tryParse(_plain(text)) ?? 0;
   }
@@ -80,13 +72,9 @@ class MoneyInputFormatter extends TextInputFormatter {
     );
   }
 
-  /// `digits` or `digits.digits`: [text] with the grouping, the locale digits
-  /// and everything else that is not part of the amount taken out. A second
-  /// fraction is where the number ends.
-  ///
-  /// When the locale uses its own script's decimal mark (such as Persian `٫`)
-  /// rather than `.` for grouping, an ASCII `.` from a numeric keypad is also
-  /// accepted as the decimal mark.
+  /// Strips grouping and non-amount characters, keeping at most one fraction. An
+  /// ASCII `.` is accepted as the decimal mark when the locale uses another one
+  /// (Persian), so a numeric keypad still types a fraction.
   String _plain(String text) {
     final ascii = _inAsciiDigits(text);
     final plain = StringBuffer();
@@ -110,8 +98,7 @@ class MoneyInputFormatter extends TextInputFormatter {
 
   String _inLocaleDigits(String text) => _digits(text, toLocale: true);
 
-  /// Persian fields hand back the digits they were shown, so the two scripts are
-  /// translated into each other rather than dropped.
+  // Persian fields return the locale's digits, so both scripts are translated.
   String _digits(String text, {required bool toLocale}) {
     final zeroCode = _nf.symbols.ZERO_DIGIT.codeUnitAt(0);
     return String.fromCharCodes(text.codeUnits.map((code) {

@@ -14,15 +14,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Every screen reachable from the shell, in navbar order.
-///
-/// The *catalog*: what each route is, and what it requires. Whether a
-/// requirement is met is the router's business, so the requirements are
-/// declared here as plain data — `perm`, `adminOnly`, `windowsOnly` — which is
-/// also what an enum constant being `const` demands.
-///
-/// Navigation takes one of these values rather than a route id string, so a
-/// route that does not exist is a compile error instead of a silent no-op.
+/// Every screen reachable from the shell. Declaration order is navbar order.
 enum AppRoute {
   dashboard('dashboard', 'dashboard', FluentIcons.home, navbarKey: 'home'),
   patients(
@@ -31,8 +23,6 @@ enum AppRoute {
     FluentIcons.medication_admin,
     perm: Perm.patients,
   ),
-  // The calendar screen's label is "appointments" and its phone-bar label is
-  // "calendar" — the one route whose label is not its id.
   calendar(
     'calendar',
     'appointments',
@@ -46,8 +36,7 @@ enum AppRoute {
     FluentIcons.manufacturing,
     perm: Perm.appointments,
   ),
-  // The staff inbox for patient booking requests. Offered only once a clinic
-  // has claimed a public booking page; the router checks that separately.
+  // Offered only once a clinic has claimed a public booking page (router check).
   booking('booking', 'bookingInbox', FluentIcons.globe),
   notes('notes', 'notes', WindowsIcons.quick_note),
   expenses(
@@ -59,8 +48,6 @@ enum AppRoute {
   insights('insights', 'insights', FluentIcons.chart, perm: Perm.stats),
   accounts('accounts', 'accounts', FluentIcons.people, adminOnly: true),
   deletedItems('deletedItems', 'deletedItems', WindowsIcons.delete),
-  // Windows-only DICOM import. Gated on the platform plus the photos
-  // permission (or admin).
   dicom(
     'dicom',
     'xrayLink',
@@ -85,8 +72,6 @@ enum AppRoute {
   /// The pane and flyout label — not always [id]: see [calendar].
   final String titleKey;
 
-  /// The phone bar's label, when it should differ from [titleKey]
-  /// (the dashboard reads "home" there).
   final String? navbarKey;
 
   final IconData icon;
@@ -104,10 +89,7 @@ enum AppRoute {
 
   String get navbarTitle => txt(navbarKey ?? titleKey);
 
-  /// The screen this route shows.
-  ///
-  /// A `switch` rather than a stored builder, so that a new route is a compile
-  /// error here as well as in `_syncStores`.
+  /// Exhaustive switch: a new route does not compile until it has a screen.
   Widget buildScreen() => switch (this) {
         AppRoute.dashboard => const DashboardScreen(),
         AppRoute.patients => const PatientsScreen(),

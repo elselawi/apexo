@@ -1,5 +1,4 @@
-/// Converts a CSV string (with header row) back into a JSON list.
-/// If the CSV is malformed or any error occurs, returns an empty list.
+/// Parses CSV (with a header row) into JSON; malformed input returns an empty list.
 List<dynamic> csvToJsonList(String csv) {
   if (csv.isEmpty) return [];
 
@@ -34,8 +33,6 @@ List<dynamic> csvToJsonList(String csv) {
   }
 }
 
-/// Simple RFC 4180 CSV parser that handles quotes, escaped quotes,
-/// and newlines inside quoted fields.
 List<List<String>> _parseCsv(String csv) {
   final rows = <List<String>>[];
   final currentRow = <String>[];
@@ -138,8 +135,6 @@ void _insert(Map<String, dynamic> current, List<String> path, Object? value) {
 
 dynamic _convert(Object? node) {
   if (node is Map<String, dynamic>) {
-    // Check if all keys can be parsed as integers and form a contiguous range?
-    // For simplicity, if all keys are integer strings, convert to List.
     final keys = node.keys.toList();
     final allIntegers = keys.every((k) => int.tryParse(k) != null);
     if (allIntegers) {

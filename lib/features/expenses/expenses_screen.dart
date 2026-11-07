@@ -264,9 +264,8 @@ class SupplierListTile extends StatefulWidget {
 
   final Expense supplier;
 
-  /// Opens the supplier's orders: the panel, or one of its windows when a menu
-  /// item names it — [expenseWindows] is the same list the panel builds from,
-  /// so the two cannot drift.
+  /// Opens the supplier's orders in the panel, or in `window` when a menu item
+  /// names one.
   final void Function(ExpenseWindow? window) onOpen;
 
   @override
@@ -347,17 +346,9 @@ class _SupplierListTileState extends State<SupplierListTile> {
     );
   }
 
-  /// The supplier's actions, shared by the "more" button and by long press /
-  /// right click on the whole row: one item per window of the orders panel,
-  /// then the editing actions.
-  ///
-  /// [controller] is the menu's own controller, so the delete confirmation opens
-  /// where the menu was.
   List<MenuFlyoutItemBase> _menuItems(FlyoutController controller) {
     final orders = expenses.ordersPerSupplier[widget.supplier.id] ?? [];
-    // The same split the due and paid windows make — and the same one they
-    // filter by: a count that includes an archived order says there is an
-    // order in the list that is not there.
+    // Counts exclude archived orders, as the due and paid windows do.
     final live = orders.where((order) => order.archived != true).toList();
     final due = live.where((order) => order.processed == false).length;
     final paid = live.where((order) => order.processed == true).length;

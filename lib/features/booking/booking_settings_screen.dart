@@ -22,12 +22,8 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-/// Settings → Online booking.
-///
-/// Unregistered clinics get the claim flow (superuser only); registered clinics
-/// get the public URL, intake toggle, hours editor, diagnostics, and the repair
-/// actions. Every failure stays inside this card and never blocks ordinary PMS
-/// use.
+/// Settings → Online booking: the claim flow for unregistered clinics, then URL,
+/// intake toggle, hours, diagnostics and repairs. Failures stay in this card.
 class BookingSettingsCard extends StatefulWidget {
   const BookingSettingsCard({super.key});
 
@@ -143,8 +139,7 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
     }
   }
 
-  /// Seeds the claim form from the clinic's settings and the device so a
-  /// superuser confirms values instead of retyping them.
+  /// Seeds the claim form from settings and the device so a superuser only confirms.
   Future<void> _prefillDefaults(PocketBase? pb) async {
     if (_prefilled) return;
     _prefilled = true;
@@ -274,9 +269,8 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
     }
   }
 
-  /// Leaves the platform: the Worker erases the page and its requests, then the
-  /// local credentials go, so the card returns to the claim form and the inbox
-  /// route disappears.
+  /// Leaves the platform: the Worker erases the page and requests, then the local
+  /// credentials go, returning the card and inbox route to the claim form.
   Future<void> _deleteClinic() async {
     final confirmed =
         await _confirm(txt("bookingDeleteAction"), txt("bookingDeleteBody"));
@@ -407,8 +401,7 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
         _ => txt("bookingInvalidFields"),
       };
 
-  /// Highlights the offending control and names the field, instead of leaving a
-  /// generic message with nothing marked.
+  /// Marks the offending control and names the field instead of a generic message.
   void _markField(String field) {
     if (!mounted) return;
     setState(() {
@@ -502,8 +495,7 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
                     onPressed: _busy ? null : () => unawaited(onPressed!()),
                     child: Text(action),
                   );
-            // The repair label alone is wider than a phone-width card, so the
-            // action moves under the text instead of overflowing.
+            // A phone-width card cannot fit the repair label, so the action moves below.
             if (button == null || constraints.maxWidth < 380) {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -653,8 +645,8 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
                     ? null
                     : (value) {
                         if (value && config.hours.isEmpty) {
-                          // "Start disabled until the administrator saves
-                          // valid hours and explicitly enables intake."
+                          // Intake stays disabled until the administrator saves valid hours
+                          // and explicitly enables it.
                           _note(txt("bookingHoursInvalid"), error: true);
                           return;
                         }

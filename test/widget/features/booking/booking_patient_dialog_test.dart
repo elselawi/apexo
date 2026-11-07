@@ -85,8 +85,7 @@ void main() {
   testWidgets("offers the patient with the matching number", (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(900, 900);
-    // The dialog's action row is sized for real glyphs; the test font is much
-    // wider, so shrink the scale instead of asserting on a fake overflow.
+    // The test font is wider than real glyphs, so scale down to fit the row.
     tester.platformDispatcher.textScaleFactorTestValue = 0.7;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -102,8 +101,7 @@ void main() {
       (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(900, 900);
-    // The dialog's action row is sized for real glyphs; the test font is much
-    // wider, so shrink the scale instead of asserting on a fake overflow.
+    // The test font is wider than real glyphs, so scale down to fit the row.
     tester.platformDispatcher.textScaleFactorTestValue = 0.7;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -124,8 +122,7 @@ void main() {
   testWidgets("never preselects a suggested patient", (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(900, 900);
-    // The dialog's action row is sized for real glyphs; the test font is much
-    // wider, so shrink the scale instead of asserting on a fake overflow.
+    // The test font is wider than real glyphs, so scale down to fit the row.
     tester.platformDispatcher.textScaleFactorTestValue = 0.7;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

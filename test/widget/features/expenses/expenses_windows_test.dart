@@ -27,8 +27,6 @@ import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 import '../../../helpers/window_defaults.dart';
 
-/// The orders panel: the supplier's figures are the panel, their orders are the
-/// windows beside it, and a row that names one window gets that window alone.
 void main() {
   late List<Expense> previous;
   late List<int> previousPermissions;
@@ -49,8 +47,7 @@ void main() {
     expenses.observableMap.clear();
     expenses.setAll(previous);
     login.savedPermissions = previousPermissions;
-    // The windows a panel was left with are a device preference: they are put
-    // back as they were, so the next test starts from the user's own.
+    // Window layout is a device preference; reset it so tests don't inherit it.
     await resetWindowDefaults();
   });
 
@@ -96,8 +93,6 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  /// The panel and the layer the shell stacks above it — where a panel's own
-  /// body lives.
   Future<void> pumpShell(WidgetTester tester, double width) async {
     final panel = PanelsManager.active().last;
     PanelsManager.active([panel]);
@@ -193,8 +188,6 @@ void main() {
   testWidgets('a supplier with no orders at all can still be renamed',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));
-    // A supplier with no orders is the common case for a new one: the rename
-    // belongs to the supplier, not to the orders that happen to name it.
     expenses.set(testExpense(
       id: 'supplier-empty',
       isSupplier: true,
@@ -224,8 +217,6 @@ void main() {
     await tester.tap(find.text(txt('save')).last);
     await tester.pumpAndSettle();
 
-    // The name belongs to the supplier's own record, and everything that shows
-    // it reads that record: the panel's header and the window's own line.
     expect(expenses.get('supplier-renamed')!.supplierName, 'Acme Dental');
     expect(
       find.text('Acme Dental'),
@@ -244,9 +235,6 @@ void main() {
     await tester.pumpAndSettle();
     await pumpShell(tester, 1600);
 
-    // The panel's figure and the window's own footer are the same orders,
-    // counted the same way: the amount the panel shows is the amount the
-    // window beside it shows.
     final dueWindow = find.byKey(const ValueKey('window-card-due'));
     expect(dueWindow, findsOneWidget);
     final footerRow = find
@@ -283,8 +271,6 @@ void main() {
     final paidRect = tester.getRect(paid);
     final dockRect = tester.getRect(find.byType(WindowDock));
 
-    // The switches fill the panel's width, one equal segment each, with no gap
-    // between them: the row is the panel's own bar, not a set of loose pills.
     expect(dueRect.width, closeTo(paidRect.width, 0.5));
     expect(dueRect.left - dockRect.left, closeTo(8, 0.5));
     expect(dockRect.right - paidRect.right, closeTo(8, 0.5));
@@ -305,14 +291,11 @@ void main() {
           .resolve(TextDirection.ltr);
     }
 
-    // Only the corners facing out of the row are rounded: the edge the two
-    // share stays square, which is what makes them read as a single control.
     const outer = Radius.circular(4);
     expect(cornersOf(due), const BorderRadius.horizontal(left: outer));
     expect(cornersOf(paid), const BorderRadius.horizontal(right: outer));
 
-    // The same size and padding as the record's own workspace buttons, so a
-    // panel's dock and its workspace bar are one design.
+    // Same padding as the workspace bar's buttons, so both docks look alike.
     expect(styleOf(due).padding!.resolve({}),
         const EdgeInsetsDirectional.fromSTEB(11, 8, 11, 8));
   });
@@ -440,9 +423,8 @@ void main() {
     await tester.tap(find.byKey(WK.btnAddOrder));
     await tester.pumpAndSettle();
 
-    // The order reaches the store as it is added, and the window's list with
-    // it: a list worked out once, when the window was built, would keep showing
-    // the row that was there before until the window was closed and reopened.
+    // A list built once when the window is created would keep the stale rows;
+    // the window must read the store so a new order shows at once.
     expect(
       before.contains(tester.widgetList<OrderRow>(rows).first.order.id),
       isFalse,
@@ -501,8 +483,7 @@ void main() {
           of: find.byType(MenuFlyout),
           matching: finder,
         );
-    // Each item appends how many orders it opens: two in all, one due and one
-    // paid, the same split the windows make.
+    // Menu items append how many orders they open: 2 in all, 1 due and 1 paid.
     expect(suffix(find.text('(2)')), findsOneWidget);
     expect(suffix(find.text('(1)')), findsNWidgets(2));
 

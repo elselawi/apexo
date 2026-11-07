@@ -178,8 +178,8 @@ void main() {
     await tester.tapAt(tester.getCenter(dentalNotes));
     await tester.pumpAndSettle();
 
-    // The visit is carried by the patient's panel, and its chart is one of the
-    // visit's windows — never a panel, never a window of its own (plan §0).
+    // The visit lives in the patient's panel; its chart attaches there, never
+    // as its own panel or window.
     expect(PanelsManager.active(), [panel]);
     expect(WindowsManager.open(), isEmpty);
     expect(panel.attached!.itemId, 'shortcut-visit');
@@ -222,8 +222,8 @@ void main() {
       SingleChildScrollView(child: PatientAppointments(patient)),
     );
 
-    // A corner of the card, not its centre: the centre can land on one of the
-    // card's own editors, and a text field's long press is its own.
+    // A corner, not the centre: the centre can land on a text field, whose long
+    // press is the field's own.
     await tester.longPressAt(
       tester.getTopLeft(find.byType(AppointmentCard)) + const Offset(24, 12),
     );

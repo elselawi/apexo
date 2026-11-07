@@ -5,12 +5,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A visit's labwork, wherever it is shown: the panel's own body and the labwork
-/// window draw the same thing, so neither can drift from the other.
-///
-/// Two states, because a visit either has an order or has not started one: the
-/// way to start one, and the order itself. Taking the order away is the
-/// window's footer's job, beside its Save and Close.
+/// The visit's labwork body, shared by the panel and the labwork window.
 class AppointmentLabworkSection extends StatefulWidget {
   const AppointmentLabworkSection({
     super.key,
@@ -21,15 +16,10 @@ class AppointmentLabworkSection extends StatefulWidget {
 
   final Appointment appointment;
 
-  /// Whether an order exists, shared with the window's footer so its remove
-  /// button follows this body — and this body follows that button.
-  ///
-  /// Null where there is no such footer (the labwork panel edits its own copy
-  /// and carries its own delete).
+  /// Whether an order exists; this body and the window's footer sync both ways.
   final ValueNotifier<bool>? hasOrder;
 
-  /// Tells the visit's session that its draft changed — starting or removing an
-  /// order is a change to save, like any typed field.
+  /// Reports a draft change; adding or removing an order is saved like a typed field.
   final VoidCallback? onEdited;
 
   @override
@@ -241,9 +231,8 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
               Expanded(
                 child: TextFormBox(
                   prefix: const Icon(WindowsIcons.quick_note),
-                  // The order-notes box, not the lab-name one: it carried
-                  // `fieldLabworkLabName` as well, so that key matched *two*
-                  // widgets and this field could not be addressed at all.
+                  // Separate key from `fieldLabworkLabName`; duplicates make this
+                  // field unaddressable.
                   key: WK.fieldLabworkOrderNotes,
                   decoration: WidgetStatePropertyAll(BoxDecoration(
                       color: Colors.transparent,

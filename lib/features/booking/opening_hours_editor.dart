@@ -4,9 +4,8 @@ import 'package:apexo/features/booking/booking_models.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Seven day rows, each an editable list of intervals, plus the closed-date
-/// list. Validation mirrors the Worker exactly so the server never rejects a
-/// value this editor allowed.
+/// Seven day rows of editable intervals plus the closed-date list. Validation
+/// mirrors the Worker, so the server never rejects a value this editor allowed.
 class OpeningHoursEditor extends StatefulWidget {
   const OpeningHoursEditor({
     super.key,

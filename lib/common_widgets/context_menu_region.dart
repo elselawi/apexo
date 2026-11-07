@@ -3,29 +3,15 @@ import 'dart:async';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Builds the items of a context menu.
-///
-/// [controller] is the menu's own controller: it closes it, and it can show a
-/// follow-up flyout after it (a delete confirmation, for instance) — anchor it
-/// to the same row by reusing the controller instead of creating a new target.
+/// Builds the items of a context menu. Reuse [controller] for follow-up
+/// flyouts so they anchor to the same row.
 typedef ContextMenuItemsBuilder = List<MenuFlyoutItemBase> Function(
   BuildContext context,
   FlyoutController controller,
 );
 
-/// Opens a context menu for [child] on long press (touch) or right click
-/// (mouse, trackpad, pen), anchored at the pointer.
-///
-/// The long press also triggers the platform feedback (Android vibration, iOS
-/// impact plus click) so the gesture can be felt, and the menu follows the
-/// reading direction: it unfolds to the right in LTR and to the left in RTL.
-///
-/// The browser's own context menu is turned off on web (see `main.dart`), so a
-/// right click opens this menu there too — the same as on every other
-/// platform, and the only way in where the long press belongs to a drag.
-///
-/// The menu itself is a regular [MenuFlyout], so it closes on click outside,
-/// on `Esc`, and repositions when there is no room below the pointer.
+/// Opens a context menu on long press or right click, anchored at the pointer;
+/// on web the browser's own menu is disabled, so right click opens this too.
 class ContextMenuRegion extends StatefulWidget {
   const ContextMenuRegion({
     super.key,
@@ -37,9 +23,8 @@ class ContextMenuRegion extends StatefulWidget {
   final ContextMenuItemsBuilder items;
   final Widget child;
 
-  /// Whether a long press opens the menu too. False where the region's own
-  /// widget needs that gesture — a timeline chip that is dragged by long press —
-  /// which leaves right click as the way in.
+  /// Whether long press opens the menu too. False where the child needs that
+  /// gesture itself (a chip dragged by long press), leaving right click.
   final bool longPress;
 
   @override
@@ -95,13 +80,7 @@ class _ContextMenuRegionState extends State<ContextMenuRegion> {
   }
 }
 
-/// The title of a context menu item that also says how much is behind it, or
-/// whether it is there at all.
-///
-/// [suffix] sits a fixed gap after [title] — one gap for every item, whatever
-/// the title's length — which is the "suffix" a plain string cannot give: glued
-/// onto the title, the space depends on whether the join added one, a colon or
-/// nothing at all. A null suffix leaves the title exactly as it was.
+/// Puts [suffix] a fixed gap after [title], so suffixes line up across items.
 Widget menuTitleSuffix(Widget title, Widget? suffix) {
   if (suffix == null) return title;
   return Row(
@@ -114,15 +93,10 @@ Widget menuTitleSuffix(Widget title, Widget? suffix) {
   );
 }
 
-/// How many things the item opens, for [menuTitleSuffix]. Counts read as a
-/// parenthesised aside, never as part of the title itself.
 Widget menuCountSuffix(int count) =>
     Text('($count)', style: const TextStyle(fontSize: 12));
 
-/// Whether the thing the item opens is there — the labwork order, the patient's
-/// web page — for [menuTitleSuffix]. A check says here; a hollow ring says
-/// absent, which is not the same statement as an error, so nothing here is
-/// drawn in red or crossed out.
+/// Absent is not an error: a hollow ring, with no red and no cross-out.
 Widget menuPresenceSuffix(bool present) => Icon(
       present ? FluentIcons.check_mark : FluentIcons.circle_ring,
       size: 13,

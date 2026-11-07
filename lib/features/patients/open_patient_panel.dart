@@ -61,22 +61,14 @@ void _openAppointmentFromChart(String id) =>
 Future<String?> openPatientPanel(Patient patient, {String? focus}) =>
     _openPatientPanel(Patient.fromJson(patient.toJson()), focus: focus);
 
-/// Opens [patient] — its panel, or one of its windows on its own.
-///
-/// New patients are not made here: `addPatient` in `new_patient_dialog.dart`
-/// asks for the name and phone and stores the record first, so nothing is
-/// opened as a draft. Callers that have a patient in hand pass one.
 Future<String?> openPatient(
     [Patient? patient, PatientWindow? window, BuildContext? context]) async {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
-  // A window of a record whose panel is already open is that panel's window:
-  // opening a second editor for the same teeth would give the record two
-  // drafts, and whichever was saved last would win. The panel is brought
-  // forward and asked for that window instead.
+  // A window of an already-open record is that panel's window: a second
+  // editor would be a second draft, and whichever was saved last would win.
   final panelIsOpen =
       PanelsManager.active().any((panel) => panel.itemId == editingCopy.id);
-  // A window that is not the panel's own body opens on its own: asking a table
-  // for "this patient's appointments" should not unfold the whole record.
+  // Only details means the whole record; other windows open on their own.
   if (!panelIsOpen && window != null && window != PatientWindow.details) {
     await _openPatientWindow(editingCopy, window);
     return null;
@@ -88,13 +80,8 @@ Future<String?> openPatient(
   );
 }
 
-/// Shows the patient's whole list of visits, in its panel when the panel is up.
-///
-/// The list is a window of the patient's panel, opened from the record it
-/// belongs to — a chart's title, a band's unsaved count. Opening it *here* means
-/// the row arranges itself around it: at a width where the chart and the list do
-/// not both fit, the list wins and the chart steps aside (it keeps its draft, and
-/// the band keeps its chip).
+/// Shows the visits list in the patient's panel, where the row reflows to
+/// give it room over the chart when both do not fit.
 Future<void> showPatientVisits(String patientId) async {
   final panel = PanelsManager.active()
       .where((panel) => panel.itemId == patientId)
@@ -108,10 +95,6 @@ Future<void> showPatientVisits(String patientId) async {
   await openPatient(patient, PatientWindow.appointments);
 }
 
-/// The patient's record and nothing beside it: the panel, with none of the
-/// windows it would otherwise open by itself. What a caller means when it wants
-/// *the patient* rather than something the patient has — a dashboard row for a
-/// new patient, say. Every window is still one click away in the dock.
 Future<String?> openPatientRecord(Patient patient) => _openPatientPanel(
       Patient.fromJson(patient.toJson()),
       withWindows: false,
@@ -135,11 +118,8 @@ Future<String?> _openPatientPanel(
   return shown.savedId;
 }
 
-/// Opens [patient]'s panel and hands it back **as soon as it is on screen**.
-///
-/// Not `openPatient`, which answers when the panel is saved or closed: a caller
-/// that attaches something to the panel must not wait for the user to be finished
-/// with it — that would attach to a panel the user has since closed (plan §7.1).
+/// Opens [patient]'s panel and returns it as soon as it is on screen, unlike
+/// `openPatient`, which waits for the panel to be saved or closed.
 Future<Panel> ensurePatientPanel(Patient patient, {String? focus}) =>
     _ensurePatientPanel(
       Patient.fromJson(patient.toJson()),
@@ -147,23 +127,17 @@ Future<Panel> ensurePatientPanel(Patient patient, {String? focus}) =>
       withWindows: true,
     );
 
-/// The panel for [editingCopy], opening it if it is not up, and returning the one
-/// on screen either way.
 Future<Panel> _ensurePatientPanel(
   Patient editingCopy, {
   String? focus,
   bool withWindows = true,
   BuildContext? context,
 }) async {
-  // The panel holds these windows now, so the ones standing on their own for
-  // this record have nothing left to show.
   final scope = 'patient:${editingCopy.id}';
   final stored = patients.get(editingCopy.id);
 
-  // The patient's panel may already be on screen. Then this is not a new
-  // panel: the editor is already there, and a panel built here would be thrown
-  // away — taking the work it had adopted with it, silently. So the question
-  // is asked *before* any window state is touched.
+  // Ask before touching window state: a panel built while one is already on
+  // screen would be discarded, silently taking the work it adopted with it.
   final identifier = Panel.identifierFor(
     'patient',
     editingCopy.id,
@@ -172,9 +146,8 @@ Future<Panel> _ensurePatientPanel(
   final existing = PanelsManager.find(identifier);
   if (existing != null) {
     if (focus == kDentalChartWindowId) {
-      // The plan is the patient's chart, not a second chart beside the visit.
-      // Leaving the visit here keeps its draft, owned by the panel and marked by
-      // the Visits button.
+      // The plan is the patient's chart, not a second one beside the visit;
+      // the visit keeps its draft under the panel.
       existing.detach();
       if (!await closeOpenDentalChartWindows(
           exceptScope: scope, context: context)) {
@@ -186,9 +159,8 @@ Future<Panel> _ensurePatientPanel(
     return existing;
   }
 
-  // Work a window of this patient still holds comes in with the panel rather
-  // than staying beside it as a second draft of the same record: the panel
-  // adopts it and opens dirty on it, so its own Save is the one write.
+  // Work still held by a standalone window is adopted by the panel, so its
+  // Save is the only write.
   String? baseline;
   if (stored != null) {
     final carried = WindowsManager.adoptWork(scope, stored.toJson());
@@ -216,31 +188,20 @@ Future<Panel> _ensurePatientPanel(
     unicodeSymbol: "👤",
     // The two records on this screen save differently, and their buttons say so.
     saveLabel: 'savePatient',
-    // The dot for a carried visit's draft sits on the chart, where that work
-    // lives: the visits list is a way to find a record, not the record itself.
     carriedDraftWindowId: PatientWindow.dentalChart.id,
-    // The record's own workspaces sit inside the record, as two prominent
-    // buttons under its name: the chart and the visits list are what the record
-    // is *for*, so they must not hide among header icons.
     workspaceWindows: [
       PatientWindow.dentalChart.id,
       PatientWindow.appointments.id
     ],
     attachmentLayout: true,
-    // The patient's next follow-up, directly under the band of whatever visit
-    // is open: a dentist decides it with the notes in front of them, and the
-    // patient's own record must not be read-only while the visit is.
     carriedBandFooter: PatientFollowUpBar(patientID: editingCopy.id),
-    // The window the caller asked for: a table cell that means "the
-    // appointments" asks for it here rather than counting windows.
     initialWindow: focus,
     opensWithWindows: withWindows,
     item: editingCopy,
     store: patients,
     icon: FluentIcons.medication_admin,
     existing: patients.get(editingCopy.id) != null,
-    // The record on screen carries work that is not stored yet, so the panel
-    // starts with something to save.
+    // Carried work is unsaved, so the panel starts with something to save.
     savedBaseline: baseline,
     onSave: () {
       patients.set(Patient.fromJson(jsonDecode(jsonEncode(editingCopy.toJson()))
@@ -249,9 +210,6 @@ Future<Panel> _ensurePatientPanel(
     },
     validate: () =>
         Patient.isValidEmail(editingCopy.email) ? null : txt('invalidEmail'),
-    // A localization key rather than a sentence: the header runs it through
-    // txt(), so it follows the language the app is in now. A stored patient
-    // gets their own name from readTitle() below instead.
     title: "newPatient",
     windows: [
       for (final entry in patientWindows())
@@ -264,9 +222,6 @@ Future<Panel> _ensurePatientPanel(
             ),
           PatientWindow.dentalChart => dentalChartWindow(
               chart,
-              // The patient's whole list of visits is also reachable from the
-              // plan tab: the list is a property of the patient, not of the visit
-              // whose chart happens to be open.
               actions: <Widget>[
                 if (patients.get(editingCopy.id) != null)
                   PatientVisitsButton(
@@ -284,12 +239,7 @@ Future<Panel> _ensurePatientPanel(
               footer: AppointmentsListFooter(forPatientID: editingCopy.id),
               onlyIfSaved: true,
               padding: 0,
-              // The list is a side window, not a first pick: it is one button in
-              // the header, and opening the record is not opening its history.
               byDefault: false,
-              // One card per visit: the list asks for the room its visits take,
-              // so a short history is a short window and a longer one is not
-              // squeezed into half a screen.
               maxHeight: appointmentsListMaxHeight,
               minHeight: appointmentsListHeight(
                 editingCopy.allAppointments.length,
@@ -303,11 +253,7 @@ Future<Panel> _ensurePatientPanel(
               body: PatientGallery(editingCopy),
               onlyIfSaved: true,
               padding: 0,
-              // A patient's photos are an attachment of the record, not a row
-              // window: a chip under the details, one click from its editor.
               attachedTo: PanelWindow.panelAttachment,
-              // One card per visit that holds photos, so the window asks for
-              // the room its cards take — as the visits list does.
               maxHeight: appointmentsListMaxHeight,
               minHeight: appointmentsListHeight(
                 patientGalleryVisits(editingCopy).length,
@@ -345,11 +291,8 @@ Future<Panel> _ensurePatientPanel(
   return PanelsManager.open(panel);
 }
 
-/// A patient's window, shown on its own — no panel, so it carries the Save and
-/// Close a panel would have offered (Close alone for a window that only reads).
-///
-/// This is what a table cell, a chart link or a context-menu item means when it
-/// names one window: the edit the user asked for, not the whole record.
+/// A patient's window shown on its own, with the Save/Close a panel would
+/// have provided.
 Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
   final scope = 'patient:${patient.id}';
   switch (window) {
@@ -366,8 +309,6 @@ Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
     case PatientWindow.appointments:
       late final FloatingWindow floating;
 
-      /// The list was only a way in: whatever it opens — a visit it lists, or a
-      /// new one it starts — it closes, so the panel has the screen to itself.
       void closeThen(void Function() open) {
         WindowsManager.close(floating);
         open();
@@ -398,8 +339,6 @@ Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
     case PatientWindow.gallery:
       late final FloatingWindow floating;
 
-      /// The gallery is only a way in: whatever it opens closes it, so the
-      /// visit has the screen to itself.
       void closeThen(void Function() open) {
         WindowsManager.close(floating);
         open();

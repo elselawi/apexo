@@ -40,8 +40,7 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
 
-    // The manual says "type and press Enter to add" — before the fix, Enter
-    // only dropped focus and closed the dropdown, so nothing was added.
+    // Enter used to only drop focus and close the dropdown, adding nothing.
     expect(changes, isNotEmpty);
     expect(changes.last.map((t) => t.value), ['pwtag']);
   });
@@ -100,10 +99,8 @@ void main() {
 
   testWidgets('a full field keeps its one chip instead of folding it away',
       (tester) async {
-    // The appointment sheet's patient selector is `limit: 1`. Picking a
-    // patient left the box focused, and a focused box folded every chip of
-    // the row to "+N" — so the name just picked became "+1" and stayed that
-    // way until focus moved. A full field has no input left to make room for.
+    // At `limit: 1` a focused box used to fold the just-picked chip to "+1"; a
+    // full field has no input to make room for.
     final changes = await pumpTagInput(
       tester,
       strict: true,
@@ -155,10 +152,8 @@ void main() {
 
   testWidgets('closing the dialog that holds it disposes without a rebuild',
       (tester) async {
-    // `AutoSuggestBoxState.dispose()` runs `_unselectAll()`, which fires every
-    // item's `onFocusChange(false)` — this widget's callback among them — while
-    // the framework is locked. Rebuilding there asserts; the box must survive
-    // being torn down with a suggestion still highlighted.
+    // `AutoSuggestBoxState.dispose()` fires each item's `onFocusChange(false)`
+    // while the framework is locked, so rebuilding there asserts.
     await pumpApexoApp(
       tester,
       Builder(
@@ -192,15 +187,13 @@ void main() {
     await tester.tap(find.byKey(const Key('openTagDialog')));
     await tester.pumpAndSettle();
 
-    // Put the keyboard highlight on a suggestion: that is the state whose blur
-    // the dispose path fires.
+    // A highlighted suggestion is the state whose blur the dispose path fires.
     await tester.enterText(find.byType(EditableText), 'a');
     await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
     await tester.pumpAndSettle();
 
-    // Popped directly: the dropdown covers the dialog's own button, and this
-    // test is about the teardown, not about how the user gets there.
+    // Popped directly: the open dropdown covers the dialog's own button.
     Navigator.of(tester.element(find.byType(ContentDialog))).pop();
     await tester.pumpAndSettle();
 

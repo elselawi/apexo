@@ -41,9 +41,8 @@ class BorderColorTransitionState extends State<BorderColorTransition>
     if (widget.animate != oldWidget.animate) _followAnimate();
   }
 
-  /// Repeats only while the border is meant to pulse: a controller left running
-  /// behind `animate: false` repaints the whole subtree forever for a border
-  /// nobody sees.
+  // repeats only while `animate` is true: an idle controller left running
+  // repaints the subtree forever.
   void _followAnimate() {
     if (widget.animate) {
       _controller.repeat(reverse: true);

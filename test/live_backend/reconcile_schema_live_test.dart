@@ -10,22 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pocketbase/pocketbase.dart';
 import '../secret.dart';
 
-/// Live verification of the schema-reconcile upgrade path (C2):
-///  - importing with the default `deleteMissing=false` is a pure upsert that
-///    never deletes existing collections or records;
-///  - `reconcileSchema()` applies the patient-scoped `public` view rule to an
-///    existing install and re-applies the users createRule hardening;
-///  - the applied rule enforces patient scoping server-side via the `pid`
-///    query parameter (unauthenticated).
-///
-/// Run with:
-///   flutter test test/live_backend/reconcile_schema_live_test.dart -j 1
 void main() {
   final pb = PocketBase(testPBServer);
 
-  // Explicit record ids (must satisfy the data/profiles id field constraints:
-  // 15 chars, [a-zA-Z0-9_]/[a-z0-9]) so tests are idempotent and cleanup is
-  // trivial.
+  // fixed 15-char ids fit the data/profiles id fields, so cleanup is simple.
   const apptA = 'verify_a_000001';
   const apptB = 'verify_b_000001';
   const profileRow = 'verifyprofile0a';
@@ -57,9 +45,8 @@ void main() {
     });
   }
 
-  /// Attaches the server's current collection ids to the given definitions
-  /// (imports over existing collections fail when the id is empty — see the
-  /// comment in reconcileSchema).
+  /// Attaches the server's ids; an empty id would make PocketBase import onto
+  /// the existing collection and lose its real id.
   Future<List<CollectionModel>> withServerIds(
       List<CollectionModel> models) async {
     final existing = await pb.collections.getFullList();
@@ -90,8 +77,6 @@ void main() {
     test(
         'reconcileSchema upgrades an existing install without deleting '
         'collections or records', () async {
-      // 1) Simulate an "existing install" whose public view predates the
-      //    scoped rule (empty rules), with real records already in place.
       final oldPublic =
           CollectionModel.fromJson(publicCollectionImport.toJson())
             ..listRule = ''
@@ -118,10 +103,8 @@ void main() {
       // Sanity: the simulated install still has the OLD (empty) public rules.
       expect((await pb.collections.getOne('public')).listRule, '');
 
-      // 2) Upgrade via the app's actual reconcile path.
       await reconcileSchema(pb, clinicServer: testPBServer);
 
-      // 3) Nothing was deleted...
       final collectionNamesAfter =
           (await pb.collections.getFullList()).map((c) => c.name).toSet();
       expect(collectionNamesAfter, containsAll(collectionNamesBefore));
@@ -140,8 +123,7 @@ void main() {
       expect((await pb.collections.getOne('users')).createRule,
           '@request.auth.collectionName = "_superusers"');
 
-      // The applied marker is now at the current schema version, so a second
-      // reconcile is a no-op (idempotency).
+      // marker equals schemaVersion, so a second reconcile is a no-op.
       expect(
           await appliedSchemaVersion(simpleHash(testPBServer)), schemaVersion);
 
@@ -150,8 +132,7 @@ void main() {
     });
 
     test('public view enforces patient scoping server-side via pid', () async {
-      // Ensure the scoped rule is applied (self-sufficient regardless of the
-      // order in which the tests ran).
+      // reset the marker and reconcile, so test order does not matter.
       await storeAppliedSchemaVersion(simpleHash(testPBServer), 0);
       await reconcileSchema(pb, clinicServer: testPBServer);
 

@@ -1,5 +1,5 @@
-// Flutter ships no `ku` localization data, so `FluentApp` would otherwise
-// fall back to LTR widgets and print "not supported by all delegates".
+// Flutter ships no `ku` localization data; without these, `FluentApp` falls
+// back to LTR widgets and logs an unsupported-locale warning.
 
 import "package:fluent_ui/fluent_ui.dart";
 import "package:flutter/cupertino.dart" show CupertinoLocalizations;

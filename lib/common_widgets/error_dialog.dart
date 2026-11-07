@@ -10,8 +10,6 @@ import 'package:fluent_ui/fluent_ui.dart';
 bool errorDialogShown = false;
 
 void showErrorMessage(Object message, String when) {
-  // Add to the error list in the network actions controller.
-  // Returns true if it's a new unique error, false if duplicate.
   final isNewError = networkActions.addError(message, when);
 
   if (!isNewError) {

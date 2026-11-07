@@ -17,12 +17,9 @@ class _WindowEntrance extends StatefulWidget {
   /// True while the window it draws is folding away.
   final bool leaving;
 
-  /// Called once the window has finished folding away, so its owner can forget
-  /// it.
+  /// Called once the fold-away finishes, so the owner can drop the window.
   final VoidCallback onLeft;
 
-  /// The corner it grows out of: the top-trailing one, where the dock's buttons
-  /// sit, or the top centre on a phone.
   final AlignmentGeometry from;
 
   @override
@@ -47,9 +44,8 @@ class _WindowEntranceState extends State<_WindowEntrance>
   void initState() {
     super.initState();
     if (widget.leaving) {
-      // Drawn already on its way out — a window that was replaced before its
-      // first frame: nothing to animate, and it must not shrink the tree while
-      // it is being built.
+      // Replaced before its first frame: nothing to animate, and onLeft must
+      // wait for a frame rather than fire during build.
       _controller.value = 0;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) widget.onLeft();
@@ -93,14 +89,11 @@ class _WindowEntranceState extends State<_WindowEntrance>
       builder: (context, child) {
         final value =
             reduceMotion ? (widget.leaving ? 0.0 : 1.0) : _value.value;
-        // A window drawn at nothing must not take clicks: it is not there, and
-        // the app behind it has to keep working. Opacity alone does not stop a
-        // hit test, so the pointer is ignored while the window is invisible.
+        // Opacity alone does not stop hit tests, so an invisible window must
+        // ignore the pointer or it blocks the app behind it.
         return IgnorePointer(
           ignoring: widget.leaving || value <= 0,
           child: vertical
-                  // A sheet drops in from the top edge rather than growing from a
-                  // corner.
                   ? Opacity(
                       opacity: value,
                       child: FractionalTranslation(

@@ -29,8 +29,7 @@ void main() {
   }
 
   setUpAll(() {
-    // Grant full permissions so Model.locked returns false
-    // (otherwise present/filtered getters exclude everything).
+    // Full permissions: otherwise Model.locked hides items from present/filtered.
     originalPerms = login.savedPermissions;
     login.savedPermissions = Perm.full;
   });
@@ -41,8 +40,7 @@ void main() {
 
   setUp(() {
     appointments.nullifyAppointmentsCache(null);
-    // Other test files may have changed savedPermissions; ensure full perms
-    // so Model.locked returns false (items show up in present).
+    // savedPermissions is global; other test files may have reset it.
     login.savedPermissions = Perm.full;
   });
 
@@ -172,8 +170,7 @@ void main() {
 
     test('todayAppointments is sorted and excludes missing-patient concerns',
         () {
-      // Anchored to fixed hours of today: "now + 1h" would fall on tomorrow
-      // when the suite runs late in the evening.
+      // Fixed hours of today: "now + 1h" would fall on tomorrow late at night.
       final today = DateTime.now();
       final later = testAppointment(
         id: 'dash-later',

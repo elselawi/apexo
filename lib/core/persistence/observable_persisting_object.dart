@@ -5,8 +5,7 @@ import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 import '../reactive/observable_base.dart';
 
-/// Persists its data to a hive box
-/// however only data that are defined in toJson and fromJson will be persisted
+/// Hive-backed; only fields covered by [toJson]/[fromJson] are persisted.
 abstract class ObservablePersistingObject
     extends ObservableBase<ObservablePersistingObject> {
   ObservablePersistingObject(this.identifier, {this.storagePath}) {

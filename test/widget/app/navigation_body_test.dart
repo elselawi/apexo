@@ -1,14 +1,4 @@
-// The shell's navigation mechanics, off the e2e harness.
-//
-// `integration_test`'s groups keep failing with "Timed out after 60s waiting
-// for the patients screen" after a nav-pane tap that *did* land, so the subject
-// here is the one thing between those two facts: a `NavigationView` whose
-// `NavigationPane.selected` is owned by the caller (that is what
-// `lib/app/app.dart` does — `selected: routes.currentIndex`), and whether the
-// body it draws follows that index.
-//
-// These are the cheapest possible reproductions: no app, no database, no
-// server, ~1s per run instead of ~8 minutes.
+// Cheap repro of the nav-pane/body mismatch the e2e harness times out on.
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 

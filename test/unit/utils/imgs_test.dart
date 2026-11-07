@@ -105,8 +105,6 @@ void main() {
   });
 
   group('Image caching', () {
-    /// A resolver that counts what it is asked for: the point of the cache is
-    /// that a picture shown twice is not looked up twice.
     late int resolveCalls;
     Future<String?> countedResolve(String rowId, String name) async {
       resolveCalls++;

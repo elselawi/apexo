@@ -99,9 +99,6 @@ void main() {
     final pending = _pending();
     controller.pending([pending]);
 
-    // The injected importer returns a failed result only when its upload
-    // collaborator throws. This verifies the controller-level contract by
-    // using a pending item that remains in the list after approval failure.
     harness.shouldFail = true;
     await controller.autoApproveLinked();
 

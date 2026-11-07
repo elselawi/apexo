@@ -27,8 +27,6 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 
 // ─── Agenda (plain list) view ───────────────────────────────────────────
 
-/// Simple list view of appointments, shown when [CalendarViewMode.agenda]
-/// is selected.
 class AgendaListView<Item extends Appointment> extends StatelessWidget {
   const AgendaListView({
     super.key,
@@ -256,8 +254,6 @@ class AppointmentCalendarTile<Item extends Appointment>
                   ),
                   PanelOpenBuilder(
                     itemId: item.id,
-                    // A visit is not a panel: it is open when a panel is
-                    // carrying it.
                     carries: (panel) => panel.attached?.itemId == item.id,
                     builder: (context, panelIndex) => IconButton(
                       onPressed: () async {

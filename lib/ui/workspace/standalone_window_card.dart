@@ -9,11 +9,8 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A window standing on its own: no panel behind it, so it carries the Save and
-/// Close a panel would have offered — Close in the header, where a panel's
-/// window has its minimize, and both in the footer.
-///
-/// A window that writes nothing — a list, a scan, a photo — carries Close alone.
+/// A window with no panel behind it, so it carries the Save and Close a panel
+/// would have offered.
 class StandaloneWindowCard extends StatefulWidget {
   const StandaloneWindowCard({
     super.key,
@@ -47,9 +44,8 @@ class StandaloneWindowCard extends StatefulWidget {
 }
 
 class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
-  /// A draft is edited in place, and only its owner can say whether it differs
-  /// from what was stored: sample it, and redraw when it flips. Sampled once
-  /// here, so the header's Close and the footer's ask with the same answer.
+  // A draft is edited in place, so only its owner can say it is dirty: poll it
+  // and redraw when it flips.
   static const Duration _sampleEvery = Duration(milliseconds: 600);
 
   Timer? _sampler;
@@ -94,15 +90,8 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
     if (dirty != _dirty && mounted) setState(() => _dirty = dirty);
   }
 
-  /// Leaves the window for the panel that holds its record: the panel opens on
-  /// the window the user was already looking at, and takes the window's work
-  /// with it — the panel carries it, starts dirty on it, and its own Save is
-  /// the one write.
-  ///
-  /// So the window is **not** closed here: closing it first would throw the
-  /// work away before the panel had a chance to take it, and the panel would
-  /// then show work it never stored while reporting nothing to save. The
-  /// panel's own opener closes the window once it has adopted what it held.
+  // The panel opens on this window, adopts its draft and its own opener closes
+  // it: closing here would discard the work before the panel could take it.
   Future<void> _openRecord() async {
     if (_opening) return;
     _opening = true;
@@ -110,8 +99,8 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
       final floating = widget.floating;
       final openRecord = floating.onOpenRecord;
       if (openRecord == null) return;
-      // A window that cannot hand its work over would lose it: then the
-      // question has to be asked before the record takes the window's place.
+      // A window that cannot hand its work over would lose it when the record
+      // takes its place, so ask before opening.
       if (_dirtyNow && !floating.canAdopt) {
         if (!await confirmDiscardFloatingWindow(context)) return;
         if (!mounted) return;
@@ -151,8 +140,7 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
               FluentIcons.open_in_new_tab,
               txt('openRecord'),
               size: 14,
-              // "Open in" points somewhere: in a right-to-left app it points
-              // the other way.
+              // "Open in" points sideways, so mirror it in right-to-left.
               flipInRtl: true,
             ),
           ),

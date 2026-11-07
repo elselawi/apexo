@@ -9,12 +9,8 @@ import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 
 class _DeferredPush {
-  /// **`late`, not `late final`.** [reset] exists so that the *next* login re-runs
-  /// [init] for its own clinic server — and assigning a `late final` a second time
-  /// throws `LateInitializationError`. That throw used to land inside
-  /// `Messaging.identifyDevice`, so on every login after the first one in a
-  /// process the clinic's relay key was never ensured and no device was
-  /// registered (`accounts 08`, which signs in twice).
+  /// `late`, not `late final`: [reset] lets the next login assign this again,
+  /// and a second `late final` assignment throws.
   late Future<Box<String>> hiveBox;
 
   bool _initialized = false;
@@ -25,8 +21,8 @@ class _DeferredPush {
     hiveBox = _initialize(clinicServer);
   }
 
-  /// Resets so [init] re-runs for the next login (different server = different
-  /// Hive box). Called from [Login.logout] via [onLogoutCallbacks].
+  /// Lets [init] re-run for the next login; a different server means a
+  /// different Hive box.
   void reset() {
     _initialized = false;
   }

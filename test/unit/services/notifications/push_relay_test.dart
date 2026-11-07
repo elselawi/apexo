@@ -28,8 +28,6 @@ void main() {
   late String originalEmail;
   late List<RecordModel> originalAccounts;
 
-  /// Signs this device in as [accountId] — which is the account the relay must
-  /// never be asked to notify about this device's own write.
   void signInAs(String accountId) {
     login.email = '$accountId@clinic.test';
     accounts.list([
@@ -127,8 +125,7 @@ void main() {
     });
 
     test('the caller\'s targets survive the send', () async {
-      // The queue keeps the datum after a failure, so the relay's own filtering
-      // must not be done in place on what the caller still holds.
+      // The queue keeps the datum after a failure, so do not filter in place.
       relaySays(200);
       final data = pushFor(['me', 'other']);
 
@@ -181,8 +178,7 @@ void main() {
     });
 
     test('one refused push does not stop the others', () async {
-      // A throw inside the batch would cancel the requests that were still in
-      // flight, so every push must be attempted before anything is reported.
+      // A throw cancels the rest of the batch, so all three are attempted first.
       PushRelay.client = MockClient((request) async {
         requests.add(request);
         final body = jsonDecode(request.body) as Map<String, dynamic>;

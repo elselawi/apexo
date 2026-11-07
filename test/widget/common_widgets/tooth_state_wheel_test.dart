@@ -88,10 +88,8 @@ void main() {
     expect(note, 'Review next visit');
     expect(selected, 'filling');
 
-    // A recorded treatment keeps the folded view: tapping the chosen option
-    // again changes nothing and does not put the ring back or throw the note
-    // away. The wait lets the double-tap window lapse, so the tap is read as
-    // a tap on the recorded choice rather than a confirmation.
+    // Tapping the recorded choice again changes nothing and keeps the note; the
+    // wait lapses the double-tap window so this reads as a tap, not a confirm.
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.byWidgetPredicate((widget) =>
         widget is Semantics &&
@@ -144,9 +142,6 @@ void main() {
         widget.properties.button == true &&
         widget.properties.label == txt('other')));
     await tester.pumpAndSettle();
-    // The custom editor is the same field as the notes one, and it commits as
-    // it is typed: nothing has to be pressed to keep the label, and there is
-    // no cancel to throw it away.
     expect(find.byType(LiveTranscribingTextField), findsOneWidget);
     expect(find.text(txt('cancel')), findsNothing);
     final field = tester.widget<LiveTranscribingTextField>(
@@ -162,8 +157,7 @@ void main() {
     expect(values.last, isNull);
     expect(note, isNull);
 
-    // "Other" behaves exactly like a selection: the ring folds away and the
-    // other options leave the wheel, leaving all the room to the field.
+    // Choosing "other" folds the ring like a selection, and the options leave.
     final filling = find.byWidgetPredicate((widget) =>
         widget is Semantics &&
         widget.properties.button == true &&
@@ -172,8 +166,6 @@ void main() {
         .descendant(of: filling, matching: find.byType(AnimatedOpacity))
         .first);
     expect(opacity.opacity, 0.0);
-    // Clearing is the way back: the ring returns and another option can be
-    // picked in place of the custom label.
     await tester.tap(find.byKey(const ValueKey('wheel-clear')));
     await tester.pumpAndSettle();
     expect(values.last, isNull);
@@ -251,9 +243,7 @@ void main() {
         widget.properties.button == true &&
         widget.properties.label == txt('crown')));
     await tester.pumpAndSettle();
-    // The choice is already recorded: a single tap changes nothing at all —
-    // the folded view is the only view of a recorded treatment — and it must
-    // not dismiss the popup either.
+    // The folded view is a recorded treatment's only view; a tap does nothing.
     expect(values, isEmpty, reason: 'the choice is recorded once');
     expect(closed, isFalse);
     final filling = find.byWidgetPredicate((widget) =>
@@ -286,8 +276,8 @@ void main() {
         lessThan(200));
     await tester.tap(find.text(txt('filling')).first);
     await tester.pumpAndSettle();
-    // The surface is still 350 wide and the field fills it without the
-    // platform's own field box, which would paint grey over the tint.
+    // The surface stays 350 wide and the field drops the platform decoration
+    // colour, which would paint grey over the tint.
     final wheel = tester.getRect(find.byKey(const ValueKey('choice-wheel')));
     expect(wheel.width, 350);
     final field = tester.widget<LiveTranscribingTextField>(
@@ -298,8 +288,6 @@ void main() {
         tester.getRect(find.byKey(const ValueKey('extra-notes-circle')));
     expect(notesRect.width, greaterThan(300));
     expect(notesRect.height, greaterThan(200));
-    // The chosen option rides at the leading edge of the surface, the size of
-    // the field below it, and dictation takes the trailing edge...
     final chip = tester.getCenter(find.byWidgetPredicate((widget) =>
         widget is Semantics &&
         widget.properties.button == true &&
@@ -416,20 +404,17 @@ void main() {
                 onTapClose: () => closed = true,
                 onSet: (_) {})));
     final box = tester.getRect(find.byKey(const ValueKey('choice-wheel')));
-    // The empty band between the notes surface and the options is still the
-    // wheel: a tap there must not throw the clinician out of the popup.
+    // The band between the notes surface and the options is inside the wheel.
     await tester.tapAt(box.center + const Offset(110, 0));
     await tester.pumpAndSettle();
     expect(closed, isFalse);
 
-    // The transparent corner of the square around the round wheel, however,
-    // is outside it and dismisses the popup...
+    // ...but the box's transparent corner is outside the wheel and dismisses.
     await tester.tapAt(box.topLeft + const Offset(6, 6));
     await tester.pumpAndSettle();
     expect(closed, isTrue);
 
-    // ...while the folded notes rectangle is one surface all the way out to
-    // its rounded edge.
+    // ...while folded, the notes rectangle is one surface to its rounded edge.
     closed = false;
     await tester.tap(find.text(txt('filling')).first);
     await tester.pumpAndSettle();
@@ -442,9 +427,8 @@ void main() {
 
   testWidgets('a tooth recorded only outside its records still reads as one',
       (tester) async {
-    // The tooth's only trace is the old note the panels pass alongside the
-    // records — a chart entry, or an appointment this editor does not list.
-    // It used to come out as a bare treatment name, with no icon and no note.
+    // A tooth known only from its old note (a chart entry, or an appointment
+    // this editor does not list) used to show as a bare treatment name.
     await pumpApexoApp(
         tester,
         Center(
@@ -590,8 +574,8 @@ void main() {
     final node = tester.getSemantics(find.bySemanticsLabel('Tooth 11'));
     node.owner!.performAction(node.id, SemanticsAction.tap);
     await tester.pumpAndSettle();
-    // Browsed from the patient's own records the rows are what appointments
-    // left on the tooth, so they are not called other appointments.
+    // The rows are what appointments left on the tooth, so they are not called
+    // other appointments.
     expect(find.text(txt('toothAppointmentNotes')), findsWidgets);
     expect(find.text(txt('toothHistory')), findsNothing);
     expect(tester.takeException(), isNull);

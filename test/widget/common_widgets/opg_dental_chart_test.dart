@@ -51,8 +51,8 @@ void main() {
 
   testWidgets('the panoramic arch starts exactly at the width it says',
       (tester) async {
-    // The threshold is a number the app depends on: a pixel narrower and the
-    // chart bends into a compact arch, a pixel wider and it stays panoramic.
+    // `kOpgViewportMinWidth` is an exact boundary: a pixel narrower flips to the
+    // compact arch.
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
@@ -212,8 +212,6 @@ void main() {
     // Date is kept in the tooltip, not cluttering the 90-degree rotated text beside the tooth
     expect(find.text('2026-05-10'), findsNothing);
 
-    // Tooltip on a tooth with history/notes shows its history/notes rather than the tooth name,
-    // while a clean tooth with no history/notes shows its tooth name.
     final tooltip16 = tester.widget<Tooltip>(
       find.descendant(
         of: find.byKey(const ValueKey('opg-col-16')),
@@ -365,8 +363,8 @@ void main() {
     expect(rotatedBoxes, isNotEmpty);
     expect(rotatedBoxes.first.quarterTurns, 3);
 
-    // Historical-only teeth use neutral radiographic color for their apex icon,
-    // whereas current-draft teeth keep their vibrant treatment color.
+    // History-only teeth paint a neutral apex icon; current treatments keep
+    // their treatment color.
     final histIcon = tester.widget<Icon>(
       find
           .descendant(
@@ -475,9 +473,8 @@ void main() {
     expect(centerOf('48').dx, lessThan(centerOf('41').dx));
     expect(centerOf('31').dx, lessThan(centerOf('38').dx));
 
-    // Ovoid / pyramidal arch shape: each posterior pair widens progressively
-    // from canine (3) -> first premolar (4) -> second premolar (5) -> first
-    // molar (6) -> second molar (7) -> wisdom tooth (8).
+    // The ovoid arch widens from the incisors out to the wisdom teeth, on both
+    // sides.
     double pairSpan(String leftIso, String rightIso) =>
         (centerOf(rightIso).dx - centerOf(leftIso).dx).abs();
 
@@ -496,29 +493,27 @@ void main() {
     expect(pairSpan('47', '37'), greaterThan(pairSpan('46', '36')));
     expect(pairSpan('48', '38'), greaterThan(pairSpan('47', '37')));
 
-    // One arch per jaw, not a second row: the front teeth stand across the top
-    // of the mouth and the back ones run down its sides.
+    // A jaw is one arch, not a row: its back teeth sit closer to the middle of
+    // the mouth than the front ones.
     expect(centerOf('11').dy, lessThan(centerOf('18').dy));
     expect(centerOf('21').dy, lessThan(centerOf('28').dy));
     expect(centerOf('41').dy, greaterThan(centerOf('48').dy));
     expect(centerOf('31').dy, greaterThan(centerOf('38').dy));
 
-    // The two jaws face each other across the middle of the mouth: the upper
-    // arch sits above the lower one everywhere, back teeth included.
+    // The upper arch stays above the lower one everywhere, back teeth included.
     expect(centerOf('11').dy, lessThan(centerOf('41').dy));
     expect(centerOf('18').dy, lessThan(centerOf('48').dy));
     expect(centerOf('28').dy, lessThan(centerOf('38').dy));
 
-    // The incisors stand upright across the anterior segment, while the canines
-    // sit at the corner angle where the arch bends into the buccal segments.
+    // Incisors stay level across the anterior segment; from the canine back the
+    // arch bends away.
     expect((centerOf('11').dy - centerOf('12').dy).abs(), lessThan(6));
     expect(centerOf('13').dy, greaterThan(centerOf('12').dy + 4));
     expect(centerOf('14').dy, greaterThan(centerOf('13').dy + 8));
     expect((centerOf('41').dy - centerOf('42').dy).abs(), lessThan(6));
     expect(centerOf('43').dy, lessThan(centerOf('42').dy - 4));
 
-    // The mouth is centred on the panel's midline, and the two sides mirror
-    // each other: the incisors sit level to either side of it.
+    // The arch is centred on the chart's midline and mirrors either side of it.
     final midline =
         tester.getRect(find.byKey(const ValueKey('opg-dental-chart'))).width /
             2;
@@ -532,15 +527,15 @@ void main() {
     expect(centerOf('18').dx, lessThan(chartWidth * 0.22));
     expect(centerOf('28').dx, greaterThan(chartWidth * 0.78));
 
-    // The whole chart fits the phone's height with room to spare for the
-    // panel's own chrome: nothing here has to scroll.
+    // The chart fits the phone height minus the panel's own chrome, so nothing
+    // has to scroll.
     expect(
       tester.getRect(find.byKey(const ValueKey('opg-dental-chart'))).height,
       lessThanOrEqualTo(740 - 190),
     );
 
-    // The switches pick one dentition: turning the primary teeth on shows them
-    // in place of the permanent ones, in the same space and without overflow.
+    // The switch swaps dentition rather than adding one: primary teeth replace
+    // the permanent set in the same space.
     await tester.tap(find.text(txt('showPrimary')).first);
     await tester.pumpAndSettle();
 
@@ -564,8 +559,8 @@ void main() {
     expect(find.byKey(WK.tooth('16', selected: false)), findsOneWidget);
     expect(find.byKey(WK.tooth('55', selected: false)), findsNothing);
 
-    // Tapping each tooth's visual center on the curved arch opens that exact
-    // tooth's wheel, without adjacent rotated cells stealing the hit.
+    // Tapping a tooth's visual centre must open that tooth, not a neighbour
+    // whose rotated cell overlaps it.
     for (final iso in [
       '11',
       '12',

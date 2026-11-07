@@ -4,19 +4,9 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:flutter/foundation.dart';
 
-/// Per-user DICOM viewer preferences, persisted as JSON in
-/// [LocalSettings.dicomViewerPrefs].
-///
-/// Next image opens with the same windowing / color map / invert / rotation
-/// the dentist last used. Applied to a [DicomViewerController] before the
-/// viewer is shown; written back (debounced) on any control change.
-///
-/// JSON shape (all fields optional; missing fields fall back to DICOM header
-/// defaults or the controller's own defaults):
-/// ```json
-/// {"windowCenter": 40, "windowWidth": 400, "colorMap": "bone",
-///  "invert": true, "rotationSteps": 1}
-/// ```
+/// Persisted per-user viewer prefs (window, color map, invert, rotation) stored
+/// as JSON in [LocalSettings.dicomViewerPrefs]; applied before showing the viewer
+/// and written back, debounced, on change. Missing fields fall back to defaults.
 @immutable
 class DicomViewerPrefs {
   const DicomViewerPrefs({
@@ -27,8 +17,7 @@ class DicomViewerPrefs {
     this.rotationSteps = 0,
   });
 
-  /// Parses [LocalSettings.dicomViewerPrefs] (a JSON string). Returns
-  /// [empty] on a null/blank/malformed string — never throws.
+  /// Parses the settings JSON; null/blank/malformed return [empty] and never throw.
   factory DicomViewerPrefs.fromLocalSettings(LocalSettings localSettings) {
     final raw = localSettings.dicomViewerPrefs;
     if (raw.isEmpty) return empty;
@@ -60,8 +49,7 @@ class DicomViewerPrefs {
     );
   }
 
-  /// Reads the current state of [controller] into a new prefs instance.
-  /// Used by the debounced persist-on-change listener.
+  /// Snapshots [controller] for the debounced persist-on-change listener.
   factory DicomViewerPrefs.fromController(DicomViewerController controller) {
     return DicomViewerPrefs(
       windowCenter: controller.windowCenter,
@@ -110,12 +98,8 @@ class DicomViewerPrefs {
       invert == false &&
       rotationSteps == 0;
 
-  /// Applies these prefs to [controller] after [DicomViewerController.loadFromBytes]
-  /// has completed. Windowing is applied only when the controller has data
-  /// (loaded); color map / invert / rotation are set unconditionally.
-  ///
-  /// [DicomViewerController.setColorMap] is async (builds a color LUT texture),
-  /// so this method is async. Returns when all prefs have been applied.
+  /// Applies after loadFromBytes: windowing only when data is loaded, color map /
+  /// invert / rotation always. Async because setColorMap builds the LUT.
   Future<void> applyTo(DicomViewerController controller) async {
     if (isEmpty) return;
 

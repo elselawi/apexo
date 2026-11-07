@@ -17,21 +17,9 @@ import 'package:apexo/services/login.dart' show login, onLogoutCallbacks;
 import 'package:apexo/utils/logger.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, visibleForTesting;
 
-/// Controller for the DICOM Import screen.///
-/// A thin reactive shell over [DicomImporter] — holds the pending-list,
-/// scanning, and progress observables the screen renders from, and exposes
-/// the user actions (refresh / approve / unmatch / manualMatch / unlink).
-///
-/// **Windows-only feature**: `AppRoute.dicom` is declared `windowsOnly` in
-/// `lib/app/routing/app_route.dart`, and `lib/app/routing/routes.dart` gates it on
-/// `DicomController.isSupported` (`!kIsWeb && Platform.isWindows`), so this
-/// controller is only constructed there. The methods below are still safe to
-/// call on other platforms (they no-op / return early when the watch dir is
-/// empty), but the UI never reaches them off-Windows.
+/// Windows-only screen controller: `routes.dart` hides the route unless
+/// [isSupported].
 class DicomController {
-  /// Creates a controller backed by [importer] (defaults to the global
-  /// [dicomImporter] singleton). The optional parameter exists so tests can
-  /// inject a mock importer without touching the real stores.
   DicomController({
     DicomImporter? importer,
     Future<List<SyncResult>> Function()? synchronizeAppointments,
@@ -46,32 +34,24 @@ class DicomController {
     }
     _registeredController = this;
 
-    // Register the periodic-scan lifecycle with the login system.
-    // The activator's first stage runs during login.activate(); the second
-    // stage (returned callback) runs only when online and not in demo mode.
+    // The activator's returned stage runs only when online and not in demo mode.
     _dicomActivator = () async {
-      // First stage: stop any timer from a previous session (covers
-      // re-login to same or different server). Hive boxes are already
-      // opened in dicom_init.dart — no additional setup needed here.
+      // First stage: drop any timer from a previous session (re-login, same
+      // or other server).
       stopPeriodicScan();
       _healed = false;
       _healing = false;
       return () async {
-        // Second stage (online, non-demo): start the periodic timer
-        // if auto-import is enabled and watch dirs are configured.
         startPeriodicScan();
       };
     };
     login.activators['dicom'] = _dicomActivator;
 
-    // Register a logout callback so the timer stops when the user
-    // signs out — prevents cross-server contamination.
+    // Stop the timer on logout, or it keeps scanning into the next session.
     _logoutCallback = stopPeriodicScan;
     onLogoutCallbacks.add(_logoutCallback);
 
-    // When a DICOM file's upload permanently fails (dead-letter),
-    // also clear the import registry so the file re-appears in the
-    // pending list on the next directory scan.
+    // Dead-lettered uploads must be unregistered, or they never return to pending.
     _deadLetterCallback = (filename) {
       unawaited(_importer.unregisterFile(filename));
     };
@@ -83,12 +63,9 @@ class DicomController {
   final ObservableState<List<DicomPendingImport>> pending =
       ObservableState<List<DicomPendingImport>>(const <DicomPendingImport>[]);
 
-  /// `true` while a scan is in flight. Drives the "Scan now" button spinner
-  /// and disables it.
   final ObservableState<bool> scanning = ObservableState<bool>(false);
 
-  /// Re-export of the importer's progress observable so the screen can
-  /// render a per-file progress bar during [approve]. `(0, 0)` = idle.
+  /// `(0, 0)` means idle.
   ObservableState<({int current, int total})> get importProgress =>
       _importer.importProgress;
 
@@ -99,8 +76,6 @@ class DicomController {
   ObservableState<({int current, int total, String path, bool cacheHit})>
       get scanFileProgress => _importer.scanFileProgress;
 
-  /// Re-export of the importer's high-level phase — distinguishes uploading
-  /// files from synchronizing the appointment records with the server.
   ObservableState<ImportPhase> get importPhase => _importer.importPhase;
 
   /// `true` while a scan is in flight (any phase except idle).
@@ -120,10 +95,7 @@ class DicomController {
   late final void Function(String filename) _deadLetterCallback;
   bool _approving = false;
 
-  /// Releases global lifecycle callbacks owned by this controller.
-  ///
-  /// The application singleton lives for the process lifetime; injected or
-  /// test controllers should call this when their owner is disposed.
+  /// Only injected/test controllers need this; [dicomCtrl] lives for the process.
   void dispose() {
     stopPeriodicScan();
     onLogoutCallbacks.remove(_logoutCallback);
@@ -138,8 +110,6 @@ class DicomController {
 
   // ── Date-matching helpers ────────────────────────────────────────────
 
-  /// Returns the set of DICOM study dates from [pi] that fall on the same
-  /// calendar day as an existing appointment for [apexoPatientId].
   Set<DateTime> matchingDates(DicomPendingImport pi, String apexoPatientId) {
     final apptDays = _appointmentDaySet(apexoPatientId);
     return pi.dates
@@ -160,14 +130,8 @@ class DicomController {
         const <DateTime>{};
   }
 
-  /// Batch-approves every selected pending import that has a confirmed match.
-  /// Returns the count of approved batches.
-  /// Only successfully approved items are removed from pending — failed ones
-  /// remain so the dentist can retry.
-  ///
-  /// [selectionKeys] holds [DicomPendingImport.selectionKey] values, not raw
-  /// DICOM patient IDs: anonymous batches have a blank patient ID and would
-  /// otherwise all be selected at once.
+  /// [selectionKeys] are [DicomPendingImport.selectionKey]s, not DICOM patient
+  /// IDs: anonymous batches have a blank ID and would all be selected at once.
   Future<int> batchApprove(Set<String> selectionKeys) async {
     if (isImporting) return 0;
 
@@ -209,9 +173,8 @@ class DicomController {
       }
       return approved;
     } finally {
-      // The importer reports per-file progress. Do not overwrite it with batch
-      // counts (that made the bar jump between file and batch indices); just
-      // reset to idle once all batches are done.
+      // The importer reports per-file progress; overwriting it with batch
+      // counts made the bar jump. Reset to idle only after all batches.
       importProgress((current: 0, total: 0));
       _approving = false;
     }
@@ -219,19 +182,14 @@ class DicomController {
 
   // ── Actions ──────────────────────────────────────────────────────────
 
-  /// Scans the watch directory and rebuilds the pending list.
-  ///
-  /// Re-entrant-safe: skips if a scan is already in flight. Errors are
-  /// logged and swallowed — the UI shows the previous pending list (or
-  /// empty) rather than crashing.
   Future<void> refresh() async {
     if (scanning()) return;
     log.info('DicomController.refresh: scan requested');
     scanning(true);
     try {
       final result = await _importer.scanAndBuildPending();
-      // A cancelled scan returns an empty list, but that must not be mistaken
-      // for "no files found" — otherwise the dentist's pending cards vanish.
+      // A cancelled scan also returns an empty list; treating that as "no
+      // files" would wipe the pending cards.
       if (_importer.lastScanWasCancelled) {
         log.info('DicomController.refresh: scan cancelled → keeping pending');
         return;
@@ -245,8 +203,6 @@ class DicomController {
               '${result.length} pending imports');
         }
       }
-      // Auto-approve linked patients — same behaviour whether triggered
-      // by the periodic timer or the manual "Scan now" button.
       await autoApproveLinked();
     } catch (e, s) {
       logger('DicomController.refresh error: $e', s, 2);
@@ -268,15 +224,6 @@ class DicomController {
   /// Whether the periodic scan timer is currently active.
   bool get isTimerRunning => _periodicTimer != null;
 
-  /// Starts the 90-second periodic scan timer.
-  ///
-  /// Guards:
-  /// - No-ops if the timer is already running.
-  /// - No-ops if the platform doesn't support DICOM scanning ([isSupported]).
-  /// - No-ops if no watch directories are configured or auto-import is off.
-  ///
-  /// The first tick fires immediately so new files aren't delayed by a full
-  /// interval.
   void startPeriodicScan() {
     if (_periodicTimer != null) return;
     if (!isSupported) return;
@@ -293,10 +240,6 @@ class DicomController {
     unawaited(_tick(generation));
   }
 
-  /// Stops the periodic scan timer and cancels any in-flight scan.
-  ///
-  /// Safe to call when no timer is running. Called on logout and when
-  /// the activator re-runs (re-login to same or different server).
   void stopPeriodicScan() {
     ++_periodicGeneration;
     cancelScan();
@@ -309,11 +252,8 @@ class DicomController {
     _healing = false;
   }
 
-  /// One tick of the periodic timer: scans for new files and auto-approves
-  /// any that belong to already-linked patients.
-  ///
-  /// Self-stops if watch dirs become empty or auto-import is turned off
-  /// mid-session (e.g., settings changed on another device and synced).
+  // Synced settings can change mid-session (another device), so each tick
+  // re-checks and stops itself when scanning no longer applies.
   Future<void> _tick(int generation) async {
     if (generation != _periodicGeneration) return;
 
@@ -325,9 +265,8 @@ class DicomController {
       return;
     }
 
-    // One-time cleanup: remove stale dcmImgs entries only after verifying
-    // each file against PocketBase. Never infer missing files from a local
-    // model mismatch or from an unavailable server.
+    // Never infer a missing file from local state or an offline server: only
+    // the PocketBase file list is authoritative, and this pass runs once.
     if (!_healed && !_healing) {
       _healing = true;
       try {
@@ -341,16 +280,12 @@ class DicomController {
       }
     }
 
-    // Logout/re-login can cancel the timer while healing is awaiting I/O.
-    // Never continue into a scan under the old session.
+    // Logout can bump the generation while healing awaits I/O; never scan
+    // under the old session.
     if (generation != _periodicGeneration) return;
     await refresh();
   }
 
-  /// One-time cleanup pass: removes `dcmImgs` entries whose files are
-  /// definitively absent from PocketBase (for example, an upload failed).
-  /// The server file list is checked before changing either model state or
-  /// the registry. DicomLinksStore.removeKey preserves the patient link.
   Future<bool> _healStaleDcmImgs({bool Function()? shouldContinue}) async {
     bool isCurrent() => shouldContinue?.call() ?? true;
     if (!isCurrent()) return false;
@@ -361,8 +296,8 @@ class DicomController {
       return false;
     }
 
-    // Synchronize the appointment JSON first, then require convergence. A
-    // synchronize call can return a sync error without throwing.
+    // Synchronize first, then require convergence: a sync can fail without
+    // throwing.
     try {
       await _synchronizeAppointments();
       if (!isCurrent() || !await _appointmentsInSync()) return false;
@@ -375,10 +310,8 @@ class DicomController {
     final toFix = <String, List<String>>{}; // apptId → stale names
     var inspectionComplete = true;
 
-    // Use PocketBase's actual file field, not Appointment.imgs. DICOM files
-    // are stored in the PB `imgs` field but intentionally listed separately
-    // in Appointment.dcmImgs, so `appt.imgs.contains(dcm)` is normally false
-    // even after a successful upload.
+    // DICOM files go to PocketBase's `imgs` field but are listed separately in
+    // `dcmImgs`, so `appt.imgs.contains(dcm)` is false even after upload.
     for (final appt in appointments.docs.values) {
       if (!isCurrent()) return false;
       if (appt.dcmImgs.isEmpty) continue;
@@ -423,9 +356,8 @@ class DicomController {
         continue;
       }
 
-      // Re-read the authoritative file list immediately before mutation. A
-      // concurrent import may have uploaded or referenced a candidate after
-      // the initial inspection.
+      // Re-read just before mutating: a concurrent import may have uploaded a
+      // candidate since the first inspection.
       final List<String> currentServerNames;
       try {
         currentServerNames = await remote.getFileNames(appt.id);
@@ -453,13 +385,12 @@ class DicomController {
       for (final dcmName in entry.value) {
         if (!isCurrent()) return false;
         if (!stillStale.contains(dcmName)) continue;
-        // Clear the dedup marker so a source file can be rediscovered.
-        // DicomLinksStore.removeKey preserves any confirmed patient link.
+        // Clearing the dedup key lets the source file be rediscovered;
+        // DicomLinksStore.removeKey keeps the patient link.
         if (await _importer.unregisterFile(dcmName)) {
           unregistered.add(dcmName);
         } else {
-          // Without a confirmed registry result, retain the appointment
-          // reference so the one-time pass can retry safely later.
+          // Unconfirmed unregister: keep the reference so a later pass retries.
           inspectionComplete = false;
         }
       }
@@ -499,13 +430,9 @@ class DicomController {
     required List<String> serverFiles,
     required Set<String> pendingUploadFiles,
   }) {
-    // PocketBase appends a collision suffix to uploaded files (e.g.
-    // `dcm_abc123.dcm` becomes `dcm_abc123_x7y8z9.dcm`), and `dcmImgs` may
-    // hold either the original or its `.dcm.png` preview. Comparing raw strings
-    // would flag a present file as stale, strip it from the appointment, and
-    // cause it to be re-uploaded and duplicated. Compare logical identities
-    // instead, falling back to the lowercased name when a file is not a
-    // recognised DICOM upload name.
+    // PocketBase appends a collision suffix (`x.dcm` -> `x_ab12cd.dcm`) and
+    // `dcmImgs` may hold either the name or its `.dcm.png` preview, so compare
+    // logical identities, not raw strings, or present files look stale.
     String identityOf(String name) =>
         dcm_helpers.dcmUploadIdentity(name) ?? name.toLowerCase();
 
@@ -520,18 +447,9 @@ class DicomController {
   bool _healed = false;
   bool _healing = false;
 
-  /// Auto-approves any [DicomPendingImport] items in the current pending
-  /// list that are [DicomPendingImport.autoLinked] (i.e. the DICOM patient
-  /// already has a confirmed link to an Apexo patient).
-  ///
-  /// Silently skips non-auto-linked items. Failed approvals are logged and
-  /// the item stays in the pending list so the dentist can retry manually.
-  ///
-  /// Visible for testing so unit tests can verify the filtering + approval
-  /// logic without going through the full scan pipeline.
   Future<void> autoApproveLinked() async {
-    // Never run concurrently with a manual approve — both mutate appointments
-    // and share the import-progress observable. The next periodic tick retries.
+    // Never overlap a manual approve: both mutate appointments and share the
+    // progress observable. The next tick retries.
     if (isImporting) return;
 
     final current = pending();
@@ -560,8 +478,6 @@ class DicomController {
               2);
         }
       }
-      // Remove only complete approvals. Partial outcomes remain as a reduced
-      // pending item so the failed files can be retried immediately.
       if (approvedItems.isNotEmpty || partial.isNotEmpty) {
         pending(current
             .where((x) => !approvedItems.contains(x))
@@ -569,20 +485,13 @@ class DicomController {
             .toList());
       }
     } finally {
-      // The importer deliberately leaves progress at (total, total) for batch
-      // callers; without this reset `isImporting` would stay true forever and
-      // the progress bar would never disappear.
+      // The importer leaves progress at (total, total) for batch callers;
+      // without this reset `isImporting` stays true forever.
       importProgress((current: 0, total: 0));
       _approving = false;
     }
   }
 
-  /// Approves a pending batch, importing its files into the matched (or
-  /// [apexoPatientId]-overridden) patient's appointments. Removes the batch
-  /// from [pending] on success.
-  ///
-  /// Re-entrant-safe: skips if an import is already in flight (the screen
-  /// also disables the Approve button during import).
   Future<void> approve(DicomPendingImport p, {String? apexoPatientId}) async {
     if (isImporting) return;
     _approving = true;
@@ -608,10 +517,7 @@ class DicomController {
     }
   }
 
-  /// Clears the suggested match on [p] (the dentist disagrees with the
-  /// suggestion). Sets [DicomPendingImport.matchedPatient] to null and
-  /// [DicomPendingImport.confidence] to 0. Persists the rejection so the
-  /// same suggestion won't appear again after restart.
+  /// Persisted so the scanner won't re-suggest a rejected match.
   void unmatch(DicomPendingImport p) {
     p.matchedPatient = null;
     p.confidence = 0;
@@ -624,9 +530,7 @@ class DicomController {
     pending(List.of(pending()));
   }
 
-  /// Manually sets the matched Apexo patient for [p] (the dentist picked one
-  /// from the patient picker). Marks the match as confirmed and persists it
-  /// so it survives app restarts (without auto-importing).
+  /// Persists the confirmed match; importing still requires [approve].
   Future<void> manualMatch(DicomPendingImport p, String apexoPatientId) async {
     final matched = patients.get(apexoPatientId);
     if (matched == null) return;
@@ -638,8 +542,7 @@ class DicomController {
     pending(List.of(pending()));
   }
 
-  /// Unlinks a DICOM patient — one delete: link and all imported keys
-  /// evaporate. Previously-imported files will re-surface on the next scan.
+  /// Unlinking makes the previously-imported files re-surface on the next scan.
   Future<void> unlinkPatient(String dicomPatientId) async {
     // One delete — link and all imported keys evaporate.
     await dicomLinks.unlink(dicomPatientId);
@@ -654,8 +557,6 @@ class DicomController {
 
   // ── Convenience getters for the screen ───────────────────────────────
 
-  /// The configured watch directories (re-rendered via `globalSettings`
-  /// stream in the screen).
   String get watchDir => globalSettings.dicomWatchDir;
 
   /// Parsed list of watch directories.

@@ -42,10 +42,8 @@ class _ImageTile extends StatefulWidget {
   final String img;
   final String rowId;
 
-  /// When `true`, [img] is a `.dcm`/`.dicom` X-ray. The tile renders the PNG
-  /// preview (via `getImage`, which auto-redirects `.dcm` → `.dcm.png`), shows
-  /// a "DCM" badge, displays a spinner placeholder while the PNG is still
-  /// generating, and rebuilds when `dicomPngReady` bumps.
+  /// Whether [img] is a `.dcm`/`.dicom` X-ray; `getImage` redirects it to the
+  /// generated `.dcm.png` preview.
   final bool isDcm;
   final bool canDelete;
   final bool showClipOverlay;
@@ -55,10 +53,8 @@ class _ImageTile extends StatefulWidget {
   final Set<String> downloadingFiles;
   final double tileSize;
 
-  /// The width of the picture this tile asks for: the grid's [kThumbSize], or
-  /// [kPreviewSize] where the gallery shows one picture bigger. A tile never
-  /// asks for the original — that is the viewer's job, and it is several
-  /// megabytes for a box a few hundred pixels wide.
+  /// Requested thumbnail width: [kThumbSize] in the grid, [kPreviewSize] for
+  /// the featured tile. Never the original — that is the viewer's job.
   final int thumbSize;
   final VoidCallback? onTapClip;
 
@@ -70,10 +66,7 @@ class _ImageTileState extends State<_ImageTile> {
   bool _isHovered = false;
   bool _hasLoaded = false;
 
-  /// The picture the last lookup found, or null while there is none — an
-  /// X-ray whose PNG preview has not been generated yet. A tile that already
-  /// shows its picture has nothing to gain from another preview, so it stays
-  /// put when one lands.
+  // Last resolved picture; null while a DCM tile waits for its preview.
   ImageProvider<Object>? _resolved;
   late Future<ImageProvider<Object>?> _imageFuture;
   StreamSubscription<int>? _pngReadySub;
@@ -240,9 +233,7 @@ class _ImageTileState extends State<_ImageTile> {
       future: _imageFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.done) {
-          // The lookup is done, picture or not: what it found is what this
-          // tile has, and a DCM that found nothing still wants the next
-          // preview to land here.
+          // Done either way; DCM tiles keep waiting for a preview.
           _hasLoaded = true;
           _resolved = snapshot.data;
           if (snapshot.hasData) {
@@ -252,8 +243,6 @@ class _ImageTileState extends State<_ImageTile> {
               errorBuilder: (_, __, ___) => _buildFilePlaceholder(theme),
             );
           }
-          // A completed lookup without an image is not an active load.
-          // DCM tiles remain tappable and retry when dicomPngReady emits.
           return _buildFilePlaceholder(theme);
         }
         // Loading: DCM shows the spinner; photos leave the shimmer visible.
@@ -292,8 +281,6 @@ class _ImageTileState extends State<_ImageTile> {
 
 // ─── DCM badge overlay ────────────────────────────────────────────────────
 
-/// Small "DCM" badge rendered in the top-left corner of a gallery cell to
-/// distinguish X-ray previews from regular photos.
 class _DcmBadge extends StatelessWidget {
   const _DcmBadge();
 
@@ -575,8 +562,6 @@ class _FeaturedMasonry extends StatefulWidget {
   final void Function(int index) onDeleteImage;
   final VoidCallback? onTapClip;
 
-  /// Names in [imgs] that are DCM X-rays (sourced from `GridGallery.dcmImgs`).
-  /// Only these get the DCM badge / spinner placeholder / viewer routing.
   final Set<String> dcmNames;
 
   @override

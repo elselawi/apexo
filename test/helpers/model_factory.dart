@@ -5,15 +5,7 @@ import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/settings/settings_model.dart';
 
-// ──────────────────────────────────────────────────────────────────────────────
-// Model Factories
-//
-// Each factory returns a fully-constructed model instance with sensible
-// defaults. Pass only the fields you care about — everything else gets a
-// reasonable default so tests stay focused on what they're actually testing.
-//
-// Every model gets a unique random id via uuid() by default.
-// ──────────────────────────────────────────────────────────────────────────────
+// Omit id for a fresh uuid; testSetting instead defaults to 'setting_key'.
 
 /// Creates a test [Patient] with sensible defaults.
 Patient testPatient({

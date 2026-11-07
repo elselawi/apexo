@@ -3,18 +3,8 @@ import 'package:apexo/features/appointments/appointment_commands.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// Who is on a visit, as the checklist every operators control opens.
-///
-/// One picker for every surface that names a visit's operators: the calendar's
-/// timeline chip and the visit band both open this list, so an operator is
-/// ticked the same way wherever the visit is found.
-///
-/// The selection is read from the **live** visit — its open draft, else the
-/// stored record — on every rebuild, never from the copy of the visit the
-/// trigger was built with. A tick writes through [appointmentCommand], which
-/// reaches the draft and the store but not that copy; a list that read it would
-/// draw every box exactly as it found it, and go on doing so until it was closed
-/// and opened again.
+/// The operators checklist shared by every surface. It reads the live visit each
+/// build: a tick writes through [appointmentCommand], not the trigger's copy.
 class AppointmentOperatorsFlyout extends StatefulWidget {
   const AppointmentOperatorsFlyout({
     super.key,
@@ -24,8 +14,6 @@ class AppointmentOperatorsFlyout extends StatefulWidget {
 
   final String appointmentId;
 
-  /// Called after a tick, so the control that opened this list — a pill, a
-  /// field — can redraw the names it shows.
   final VoidCallback? onChanged;
 
   @override
@@ -97,8 +85,6 @@ class _AppointmentOperatorsFlyoutState
             onChanged: (_) => _toggle(operatorId, checked),
           ),
           const SizedBox(width: 8),
-          // A clinician's name is their own: a long one is shortened to fit the
-          // list, never allowed to push the box out of it.
           Expanded(
             child: Text(
               name,

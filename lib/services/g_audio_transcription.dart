@@ -9,10 +9,6 @@ import 'package:flutter/widgets.dart';
 import 'package:record/record.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
-
 enum TranscriptionState { idle, connecting, recording, stopping, error }
 
 class TranscriptionSession {
@@ -42,24 +38,8 @@ class TranscriptionSession {
       );
 }
 
-// ---------------------------------------------------------------------------
-// Service
-// ---------------------------------------------------------------------------
-
-/// Real-time voice transcription via the WS Live API, proxied through
-/// the Apexo AI Worker at `/live-ws` (authenticated WebSocket).
-///
-///
-/// Usage:
-///   final svc = WSVoiceTranscriptionService(controller: _ctrl);
-///   await svc.startTranscription();
-///   await svc.stopTranscription();
-///   svc.dispose();
-///
-/// Wire format (sending = snake_case, receiving = camelCase):
-///   • Setup → { setup: { model, generation_config: { response_modalities }, … } }
-///   • Audio → { realtime_input: { audio: { data, mime_type } } }
-///   • Reply → { serverContent: { inputTranscription, outputTranscription, … } }
+/// Real-time transcription over the WS Live API, proxied through the Worker at
+/// `/live-ws`; the Worker owns session setup, only audio goes out from here.
 class WSVoiceTranscriptionService extends AIService {
   WSVoiceTranscriptionService({
     required TextEditingController controller,
@@ -76,14 +56,8 @@ class WSVoiceTranscriptionService extends AIService {
   // Stream that consumers subscribe to for live state updates.
   final _streamCtrl = StreamController<TranscriptionSession>.broadcast();
 
-  /// The broadcast stream of session updates.
-  ///
-  /// Held rather than handed out by a getter: `.stream` on a broadcast
-  /// controller returns a **new** object on every access, and
-  /// `live_transcription_button.dart` passes this straight to a `StreamBuilder`
-  /// inside `build()`. A `StreamBuilder` treats a different object as a
-  /// different stream, so a getter made it drop its subscription and re-subscribe
-  /// on every rebuild — losing whatever arrived in the gap.
+  /// Held as a field: `.stream` on a broadcast controller returns a new object
+  /// each access, and the `StreamBuilder` would resubscribe on every rebuild.
   late final Stream<TranscriptionSession> stream = _streamCtrl.stream;
 
   TranscriptionSession _session =
@@ -103,16 +77,11 @@ class WSVoiceTranscriptionService extends AIService {
   bool _disposed = false;
   int _sessionId = 0;
 
-  // -------------------------------------------------------------------------
-  // Public
-  // -------------------------------------------------------------------------
-
   Future<void> startTranscription() async {
     if (_disposed) throw StateError('Service has been disposed.');
     if (isActive) return;
 
-    // If a previous session is still in its grace period, cut it short
-    // and fully clean up before starting a new one.
+    // A previous session may still be in its stop grace period; finish it first.
     if (_session.state == TranscriptionState.stopping) {
       await _cleanup();
     }
@@ -153,9 +122,8 @@ class WSVoiceTranscriptionService extends AIService {
     await _audioSub?.cancel();
     _audioSub = null;
 
-    // Keep the WebSocket open for a short grace period so WS can
-    // finish transcribing the last audio it already received.
-    // Only wait if the socket is still healthy (skip if it closed on us).
+    // Keep the socket open briefly so the server can finish transcribing audio
+    // it already received; skip the wait if it closed on us.
     if (_ws?.closeCode == null) {
       await Future<void>.delayed(const Duration(seconds: 3));
     }
@@ -177,10 +145,6 @@ class WSVoiceTranscriptionService extends AIService {
     await _recorder.dispose();
   }
 
-  // -------------------------------------------------------------------------
-  // WebSocket
-  // -------------------------------------------------------------------------
-
   Future<void> _openWebSocket() async {
     final token = await AIService.getToken();
     final wssUrl = AIService.workerUrl.replaceFirst('https://', 'wss://');
@@ -191,8 +155,7 @@ class WSVoiceTranscriptionService extends AIService {
       {'Authorization': 'Bearer $token'},
     );
 
-    // Create the completer before subscribing to messages so we don't
-    // miss setupComplete (which the Worker sends on our behalf).
+    // Create the completer before listening, or an early setupComplete is lost.
     _setupCompleter = Completer<void>();
 
     _wsSub = _ws!.stream.listen(
@@ -207,9 +170,8 @@ class WSVoiceTranscriptionService extends AIService {
     debugPrint('[WSVoice] 🔌 Connected via worker. '
         'Waiting for server-side setup...');
 
-    // The Worker handles the entire ws session setup (model,
-    // generation_config, system_instruction, etc.) and forwards
-    // setupComplete back to us. No setup payload sent from the client.
+    // The Worker performs the session setup (model, generation_config, system
+    // instructions) and forwards setupComplete; the client sends no setup payload.
     await _setupCompleter!.future.timeout(
       const Duration(seconds: 30),
       onTimeout: () => throw TimeoutException(
@@ -222,10 +184,6 @@ class WSVoiceTranscriptionService extends AIService {
       _ws?.sink.add(jsonEncode(payload));
     } catch (_) {}
   }
-
-  // -------------------------------------------------------------------------
-  // Audio
-  // -------------------------------------------------------------------------
 
   Future<void> _startMic() async {
     final stream = await _recorder.startStream(const RecordConfig(
@@ -244,8 +202,6 @@ class WSVoiceTranscriptionService extends AIService {
             '[WSVoice] 🎙️ Sent $audioChunksSent audio chunks so far...');
       }
 
-      // Each chunk is sent as a BidiGenerateContentRealtimeInput with
-      // base64-encoded raw PCM data and the required mime_type.
       _wsSend({
         'realtime_input': {
           'audio': {
@@ -256,10 +212,6 @@ class WSVoiceTranscriptionService extends AIService {
       });
     });
   }
-
-  // -------------------------------------------------------------------------
-  // Message handling
-  // -------------------------------------------------------------------------
 
   void _onMessage(Object? raw) {
     // Messages arrive as Uint8List bytes on Android — decode before parsing.
@@ -281,19 +233,12 @@ class WSVoiceTranscriptionService extends AIService {
 
     debugPrint('[WSVoice] 📩 WebSocket message received.');
 
-    // --- setupComplete -------------------------------------------------
-    // Server confirms the session is ready. Only now is it safe to begin
-    // streaming audio from the microphone.
+    // Server confirms the session is ready; audio may only stream after this.
     if (msg.containsKey('setupComplete')) {
       _onSetupComplete();
       return;
     }
 
-    // --- serverContent -------------------------------------------------
-    // The server sends response keys in camelCase:
-    //   • inputTranscription  — ASR result (user's speech → text)
-    //   • outputTranscription — text version of the model's audio response
-    //   • turnComplete        — signals the end of a model turn
     if (msg.containsKey('serverContent')) {
       final content = msg['serverContent'] as Map<String, dynamic>? ?? {};
 
@@ -305,9 +250,8 @@ class WSVoiceTranscriptionService extends AIService {
         _appendText(userText);
       }
 
-      // Output transcription: the model repeating back — useful for
-      // debugging but we don't append it to avoid duplicates with
-      // inputTranscription (the real speech-to-text result).
+      // outputTranscription is the model echoing the audio; ignoring it avoids
+      // duplicates with inputTranscription.
       final outputTrans =
           content['outputTranscription'] as Map<String, dynamic>?;
       final modelText = outputTrans?['text'] as String? ?? '';
@@ -325,9 +269,6 @@ class WSVoiceTranscriptionService extends AIService {
       return;
     }
 
-    // --- toolCall ------------------------------------------------------
-    // The model requested one or more function calls.
-    // Execute locally and send back a toolResponse per the spec.
     if (msg.containsKey('toolCall')) {
       _handleToolCall(msg['toolCall'] as Map<String, dynamic>? ?? {});
       return;
@@ -347,10 +288,6 @@ class WSVoiceTranscriptionService extends AIService {
       return;
     }
   }
-
-  // ---------------------------------------------------------------------
-  // setupComplete handler
-  // ---------------------------------------------------------------------
 
   void _onSetupComplete() {
     _setupCompleter?.complete();
@@ -373,10 +310,6 @@ class WSVoiceTranscriptionService extends AIService {
           .then((_) => _emit(state: TranscriptionState.error, error: e)));
     }));
   }
-
-  // ---------------------------------------------------------------------
-  // Tool call handling (per official documentation)
-  // ---------------------------------------------------------------------
 
   void _handleToolCall(Map<String, dynamic> toolCall) {
     final calls = toolCall['functionCalls'] as List<dynamic>? ?? [];
@@ -412,16 +345,10 @@ class WSVoiceTranscriptionService extends AIService {
     }
   }
 
-  /// Execute a tool function locally.
-  /// Override or extend for custom tool implementations.
   Map<String, dynamic> _executeTool(String name, Map<String, dynamic> args) {
     debugPrint('[WSVoice] Unknown tool call: $name.');
     return {'status': 'unknown tool: $name'};
   }
-
-  // ---------------------------------------------------------------------
-  // WebSocket lifecycle callbacks
-  // ---------------------------------------------------------------------
 
   void _onWsError(Object error) {
     debugPrint('[WSVoice] WebSocket error.');
@@ -451,10 +378,6 @@ class WSVoiceTranscriptionService extends AIService {
       unawaited(stopTranscription());
     }
   }
-
-  // -------------------------------------------------------------------------
-  // Helpers
-  // -------------------------------------------------------------------------
 
   void _appendText(String token) {
     final base = _session.transcript;

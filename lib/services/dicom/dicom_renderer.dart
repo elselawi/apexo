@@ -3,19 +3,12 @@ import 'dart:typed_data';
 import 'package:apexo/utils/logger.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 
-/// Wraps `dicom_toolkit`'s [DicomExport] to render PNG preview bytes from a
-/// fully-parsed [DicomParseResult].
-///
-/// Headless export is verified to work (no widget surface required) —
-/// renders PNG bytes directly via the Rust backend. Safe to call from
-/// background pipelines (e.g., the lazy PNG generation task queue).
+/// Renders PNG bytes from a parsed result via the Rust backend, headless, so it is
+/// safe in background pipelines.
 class DicomRendererWrapper {
   const DicomRendererWrapper();
 
-  /// Renders [result] to PNG bytes using the given windowing.
-  ///
-  /// [windowCenter] / [windowWidth] default to the DICOM header values when
-  /// null. Returns `null` on any failure (caller logs to `dicom_skipped`).
+  /// Uses the DICOM header window when center/width are null; null on failure.
   Future<Uint8List?> renderPreviewPng(
     final DicomParseResult result, {
     final double? windowCenter,

@@ -219,15 +219,8 @@ const ruleLoggedUsersExceptForSettings =
 const ruleEitherLoggedOrSettings =
     "@request.auth.id != \"\" || store = \"settings_global\"";
 
-// ---------------------------------------------------------------------------
-// Online booking (see online-booking.md §12)
-//
-// Three additive collections on a stock PocketBase:
-//  - booking_verification holds one operation-bound proof, readable only by
-//    the caller that knows the challenge.
-//  - booking_clinic is the staff-readable inbox credential.
-//  - booking_admin is superuser-only and never enters the ordinary staff cache.
-// ---------------------------------------------------------------------------
+// Booking collections: verification (caller-only proof), clinic (staff inbox),
+// admin (superuser-only, never in the staff cache).
 
 const String bookingVerificationCollectionName = "booking_verification";
 const String bookingClinicCollectionName = "booking_clinic";
@@ -238,9 +231,8 @@ const String bookingAdminCollectionName = "booking_admin";
 const String bookingClinicRecordId = "bookingclinic01";
 const String bookingAdminRecordId = "bookingadmin001";
 
-/// Where the booking Worker lives. The hosted service is the default, like the
-/// push relay; `--dart-define=BOOKING_ORIGIN=…` points a build elsewhere and an
-/// empty value hides the feature, which is what the hosted service does here.
+/// Booking Worker origin; `--dart-define=BOOKING_ORIGIN=…` overrides it and an
+/// empty value hides the feature.
 const String bookingOrigin = String.fromEnvironment("BOOKING_ORIGIN",
     defaultValue: "https://book.apexo.app");
 
@@ -478,15 +470,11 @@ final List<CollectionModel> bookingCollections = [
   bookingAdminCollectionImport,
 ];
 
-/// The patient portal view is only reachable when the request carries a
-/// `pid` query param matching the row's patient ID. The patient ID thus
-/// becomes an unguessable, patient-scoped capability (server-enforced)
-/// instead of a client-supplied filter that anyone could omit or alter.
+/// The patient portal view requires `pid` to match the row, making the patient id
+/// an unguessable, server-enforced capability rather than a client filter.
 const rulePublicPatientScoped =
     "@request.query.pid != \"\" && pid = @request.query.pid";
 
-/// Bump this whenever the PocketBase collection definitions in this file
-/// change (rules, fields, indexes). On admin login the app re-imports the
-/// schema (pure upsert — never deletes) when this version is newer than the
-/// version last applied for the clinic.
+/// Bump when collection definitions change; admin login re-imports the schema as
+/// a pure upsert when this is newer than the clinic's last applied version.
 const int schemaVersion = 3;

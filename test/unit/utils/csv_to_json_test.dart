@@ -1,12 +1,7 @@
 import 'package:apexo/utils/csv_to_json.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// The row at [index], in the shape [csvToJsonList] produces for a
-/// multi-column CSV.
-///
-/// Typed once here so the expectations below read `row['name']` rather than
-/// indexing a `dynamic` — which strict analysis flags, and which would hide a
-/// misspelled column name.
+/// Casts a CSV row to a typed map so expectations avoid the `avoid_dynamic_calls` lint.
 Map<String, dynamic> rowAt(List<dynamic> rows, int index) =>
     rows[index] as Map<String, dynamic>;
 
@@ -88,10 +83,7 @@ void main() {
     });
 
     test('malformed CSV returns empty list (try/catch)', () {
-      // Test that the function handles edge cases without crashing
-      // Passing a string-only construct; invalid CSV should return []
       final result = csvToJsonList('not,valid,csv\n');
-      // This may or may not return data depending on structure
       expect(result, isEmpty);
     });
 

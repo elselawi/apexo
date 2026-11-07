@@ -148,8 +148,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     return RepaintBoundary(
-      // The long press is the drag: a note is moved by it, so this menu is on
-      // right click only.
+      // long press drags the note, so this menu is right click only.
       child: ContextMenuRegion(
         longPress: false,
         items: _contextMenuItems,
@@ -169,12 +168,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     );
   }
 
-  /// The note's actions on right click, in the order the card offers them: open
-  /// or close it, take an attachment, hand it to someone, move its due date, and
-  /// — last — take it away. An action the user may not do is not there at all.
-  ///
-  /// [menuContext] is the menu's; the card's own context is used for the date
-  /// picker, which outlives the menu that was tapped.
+  // the card's right-click menu: an action the user may not do is not there.
   List<MenuFlyoutItemBase> _contextMenuItems(
     BuildContext menuContext,
     FlyoutController controller,
@@ -220,8 +214,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
           text: Txt(txt("changeDueDate")),
           leading: const Icon(FluentIcons.edit_event),
           onPressed: () {
-            // The menu is closing; the picker belongs to the card, which is
-            // still here after the menu is gone.
+            // the menu closes on tap, so the picker opens a frame later from the card.
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;
               unawaited(_changeDueDate(context));
@@ -250,9 +243,8 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
     ];
   }
 
-  /// Every user a note can be handed to, then the way to hand it back to no
-  /// one. Shared by the card's assign button and its context menu, so the two
-  /// cannot offer different people.
+  // assignee options for the card's assign button and its menu, so the two
+  // cannot offer different people.
   List<MenuFlyoutItemBase> _assigneeItems() {
     final note = widget.note;
     return [

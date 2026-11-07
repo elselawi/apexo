@@ -35,11 +35,8 @@ import '../../helpers/model_factory.dart';
 import '../../helpers/pump_app.dart';
 import '../../helpers/window_defaults.dart';
 
-/// Puts a store's records back as they were.
-///
-/// The stores are the app's own: a test that adds a patient and leaves it
-/// behind changes what the next test sees — and what the app itself would
-/// show.
+/// Restores the app's own store, which every test shares: a record left behind
+/// changes what the next test sees.
 void _restore<T extends Model>(
     ObservableDict<T> store, Map<String, T> records) {
   store.silently(() {
@@ -49,11 +46,8 @@ void _restore<T extends Model>(
   store.notifyView();
 }
 
-/// A row's context menu offers one item per window of the panel it opens, and
-/// both the menu and the panel read the same list (`patientWindows`,
-/// `appointmentWindows`, `expenseWindows`). These tests open the real panels and
-/// compare the windows they build with that list, so a window cannot be added
-/// to one side and silently missing from the other.
+/// The panel and the row menu read the same window list (`patientWindows` and
+/// friends), so these tests catch a window added to one side only.
 void main() {
   late List<int> originalPerms;
   late Map<String, Patient> originalPatients;
@@ -63,8 +57,7 @@ void main() {
     originalPerms = login.savedPermissions;
     originalPatients = {...patients.observableMap.docs};
     originalAppointments = {...appointments.observableMap.docs};
-    // Full permissions so the conditional windows (appointments, post-op) exist
-    // and are covered by the comparison.
+    // Full permissions so the permission-gated windows are part of the comparison.
     login.savedPermissions = Perm.full;
     PanelsManager.closeAll();
     WindowsManager.closeAll();
@@ -76,8 +69,6 @@ void main() {
     PanelsManager.closeAll();
     WindowsManager.closeAll();
     login.savedPermissions = originalPerms;
-    // The stores are the app's own: a record a test added must not be left
-    // behind for the next test to find.
     _restore(patients.observableMap, originalPatients);
     _restore(appointments.observableMap, originalAppointments);
     await resetWindowDefaults();
@@ -169,8 +160,8 @@ void main() {
     unawaited(openAppointment(appointment));
     await tester.pumpAndSettle();
 
-    // Asking for one of its windows must not start a second draft of the visit:
-    // the session already holds it, and the two would overwrite each other.
+    // Asking for a window must not start a second draft of the visit: the two
+    // would overwrite each other.
     unawaited(openAppointment(appointment, AppointmentWindow.labwork));
     await tester.pumpAndSettle();
 
@@ -242,8 +233,8 @@ void main() {
     (floating.window.body as AppointmentLabworkSection).appointment.hasLabwork =
         true;
 
-    // Opening the visit again reaches the same session: there is one draft, so
-    // the order typed in the window is the visit's, and nothing was written.
+    // Reopening the visit reaches the same session, so the order typed in the
+    // window is the visit's draft.
     unawaited(openAppointment(appointment));
     await tester.pumpAndSettle();
 
@@ -292,9 +283,8 @@ void main() {
     );
   });
 
-  // The menus label their items with `txt(window.titleKey)`, which the audit
-  // tool cannot check statically — so check it here, against the reference
-  // dictionary rather than the one the app happens to be in.
+  // `txt(window.titleKey)` cannot be checked by the audit tool, so check the
+  // keys against the reference dictionary rather than the app's current locale.
   test('every window title key exists in the dictionary', () {
     final dictionary = En().dictionary;
     final keys = [
@@ -307,8 +297,8 @@ void main() {
     }
   });
 
-  // A window is named by its id, and the dock, the opener and the menu all
-  // name it by that: two windows sharing one id would share one button.
+  // A window is named by its id throughout, so two windows sharing one id
+  // would share one button.
   test('every kind of record names its windows apart', () {
     final idLists = <List<String>>[
       patientWindows().map((window) => window.id).toList(),
@@ -334,8 +324,8 @@ void main() {
       ..minimize(PatientWindow.dentalChart.id)
       ..minimize(PatientWindow.appointments.id);
 
-    // The record's panel is up, so the chart is that panel's window: a second
-    // editor for the same teeth would give the record two drafts to save.
+    // The chart is the open panel's own window; a second editor for the same
+    // teeth would give the record two drafts.
     unawaited(openPatient(patient, PatientWindow.dentalChart));
     await tester.pumpAndSettle();
 
@@ -359,8 +349,6 @@ void main() {
     unawaited(openPatient(open));
     await tester.pumpAndSettle();
 
-    // A panel for someone else is not an editor for these teeth: asking for the
-    // chart opens the chart, not a second panel.
     unawaited(openPatient(asked, PatientWindow.dentalChart));
     await tester.pumpAndSettle();
 
@@ -383,8 +371,6 @@ void main() {
         Stack(children: [WindowsLayer(visible: true, screenWidth: 1600)]);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
-    // The same panel opened the usual way fills the screen with the windows it
-    // has room for — which is what the record on its own must not do.
     unawaited(openPatient(patient));
     await tester.pumpAndSettle();
     await pumpApexoApp(tester, layer);
@@ -464,9 +450,8 @@ void main() {
     workspace.toggle(PatientWindow.appointments.id);
     expect(windowDefaults.of('patient'), [PatientWindow.appointments.id]);
 
-    // Asking for another window is the opener's own request: it must not
-    // become the next panel's default, or the window the user left alone
-    // would quietly disappear.
+    // An opener's own request must not become the next panel's default, or the
+    // window the user left alone would quietly disappear.
     unawaited(openPatient(patient, PatientWindow.dentalChart));
     await tester.pumpAndSettle();
 
@@ -521,8 +506,8 @@ void main() {
     final first = testPatient(id: 'windows-remember-a', name: 'Remember A');
     final second = testPatient(id: 'windows-remember-b', name: 'Remember B');
     patients.setAll([first, second]);
-    // Wide enough for every window of this panel, so what is on screen is the
-    // user's choice and nothing else.
+    // Wide enough for every window of this panel, so what is open is the user's
+    // choice and nothing else.
     tester.view.physicalSize = const Size(2200, 1100);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
@@ -536,8 +521,6 @@ void main() {
     await pumpApexoApp(tester, layer);
     await tester.pumpAndSettle();
 
-    // The panel opens its own first pick — the chart — and the user makes the
-    // arrangement they want: the chart away, the visits list on.
     final workspace = PanelsManager.active().single.workspace;
     expect(workspace.open, [PatientWindow.dentalChart.id],
         reason: 'a record opens on its workspace, and nothing else');
@@ -604,8 +587,8 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    // Remembered by a build that had a window this one does not: permissions
-    // change, and a remembered id must not become a blank window.
+    // A remembered id from a build that offered a window this one does not must
+    // not become a blank window.
     windowDefaults.remember('patient', ['aWindowThatIsGone']);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
@@ -682,8 +665,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // No visit is carried here: the panel's own record is the only draft, so
-    // nothing but the record itself could be named in the prompt.
+    // No visit is carried, so the panel's own record is the only draft.
     expect(panel.owned, isEmpty);
     await tester.enterText(find.byKey(WK.fieldPatientYOB), '1990');
     await tester.pumpAndSettle();
@@ -733,8 +715,7 @@ void main() {
     appointments.set(visit);
     await pumpApexoApp(tester, const SizedBox.shrink());
 
-    // What a row in the labwork table means: the order is the task, so its
-    // window opens on its own — no patient panel and no chart beside it.
+    // A labwork row's task is the order itself, so its window opens on its own.
     await openAppointmentWindowOnItsOwn(visit, AppointmentWindow.labwork);
     await tester.pumpAndSettle();
 

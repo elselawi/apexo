@@ -74,8 +74,7 @@ void main() {
   }) =>
       WindowsPushService(
         sessions: sessions,
-        // Backoff is exercised in the retry group; everywhere else it must not
-        // slow a test down.
+        // No-op sleep by default: backoff is only exercised in the retry group.
         sleep: sleep ?? ((_) async {}),
         periodicRefreshInterval: periodicRefreshInterval,
         sessionWaitTimeout: const Duration(milliseconds: 500),
@@ -411,8 +410,7 @@ void main() {
       await waitFor(() => lifecycleMethods.contains('exitAfterPush'));
       expect(handled, hasLength(1));
 
-      // The one mirrored stream event was consumed; a later identical push is
-      // a new event and must still display.
+      // Only one echo of the launch payload is deduped; the next one displays.
       sink!.success(raw);
       await waitFor(() => handled.length == 2);
     });

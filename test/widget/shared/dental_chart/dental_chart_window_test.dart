@@ -54,9 +54,6 @@ import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 import '../../../helpers/window_defaults.dart';
 
-/// Windows, as the shell draws them: a panel's own windows sharing the screen
-/// beside it, the same windows over the panel one at a time on a phone, and a
-/// dental chart that has no panel behind it and brings its own Save and Close.
 void main() {
   late List<Patient> previousPatients;
   late List<Appointment> previousAppointments;
@@ -71,8 +68,7 @@ void main() {
     login.savedPermissions = Perm.full;
     PanelsManager.closeAll();
     WindowsManager.closeAll();
-    // A window opened by a test with no tap behind it must not land at the last
-    // position another test's tap recorded.
+    // WindowOrigin is global, so a stale tap position must not place this test's window.
     WindowOrigin.clear();
     await resetWindowDefaults();
   });
@@ -85,8 +81,7 @@ void main() {
     appointments.observableMap.clear();
     appointments.setAll(previousAppointments);
     login.savedPermissions = previousPermissions;
-    // The windows a panel was left with are a device preference: they are put
-    // back as they were, so the next test starts from the user's own.
+    // Window defaults are a global store; each test starts from a fresh in-memory one.
     await resetWindowDefaults();
   });
 
@@ -111,8 +106,6 @@ void main() {
     );
   }
 
-  /// Shows [session] the way a list does: a window of its own with Save and
-  /// Close.
   void openStandaloneChart(DentalChartSession session,
       {Future<void> Function()? onSave}) {
     WindowsManager.showStandalone(
@@ -130,8 +123,7 @@ void main() {
         body: SizedBox(height: 40, child: Text(id)),
       );
 
-  /// A window as tall as a form: taller than the room a window opened low on the
-  /// screen used to be given.
+  /// A window taller than the space a window opened low on the screen used to get.
   PanelWindow tallWindow(String id, double height) => PanelWindow(
         id: id,
         title: 'patientDetails',
@@ -165,8 +157,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
   }
 
-  /// The panel and the layer the app shell stacks above it, arranged the way
-  /// the shell arranges them: the panel on the end side, windows beside it.
+  /// Stands in for the app shell: the panel on the end side, the windows layer above it.
   Future<void> pumpShell(
     WidgetTester tester,
     Panel panel,
@@ -196,8 +187,7 @@ void main() {
     );
   }
 
-  /// The order the windows are stacked in, bottom first — read from the keys the
-  /// layer gives each window's place.
+  /// Window ids in stacking order, bottom first, read from the layer's row keys.
   List<String> stackingOrder(WidgetTester tester) => [
         for (final builder
             in tester.widgetList<ValueListenableBuilder<WindowPlacement>>(
@@ -227,8 +217,7 @@ void main() {
     expect(find.byKey(const ValueKey('window-card-a')), findsNothing);
     expect(find.text('a'), findsOneWidget,
         reason: 'the first window is inline');
-    // Three 350-wide windows share the row beside the panel; the fourth has no
-    // room beside them and waits in the dock rather than being laid over them.
+    // The row holds three 350-wide windows; the fourth docks rather than stacking over them.
     for (final id in ['b', 'c', 'd']) {
       expect(find.byKey(ValueKey('window-card-$id')), findsOneWidget);
     }
@@ -304,8 +293,8 @@ void main() {
     // `c` opened after `b`, so it stacks on top of it.
     expect(stackingOrder(tester), ['b', 'c']);
 
-    // `c` cascades over `b`'s body: touch `b` where it still shows — its own
-    // header, away from the button at its far end.
+    // `c` covers `b`'s body, so tap `b` on its own header, clear of the
+    // button at its end.
     await tester.tapAt(
       tester.getTopLeft(find.byKey(const ValueKey('window-card-b'))) +
           const Offset(30, 12),
@@ -395,8 +384,7 @@ void main() {
     expect(find.byKey(WK.btnRemoveLabwork), findsOneWidget,
         reason: 'starting the order brings the footer\'s remove out at once');
 
-    // The order is part of the visit: saving the window writes it. The band's
-    // other window is up beside it, so the Save is named by its window.
+    // Another window is open beside it, so the Save is found through its own footer.
     Finder labworkSave() => find.descendant(
           of: find.byKey(WK.windowSaveFooter('labwork')),
           matching: find.byKey(WK.windowSave),
@@ -405,9 +393,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(appointments.get(appointment.id)!.hasLabwork, isTrue);
 
-    // And it can be taken away again — from the window's own footer, beside
-    // Save and Close, and only after the standard delete question, like every
-    // other delete in the app — and that is a change to save.
     expect(
       find.ancestor(
         of: find.byKey(WK.btnRemoveLabwork),
@@ -570,8 +555,7 @@ void main() {
         'the operative window deletes its visit once it is confirmed '
         '(${width.toInt()}px wide)', (tester) async {
       setViewport(tester, Size(width, 900));
-      // A visit whose patient is not on this device: its windows stand on their
-      // own, and its operative one carries the visit's delete.
+      // The patient is not on this device, so the visit's windows stand on their own.
       final appointment = testAppointment(
         id: 'operative-delete-appointment',
         patientID: 'operative-delete-patient-missing',
@@ -618,8 +602,8 @@ void main() {
       'a visit beside its patient keeps delete visit in the chart window footer',
       (tester) async {
     setViewport(tester, const Size(1400, 900));
-    // The operative record lives at the foot of the visit's chart beside a
-    // patient, so that window's footer is the one that carries its delete.
+    // Beside its patient the visit's chart carries the operative record, so
+    // that window's footer holds the delete.
     final patient = testPatient(id: 'chart-delete-patient');
     patients.set(patient);
     final appointment = testAppointment(
@@ -682,8 +666,6 @@ void main() {
             children: [WindowsLayer(visible: true, screenWidth: 1400)]));
     await tester.pumpAndSettle();
 
-    // The window's label is "Labwork" for every visit; the line under it says
-    // which visit.
     expect(find.textContaining('Nadia Hassan'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
@@ -704,8 +686,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(WK.unsavedDot), findsOneWidget);
 
-    // Saving makes it clean, and the dot goes: the window says so without
-    // anything else having to change.
     dirty = false;
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pumpAndSettle();
@@ -780,8 +760,8 @@ void main() {
 
     await pumpApexoApp(
       tester,
-      // The card is a fixed-width layout; the suite's synthetic font is wider
-      // than any real one, so it is scaled down to keep the card on screen.
+      // The card is fixed-width and the suite's synthetic font is wider than a
+      // real one, so text is scaled down to keep it on screen.
       const MediaQuery(
         data: MediaQueryData(
           size: Size(1600, 1000),
@@ -803,8 +783,7 @@ void main() {
       isEmpty,
       reason: 'the list was a way in, not a window to keep behind the visit',
     );
-    // The visit is carried by its patient's panel — the panel the list belonged
-    // to (plan §0).
+    // The visit rides in the patient's panel, the one the list belonged to.
     final panel = PanelsManager.active().single;
     expect(panel.itemId, patient.id);
     expect(panel.attached!.itemId, appointment.id);
@@ -835,9 +814,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // "Add appointment" in the list's own footer asks for the visit in a sheet
-    // first, so the list it was started from stays behind it until the visit
-    // exists.
+    // The dialog asks first, so the list stays open until the visit exists.
     await tester.tap(find.byIcon(FluentIcons.add_event));
     await tester.pumpAndSettle();
     expect(find.byKey(WK.fieldNewAppointmentPatient), findsOneWidget);
@@ -846,8 +823,6 @@ void main() {
     await tester.tap(find.byKey(WK.btnCreateAppointment));
     await tester.pumpAndSettle();
 
-    // Now the list was a way in: it makes way for the visit, which is stored
-    // rather than a draft.
     expect(WindowsManager.open(), isEmpty);
     final panel = PanelsManager.active().single;
     expect(panel.isNew, isFalse,
@@ -871,8 +846,6 @@ void main() {
     await pumpShell(tester, PanelsManager.active().single, 1800);
     await tester.pumpAndSettle();
 
-    // The window's own label is "Dental Chart" for every record; the line under
-    // it says whose chart this is.
     final card =
         find.byKey(const ValueKey('window-card-$kDentalChartWindowId'));
     expect(card, findsOneWidget);
@@ -918,8 +891,7 @@ void main() {
     setViewport(tester, const Size(1600, 1000));
     final panel = panelWith([
       window('details'),
-      // A list of the record's visits: it edits nothing, so a Save would write
-      // something the window does not show.
+      // A read-only list: a Save here would write what the window does not show.
       window('appointments'),
     ]);
 
@@ -932,8 +904,7 @@ void main() {
   });
 
   testWidgets('a window opened again comes to the front', (tester) async {
-    // Wide enough for the visit's chart and one attachment beside it, so both
-    // stay in the row and the question is only which is in front.
+    // Wide enough for the chart and one attachment, so only the stacking is in question.
     setViewport(tester, const Size(1920, 1080));
     final patient = testPatient(id: 'raise-patient');
     patients.set(patient);
@@ -958,8 +929,7 @@ void main() {
     expect(names().last, 'gallery',
         reason: 'the window asked for last is the one in front');
 
-    // Asking for the chart again must not rebuild it — and must not leave it
-    // underneath the window opened after it.
+    // Asking again raises the same window without rebuilding it or leaving it buried.
     await openAppointment(appointment, AppointmentWindow.dentalChart);
     await tester.pumpAndSettle();
     expect(names().last, 'dentalChart');
@@ -975,9 +945,8 @@ void main() {
       patientID: patient.id,
     );
     appointments.set(appointment);
-    // A visit's windows are the panel's, not the app's: a window that appears at
-    // the tap is one that stands on its own. A visit whose patient the account
-    // may not see is the case that still does (plan §0.1).
+    // With limited patient access this patient is locked, so the visit's
+    // windows stand on their own and open at the tap.
     login.savedPermissions = List.of(Perm.full)..[Perm.patients] = 1;
     addTearDown(() => login.savedPermissions = Perm.full);
 
@@ -1082,8 +1051,6 @@ void main() {
       reason: 'the screen, not a panel column, is the limit',
     );
 
-    // Dragged to the far edge it stays on the screen, over where a panel would
-    // have been.
     await tester.dragFrom(
       tester.getTopLeft(card) + const Offset(40, 12),
       const Offset(600, 120),
@@ -1115,8 +1082,7 @@ void main() {
       findsOneWidget,
     );
 
-    // Its button opens a panel — the same shell, now with a panel in it. On a
-    // phone the panel takes the screen, so the list must not sit over it.
+    // On a phone the panel takes the screen, so the list opened over it must go.
     PanelsManager.active([panel]);
     await pumpApexoApp(
       tester,
@@ -1191,9 +1157,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('b'), findsOneWidget);
 
-    // A window asked for from the app — a patient's visits, opened from a visit
-    // — comes over it, rather than waiting behind it in the list a phone draws
-    // one entry of.
+    // A window the app asks for comes over the panel's own on a phone.
     WindowsManager.showStandalone(window('visits'));
     await tester.pumpAndSettle();
     expect(find.text('visits'), findsOneWidget,
@@ -1214,8 +1178,7 @@ void main() {
     setViewport(tester, const Size(2400, 1200));
     final panel = panelWith([
       window('a'),
-      // An order list: it fills whatever height it is given and scrolls inside
-      // itself, so an unbounded height would be an assertion.
+      // An order list scrolls itself, so an unbounded height would assert.
       const PanelWindow(
         id: 'list',
         title: 'due',
@@ -1242,8 +1205,7 @@ void main() {
     setViewport(tester, const Size(420, 900));
     final panel = panelWith([
       window('a'),
-      // A body that fills the room it is given — a list — says how much room it
-      // actually wants.
+      // An Expanded child has no intrinsic height, so maxHeight caps the sheet.
       const PanelWindow(
         id: 'short',
         title: 'due',
@@ -1287,8 +1249,7 @@ void main() {
     await pumpShell(tester, panel, 1400);
     await tester.pumpAndSettle();
 
-    // Minimized and brought back in the same breath: the window is still
-    // folding away when it is asked for again.
+    // Re-opened while still folding away, it must come back fully visible.
     await tester.tap(find.byKey(WK.windowMinimize('b')));
     await tester.pump(const Duration(milliseconds: 40));
     await tester.tap(find.byKey(WK.windowToggle('b')));
@@ -1318,8 +1279,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('window-card-b')), findsOneWidget);
 
-    // The panel *is* the screen on a phone: collapsing it must not leave a
-    // window hovering over an empty main screen.
+    // On a phone the panel is the screen, so collapsing it must take its windows too.
     PanelsManager.minimize(true);
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('window-card-b')), findsNothing);
@@ -1681,8 +1641,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // A tap above the sheet is a dismissal — but the draft is the user's, so it
-    // asks the same question the window's own Close asks.
+    // A tap outside the sheet is a dismissal, so it asks before discarding the draft.
     await tester.tapAt(const Offset(300, 780));
     await tester.pumpAndSettle();
     expect(find.text(txt('sureClosePanel')), findsWidgets);
@@ -1734,8 +1693,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(patients.get(patient.id)!.teeth['11'], 'filling');
 
-    // Just saved, so Close has nothing to ask about: it closes at once instead
-    // of offering to discard work that is already stored.
+    // Saved, so Close has nothing to ask and closes at once.
     await tester.tap(find.byKey(WK.windowClose));
     await tester.pumpAndSettle();
     expect(find.byType(DentalChartBody), findsNothing);
@@ -1765,8 +1723,8 @@ void main() {
     expect(second, findsOneWidget, reason: 'the newest window is the one up');
     expect(first, findsNothing, reason: 'a phone shows one at a time');
 
-    // Both go in the same breath: the one that was never on screen has no exit
-    // to animate and must not shrink the tree while it is being built.
+    // closeAll runs in the same breath: the window that was never on screen has
+    // no exit to animate and must not shrink the tree while it is built.
     WindowsManager.closeAll();
     await tester.pumpAndSettle();
     expect(WindowsManager.open(), isEmpty);
@@ -1843,8 +1801,6 @@ void main() {
     expect(activeSession().id, 'patient:${patient.id}');
     expect(activeSession().titleKey, kDentalChartTitleKey);
 
-    // Choosing a visit when clean swaps the chart in place without duplicating
-    // it and without moving the patient panel.
     await tester.tap(find.byKey(ValueKey('scope-appointment:${marVisit.id}')));
     await tester.pumpAndSettle();
 
@@ -1928,9 +1884,8 @@ void main() {
     expect(activeSession().id, 'appointment:${visit.id}');
     expect(PanelsManager.active().single.itemId, patient.id);
 
-    // Dirty on the visit's chart also survives a switch back to the plan:
-    // pressing the plan closes the visit from the panel and keeps its draft, so
-    // there is nothing to ask and nothing to discard.
+    // The plan tab closes the visit but keeps its draft, so its dirty visit
+    // chart is not discarded.
     activeSession().teeth['26'] = 'filling';
     activeSession().changed();
     await tester.pumpAndSettle();
@@ -2000,8 +1955,7 @@ void main() {
     expect(find.text(txt('sureClosePanel')), findsNothing);
     expect(activeSession().id, 'appointment:${first.id}');
 
-    // Both halves of the visit's surface hold work: the teeth in its chart and
-    // the post-op record under it.
+    // A visit's work spans its chart teeth and the post-op record under it.
     final panel = PanelsManager.active().single;
     final session = panel.owned
         .whereType<AppointmentSession>()
@@ -2068,8 +2022,7 @@ void main() {
           'history opens the visit chart rather than replacing the patient panel',
     );
 
-    // The record the chart belongs to is the panel already on screen — there is
-    // nowhere further to go, and no second window to go there in (plan §5.2 #24).
+    // The chart's record is already the panel on screen, so no second window opens.
     expect(WindowsManager.open(), isEmpty);
     final panel = PanelsManager.active().single;
     expect(panel.itemId, patient.id);
@@ -2138,8 +2091,8 @@ void main() {
       setViewport(tester, const Size(600, 800));
       final patient = testPatient(id: 'interval-patient');
       patients.set(patient);
-      // Quarterly visits: on a bar this wide each segment is about fifty
-      // pixels — room for "3m", which the old fixed 68 px rule refused to draw.
+      // Quarterly visits leave segments narrower than the old 68 px label
+      // width, so "3m" must still be drawn.
       final visits = List.generate(
           5,
           (i) => testAppointment(
@@ -2301,9 +2254,8 @@ void main() {
     visitSession.changed();
     bContext = tester.element(find.byType(VisitScopeBar));
     final panel = PanelsManager.active().single;
-    // Putting the chart away is a minimize, not a discard: the draft stays in the
-    // visit's session, so the band's chip closes it without a question — and
-    // nothing typed is lost (plan §4.6).
+    // Minimizing is not a discard: the draft stays in the visit's session, so
+    // the band's chip closes it without a question.
     await tester.tap(find.byKey(WK.windowMinimize(kDentalChartWindowId)));
     await tester.pumpAndSettle();
     expect(find.text(txt('sureClosePanel')), findsNothing);
@@ -2376,8 +2328,7 @@ void main() {
 
     await pumpShell(tester, panel, 1600);
     await tester.pumpAndSettle();
-    // The visit's post-op record is part of the chart now, not a window: its
-    // fields are under the teeth, on the chart's own frame.
+    // The post-op record is part of the chart, not a window: its fields sit under the teeth.
     expect(
       find.descendant(
         of: find.byKey(const ValueKey('window-card-$kDentalChartWindowId')),
@@ -2386,15 +2337,12 @@ void main() {
       findsOneWidget,
       reason: 'the operative details live at the foot of the chart',
     );
-    // The band's dock carries one tool: the operative record, whose fields are
-    // pinned to the foot of the chart.
     expect(find.byKey(WK.visitBandWindow('operative')), findsOneWidget);
     for (final id in ['labwork', 'gallery']) {
       expect(find.byKey(WK.visitBandWindow(id)), findsNothing,
           reason: 'labwork and photos are not tools in the band\'s dock');
     }
-    // They hang off the band as attachments — the same tray the patient panel
-    // draws under itself — and off the post-op card inside the visit's chart.
+    // Labwork and photos are attachments: on the band's tray and on the post-op card.
     Finder bandChip(String id) => find.descendant(
           of: find.byKey(WK.visitBandAttachments),
           matching: find.byKey(
@@ -2412,15 +2360,13 @@ void main() {
           reason: 'the post-op card offers $id too');
     }
     for (final id in ['labwork', 'gallery']) {
-      // The chart takes the row alone below 1902: opening one of the visit's
-      // editors from its band puts the chart back in its dock and the editor on
-      // screen (plan §4.3). The band is the control that stays available.
+      // The row holds one window at this width: opening an editor from the
+      // band docks the chart.
       panel.workspace.show(kDentalChartWindowId, slot: kAttachedSlot);
       await tester.pumpAndSettle();
       expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
           isTrue);
-      // One from the card inside the chart, one from the band's tray: both say
-      // the same thing about the same window.
+      // One chip comes from the card, one from the band's tray: both toggle the same window.
       final chip = id == 'labwork' ? chartChip(id) : bandChip(id);
       await tester.ensureVisible(chip);
       await tester.pumpAndSettle();
@@ -2434,15 +2380,13 @@ void main() {
           reason: 'a visit window is the panel\'s, not the app\'s');
       expect(PanelsManager.active().single, same(panel));
     }
-    // Operative details are not a window of their own: their band button opens
-    // the chart whose foot they are pinned to.
+    // Operative details are not their own window: the band button opens the chart.
     await tester.tap(find.byKey(WK.visitBandWindow('operative')));
     await tester.pumpAndSettle();
     expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
         isTrue);
     expect(find.byKey(WK.fieldAppointmentPostOpNotes), findsOneWidget);
-    // Selecting the other visit makes it the one in the row — the same call the
-    // Visits list makes (plan §4.8).
+    // The same call the Visits list makes to select another visit.
     await selectVisit(patient.id, otherVisit.id, focus: kDentalChartWindowId);
     await tester.pumpAndSettle();
     expect((panel.attached! as AppointmentSession).item.id, otherVisit.id);
@@ -2468,9 +2412,7 @@ void main() {
       return box.localToGlobal(Offset.zero) & box.size;
     }
 
-    // The date opens its row; the operators, the note and the operative
-    // details button open theirs; the tray opens its own. Every one of them
-    // starts where the others do, and the glyphs that name them live inside
+    // Every band row starts on the same edge, and the field glyphs sit inside
     // their boxes rather than in a gutter ahead of them.
     final date = rectOf(find.byKey(WK.fieldAppointmentDate));
     final operators = rectOf(find.byKey(WK.fieldOperators));
@@ -2487,8 +2429,8 @@ void main() {
       expect(entry.value.left, closeTo(date.left, 0.01),
           reason: '${entry.key} starts on the edge the date starts on');
     }
-    // The date takes the room the time and the duration leave it: a date that
-    // fits is never ellipsized for want of width the row has to spare.
+    // The date takes the room the time and duration leave it, so a date that
+    // fits is not ellipsized.
     expect(date.width, greaterThan(118),
         reason: 'the date is not pinned to a width smaller than the row');
     expect(
@@ -2518,8 +2460,7 @@ void main() {
     await pumpShell(tester, panel, 1600);
     await tester.pumpAndSettle();
 
-    // The note is typed in the record the chart carries; the tooth was marked on
-    // the chart. Both are the same draft.
+    // The band note and the chart teeth are the same draft.
     await tester.enterText(
       find.byKey(WK.fieldAppointmentPostOpNotes),
       'crown seated',
@@ -2602,9 +2543,8 @@ void main() {
     await pumpShell(tester, PanelsManager.active().single, 1600);
     await tester.pumpAndSettle();
 
-    // One button beside the visits it will join: no trip to the calendar, and the
-    // patient is already known. It pairs the plus with the shorter of "Add" and
-    // "New" in every locale, now that the arrows no longer take that space.
+    // No trip to the calendar: the patient is already known, so the button
+    // beside the visits only needs the short "new" label.
     expect(find.byKey(WK.chartAddAppointment), findsOneWidget);
     expect(
         find.descendant(
@@ -2649,8 +2589,7 @@ void main() {
           ));
       await tester.pumpAndSettle();
 
-      // No visits means no timeline eating the width, so the button can afford
-      // its whole name instead of the short "new" it uses beside the timeline.
+      // With no timeline the button has room for the full "add appointment" label.
       expect(find.byKey(const ValueKey('scope-visit-scroll')), findsNothing);
       expect(
           find.descendant(
@@ -2686,8 +2625,7 @@ void main() {
 
     await tester.tap(find.byKey(WK.chartAllAppointments));
     await tester.pumpAndSettle();
-    // The list is the patient's own window, opened in the patient's row: the
-    // title leads to the record's whole history, not to one visit of it.
+    // The title leads to the patient's whole list of visits, not to the current visit.
     expect(
       panel.workspace.isOpen(PatientWindow.appointments.id),
       isTrue,
@@ -2754,10 +2692,8 @@ void main() {
     expect(bandNotes(), 'first pre-op');
     expect(postOpNotes(), 'first post-op');
 
-    // Exactly what the scope bar's visit tab does: select the other visit's
-    // chart. The band and the post-op record under the chart must be that
-    // visit's from the first frame, not the previous visit's fields behind a
-    // new title.
+    // The same path as the scope bar's visit tab: the band and the post-op
+    // record must switch with the chart, not lag a frame behind it.
     await selectVisit(patient.id, second.id, focus: kDentalChartWindowId);
     await tester.pumpAndSettle();
 
@@ -2788,8 +2724,7 @@ void main() {
     await pumpShell(tester, panel, 1600);
     await tester.pumpAndSettle();
 
-    // The two workspaces are always drawn, one active and one inactive; the
-    // visit's chart is the chart on screen, so the chart button drives it.
+    // Both workspace toggles are always drawn; the attached chart is the active one.
     expect(find.byKey(WK.workspaceWindowToggle('dentalChart')), findsOneWidget);
     expect(
         find.byKey(WK.workspaceWindowToggle('appointments')), findsOneWidget);
@@ -2803,8 +2738,7 @@ void main() {
     );
     expect(panel.workspace.isOpen('dentalChart'), isFalse);
 
-    // The patient's fields stay visible but take no edits while the visit is
-    // the record being worked on.
+    // The patient's fields stay visible but absorb edits while the visit is the record.
     expect(find.byKey(WK.patientReadOnly), findsOneWidget);
     final absorbing = tester.widget<AbsorbPointer>(
       find
@@ -2816,8 +2750,7 @@ void main() {
     );
     expect(absorbing.absorbing, isTrue);
 
-    // The plan tab is the way to the patient's own chart: it closes the visit
-    // (keeping its draft) and clears the band.
+    // The plan tab closes the visit, keeping its draft, and clears the band.
     await tester.tap(find.byKey(ValueKey('scope-patient:${patient.id}')));
     await tester.pumpAndSettle();
 
@@ -2958,9 +2891,8 @@ void main() {
     await pumpApexoApp(tester, const SizedBox.shrink());
     bContext = tester.element(find.byType(SizedBox).first);
 
-    // What the visit's context menu does when the user picks "Operative
-    // details": the record lives at the foot of the chart, so the chart is the
-    // window that was asked for — the band alone is not an answer to that.
+    // "Operative details" asks for the chart, because the record lives at its
+    // foot and the band alone is not an answer.
     await openAppointment(visit, AppointmentWindow.operative);
     await tester.pumpAndSettle();
     final panel = PanelsManager.active().single;
@@ -3332,11 +3264,9 @@ void main() {
     final x2 = tester.getCenter(dot2).dx;
     final x3 = tester.getCenter(dot3).dx;
 
-    // 1. Chronological order: first dot is first appointment, last dot is last appointment
     expect(x1, lessThan(x2));
     expect(x2, lessThan(x3));
 
-    // 2. Distance between dots is proportional to duration between appointments
     final gap12 = x2 - x1; // 5 days
     final gap23 = x3 - x2; // 55 days
     expect(
@@ -3346,7 +3276,6 @@ void main() {
           '55-day gap must be visually much wider than the 5-day gap on the timeline',
     );
 
-    // 3. With 3 visits, all dots fit on the line without scrolling or fade mask
     final strip = find.byKey(const ValueKey('scope-visit-scroll'));
     final scroll = tester.widget<SingleChildScrollView>(strip).controller!;
     expect(scroll.position.maxScrollExtent, 0.0);
@@ -3359,7 +3288,6 @@ void main() {
       reason: 'no transparency fade when all visits fit without scrolling',
     );
 
-    // 4. Hovering on a dot displays a rich card with date, interval, treatment, notes, price & payment
     final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await mouse.addPointer(location: Offset.zero);
     addTearDown(mouse.removePointer);
@@ -3427,12 +3355,10 @@ void main() {
       findsWidgets,
     );
 
-    // Moving pointer away hides the rich hover card
     await mouse.moveTo(const Offset(5, 5));
     await tester.pumpAndSettle();
     expect(hoverCard, findsNothing);
 
-    // 5. When the number of visits goes too large, scrolling and transparency fade activate
     final manyVisits = List.generate(
       35,
       (i) => testAppointment(

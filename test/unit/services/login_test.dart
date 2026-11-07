@@ -125,8 +125,6 @@ void main() {
 
   group('Login service — currentAccountID', () {
     test('returns empty string when no accounts loaded and not demo', () {
-      // accounts.list() is empty by default in unit tests
-      // Not in demo mode, no pb set
       login.token = '';
       login.pb = null;
       final id = login.currentAccountID;
@@ -664,9 +662,8 @@ void main() {
         expect(login.token, isEmpty);
         expect(login.pb!.authStore.isValid, isFalse);
 
-        // A new login can start while the old authentication response is still
-        // in flight. Keep the same PocketBase so this test also covers the
-        // response landing after the new session is fully established.
+        // A new login can start while the old auth response is still in flight;
+        // reusing the same PocketBase covers it landing after the new session.
         launch.open(Open.staff);
         await login.activate('https://clinic.test', [newToken], true);
         expect(login.token, newToken);
@@ -927,8 +924,7 @@ void main() {
     });
 
     test('returns early in demo mode guard when it is enabled', () {
-      // launch.isDemo is environment-derived and normally false in tests;
-      // this verifies the other guard conditions leave the flag untouched.
+      // launch.isDemo is environment-derived and always false under test.
       login.didAskForLoginAgain = false;
       network.isOnline(false);
 
@@ -1072,8 +1068,8 @@ void main() {
     test('fromJson throws for a malformed savedPermission value', () async {
       login.savedPermissions = [2, 2];
 
-      // The method delegates directly to jsonDecode, so malformed persisted
-      // JSON is surfaced instead of silently replacing permissions.
+      // jsonDecode throws before assigning, so malformed JSON surfaces
+      // instead of silently replacing permissions.
       expect(login.savedPermissions, [2, 2]);
       await expectLater(
         login.fromJson({'token': '', 'savedPermission': 'not-json'}),

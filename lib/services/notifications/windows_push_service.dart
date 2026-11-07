@@ -10,28 +10,17 @@ import 'package:apexo/utils/logger.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-/// What made this ingress event exist.
-///
-/// A raw WNS push and a local-toast click are different user events even though
-/// both can carry the same `PushData`: a raw push displays a toast, while a
-/// click navigates to the record and must not display a second toast.
+/// What made this ingress event exist. A raw push and a toast click can carry the
+/// same `PushData`, but a click must navigate instead of showing a second toast.
 enum WindowsPushOrigin { stream, rawLaunch, toastClick }
 
 /// Whether [origin] is a user click.
 bool isUserClick(WindowsPushOrigin origin) =>
     origin == WindowsPushOrigin.toastClick;
 
-/// Receives Windows Notification Services pushes and turns them into the same
-/// notices the other platforms show.
-///
-/// The native Windows side owns WNS: it holds the channel URI, keeps the
-/// channel alive, and forwards each raw notification. This service reads what
-/// that side reports, captures a launch payload as soon as receiving starts, and
-/// dispatches through the transport-neutral [PushListeners.handlePushData].
-///
-/// Receiving never waits for login. Registration is a separate, bounded
-/// background job that starts only after a session coordinator publishes a
-/// usable staff or patient session.
+/// Turns native WNS pushes into the same notices the other platforms show. The
+/// native side owns the channel; receiving never waits for login, and
+/// registration is a separate bounded job once a session is published.
 class WindowsPushService with WidgetsBindingObserver {
   WindowsPushService({
     MethodChannel? methodChannel,
@@ -63,19 +52,16 @@ class WindowsPushService with WidgetsBindingObserver {
   /// The event channel carrying raw notification payloads.
   static const String eventChannelName = "apexo/windows_push/events";
 
-  /// The additive channel that lets a hidden activation end itself once the
-  /// launch payload has been handled, and lets a click promote it. Optional: an
-  /// older runner has no handler.
+  /// Additive lifecycle channel; an older runner has no handler, so every call
+  /// is best effort.
   static const String lifecycleChannelName = "apexo/windows_push/lifecycle";
 
-  /// A hung native acquisition must not monopolize the one refresh lane
-  /// forever. The native side coalesces the next request onto the still-running
-  /// worker, so a timeout here is safe.
+  /// A hung native acquisition must not block the single refresh lane forever;
+  /// the native side coalesces the next request onto the still-running worker.
   static const Duration channelReadTimeout = Duration(seconds: 60);
 
-  /// How long to wait before each attempt to acquire or register the channel
-  /// again. Bounded on purpose: a device that cannot register is retried five
-  /// times over about a minute, then the next app start or resume tries again.
+  /// Backoff for a failed channel acquire/register: five bounded attempts over
+  /// about a minute, then the next app start or resume tries again.
   static const List<Duration> registrationRetryDelays = [
     Duration(seconds: 2),
     Duration(seconds: 4),
@@ -125,8 +111,8 @@ class WindowsPushService with WidgetsBindingObserver {
   bool _requestedPatient = false;
   bool _registrationRequested = false;
 
-  /// One refresh at a time. A request that arrives during it is coalesced into
-  /// one follow-up pass rather than lost or allowed to register in parallel.
+  /// One refresh at a time; a request that arrives during it is coalesced into
+  /// one follow-up pass.
   bool _refreshing = false;
   bool _refreshPending = false;
   bool _refreshPendingForce = false;
@@ -138,8 +124,8 @@ class WindowsPushService with WidgetsBindingObserver {
   bool _retryPending = false;
   bool _retryExhaustedReported = false;
 
-  /// Bumped whenever a pending retry is cancelled, so a sleep that is already
-  /// running cannot re-register for a session that no longer exists.
+  /// Bumped on cancel so an already-running retry sleep cannot register into a
+  /// session that no longer exists.
   int _retryGeneration = 0;
 
   StreamSubscription<dynamic>? _subscription;
@@ -155,15 +141,12 @@ class WindowsPushService with WidgetsBindingObserver {
   final List<_IngressDelivery> _deliveries = [];
   static const int _maxDeliveries = 16;
 
-  /// Pushes waiting for a restoring session. The native pre-window/pre-listen
-  /// buffers are also bounded at 16; this keeps the Dart-side wait queue from
-  /// growing without limit once the stream is already subscribed.
+  /// Pushes waiting for a restoring session, capped like the native pre-window
+  /// and pre-listen buffers so the wait queue cannot grow without limit.
   int _pendingWhileRestoring = 0;
 
-  /// Starts the native receiver and captures the launch payload.
-  ///
-  /// Deliberately does not wait for login, a relay key or a channel. Repeating
-  /// the call keeps one subscription and one observer.
+  /// Starts the native receiver and captures the launch payload without waiting
+  /// for login, a relay key or a channel; repeating it keeps one subscription.
   Future<void> startReceiving() async {
     if (_started) return;
     _started = true;
@@ -172,16 +155,13 @@ class WindowsPushService with WidgetsBindingObserver {
     try {
       _supported = await _method.invokeMethod<bool>("isSupported") ?? false;
     } catch (_) {
-      // No native implementation (or an old one that does not know the call):
-      // silence is the whole contract here.
       _reportUnsupported();
       return;
     }
     if (!_supported) {
       _reportUnsupported();
-      // Registration failed, but this process may still have been started by a
-      // push. Reading the launch payload lets it display and acknowledge instead
-      // of staying hidden until the native hard cap.
+      // Unsupported, but this process may still have been started by a push: read
+      // the launch payload so it can display and exit instead of staying hidden.
       unawaited(_handleLaunchPayload());
       return;
     }
@@ -192,32 +172,30 @@ class WindowsPushService with WidgetsBindingObserver {
     _startPeriodicRefresh();
     _subscribe();
 
-    // Capture the activation payload without awaiting session restoration or
-    // registration. This invocation is started before this method returns.
+    // Fire-and-forget so the payload capture starts before this method returns.
     unawaited(_handleLaunchPayload());
     _maybeStartRequestedRefresh();
   }
 
-  /// Compatibility entry point for callers that used to start and register in
-  /// one call. Registration is requested but never awaited.
+  /// Compatibility wrapper: starts receiving, then requests registration without
+  /// awaiting it.
   Future<void> initialize({bool isPatient = false, String? clinicKey}) async {
     await startReceiving();
     requestRegistration(isPatient: isPatient);
   }
 
-  /// Asks for registration for [isPatient]. The actual work waits for the
-  /// matching session boundary and then runs in the background.
+  /// Registers in the background once a session matching [isPatient] is
+  /// published.
   void requestRegistration({required bool isPatient}) {
     _requestedPatient = isPatient;
     _registrationRequested = true;
-    // A repeated identifyDevice is a new bounded attempt, not a continuation of
-    // a chain that may already be exhausted.
+    // A repeated identifyDevice starts a fresh bounded attempt, not a continuation.
     _startNewAttempts();
     _maybeStartRequestedRefresh();
   }
 
-  /// Reveals a hidden push process and cancels its pending exit. No-op when the
-  /// process was not started by a push or is already interactive.
+  /// Cancels a hidden push process's pending exit. No-op when there is none or an
+  /// older runner has no handler.
   Future<void> promoteToInteractive() async {
     try {
       await _lifecycle.invokeMethod<bool>("promoteToInteractive");
@@ -226,8 +204,8 @@ class WindowsPushService with WidgetsBindingObserver {
     }
   }
 
-  /// A resume is the moment Windows can have replaced the channel, so ask WNS
-  /// for a fresh one rather than trusting the native cache.
+  /// Resume can mean Windows replaced the channel, so force a fresh WNS request
+  /// rather than trusting the native cache.
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state != AppLifecycleState.resumed || !_supported) return;
@@ -235,9 +213,8 @@ class WindowsPushService with WidgetsBindingObserver {
     _requestRefresh(force: true);
   }
 
-  /// Stops listening and observing, and cancels every scheduled retry. Used by
-  /// tests; the app keeps the service for its whole lifetime (logout only
-  /// forgets the registration).
+  /// Stops listening and observing and cancels retries. The app keeps the service
+  /// for its whole lifetime; logout only forgets the registration.
   Future<void> dispose() async {
     _disposed = true;
     _cancelRetry();
@@ -295,8 +272,7 @@ class WindowsPushService with WidgetsBindingObserver {
       WidgetsBinding.instance.addObserver(this);
       _observing = true;
     } catch (error) {
-      // No binding means no app to resume: the channel is still registered and
-      // the stream still delivers; only the resume re-check is unavailable.
+      // No binding means only the resume re-check is unavailable.
       _logFailure("observing the app lifecycle", error);
     }
   }
@@ -317,8 +293,7 @@ class WindowsPushService with WidgetsBindingObserver {
     if (_disposed) return;
     final session = _sessions.active;
     if (session == null) {
-      // Absent or restoring: no session-bound work may continue. A request that
-      // belonged to the old session is discarded, not delivered to the next.
+      // No session: drop the request rather than carrying it into the next one.
       _registrationRequested = false;
       _cancelRetry();
       _forgetRegistration();
@@ -327,16 +302,15 @@ class WindowsPushService with WidgetsBindingObserver {
 
     _retryAttempt = 0;
     _retryExhaustedReported = false;
-    // A retry sleep from a previous session must not wake up and register into
-    // this one.
+    // A retry sleep from a previous session must not register into this one.
     _cancelRetry();
     if (_registrationRequested && session.isPatient == _requestedPatient) {
       _requestRefresh();
     }
   }
 
-  /// A different account or clinic must not inherit the previous registration
-  /// as if it were current, and must not inherit its retries either.
+  /// A different account or clinic must not inherit the previous registration or
+  /// its retries.
   void _forgetRegistration() {
     _registeredServer = null;
     _registeredKey = null;
@@ -347,8 +321,8 @@ class WindowsPushService with WidgetsBindingObserver {
     _retryExhaustedReported = false;
   }
 
-  /// Re-checks the channel while the app runs. The native side now performs a
-  /// real WNS acquisition for a forced refresh; a cached URI is not reused.
+  /// Periodic re-check. A forced refresh makes the native side perform a real WNS
+  /// acquisition instead of reusing a cached URI.
   void _startPeriodicRefresh() {
     if (_refreshTimer != null || _periodicRefreshInterval <= Duration.zero) {
       return;
@@ -436,12 +410,8 @@ class WindowsPushService with WidgetsBindingObserver {
     );
   }
 
-  /// Registers the channel URI for the current session.
-  ///
-  /// Every await is followed by a generation check; a result that belongs to a
-  /// session that is no longer active cannot mutate the token, the registration
-  /// tuple, or the retry state. A forced refresh asks WNS even when the native
-  /// cache is still unexpired.
+  /// Registers the channel URI for the current session. Every await is followed by
+  /// a generation check, so a stale result cannot mutate token or registration state.
   Future<void> _refreshRegistration({bool forceRefresh = false}) async {
     if (!_supported || _disposed) return;
     if (_refreshing) {
@@ -505,10 +475,8 @@ class WindowsPushService with WidgetsBindingObserver {
 
     final channel = uri?.trim() ?? "";
     if (channel.isEmpty) {
-      // The native side starts a request when it has no channel, so this is
-      // either a still-running request, a channel rejected for this app
-      // registration, or a call that failed. Ask again rather than giving up
-      // silently.
+      // Empty channel: still running, rejected for this registration, or failed.
+      // The native side starts a request when it has none, so ask again.
       _scheduleRetry(session);
       return;
     }
@@ -518,8 +486,7 @@ class WindowsPushService with WidgetsBindingObserver {
         session.accountId != _registeredAccount ||
         session.isPatient != _registeredAsPatient;
     if (channel == login.pushNotificationsToken && !contextChanged) {
-      // Already current: a forced refresh that returned the same URI, or any
-      // retry left over from an earlier failure, needs no relay POST.
+      // Same URI and same context: no relay POST needed, even after a forced refresh.
       _clearRetry();
       return;
     }
@@ -543,8 +510,7 @@ class WindowsPushService with WidgetsBindingObserver {
       return;
     }
 
-    // Only now, and only for the session that produced this result, update the
-    // current values. A stale completion never reaches here.
+    // Commit only after every check above: a stale completion never reaches here.
     login.pushNotificationsToken = channel;
     PushRelay.deviceIsPut = true;
     _registeredServer = session.server;
@@ -631,9 +597,8 @@ class WindowsPushService with WidgetsBindingObserver {
 
     final now = DateTime.now();
 
-    // The stream can win the race with the launch query. If it already handled
-    // this exact envelope, wait for that processing future and acknowledge only
-    // after it completes.
+    // The stream can win the race: if it already handled this envelope, wait for
+    // that processing future before acknowledging.
     final counterpart = _takeCounterpart(
       raw: raw,
       opposite: WindowsPushOrigin.stream,
@@ -676,8 +641,8 @@ class WindowsPushService with WidgetsBindingObserver {
     final waitingForSession = _sessions.active == null;
     if (waitingForSession) {
       if (_pendingWhileRestoring >= _maxDeliveries) {
-        // Match the native buffers' bounded policy. The newest is dropped here
-        // because there is no cancellation handle for an older queued waiter.
+        // Drop the newest to match the native buffers' bound; an older queued
+        // waiter cannot be cancelled.
         return;
       }
       _pendingWhileRestoring++;
@@ -728,11 +693,8 @@ class WindowsPushService with WidgetsBindingObserver {
     if (processed != null) await processed;
   }
 
-  /// Ends the hidden process Windows started to deliver a push.
-  ///
-  /// The native side exits only when the process really was started by a push;
-  /// a foreground app ignores the call. Called only after all tracked processing
-  /// for this activation has completed.
+  /// Ends a push-started hidden process; a foreground app ignores the call. Called
+  /// only after all processing for this activation has completed.
   Future<void> _exitAfterPush() async {
     try {
       await _lifecycle.invokeMethod<void>("exitAfterPush");
@@ -757,8 +719,8 @@ class WindowsPushService with WidgetsBindingObserver {
     }
   }
 
-  /// Logs only what failed and what kind of error it was: a platform exception
-  /// can carry the channel URI, and a payload must never reach a log.
+  /// Logs only the failure and the error type: a platform exception can carry the
+  /// channel URI, and a payload must never reach a log.
   void _logFailure(String what, Object error) {
     logger("Windows push: failed $what (${error.runtimeType}).", null, 2);
   }

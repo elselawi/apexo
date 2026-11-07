@@ -1,12 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:apexo/services/network.dart';
 
-/// The [network] singleton keeps state across tests, so every test must
-/// reset it. Tests use small `Future.delayed` waits so the broadcast stream
-/// has a chance to deliver events synchronously before assertions run.
 void main() {
-  // Wait long enough for any pending observer callbacks to fire, while
-  // keeping the suite fast.
+  // One event-loop turn so pending observer callbacks fire before asserting.
   Future<void> settle() => Future<void>.delayed(Duration.zero);
 
   setUp(() {
@@ -40,8 +36,6 @@ void main() {
     });
 
     test('isOnline() with no argument is a getter', () {
-      // Calling with no argument returns the current value without firing
-      // observers.
       final before = network.isOnline();
       final after = network.isOnline();
       expect(after, before);
@@ -171,8 +165,7 @@ void main() {
       await settle();
       expect(later, 1);
 
-      // Reassigning also works without throwing — the observer is not
-      // detached from the stream after a thrown callback.
+      // Caught per observer, so the stream survives and reassigning still works.
       expect(() => network.isOnline(false), returnsNormally);
       expect(() => network.isOnline(true), returnsNormally);
       await settle();
@@ -235,8 +228,6 @@ void main() {
       network.isOnline(true);
       await settle();
 
-      // ObservableState.notifyObservers fires on every set, even when the
-      // value is unchanged, so callbacks are invoked multiple times.
       expect(count, 3);
     });
   });

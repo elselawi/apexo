@@ -3,14 +3,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter_test/flutter_test.dart';
 
-/// Pumps a minimal FluentApp shell around [child] for widget testing.
-///
-/// Wraps the widget in FluentApp + Directionality + FluentTheme so
-/// Fluent UI controls can render correctly.
-///
-/// The ring that radiates from the record a chart has open repeats for as long
-/// as the record stays open, so it is paused here unless [scopeRipple] asks for
-/// it; a test that wants it has to pump bounded frames instead of settling.
+/// Pauses the scope ring's endless ripple unless [scopeRipple] is set, so
+/// `pumpAndSettle` can settle; enabling it requires pumping bounded frames.
 Future<void> pumpApexoApp(
   WidgetTester tester,
   Widget child, {

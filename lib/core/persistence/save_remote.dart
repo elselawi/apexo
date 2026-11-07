@@ -103,23 +103,20 @@ class SaveRemote {
   }
 
   String formatForPocketBase(int input) {
-    // for some reason, pocketbase doesn't accept the ISO8601 format
-    // it stores "updated" and "created" fields in the following format: "2024-11-28 12:00:00.000Z"
-    // and it disregards the time if a "T" was included in the comparison
-    // this format is the more preferable one for pocketbase
-    // This behavior is deeply rooted in SQLite: https://www.sqlite.org/lang_datefunc.html
+    // PocketBase stores and compares dates as "yyyy-MM-dd HH:mm:ss.SSSZ" and
+    // ignores the time when an ISO8601 "T" is present, so none is emitted here.
     return "${DateFormat('yyyy-MM-dd HH:mm:ss.SSS').format(DateTime.fromMillisecondsSinceEpoch(input, isUtc: true))}Z";
   }
 
-  /// Uses an (updated, id) keyset within each pull; persisted cursors remain
-  /// timestamps, with the same strict newer-than boundary.
+  /// Keyset-pages by (updated, id); rows are strictly newer than the timestamp
+  /// cursor, and the returned version is the newest row's timestamp.
   Future<VersionedResult> getSince({int version = 0}) async {
     final result = <String, Row>{};
     final date = formatForPocketBase(version);
 
     try {
-      // Bound the pull so ongoing writes cannot keep extending it. Writes
-      // beyond this timestamp stay eligible for the next timestamp-cursor pull.
+      // Snapshot an upper bound first so ongoing writes cannot extend the pull;
+      // later writes stay eligible for the next timestamp-cursor pull.
       final newest = await remoteRows.getList(
         filter: 'updated>"$date"&&store="$storeName"',
         sort: "-updated",
@@ -149,8 +146,7 @@ class SaveRemote {
         for (final item in pageResult.items) {
           final ts = DateTime.parse(item.get<String>("updated"))
               .millisecondsSinceEpoch;
-          // A fetched row can move forward within the window. Keep only its
-          // latest revision, in keyset order, rather than a stale duplicate.
+          // a row updated mid-pull can reappear; keep only its latest revision.
           result.remove(item.id);
           result[item.id] =
               Row(id: item.id, data: jsonEncode(item.data["data"]), ts: ts);
@@ -231,8 +227,8 @@ class SaveRemote {
         if (isDcm) {
           return sameDcmUploadIdentity(filename, fullName);
         }
-        // Ordinary image attachments retain hash identity, but require a
-        // basename boundary so a shorter hash cannot match a longer one.
+        // Hash identity for ordinary attachments, bounded by basename so a
+        // shorter hash cannot match a longer one.
         return _sameOrdinaryUploadIdentity(filename, fullName);
       }).toList();
     } catch (_) {
@@ -240,8 +236,6 @@ class SaveRemote {
     }
   }
 
-  /// Returns whether two ordinary attachment names represent the same
-  /// generated upload identity.
   static bool _sameOrdinaryUploadIdentity(String requested, String existing) {
     final requestedBase = p.basenameWithoutExtension(requested).toLowerCase();
     final hash = requestedBase.split('_').last;
@@ -257,8 +251,8 @@ class SaveRemote {
     return false;
   }
 
-  /// Returns the normalized DICOM upload identity, ignoring a PocketBase
-  /// collision suffix and the generated `.dcm.png` preview extension.
+  /// Normalized upload identity: drops PocketBase's collision suffix and the
+  /// generated `.dcm.png` preview extension.
   @visibleForTesting
   static String? dcmUploadIdentity(String filename) =>
       dcm_helpers.dcmUploadIdentity(filename);
@@ -267,8 +261,8 @@ class SaveRemote {
   static bool sameDcmUploadIdentity(String a, String b) =>
       dcm_helpers.sameDcmUploadIdentity(a, b);
 
-  /// Returns the DICOM files that may be removed when [retainedDcmName]
-  /// remains. The retained original and its generated preview are protected.
+  /// Deletable duplicates for [retainedDcmName]; its original and preview are
+  /// protected only while the pair is complete.
   @visibleForTesting
   static List<String> dcmFilesToDelete({
     required String retainedDcmName,
@@ -287,19 +281,15 @@ class SaveRemote {
       return lower != retainedOriginal && lower != retainedPreview;
     }).toList();
 
-    // if we're not retaining BOTH preview and dicom then we should delete them all
-    // so that a new upload can happen cleanily
+    // Delete all matches unless the original and preview pair is fully
+    // retained, so an incomplete pair cannot block a clean re-upload.
     return toDelete.length == matchingFiles.length - 2
         ? toDelete
         : matchingFiles;
   }
 
-  /// Returns the current PocketBase file names for [rowID].
-  ///
-  /// Cleanup and DICOM healing must use this server-authoritative list rather
-  /// than the model's `imgs` field: DICOM originals live in the PocketBase
-  /// `imgs` file field but are represented separately by `dcmImgs` in the
-  /// appointment JSON.
+  /// Server-authoritative `imgs` names. DICOM originals live here but the
+  /// model lists them as `dcmImgs`, so cleanup must use this list.
   Future<List<String>> getFileNames(String rowID,
       {bool useCache = false}) async {
     if (useCache && fullNamesCache.containsKey(rowID)) {
@@ -351,10 +341,8 @@ class SaveRemote {
     final existingFullNames =
         await _findDuplicates(rowID, filename, _isDcmOrDcmPreview(filename));
 
-    // If matching files exist, retain the requested physical type for DICOM
-    // (original or preview), then remove only the remaining duplicates. The
-    // fallback is important for incomplete pairs: it lets dcmFilesToDelete
-    // remove the lone opposite-type file before a clean upload.
+    // DICOM retains the requested physical type (original or preview) and drops
+    // the rest; the fallback below handles a lone opposite-type file.
     final isDcmRequest = _isDcmOrDcmPreview(filename);
     final toKeep = isDcmRequest
         ? (dcm_helpers.isDcmFileName(filename)
@@ -470,8 +458,8 @@ class SaveRemote {
     }
   }
 
-  /// Matches complete ordinary basenames followed only by upload suffixes.
-  /// Extensionless legacy references may also omit the generated hash.
+  /// Matches ordinary basenames plus upload suffixes; extensionless legacy
+  /// references may also omit the generated hash.
   static bool _sameOrdinaryDeletionIdentity(String requested, String existing) {
     final requestedExtension = p.extension(requested).toLowerCase();
     if (requestedExtension.isNotEmpty &&
@@ -494,13 +482,13 @@ class SaveRemote {
   Future<bool> deleteImage(String rowID, String imgName) async {
     try {
       final allFullNames = await getFileNames(rowID);
-      // Prefer exact match first — avoids ambiguity between e.g.
-      // "x.dcm" and "x.dcm.png" (the DCM original and its PNG preview).
+      // Exact match first: "x.dcm" and "x.dcm.png" are otherwise ambiguous
+      // (an original and its preview).
       var fullNameToDelete = allFullNames
           .where((e) => e.toLowerCase() == imgName.toLowerCase())
           .firstOrNull;
-      // Only ordinary attachments allow legacy names, and an ambiguous
-      // fallback must never choose a destructive match by list order.
+      // Legacy names are for ordinary attachments only; an ambiguous match must
+      // never pick a destructive target by list order.
       if (fullNameToDelete == null && !_isDcmOrDcmPreview(imgName)) {
         final matches = allFullNames
             .where((name) =>
@@ -547,14 +535,13 @@ class SaveRemote {
       }
       fullNamesCache[rowID] = fullNames;
 
-      // Prefer exact match first — avoids ambiguity between e.g.
-      // "x.dcm" and "x.dcm.png" (the DCM original and its PNG preview).
+      // Exact match first: "x.dcm" and "x.dcm.png" are otherwise ambiguous
+      // (an original and its preview).
       final lower = imageName.toLowerCase();
       var candidates =
           fullNames.where((e) => e.toLowerCase() == lower).toList();
-      // PocketBase adds another suffix when the derived PNG is uploaded.
-      // Match only previews with the same full extension chain, never a raw
-      // original or an ambiguous pair of collision-suffixed previews.
+      // PocketBase suffixes the derived PNG again, so match only previews with
+      // the same extension chain; an ambiguous pair stays unresolved.
       if (candidates.isEmpty && dcm_helpers.isDcmPreviewName(imageName)) {
         final previews = fullNames
             .where((name) =>
@@ -570,9 +557,8 @@ class SaveRemote {
             .toList();
       }
       if (candidates.isEmpty) {
-        // Never fall back from a DICOM original to a similarly-named preview
-        // (or vice versa). The viewer needs the raw original and a PNG is
-        // not a valid DICOM payload.
+        // No cross-type fallback: the viewer needs the raw original, and a PNG
+        // is not a valid DICOM payload.
         if (useCache && usedCache) {
           return await getImageLink(rowID, imageName, false);
         }

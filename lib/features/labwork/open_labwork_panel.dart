@@ -77,24 +77,20 @@ Future<String?> openLabworkPanel(
   }
 
   final panel = DelegatedPanel(
-    // A synthetic id keyed on the appointment the panel starts from: this
-    // panel edits whichever appointment the user picks, so it has no single
-    // stored record behind it.
+    // synthetic id (`<appointmentId>-labwork`, the suffix closeLabworksPanels
+    // looks for): the panel edits whichever appointment is picked.
     itemId: _panelIdentifier(initiallySelectedAppointment?.id ?? ""),
     showBottomControls: false,
     singularName: "labwork",
     accent: PanelAccents.labwork,
     unicodeSymbol: "🔬",
     icon: FluentIcons.manufacturing,
-    // The header names the appointment's patient, and falls back to the
-    // "new labwork" label when the panel opens with nothing selected.
     newTitle: "newLabwork",
     recordTitle: () async => initiallySelectedAppointment == null
         ? txt("newLabwork")
         : "${initiallySelectedAppointment.patient?.title ?? ""} ${txt("labwork")}",
-    // The panel owns no record and keeps no snapshot of one, and its bodies
-    // write each labwork row themselves — there is no Save button
-    // (`showBottomControls: false`), so there is nothing for it to report.
+    // the bodies write each row themselves and there is no Save button, so the
+    // panel keeps no snapshot and has nothing to report.
     checkUnsavedChanges: () => false,
     onSave: () async => <String>[],
     additionalControls: _LabeWorkPanelActions(),
@@ -246,9 +242,8 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
             children: [
               if (selectedAppointment != null &&
                   selectedAppointment.hasLabwork == true &&
-                  // Deleting the order changes the visit, so it asks the same
-                  // question the table's own delete asks: may this user
-                  // change this visit?
+                  // deleting changes the visit, so it needs the visit's write
+                  // permission.
                   canEditAppointments(selectedAppointment.operatorsIDs))
                 FlyoutTarget(
                   controller: confirmDeleteFlyoutController,
@@ -286,8 +281,8 @@ class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
                   ),
                 ),
               if (selectedAppointment != null &&
-                  // Writing the order changes the visit, so it asks the same
-                  // question the table's own delete asks.
+                  // saving writes the visit, so it needs the visit's write
+                  // permission.
                   canEditAppointments(selectedAppointment.operatorsIDs))
                 IconButton(
                   style: filledButtonStyle(

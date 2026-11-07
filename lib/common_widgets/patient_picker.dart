@@ -19,13 +19,9 @@ class PatientPicker extends StatelessWidget {
   final String? value;
   final bool enabled;
 
-  /// The key the picker's field carries. A picker that shares the screen with
-  /// another one — a sheet opened over a panel — needs its own.
+  /// Needed when two pickers share the screen — e.g. a sheet over a panel.
   final Key fieldKey;
 
-  /// Whether tapping the selected patient opens their record. A sheet that is
-  /// still being filled in turns this off: its answer is the patient, not the
-  /// record behind the sheet.
   final bool tapOpensRecord;
 
   @override

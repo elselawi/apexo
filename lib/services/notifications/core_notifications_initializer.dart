@@ -19,18 +19,12 @@ class Messaging {
   static FirebaseMessagingService? firebase;
   static LocalNotificationsService? local;
 
-  /// Initializes the notification stack of the platform this build runs on.
-  ///
-  /// Android, iOS and macOS get Firebase and FCM; web is handled by
-  /// `fcm/fcm.js`; Windows has no Firebase at all. Its native receiving side is
-  /// started here, before any login, so a push that launched the app can be
-  /// captured even while the session is still being restored. Registration is
-  /// requested only after a login ([identifyDevice]) and runs in the background.
+  /// Starts the platform's notification stack. Windows has no Firebase, so its
+  /// native receiving starts before login to catch a push that launched the app.
   static Future<void> initializeReceiving() async {
     if (PushPlatform.current == PushPlatform.wns) {
-      // A cold toast click can arrive while local notifications initialize and
-      // before WindowsPush.startReceiving runs. Wire the native promotion hook
-      // first; it is a no-op when the process was not started hidden.
+      // A cold toast click can arrive before `startReceiving`, so wire the
+      // promotion hook first; it is a no-op unless the process started hidden.
       PushListeners.promoteWindowsInstanceIfApplicable =
           WindowsPush.promoteToInteractive;
       local = LocalNotificationsService.instance();
@@ -61,9 +55,8 @@ class Messaging {
   static Future<void> identifyDevice({bool isPatient = false}) async {
     final platform = PushPlatform.current;
 
-    // Windows registration is entirely owned by WindowsPushService. It needs a
-    // session snapshot and a native channel, so it runs in the background; in
-    // particular it must not resolve the relay key on login's critical path.
+    // Windows registration runs in the background off login's critical path: it
+    // needs a session snapshot and a native channel, not the relay key.
     if (platform == PushPlatform.wns) {
       WindowsPush.requestRegistration(isPatient: isPatient);
       return;
@@ -74,13 +67,6 @@ class Messaging {
         isPatient ? patientSide.relayKey : await PushRelay.ensureKey();
 
     if (platform == PushPlatform.web) {
-      // check(/fcm/fcm.js)
-      // communication to javascript through js bridge
-      // by setting global variables
-      // once those global variables are set
-      // the javascript code will get the token
-      // and use it to identify itself to the relay server
-
       final server = isPatient ? patientSide.server : login.url;
       final id = isPatient ? patientSide.patientID : login.currentAccountID;
 
@@ -92,9 +78,8 @@ class Messaging {
       return;
     }
 
-    // Android, iOS and macOS: this identifies this device to the relay server.
-    // A platform the app cannot name (`null`, e.g. Linux) leaves the field out
-    // rather than claiming one, and the relay keeps its FCM default.
+    // A platform the app cannot name (`null`, e.g. Linux) is left out rather
+    // than claimed, so the relay keeps its FCM default.
     if (firebase != null &&
         (firebase!.authStatus == AuthorizationStatus.authorized ||
             firebase!.authStatus == AuthorizationStatus.provisional)) {

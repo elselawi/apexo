@@ -183,8 +183,6 @@ void main() {
     }
   }
 
-  /// The chart the scope bar draws: a visit's chart names the visit, a
-  /// patient's chart names the patient.
   DentalChartSession chartFor(Patient patient, String scope) =>
       DentalChartSession(
         id: scope,
@@ -332,8 +330,7 @@ void main() {
       findsOneWidget,
       reason: 'the dot says it is a call, not a visit',
     );
-    // The dot belongs to the patient, not to the visit that recorded it: the
-    // bar draws it whichever visit is open.
+    // The follow-up is the patient's: the dot shows on a visit's chart too.
     expect(tester.getSize(dot).height, 40);
     expect(tester.takeException(), isNull);
 

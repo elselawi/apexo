@@ -162,9 +162,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
               );
             }),
             KanbanColumn(
-              // The uncategorized column is not a stored row — it collects the
-              // notes with no column — so its id is the empty string (the
-              // fixture calls the same value `uncategorizedColumnId`).
+              // The uncategorized column is not stored, so its id is ''.
               key: WK.columnRoot(''),
               column: null,
               columnNotes: (grouped[""] ?? [])

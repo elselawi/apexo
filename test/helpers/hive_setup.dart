@@ -2,17 +2,8 @@ import 'dart:io';
 
 import 'package:hive_flutter/adapters.dart';
 
-/// Sets up Hive with a temporary directory for testing.
-///
-/// Call [setupTestHive] in `setUp` or `setUpAll`, and [teardownTestHive] in
-/// `tearDown` or `tearDownAll`. Hive in a temp directory is fast, in-memory
-/// capable, and more reliable than any mock.
-///
-/// Usage:
-/// ```dart
-/// setUpAll(() async => await setupTestHive());
-/// tearDownAll(() async => await teardownTestHive());
-/// ```
+/// Points the process-global Hive at a fresh temp directory; call before any
+/// box is opened.
 Future<Directory> setupTestHive() async {
   final dir = Directory.systemTemp.createTempSync('apexo_test_hive_');
   Hive.init(dir.path);
@@ -27,8 +18,7 @@ Future<void> teardownTestHive(Directory dir) async {
   }
 }
 
-/// Opens a Hive box in the test temp directory. Prefer using this over
-/// `Hive.openBox()` directly so all test boxes are isolated.
+/// Thin wrapper over `Hive.openBox`; isolation comes from [setupTestHive].
 Future<Box<T>> openTestBox<T>(String name) async {
   return Hive.openBox<T>(name);
 }

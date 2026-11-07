@@ -2,9 +2,6 @@ import 'package:apexo/utils/money_input_formatter.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// These tests exercise the app's [moneyInputFormatter] in the default English
-/// locale through its [TextInputFormatter.formatEditUpdate]. The other locales
-/// the app ships are covered in `money_input_formatter_locale_test.dart`.
 void main() {
   TextEditingValue fmt(String input, [String oldInput = '']) {
     return moneyInputFormatter.formatEditUpdate(
@@ -135,8 +132,8 @@ void main() {
     });
 
     test('huge integer overflow formats as infinity, not oldValue', () {
-      // double.tryParse succeeds (returns Infinity) so the oldValue fallback
-      // branch is never reached for overflow — it formats as "∞".
+      // double.tryParse returns Infinity rather than null, so the oldValue
+      // fallback is never reached and it formats as "∞".
       final huge = '9' * 400;
       final result = fmt(huge);
       expect(result.text, '∞');

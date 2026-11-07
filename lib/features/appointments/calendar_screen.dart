@@ -23,9 +23,7 @@ class CalendarScreen extends StatelessWidget {
         streams: [
           appointments.observableMap.stream,
           appointments.filterByOperatorID.stream,
-          // A follow-up lives on the patient, and the day's band must lose a
-          // face the moment the promise is taken back — wherever it was taken
-          // back from.
+          // Follow-ups live on the patient, so patient edits change the band.
           patients.observableMap.stream,
           followUpRevision.stream,
           // The feature can be switched off under an open calendar.
@@ -61,9 +59,8 @@ class CalendarScreen extends StatelessWidget {
                 orElse: () => StartingDayOfWeek.monday),
             initiallySelectedDay: DateTime.now().millisecondsSinceEpoch,
             onSetTime: (item) {
-              // The calendar moved the visit: apply the move to the visit's one
-              // draft, so a form open on it goes dirty instead of being reverted
-              // by its next Save (plan §2.6a).
+              // Move the visit's one draft so an open form goes dirty instead of
+              // reverting the move on its next save.
               appointmentCommand(item.id, (draft) => draft.date = item.date);
             },
             onSelect: openAppointment,
@@ -71,10 +68,6 @@ class CalendarScreen extends StatelessWidget {
             onBookFollowUp: login.perm(Perm.appointments).none
                 ? null
                 : (followUp, {at}) async {
-              // The same sheet "add appointment" opens, with the two answers it
-              // would have asked for — whose visit, and which day — already
-              // given. A face dropped on the timeline keeps the hour it was
-              // dropped on.
               final created = await addAppointment(
                 context,
                 day: at ?? followUp.date,
@@ -85,9 +78,6 @@ class CalendarScreen extends StatelessWidget {
               await openAppointment(created);
             },
             onAddNew: (selectedDate) async {
-              // The sheet asks for what a visit needs — whose it is and when —
-              // and the visit is stored before its panel opens, so no visit is
-              // ever a draft.
               final created =
                   await addAppointment(context, day: selectedDate);
               if (created == null) return;

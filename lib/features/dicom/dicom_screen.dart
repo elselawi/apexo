@@ -35,8 +35,6 @@ String _shortName(String path) => path.split(RegExp(r'[/\\]')).last;
 String _fmtDate(DateTime d) =>
     '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-/// Shows a brief success bar after an import finishes, so the dentist gets
-/// confirmation instead of the progress bar silently disappearing.
 void _showImportComplete(int batches) {
   if (!bContext.mounted) return;
   unawaited(displayInfoBar(
@@ -66,8 +64,7 @@ class DicomScreen extends StatelessWidget {
         dicomCtrl.scanFileProgress.stream,
         globalSettings.observableMap.stream,
         dicomLinks.version.stream,
-        // The date-match indicators ask whether a visit already exists, so
-        // they must re-read once appointments finish loading or change.
+        // Date-match indicators read visits; re-render when appointments change.
         appointments.observableMap.stream,
       ],
       builder: (context, _) {
@@ -101,8 +98,7 @@ class _DicomPageState extends State<_DicomPage> {
   void didUpdateWidget(covariant _DicomPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.tick != widget.tick) {
-      // Drop selections whose batch no longer exists (e.g. it was auto-approved
-      // in the background) so the count never shows a phantom "Approve (2)".
+      // Prune batches that were auto-approved so the count shows no phantoms.
       final present = dicomCtrl.pending().map((p) => p.selectionKey).toSet();
       _selected.removeWhere((key) => !present.contains(key));
       setState(() {});

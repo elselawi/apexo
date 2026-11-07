@@ -7,8 +7,7 @@ String? bookingDialCodeForCountry(String isoCode) {
   final code = isoCode.trim().toUpperCase();
   if (code.isEmpty) return null;
   try {
-    // The parser resolves the calling code from the region alone; the digits
-    // only need to be well-formed enough to carry the country.
+    // Only the country code is needed; the digits need only be well-formed.
     final probe =
         PhoneNumber.parse("1", destinationCountry: IsoCode.values.byName(code));
     return "+${probe.countryCode}";
@@ -17,8 +16,8 @@ String? bookingDialCodeForCountry(String isoCode) {
   }
 }
 
-/// Rewrites a locally formatted clinic number into E.164 using the clinic's
-/// country. Numbers that already carry a country code are kept as they are.
+/// Rewrites a locally formatted clinic number into E.164 using [isoCode]; numbers
+/// that already carry a country code are kept.
 String? bookingInternationalPhone(String raw, String isoCode) {
   final trimmed = raw.trim();
   if (trimmed.isEmpty) return null;

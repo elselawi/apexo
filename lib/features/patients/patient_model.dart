@@ -158,8 +158,7 @@ class Patient extends Model {
     return Patient.formatDuration(doneAppointments.last.date, DateTime.now());
   }
 
-  /// Formats the duration between two dates as a human-readable string.
-  /// e.g. "2 years, 3 months, 10 days"
+  /// Formats the gap as "2 years, 3 months, 10 days".
   static String formatDuration(DateTime from, DateTime to) {
     int years = to.year - from.year;
     int months = to.month - from.month;
@@ -191,9 +190,8 @@ class Patient extends Model {
 
   @override
   bool get locked {
-    // lock if only personal patients are permissible
-    // and the patient DO have appointments
-    // but those appointments doesn't have the current user as operator
+    // below full patient access, a patient with appointments is locked unless
+    // the user operated on one of them
     return login.perm(Perm.patients).not(2) &&
         (allAppointments.isNotEmpty &&
             allAppointments
@@ -223,8 +221,6 @@ class Patient extends Model {
     return allAppointments.where((a) => a.imgs.isNotEmpty).toList();
   }
 
-  /// Appointments that have at least one DCM X-ray attached.
-  /// Parallel to [appointmentsWithImages].
   List<Appointment> get appointmentsWithDcmImgs {
     return allAppointments.where((a) => a.dcmImgs.isNotEmpty).toList();
   }
@@ -423,8 +419,6 @@ class Patient extends Model {
     return "$shorteningServer/$link";
   }
 
-  // id: id of the patient (inherited from Model)
-  // title: name of the patient (inherited from Model)
   /* 1 */ int birth = DateTime.now().year - 18;
   /* 2 */ int gender = 0; // 0 for female, 1 for male
   /* 3 */ List<ParsedPhoneNumber> phone = [];
@@ -437,29 +431,14 @@ class Patient extends Model {
   /* 8b */ Map<String, String> teethExtraNotes = {};
   /* 9 */ String? link;
 
-  /// The day the patient was asked to come back, or null when none is planned.
-  ///
-  /// A follow-up belongs to the **patient**, not to the visit that recorded it:
-  /// it is a promise about the patient's future, and it survives the visit it
-  /// was written on. A visit is where a dentist *sets* it (and the patient's own
-  /// band can set it too) — see `follow_up_scheduling.dart`.
-  ///
-  /// Unlike the other merge-style fields, this field treats an absent JSON key
-  /// as cleared. Callers updating an existing patient must supply a complete
-  /// record snapshot, or explicitly preserve `followUp` in a partial update;
-  /// a title-only patch would otherwise silently clear the follow-up.
+  /// Follow-up belongs to the patient, not the visit that recorded it. An absent
+  /// `followUp` key clears it, so a partial update must preserve the value.
   /* 10 */ DateTime? followUpDate;
 
-  /// What the promise is *for* — "bring the X-ray", "review the crown".
-  ///
-  /// Optional, and part of the same promise as [followUpDate]: it is written
-  /// when the day is decided and read back when the patient is called, so it is
-  /// cleared with the day rather than left behind (see `setFollowUp`).
+  /// What the follow-up is for; `setFollowUp` clears it with [followUpDate].
   /* 10b */ String followUpNote = '';
 
-  /// The follow-up day, without the time of day — a follow-up is a day, never an
-  /// hour: the clinic books the visit when it calls, and a stored hour would be
-  /// a booking nobody made.
+  /// A follow-up is a day, never an hour, so the time of day is dropped.
   DateTime? get followUpDay {
     final followUp = followUpDate;
     return followUp == null
@@ -498,8 +477,6 @@ class Patient extends Model {
     /* 8b */ teethExtraNotes = Map<String, String>.from(
         json['teethExtraNotes'] as Map<dynamic, dynamic>? ?? teethExtraNotes);
     /* 9 */ link = json["link"] as String? ?? link;
-    // Cleared follow-ups are omitted by toJson; adopting that snapshot must
-    // clear the old value just as an explicit null does.
     /* 10 */ followUpDate = json['followUp'] == null
         ? null
         : DateTime.fromMillisecondsSinceEpoch(

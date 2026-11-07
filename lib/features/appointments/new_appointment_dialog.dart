@@ -17,16 +17,8 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The sheet a visit is created from.
-///
-/// Creation starts here rather than in an empty panel: the visit's own
-/// essentials — whose it is, when it is, for how long, with whom, and what was
-/// written down for it — are asked for before there is a record, so [onSave]
-/// receives a visit that can be stored as it is. Nothing is opened as a draft.
-///
-/// The fields the sheet does not invent come from the caller: [day] says which
-/// day the caller came from, and a bare day starts at the time of day it is
-/// now. A follow-up booking can also supply [initialPreOpNotes].
+/// Collects a visit's essentials before any record exists, so [onSave] receives a
+/// storable visit and callers open it afterwards rather than a draft.
 class NewAppointmentDialog extends StatefulWidget {
   const NewAppointmentDialog({
     super.key,
@@ -37,19 +29,12 @@ class NewAppointmentDialog extends StatefulWidget {
     this.initialPreOpNotes = '',
   });
 
-  /// The day — or, when the caller has one, the exact moment — to start from.
-  /// A moment is kept, a bare day takes the current time of day.
   final DateTime? day;
 
-  /// An exact start instant that takes precedence over [day].
-  ///
-  /// Booking hands over a clinic-local preference converted to the device's
-  /// zone; that instant must survive untouched, including an exact midnight,
-  /// which the bare-day path deliberately replaces with the current clock time.
+  /// An exact start instant that wins over [day], including exact midnight, which
+  /// the bare-day path would otherwise replace with the current clock time.
   final DateTime? initialMoment;
 
-  /// The patient the sheet starts with: a list opened for one patient already
-  /// knows whose visit it is.
   final String? patientID;
 
   /// The pre-op notes the sheet starts with, such as a follow-up's note.
@@ -65,8 +50,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   late final Appointment _draft;
   final TextEditingController _notes = TextEditingController();
 
-  /// The visit's initial operator, for the accounts that may only own the
-  /// visits they are on.
+  /// Accounts limited to their own visits start out assigned to themselves.
   bool get _assignsItself =>
       login.perm(Perm.patients).exact(1) ||
       login.perm(Perm.appointments).exact(1) ||
@@ -92,8 +76,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     super.dispose();
   }
 
-  /// [day] as the sheet starts it: a caller that clicked 10:00 meant 10:00; one
-  /// that named a day meant that day at the time of day it is now.
+  /// A zero hour and minute means a bare day, so it takes the current time of day.
   DateTime _atCurrentTime(DateTime day) {
     if (day.hour != 0 || day.minute != 0) return day;
     final now = DateTime.now();
@@ -256,11 +239,8 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   }
 }
 
-/// Asks for a new visit's essentials and stores what the sheet says.
-///
-/// Returns the stored visit, or null when the sheet was dismissed. Callers open
-/// the visit afterwards: it already exists, so nothing they do can leave a
-/// draft behind.
+/// Asks for a visit's essentials, stores it and returns it (null when dismissed).
+/// Callers open the stored visit, so nothing they do can leave a draft behind.
 Future<Appointment?> addAppointment(
   BuildContext context, {
   DateTime? day,
@@ -284,9 +264,8 @@ Future<Appointment?> addAppointment(
   final created = collected;
   if (created == null) return null;
   appointments.set(created);
-  // A new visit can keep — or inherit — the promise a follow-up made: storing it
-  // here, before any caller opens it, is the one place every way of creating a
-  // visit passes through (see `follow_up_scheduling.dart`).
+  // Follow-up promises are applied here because every creation path stores through
+  // this point, before any caller opens the visit.
   applyFollowUpsForNewVisit(created.id);
   return appointments.get(created.id) ?? created;
 }

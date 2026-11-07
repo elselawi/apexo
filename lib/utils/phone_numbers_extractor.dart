@@ -1,24 +1,18 @@
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
-/// Top-level ISO country code override for use inside compute isolates
-/// where the reactive [globalSettings] store is not available.
+/// ISO country override for compute isolates, where [globalSettings] is unavailable.
 String? overrideIsoCountryCode;
 
-/// Call this before spawning a compute isolate that will invoke
-/// [PhoneNumberExtractor] so that `_parseNumber` can use the real
-/// ISO country code instead of falling back to `isoCC()`.
+/// Set before spawning an isolate that calls [PhoneNumberExtractor].
 void setIsoCountryCodeForIsolate(String code) {
   overrideIsoCountryCode = code;
 }
 
 /// Extracts valid phone numbers from any text.
 class PhoneNumberExtractor {
-  /// Synchronously finds all valid phone numbers in [text].
-  ///
-  /// * [normalizeToE164] – if `true`, returns numbers in E.164 format (e.g.
-  ///   `"+9647701234567"`). If `false`, returns the original cleaned string.
-  /// * [minLength] – minimum number of digits required (default `5`).
+  /// Finds valid phone numbers in [text], optionally normalizing them to E.164;
+  /// [minLength] is the minimum digit count (default 5).
   static List<String> extract(
     String text, {
     bool normalizeToE164 = false,
@@ -26,8 +20,6 @@ class PhoneNumberExtractor {
   }) {
     final result = <String>[];
 
-    // Step 1: Split text by characters that absolutely cannot belong to a phone number.
-    // This keeps chunks of digits, spaces, hyphens, and parentheses intact.
     final chunks = text.split(RegExp(r'[^\d+\-\(\)\s]+'));
 
     for (final chunk in chunks) {
@@ -92,8 +84,7 @@ class PhoneNumberExtractor {
         // International format – no region hint needed
         return PhoneNumber.parse(trimmed);
       } else {
-        // National format – use the override (set before compute) or fall back
-        // to the reactive store for main-isolate calls.
+        // Compute isolates have no store, so the pre-set override wins.
         final region = overrideIsoCountryCode ?? defaultRegion;
         return PhoneNumber.parse(
           trimmed,

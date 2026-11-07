@@ -33,8 +33,7 @@ void main() {
       name: 'Archived Patient',
     );
     patients.set(archived);
-    // The screen reads the store's archived map, which archive() maintains
-    // without a live persistence session.
+    // archive() fills the archived map without needing a persistence session.
     patients.archive(archived.id);
     addTearDown(() {
       patients.observableMap.clear();

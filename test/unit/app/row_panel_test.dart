@@ -29,9 +29,8 @@ void main() {
     draft.attachments.add('unsaved');
     expect(store.get('note')!.attachments, ['saved']);
     expect(panel.hasPendingEdits, isTrue);
-    // Archiving persists the **whole draft**, unsaved edits included: the panel
-    // is deleted the moment the archive lands, so a later close must not ask
-    // about work that was just stored (`appointments 11` is that regression).
+    // Archiving stores the whole draft, unsaved edits included, so it leaves
+    // nothing pending.
     await panel.setArchived(true);
     expect(draft.archived, isTrue);
     expect(store.get('note')!.archived, isTrue);

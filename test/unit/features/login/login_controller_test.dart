@@ -214,8 +214,7 @@ void main() {
     });
 
     test('does not send initial value to late subscribers', () async {
-      // ObservableState does not replay — subscribers only see values set
-      // after they subscribe.
+      // ObservableState does not replay, so late subscribers only see later values.
       final received = <int>[];
       loginCtrl.selectedTab(10);
       final sub = loginCtrl.selectedTab.stream.listen(received.add);
@@ -268,43 +267,26 @@ void main() {
 
   group('Login controller — loginButton preprocessing', () {
     test('loginButton does not throw on empty inputs (gracefully fails)', () {
-      // loginButton calls login.activate(server, [email, password], online).
-      // Without login.pb set, activate will fail. Just verify the function
-      // itself doesn't throw synchronously when called with empty inputs.
       expect(
           () => loginCtrl.loginButton(
               'https://example.com///', '  Test@Example.COM  ', 'pass'),
           returnsNormally);
-      // After call, the server should have trailing slashes stripped
-      // (we can't verify via observable directly; instead verify routes.reset
-      // doesn't crash and returns void).
     });
 
     test('loginButton strips trailing slashes from the server URL', () {
-      // The controller normalizes the URL before passing it to login.
-      // With launch.open() == Open.login by default, login.activate returns
-      // early after setting pb, so no real network call is made — but the
-      // synchronous normalization still runs.
       loginCtrl.loginButton(
           'https://server.example///', '  TEST@Email.com ', 'pw');
-      // The controller lowercases and trims the email synchronously.
-      // login.activate runs asynchronously after this point, but the
-      // route reset happens synchronously.
       expect(() => loginCtrl.loginButton('https://server/', 'a@b.co', 'pw'),
           returnsNormally);
     });
 
     test('loginButton resets the route history synchronously', () {
-      // Put the shell somewhere first. `navigateWithoutSync` is the seam: the
-      // real `navigate` also fires that route's store sync, which this test has
-      // no server for.
+      // navigateWithoutSync avoids _syncStores, which needs a server this test lacks.
       routes.navigateWithoutSync(AppRoute.patients);
       expect(routes.canGoBack, isTrue, reason: 'the seed did not take');
 
       loginCtrl.loginButton('https://server/', 'a@b.co', 'pw');
 
-      // reset() is called synchronously inside loginButton, so the history is
-      // cleared and the shell is back on the dashboard.
       expect(routes.canGoBack, isFalse);
       expect(routes.currentRoute(), AppRoute.dashboard);
     });
@@ -342,9 +324,7 @@ void main() {
       try {
         loginCtrl.resetButton('https://invalid.invalid', 'x@y.z');
       } catch (_) {
-        // The reset will fail because PocketBase isn't real here; we catch
-        // and continue. The behavior we test is that the error message is
-        // either cleared or replaced with the reset error message.
+        // No real PocketBase here, so the reset fails; only the error state is asserted.
       }
       // After a failed reset, the error state should be updated.
       expect(loginCtrl.loginError(), isA<String>());
@@ -355,8 +335,7 @@ void main() {
       loginCtrl.loginError('old-error');
       loginCtrl.resetButton('http://localhost:1', 'x@y.z');
 
-      // The first synchronous part of the async-void method runs before its
-      // first await.
+      // The synchronous part of the async-void method runs before the first await.
       expect(loginCtrl.loginError(), isEmpty);
       expect(loginCtrl.loadingIndicator(), 'Sending password reset email');
       await Future<void>.delayed(const Duration(milliseconds: 20));
@@ -368,17 +347,10 @@ void main() {
       } catch (_) {}
       // The function uses async internally but returns void. Pump a microtask.
       await Future.microtask(() {});
-      // After completion (success or failure), loadingIndicator should be
-      // cleared. (If still set because pending, that's also acceptable — but
-      // we'd expect it to clear once the underlying code finishes.)
       expect(loginCtrl.loadingIndicator(), anyOf(isEmpty, isA<String>()));
     });
 
     test('resetButton sets resetInstructionsSent after success', () async {
-      // resetButton is async void — we cannot await it, so we pump
-      // microtasks after the call. With an invalid server it will fail and
-      // set the error. The key assertion: after the call, the loginError is
-      // a String (either cleared or set to the failure message).
       try {
         loginCtrl.resetButton('https://localhost:1', 'a@b.co');
       } catch (_) {}
@@ -399,10 +371,6 @@ void main() {
 
     test('resetButton sets a loading message synchronously before failing',
         () async {
-      // The loading indicator is set before the await on the network call.
-      // Because resetButton returns void (async), we cannot truly observe
-      // the midpoint reliably across test environments — but the eventual
-      // state after draining is deterministic.
       try {
         loginCtrl.resetButton('https://localhost:1', 'a@b.co');
       } catch (_) {}

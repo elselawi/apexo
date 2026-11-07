@@ -7,16 +7,13 @@ class ChangelogVersion {
   final List<String> changes;
 }
 
-/// Parses CHANGELOG.md without a markdown parser — uses regex to extract
-/// version headers and their bullet-point changes.
 class ChangelogService {
   static const _changelogAsset = 'CHANGELOG.md';
 
   String? _rawContent;
   List<ChangelogVersion>? _versions;
 
-  /// Loads and parses the changelog from assets. Safe to call multiple times —
-  /// subsequent calls return the cached result.
+  /// Loads the changelog from assets; repeated calls return the cached parse.
   Future<List<ChangelogVersion>> load() async {
     if (_versions != null) return _versions!;
 
@@ -72,8 +69,7 @@ class ChangelogService {
     return results;
   }
 
-  /// Extracts bullet points from a section. Nested bullets (indented)
-  /// are prefixed with a dash so they read naturally in the dialog.
+  /// Extracts bullet points; nested bullets are prefixed with a dash.
   static List<String> _extractBullets(String section) {
     final bullets = <String>[];
     final lines = section.split('\n');

@@ -38,9 +38,6 @@ class _MeasureState {
 
 // ─── Dialog ───────────────────────────────────────────────────────
 
-/// The scan itself: the image, its tools and its measurements, with no chrome
-/// of its own — the window it is put in provides that.
-
 class _MeasureOverlay extends StatelessWidget {
   const _MeasureOverlay({required this.measure, required this.imageSize});
   final _MeasureState measure;

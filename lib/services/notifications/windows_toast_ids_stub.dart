@@ -1,7 +1,5 @@
-/// Web/non-IO fallback for Windows toast ids.
-///
-/// Windows is the only platform that calls this, but the import must stay
-/// compilable on web; the real allocator uses Hive and the filesystem.
+/// Web/non-IO fallback for Windows toast ids: the import must stay compilable on
+/// web, where the real Hive-backed allocator cannot be used.
 const int maxWindowsNotificationId = 0x7fffffff;
 
 Future<int> nextWindowsNotificationId() {

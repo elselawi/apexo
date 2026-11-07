@@ -1,26 +1,9 @@
-/// The push payload: the JSON that travels from the change that caused it to the
-/// device that displays it.
-///
-/// This file is the **wire shape only** — the fields, how a payload serializes,
-/// and how a store change becomes one. The three things that used to share this
-/// responsibilities live in `services/notifications/`:
-///
-/// * `push_interpretation.dart` — what a payload *means*, and how it reads in
-///   each language;
-/// * `push_relay.dart` — how it leaves the device.
-///
-/// ---------------------------------------------------------------------------
-///  !!!! IMPORTANT !!!!
-/// the JSON below is mirrored by the `web/fcm/push_data.js` file, which the web
-/// app and its service worker use to display a push. A field added, renamed or
-/// removed here must be added, renamed or removed there. That file mirrors the
-/// interpretation and its translations too — see `push_interpretation.dart` for
-/// the rest of the contract.
-/// ---------------------------------------------------------------------------
+/// Push payload wire shape. The JSON below is mirrored by `web/fcm/push_data.js`
+/// (web app + service worker): a field added, renamed or removed here must be
+/// changed there too.
 library;
 
-/// The data behind every notice: FCM carries it as a JSON string, the deferred
-/// queue stores it, and the in-app list displays it.
+/// One notice payload; FCM carries it as a JSON string.
 class PushData {
   PushData({
     required this.store,
@@ -58,11 +41,8 @@ class PushData {
     );
   }
 
-  /// The payload for one store change: [changed] are the fields that moved, and
-  /// the values are read from [before] and [after] in that same order.
-  ///
-  /// Both producers of a notice build their payload here, so the two cannot
-  /// disagree about the shape. [before] is null for a creation.
+  /// Builds the payload for one store change. [oldVals]/[newVals] are parallel to
+  /// [changed]; [before] is null for a creation.
   factory PushData.fromChange({
     required String store,
     required String id,
@@ -95,14 +75,9 @@ class PushData {
   final List<dynamic> oldVals;
   final List<dynamic> newVals;
 
-  /// Whether an uninterpretable payload has already been reported for this
-  /// datum. `displayTuple()` is called from `build`, so the diagnosis must be
-  /// reported once and not once per frame.
-  ///
-  /// The diagnosis itself is in `push_interpretation.dart`; the flag is here
-  /// because it is per-datum state that has to survive between those calls, and
-  /// Dart privacy is per-library — an extension in another file cannot reach a
-  /// private field of this class.
+  /// Set once an uninterpretable payload has been reported, so repeated
+  /// `displayTuple()` calls log it only once. Public because Dart privacy is
+  /// per-library and the diagnosis lives in another file.
   bool uninterpretableReported = false;
 
   Map<String, dynamic> toJson() {

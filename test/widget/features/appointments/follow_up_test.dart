@@ -32,8 +32,6 @@ import 'package:table_calendar/table_calendar.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// The three surfaces a follow-up is written and read on: the visit's own field,
-/// the patient's own row, and a day's band of faces.
 void main() {
   late List<Appointment> originalAppointments;
   late List<Patient> originalPatients;
@@ -241,8 +239,7 @@ void main() {
       (tester) async {
     final patient = testPatient(id: 'two-rows');
     patients.set(patient);
-    // The same visit's draft, held by two rows: the operative window and the
-    // chart's post-op card can be on screen together.
+    // The operative window and the chart's post-op card share one visit's draft.
     final draft = FollowUpDraft();
     Widget row() => SizedBox(
           width: 400,
@@ -866,8 +863,6 @@ void main() {
 
     expect(find.text('Sheet Patient'), findsNothing);
 
-    // The band is one surface in two states: unfolding it must not make it jump
-    // sideways on the page.
     final foldedWidth = tester.getSize(find.byKey(WK.followUpBand)).width;
 
     await tester.tap(find.byKey(WK.followUpsBandToggle));

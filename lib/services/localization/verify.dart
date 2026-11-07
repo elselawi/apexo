@@ -1,7 +1,4 @@
 #!/usr/bin/env dart run
-// Localization Auditor — comprehensive i18n health check for Apexo
-// Usage: dart run lib/services/localization/verify.dart
-//   or:  cd lib/services/localization && dart run verify.dart
 
 import 'dart:io';
 
@@ -137,9 +134,7 @@ void main() {
   final maybeDynamic = <String>[];
 
   if (initiallyUnused.isNotEmpty) {
-    // Blind search: for each key not seen as txt("..."), check if the raw
-    // key string appears ANYWHERE in the codebase (variable, comment, etc.),
-    // or starts with the prefix of an interpolated txt("prefix${...}") call.
+    // "Definitely unused" means the raw key appears nowhere in the code, comments included.
     final codeFiles = _collectCodeFiles(workspaceRoot);
     final dynamicPrefixes =
         dynamicUsages.map((c) => c.prefix).whereType<String>().toSet();
@@ -226,10 +221,6 @@ void main() {
   stdout.writeln('');
 }
 
-// ──────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────
-
 /// Locale files are the ones defining a dictionary; tooling files define none.
 List<File> _discoverLocaleFiles(Directory dir) {
   return dir
@@ -267,8 +258,6 @@ class _TxtCall {
   final String? prefix; // text before `$` in an interpolated literal such as "bookingWeekday${n}"
 }
 
-/// Scan all .dart files under [root] for txt(...) calls.
-/// Captures both literal txt("key") and dynamic txt(variable) / txt("${...}").
 List<_TxtCall> _scanCodebaseForTxtCalls(Directory root) {
   final results = <_TxtCall>[];
   for (final entity in root.listSync(recursive: true)) {
@@ -288,9 +277,7 @@ List<_TxtCall> _scanCodebaseForTxtCalls(Directory root) {
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
 
-      // Match txt("literal") and txt('literal') — both spellings are used in
-      // the codebase, and a scanner that only knows one of them misses every
-      // key the other one names.
+      // Both quote styles are used in the codebase; matching one misses the other's keys.
       final literalRegex =
           RegExp(r'''txt\(\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)')\s*\)''');
       for (final m in literalRegex.allMatches(line)) {

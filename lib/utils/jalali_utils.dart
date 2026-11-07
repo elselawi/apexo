@@ -34,12 +34,7 @@ class JalaliUtils {
 
   /// Get Jalali day of week name in Persian
   static String dayOfWeekName(int weekday) {
-    // In shamsi_date, weekdays are: Saturday=0, Sunday=1, ..., Friday=6
-    // In DateTime, weekdays are: Monday=1, ..., Sunday=7
-    // Convert DateTime.weekday to shamsi weekday
-    // DateTime Monday(1) -> shamsi Sunday(1)? No.
-    // DateTime: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
-    // shamsi:   Sat=0, Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6
+    // shamsi_date counts Sat=0..Fri=6; DateTime counts Mon=1..Sun=7.
     const names = [
       'شنبه',
       'یک\u200cشنبه',
@@ -49,9 +44,6 @@ class JalaliUtils {
       'پنج\u200cشنبه',
       'جمعه',
     ];
-    // Convert DateTime weekday (Mon=1..Sun=7) to shamsi weekday (Sat=0..Fri=6)
-    // DateTime Mon(1) -> shamsi Mon(2)
-    // DateTime Sun(7) -> shamsi Sun(1)
     int shamsiWeekday;
     switch (weekday) {
       case DateTime.monday: // 1
@@ -113,8 +105,6 @@ class JalaliUtils {
     return abbrs[shamsiWeekday];
   }
 
-  /// Format a DateTime as Jalali date string
-  /// e.g., "۱۴۰۳/۰۳/۱۵" or "۱۵ خرداد ۱۴۰۳"
   static String formatJalali(DateTime date, {String pattern = 'yyyy/MM/dd'}) {
     final j = Jalali.fromDateTime(date);
     // Replace longer patterns first to avoid partial matches

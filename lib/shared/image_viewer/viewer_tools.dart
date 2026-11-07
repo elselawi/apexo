@@ -1,8 +1,5 @@
-/// The buttons that act on the photo on screen, laid on the photo itself in a
-/// dark pill so they stay legible over an X-ray or a white tooth.
-///
-/// Pure views: the viewer owns what the pen is doing; these only draw it and
-/// report taps back.
+/// Stateless views: the viewer owns the pen state; these only draw it and report
+/// taps.
 library;
 
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -51,11 +48,6 @@ class _Divider extends StatelessWidget {
   }
 }
 
-/// The pen's tools: draw, pick a colour, erase, hide what is drawn.
-///
-/// A pill with the pen and its colours, and the eraser and the eye only while
-/// they mean something — a drawing tool that is always there says the photo has
-/// drawings when it has none.
 class ViewerDrawingTools extends StatelessWidget {
   const ViewerDrawingTools({
     super.key,
@@ -165,9 +157,6 @@ class ViewerFileTools extends StatelessWidget {
   /// The record whose files these are — what a download resolves the file by.
   final String? rowId;
 
-  /// The file on screen. Empty where the viewer was given no names — and then
-  /// no download is offered, because there is no file to fetch. The delete is
-  /// offered on its own terms: it names the photo, not the file.
   final String name;
 
   /// The photo on screen, for the delete prompt to show what it would remove.
@@ -236,9 +225,6 @@ class _PhotoPreview extends StatelessWidget {
   }
 }
 
-/// An icon and its word, tinted while the tool it stands for is on. The words
-/// are the point: a draw button that is only a pencil leaves the dentist
-/// guessing what a tap will do.
 class _ToolLabel extends StatelessWidget {
   const _ToolLabel({
     required this.icon,
@@ -292,8 +278,7 @@ class _ColorDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Big enough to be aimed at with a finger: a bare 24-pixel dot is a target
-    // no one hits on a tablet.
+    // Padded to a finger-sized target: a bare 24px dot is too small to hit.
     return Semantics(
       button: true,
       selected: selected,

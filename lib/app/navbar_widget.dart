@@ -40,8 +40,8 @@ class BottomNavBar extends StatelessWidget {
         child: StreamBuilder(
           stream: routes.currentRoute.stream,
           builder: (context, snapshot) {
-            // The booking route appears only once discovery finds a registered
-            // clinic, which happens after the shell is already on screen.
+            // Booking appears only once discovery finds a clinic, which can
+            // happen after the shell is already on screen.
             return StreamBuilder(
               stream: booking.ready.stream,
               builder: (context, _) => LayoutBuilder(

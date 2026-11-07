@@ -20,21 +20,8 @@ import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// What a visit's chart carries under its teeth.
-///
-/// Two states, one widget, because they are the same question — *what else does
-/// this visit have?* — answered for two places:
-///
-/// * **Beside the patient** the visit's chart is its workspace, so its **post-op
-///   record** is pinned at the chart's foot (floating over it on narrow screens):
-///   the notes, the prescriptions and the
-///   money are part of the visit, not a window to open. Its labwork order and
-///   photos hang off that card — and off the visit's band, which draws the same
-///   attachment tray — so either surface is one click from them.
-/// * **On its own** (a patient this account may not see, or one that is gone)
-///   there is no band, no patient panel and no chart to hang things off, so the
-///   footer is the way to the visit's other windows: the same attachment chips,
-///   opening standalone windows.
+/// Drawn under the chart's teeth: attached to the visit's panel it pins the post-op
+/// record; otherwise it opens the visit's other windows.
 class AppointmentChartFooter extends StatelessWidget {
   const AppointmentChartFooter({
     super.key,
@@ -46,8 +33,7 @@ class AppointmentChartFooter extends StatelessWidget {
   final Appointment appointment;
   final DentalChartSession session;
 
-  /// Whether the visit is drawn beside its patient — the chart is then its
-  /// workspace, and the post-op record belongs here.
+  /// Whether the visit is drawn beside its patient, so the post-op record belongs here.
   final bool attached;
 
   @override
@@ -61,16 +47,12 @@ class AppointmentChartFooter extends StatelessWidget {
         if (visitSession != null) visitSession.hasUnsavedChanges.stream,
       ],
       builder: (context, _) {
-        // The panel that carries this visit, if one does. With no panel behind it
-        // the chart is standing on its own, and its footer opens windows instead.
+        // The panel showing this visit; with none, the chart stands alone and
+        // the footer opens windows.
         final panel = PanelsManager.active()
             .where((panel) => identical(panel.attached, visitSession))
             .firstOrNull;
         if (attached && panel != null) {
-          // The post-op record is a **card under the chart**, not another row of
-          // the chart: its depth, its tint and its little tail say it is about
-          // these teeth without pretending to be part of the teeth editor (the
-          // design brief). Capped so a long note never eats the chart.
           const accent = PanelAccents.appointment;
           final theme = FluentTheme.of(context);
           final background = Color.alphaBlend(
@@ -81,16 +63,14 @@ class AppointmentChartFooter extends StatelessWidget {
             ),
           ).withValues(alpha: 0.96);
           final border = accent.withValues(alpha: 0.30);
-          // The visit's parts — its labwork order and photos — as the band lists
-          // them: one list, drawn on both surfaces.
+          // The visit's attachments, the same ones the visit band's tray lists.
           final attachments = <PanelWindow>[
             for (final window in visitSession?.windows ?? const <PanelWindow>[])
               if (window.attachedTo == PanelWindow.bandAttachment) window,
           ];
           return ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 300),
-            // The tail is drawn above the card, in the gap this padding leaves
-            // between the teeth and their post-op record.
+            // The tail sits in this padding's top gap, above the card.
             child: Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 8),
               child: Stack(
@@ -114,16 +94,12 @@ class AppointmentChartFooter extends StatelessWidget {
                         ),
                       ],
                     ),
-                    // The card's own padding belongs to its two parts — the
-                    // fields' and the attachment tray's — so the tray's divider
-                    // runs the width of the card.
+                    // Padding lives on the two parts so the tray's divider spans the card.
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        // Only the fields scroll, and only when the note is
-                        // long: the attachments stay at the card's foot where
-                        // they can be seen without scrolling for them.
+                        // Only the fields scroll; the attachments stay visible at the card's foot.
                         if (canViewPostOp(appointment))
                           Flexible(
                             child: SingleChildScrollView(
@@ -131,9 +107,7 @@ class AppointmentChartFooter extends StatelessWidget {
                                 padding: const EdgeInsetsDirectional.fromSTEB(
                                     8, 6, 8, 8),
                                 child: AppointmentOperativeForm(
-                                  // A different visit is a different post-op
-                                  // record: its fields must never be the previous
-                                  // visit's values behind a new title.
+                                  // Keyed by visit so the fields never keep the previous visit's values.
                                   key: ValueKey(
                                       'visit-operative-${appointment.id}'),
                                   appointment,
@@ -207,19 +181,15 @@ class AppointmentChartFooter extends StatelessWidget {
           floating.scope == 'appointment:${appointment.id}')
       .firstOrNull;
 
-  /// The visit's attachments at the foot of the post-op card: the same tray the
-  /// band draws, so the bubble inside the chart offers them too.
-  ///
-  /// Their windows live in the row's attached slot, exactly as the band's tray
-  /// puts them there — one record, one place its editors open.
+  // The band's tray again: same windows, same attached slot, so each editor
+  // opens in one place.
   Widget? _attachmentsOf(Panel panel, List<PanelWindow> windows) {
     if (windows.isEmpty) return null;
     return WindowAttachments(
       key: WK.visitChartAttachments,
       windows: windows,
       accent: PanelAccents.appointment,
-      // The card's own padding holds the fields off its edges; the tray only adds
-      // the divider above it.
+      // The card pads its fields; the tray adds only the divider above it.
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 7),
       keyForWindow: (window) =>
           WK.attachmentToggle(window.id, owner: kDentalChartWindowId),
@@ -232,11 +202,7 @@ class AppointmentChartFooter extends StatelessWidget {
     );
   }
 
-  /// Shows or hides one of the visit's tools, wherever the visit is drawn.
-  ///
-  /// Beside the patient the visit has no window of its own to put these in — the
-  /// band's tray and this card's draw the same windows — so this path is only the
-  /// standalone one.
+  // Standalone path only: beside the patient the tray toggles attached windows.
   void _toggle(PanelWindow window) {
     final floating = _standalone(window);
     if (floating != null) {
@@ -249,8 +215,6 @@ class AppointmentChartFooter extends StatelessWidget {
   }
 }
 
-/// The small tail on top of the post-op card, pointing up at the teeth it
-/// describes — the same gesture as the visit band's tail under the patient name.
 class _ChartCardTail extends CustomPainter {
   const _ChartCardTail({required this.background, required this.border});
 

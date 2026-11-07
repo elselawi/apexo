@@ -16,8 +16,6 @@ import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The follow-up badge every surface shows: its glyph, its name, and how far off
-/// the day is.
 class FollowUpBadge extends StatelessWidget {
   const FollowUpBadge({super.key, required this.date});
 
@@ -76,11 +74,6 @@ class FollowUpBadge extends StatelessWidget {
   }
 }
 
-/// The follow-up **card**: the day, whose promise it is, and what the clinic
-/// does about it — calls the patient, books the visit that keeps it.
-///
-/// One card for every surface that offers a follow-up (the scope bar's phone dot
-/// and the day's band), so a promise looks and acts the same wherever it is met.
 class FollowUpCard extends StatelessWidget {
   const FollowUpCard({
     super.key,
@@ -93,12 +86,9 @@ class FollowUpCard extends StatelessWidget {
   final Patient patient;
   final DateTime date;
 
-  /// Books the visit that keeps the promise; null while the account may not
-  /// create visits, and the card then keeps the contact details alone.
+  /// Books the visit; null when the account may not create visits.
   final VoidCallback? onBook;
 
-  /// Opens the patient's record — the name is a link, because the record is the
-  /// thing the promise hangs off.
   final VoidCallback? onOpenPatient;
 
   @override
@@ -188,8 +178,6 @@ class FollowUpCard extends StatelessWidget {
               ),
             ],
           ),
-          // What the visit is for, in the dentist's own words: the reason the
-          // clinic is calling, and the thing to have ready.
           if (patient.followUpNote.isNotEmpty) ...[
             const SizedBox(height: 10),
             Container(
@@ -258,11 +246,8 @@ class FollowUpCard extends StatelessWidget {
   }
 }
 
-/// Wraps a control so tapping it opens [FollowUpCard] in a bubble anchored on it.
-///
-/// [builder] receives the opener instead of the wrapper drawing its own gesture,
-/// because the control underneath already has one — a phone dot that hovers, an
-/// avatar that can be dragged — and a second recognizer above it would fight it.
+/// Wraps a control so tapping it opens [FollowUpCard] in a bubble. [builder]
+/// takes the opener because a second recognizer would fight the control's own.
 class FollowUpCardTarget extends StatefulWidget {
   const FollowUpCardTarget({
     super.key,
@@ -277,8 +262,7 @@ class FollowUpCardTarget extends StatefulWidget {
   final DateTime date;
   final VoidCallback? onBook;
 
-  /// Called just before the bubble opens — a caller with a hover card of its own
-  /// puts it away first.
+  /// Called just before the bubble opens, so callers can dismiss a hover card.
   final VoidCallback? onOpened;
 
   final Widget Function(BuildContext context, VoidCallback open) builder;
@@ -333,13 +317,6 @@ class _FollowUpCardTargetState extends State<FollowUpCardTarget> {
   }
 }
 
-/// The follow-up as a **card for a list**.
-///
-/// The patient's history heads with it, because it is the one thing in that list
-/// that has not happened yet. It carries the same two acts as the card on the
-/// day's band — book the visit that keeps the promise, or take the promise back
-/// — and stays a plain tinted row while nothing is planned: a follow-up nobody
-/// set is not an empty form, it is a button.
 class FollowUpSummaryCard extends StatelessWidget {
   const FollowUpSummaryCard({
     super.key,
@@ -349,8 +326,8 @@ class FollowUpSummaryCard extends StatelessWidget {
 
   final String patientID;
 
-  /// Supplies the booking action. This widget checks scheduling permission for
-  /// booking, setting and clearing; a supplied callback does not grant access.
+  /// Booking action. The widget checks scheduling permission itself; a supplied
+  /// callback grants no access.
   final VoidCallback? onBook;
 
   @override
@@ -369,8 +346,7 @@ class FollowUpSummaryCard extends StatelessWidget {
         if (!followUpsEnabled) return const SizedBox.shrink();
         final patient = patients.get(patientID);
         if (patient == null) return const SizedBox.shrink();
-        // Nothing done yet, nothing to come back from: the card is the patient's
-        // own promise, and a patient who has never been seen has none.
+        // A patient never seen has nothing to come back from.
         if (patient.doneAppointments.isEmpty) return const SizedBox.shrink();
         final date = patient.followUpDay;
         return Padding(

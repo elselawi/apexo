@@ -14,8 +14,6 @@ class WK {
   static const expensesScreen = Key("expensesScreen");
   static const notesScreen = Key("notesScreen");
 
-  /// The accounts screen and its panel: the two create buttons, the fields, the
-  /// enabled/disabled switch, and one handle per permission row.
   static const btnNewAccount = Key("btnNewAccount");
   static const btnNewAdmin = Key("btnNewAdmin");
   static const fieldAccountName = Key("fieldAccountName");
@@ -23,70 +21,44 @@ class WK {
   static const fieldAccountPassword = Key("fieldAccountPassword");
   static const accountOperates = Key("accountOperates");
 
-  /// One permission row of the account panel, by the localization key of its
-  /// title (`patients`, `calendar`, …) — the levels inside it are labelled.
+  /// One permission row, by the localization key of its title (e.g. `patients`).
   static Key permissionSelector(String titleKey) => Key("permission-$titleKey");
 
-  /// One settings card, by the `identifier` the screen gives it (`currency`,
-  /// `language`, `calendarSystem`, `dentalNotation`, …).
   static Key settingsItem(String identifier) => Key("settings-$identifier");
 
-  /// The settings screen's own scrollable. The screen has a second one only when
-  /// a pane or a panel is open, so a test that has to scroll to a section below
-  /// the fold names this one instead of guessing at `.last`.
   static const settingsList = Key("settingsList");
 
-  /// One section of the settings screen's **services** list (SMTP, S3, backups,
-  /// file upload, meta, auth). They are anonymous `Expander`s, so a test
-  /// addresses them by a stable id and reaches their controls as descendants.
   static Key serviceSection(String id) => Key("serviceSection-$id");
 
-  /// One field inside a services section (`smtp_host`, `smtp_password`,
-  /// `s3_endpoint`, `s3_secretKey`, `backups_maxKeep`, …).
   static Key serviceField(String id) => Key("serviceField-$id");
 
   /// One row of the backups list, by the backup's own key (its file name).
   static Key backupRow(String key) => Key("backupRow-$key");
 
-  /// The notes board's entry points and its edit dialogs.
-  ///
-  /// The board itself needs no key: a column is a `KanbanColumn` and a card is
-  /// a `NoteCard`, and both carry their record's id, so a test reaches them by
-  /// their visible name (see `Fixtures.boardColumn` / `Fixtures.noteCard`).
+  /// The board's entry points; the board itself needs no key — its columns and
+  /// cards carry their record ids.
   static const btnNewNote = Key("btnNewNote");
   static const btnAddColumn = Key("btnAddColumn");
 
-  /// The board's horizontal scroll view.
-  ///
-  /// The columns live in a `Row` inside it, so a board with more than a few
-  /// columns runs off the right edge and a tap on a later column lands outside
-  /// the window — a test has to scroll this first (see
-  /// `Fixtures.revealInBoard`).
+  /// The board's horizontal scroll view; a later column is laid out past the
+  /// right edge of the window, so a tap has to scroll it into view first.
   static const notesBoard = Key("notesBoard");
 
-  /// A board column's root and its (tappable) header.
-  ///
-  /// Columns are keyed by their record id — the header carries the name, which
-  /// is all a user sees, but a name is not unique enough for a finder to use
-  /// while another widget on the board shows the same text.
+  /// A column's root and tappable header, keyed by record id because the visible
+  /// name is not unique enough for a finder to use.
   static Key columnRoot(String id) => Key("columnRoot-$id");
   static Key columnHeader(String id) => Key("columnHeader-$id");
   static const fieldNoteTitle = Key("fieldNoteTitle");
   static const fieldNoteText = Key("fieldNoteText");
   static const fieldColumnTitle = Key("fieldColumnTitle");
 
-  /// The inline title and body fields of an *expanded* note card.
-  ///
-  /// The board renders one card per note, so these keys repeat — always look
-  /// them up through the card (`Fixtures.noteCard(title)`), never bare.
+  /// An expanded card's title and body fields; one card per note means these
+  /// keys repeat, so look them up through the card, never bare.
   static const noteCardTitle = Key("noteCardTitle");
   static const noteCardNote = Key("noteCardNote");
 
-  /// The buttons a card and a column header carry.
-  ///
-  /// These are the board's anonymous controls; a fluent `Tooltip` is its own
-  /// widget (not the one `find.byTooltip` matches), so a key is the only
-  /// reliable handle.
+  /// A card or column-header control; these are anonymous and a fluent `Tooltip`
+  /// is not what `find.byTooltip` matches, so the key is the only handle.
   static const btnAddNote = Key("btnAddNote");
   static const btnNoteTitleSave = Key("btnNoteTitleSave");
   static const btnNoteTextSave = Key("btnNoteTextSave");
@@ -97,15 +69,10 @@ class WK {
   static const passwordField = Key("passwordField");
   static const globalActions = Key("globalActions");
 
-  /// One of the shell's global actions — the app bar's icons, by a stable id:
-  /// `notifications` (the bell), `theme`, `sync`, `errors`.
-  ///
-  /// They are anonymous icons and a fluent `Tooltip` is not the widget
-  /// `find.byTooltip` matches, so a key is the only way to reach one.
+  /// One shell action, by stable id; the icons are anonymous and a fluent
+  /// `Tooltip` is not what `find.byTooltip` matches.
   static Key globalAction(String id) => Key("globalAction-$id");
 
-  /// The phone layout's bottom navigation bar, one of its buttons, and the
-  /// `More` button it falls back to when the bar cannot fit every route.
   static const bottomNav = Key("bottomNav");
   static const bottomNavMore = Key("bottomNavMore");
   static Key bottomNavButton(String identifier) =>
@@ -152,10 +119,6 @@ class WK {
   static const fieldAppointmentPrice = Key("fieldAppointmentPrice");
   static const fieldAppointmentPayment = Key("fieldAppointmentPayment");
 
-  /// The visit's next follow-up: the field itself, the day it holds (a picker
-  /// once a date is chosen, a "choose a date" chip before that), one of the
-  /// preset intervals, and the button that takes the promise back once a day is
-  /// chosen.
   static const fieldAppointmentFollowUp = Key("fieldAppointmentFollowUp");
   static const fieldAppointmentFollowUpDate =
       Key("fieldAppointmentFollowUpDate");
@@ -163,19 +126,13 @@ class WK {
   /// The day's row: the day itself and what the visit is for.
   static const fieldFollowUpNote = Key("fieldFollowUpNote");
 
-  /// The field's actions, in the visit band's grammar: take the promise back,
-  /// drop the draft, keep it.
   static const followUpSave = Key("followUpSave");
   static const followUpCancel = Key("followUpCancel");
 
-  /// Folds an opened, still empty row again — the way back out of a row the
-  /// dentist opened by mistake.
   static const followUpCollapse = Key("followUpCollapse");
   static const clearFollowUp = Key("clearFollowUp");
   static Key followUpPreset(String label) => Key("followUpPreset-$label");
 
-  /// The follow-up circle on the visit scope bar, and one patient's avatar in a
-  /// day's floating follow-up band.
   static const chartFollowUpDot = Key("chartFollowUpDot");
   static const bookFollowUp = Key("bookFollowUp");
   static const followUpBand = Key("followUpBand");
@@ -185,21 +142,15 @@ class WK {
   /// A patient's row in the day's unfolded follow-up sheet.
   static Key followUpRow(String patientID) => Key("followUpRow-$patientID");
 
-  /// The action that takes a follow-up back, wherever it is offered (the sheet,
-  /// the patient's history card).
   static const followUpRemove = Key("followUpRemove");
 
   /// The day's follow-up band as a sheet: the band's own handle that unfolds it.
   static const followUpsBandToggle = Key("followUpsBandToggle");
   static const followUpsOverdueDivider = Key("followUpsOverdueDivider");
 
-  /// The patient's own follow-up row, under the band of the visit they may have
-  /// open: the row itself and the button that gives a patient a follow-up.
   static const patientFollowUpBar = Key("patientFollowUpBar");
   static const patientFollowUpSet = Key("patientFollowUpSet");
 
-  /// The follow-up card that heads the patient's history, the button that gives
-  /// them one there, and the patient's name as a link inside the bubble card.
   static const followUpSummaryCard = Key("followUpSummaryCard");
   static const followUpSummarySet = Key("followUpSummarySet");
   static const followUpPatientLink = Key("followUpPatientLink");
@@ -224,31 +175,23 @@ class WK {
   static const calendarAppointmentTile = Key("calendarAppointmentTile");
   static const calendarDayButton = Key("calendarDayButton");
 
-  /// The chip that says what a visit carries wherever it is listed — its
-  /// dental notes, prescriptions, labwork and gallery — and the icon within it
-  /// for one `AppointmentIndicator` kind.
   static const appointmentInfoBadges = Key("appointmentInfoBadges");
 
   static Key appointmentIndicator(String kind) =>
       Key("appointmentIndicator-$kind");
 
-  /// The day cell for one date. The *selected* day carries [calendarSelected]
+  /// The day cell for one date; the selected day carries [calendarSelected]
   /// instead, so a test can tap a cell by date and still ask what is selected.
   static Key calendarDay(DateTime day) =>
       Key("calendarDay-${day.year}-${day.month}-${day.day}");
 
-  /// The badge with how many appointments a day has.
-  ///
-  /// `table_calendar` draws markers as a *sibling* of the day widget, so this
-  /// is not a descendant of [calendarDay] — it needs a key of its own.
+  /// The day's count badge; `table_calendar` draws markers as a sibling of the
+  /// day, so it cannot be found through [calendarDay].
   static Key calendarDayCount(DateTime day) =>
       Key("calendarDayCount-${day.year}-${day.month}-${day.day}");
 
-  /// One tooth of a teeth chart, by its ISO notation.
-  ///
-  /// The chart draws each tooth as an SVG path, so the key is the only way to
-  /// reach one; `selected` says whether the tooth carries a condition, which is
-  /// what a test asks after storing one.
+  /// One tooth, by ISO notation; teeth are anonymous SVG paths, so the key is
+  /// the only handle. `selected` says whether the tooth carries a condition.
   static Key tooth(String iso, {required bool selected}) =>
       Key("tooth-iso-$iso-${selected ? "selected" : "not-selected"}");
 
@@ -258,17 +201,9 @@ class WK {
   static const panelArchive = Key("panelArchive");
   static const panelMinimize = Key("panelMinimize");
 
-  /// A panel's window: the pill that opens and puts it away, and the button on
-  /// the window itself that minimizes it.
   static Key windowToggle(String id) => Key("windowToggle-$id");
   static Key windowMinimize(String id) => Key("windowMinimize-$id");
 
-  /// The visit band: the record a panel carries, its windows, its state, and the
-  /// controls in its footer.
-  ///
-  /// The band is a second dock on the same screen, so its pills are namespaced:
-  /// a visit and its patient both offer a `gallery`, and a test (or a user) has
-  /// to be able to say which one it means.
   static const visitBand = Key("visitBand");
 
   /// The record's own compact editor, inside the band.
@@ -284,68 +219,42 @@ class WK {
   /// The band footer's "move to the visit that still has unsaved work" action.
   static const visitMoveToVisit = Key("visitMoveToVisit");
 
-  /// The line that explains why the patient's fields are read-only while a visit
-  /// is open.
   static const patientReadOnly = Key("patientReadOnly");
 
-  /// The band footer's delete (archive/restore) action. Close is
-  /// [visitDetach], and save is [visitSave].
+  /// The band footer's archive/restore action; close is [visitDetach].
   static const visitDelete = Key("visitDelete");
 
   /// The one tool in the visit band's dock: operative details.
   static Key visitBandWindow(String id) => Key("visitBandWindow-$id");
 
-  /// The tray of editors hanging off the visit band — its labwork order and its
-  /// photos — drawn at the band's foot, and again on the post-op card inside the
-  /// visit's chart.
   static const visitBandAttachments = Key("visitBandAttachments");
   static const visitChartAttachments = Key("visitChartAttachments");
 
   /// The visit scope bar's "new visit" button — beside the visits it joins.
   static const chartAddAppointment = Key("chartAddAppointment");
 
-  /// The visit chart's own way into the patient's whole list of visits — a
-  /// button on the chart's title, beside minimize.
   static const chartAllAppointments = Key("chartAllAppointments");
 
-  /// One attachment chip: the way to a window's side editors — a visit chart's
-  /// labwork and photos, a patient's photos and page.
-  ///
-  /// [owner] names the frame the chip is drawn on. A visit's photos and a
-  /// patient's are both `gallery`, so the key has to say which record is
-  /// offering it.
+  /// One attachment chip; [owner] names the frame it is drawn on, since a visit
+  /// and its patient both offer a `gallery`.
   static Key attachmentToggle(String id, {String? owner}) => Key(
         owner == null ? "attachmentToggle-$id" : "attachmentToggle-$owner-$id",
       );
 
-  /// One of the record's workspace buttons, inside a panel's body — a patient's
-  /// chart and Visits list.
   static Key workspaceWindowToggle(String id) =>
       Key("workspaceWindowToggle-$id");
 
-  /// The Save/Close a window standing on its own carries, and the close button
-  /// its sheet gets on a phone.
   static const windowSave = Key("windowSave");
   static const windowClose = Key("windowClose");
 
-  /// The Save a panel window carries in its own footer, where the draft it edits
-  /// is also the panel's.
   static Key windowSaveFooter(String id) => Key("windowSaveFooter-$id");
 
-  /// The Close a standalone window carries in its header, where a panel's window
-  /// has its minimize.
   static const windowHeaderClose = Key("windowHeaderClose");
 
-  /// The header button that leaves a standalone window for the panel holding
-  /// its record.
   static const windowOpenRecord = Key("windowOpenRecord");
 
-  /// The dot beside a window's title, and above the record's kind in a panel's
-  /// header, while the work in it has not been stored.
   static const unsavedDot = Key("unsavedDot");
 
-  /// The command that puts every panel and every floating window away — out
-  /// only while there is something to close and nothing unsaved.
   static const closeAllWindows = Key("closeAllWindows");
 
   /// List screens (patients, labworks, expenses, accounts, archived).
@@ -356,8 +265,8 @@ class WK {
   static const btnNewAppointment = Key("btnNewAppointment");
   static const btnNewLabwork = Key("btnNewLabwork");
 
-  /// The sheets a patient or a visit is created from — fields first, then the
-  /// record: nothing is opened as a draft for the sheet to fill in.
+  /// The create sheets: fields first, then the record — no draft is opened for
+  /// them to fill in.
   static const fieldNewPatientName = Key("fieldNewPatientName");
   static const fieldNewPatientPhone = Key("fieldNewPatientPhone");
   static const btnCreatePatient = Key("btnCreatePatient");
@@ -367,23 +276,16 @@ class WK {
   static const fieldNewAppointmentNotes = Key("fieldNewAppointmentNotes");
   static const btnCreateAppointment = Key("btnCreateAppointment");
 
-  /// One of the dashboard's squares, and the number (or amount) it shows.
-  ///
-  /// The square's own labels are localized and the widgets are anonymous, so
-  /// tests address them by a stable id (`appointmentsToday`, `paymentsToday`,
-  /// `labworksDue`, `expensesDue`, …).
+  /// One dashboard square and its count, by stable id; the visible labels are
+  /// localized.
   static Key dashboardSquare(String id) => Key("dashboardSquare-$id");
   static Key dashboardCount(String id) => Key("dashboardCount-$id");
 
-  /// Expenses: the panel's "add order" button, and one order row's editable
-  /// money fields (the row labels them "due" and "paid") plus its overflow menu.
   static const btnAddOrder = Key("btnAddOrder");
   static const fieldOrderCost = Key("fieldOrderCost");
   static const fieldOrderPaid = Key("fieldOrderPaid");
   static const orderMenu = Key("orderMenu");
 
-  /// The supplier panel's own body: the rename button beside the name, and the
-  /// figures it leads with.
   static const editSupplierName = Key("editSupplierName");
   static const expenseSummaryDue = Key("expenseSummaryDue");
   static const expenseSummaryPaid = Key("expenseSummaryPaid");
@@ -391,24 +293,16 @@ class WK {
   /// The expenses screen's primary action (it opens the supplier dialog).
   static const btnNewSupplier = Key("btnNewSupplier");
 
-  /// The appointment's labwork: the "add labwork for this appointment" link, and
-  /// the order's own removal, which asks the standard delete question first.
   static const btnAddLabwork = Key("btnAddLabwork");
   static const btnRemoveLabwork = Key("btnRemoveLabwork");
 
-  /// The operative window's delete for a visit standing on its own — the band's
-  /// [visitDelete], where there is no band to carry it — and the same action on
-  /// the visit's chart, whose footer carries it while the visit is beside its
-  /// patient.
+  /// Delete for a visit standing on its own (no band) and from its chart footer;
+  /// the band's is [visitDelete].
   static const operativeDeleteVisit = Key("operativeDeleteVisit");
   static const chartDeleteVisit = Key("chartDeleteVisit");
 
-  /// The X-ray link (DICOM) screen.
-  ///
-  /// The screen had no keys at all: everything a test needed to reach — the
-  /// scan button, the auto-import switch, a pending import's own buttons — was
-  /// anonymous, so a test would have had to read the English copy. The pending
-  /// card is keyed by the record key it was built from (`DicomPendingImport.key`).
+  /// The X-ray link (DICOM) screen; a pending card is keyed by its
+  /// `DicomPendingImport.selectionKey`.
   static const dicomScreen = Key("dicomScreen");
   static const dicomScanButton = Key("dicomScanButton");
   static const dicomAutoImportToggle = Key("dicomAutoImportToggle");

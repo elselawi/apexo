@@ -11,11 +11,8 @@ import 'package:path/path.dart' as p;
 
 bool _cachedFileExists(String path) => File(path).existsSync();
 
-/// A tracked downloaded `.dcm` original in the LRU cache.
-///
-/// Hive box `dicom_lru` stores these as JSON, keyed by the local filename
-/// in `filesDir()`. The [lastAccess] timestamp drives LRU eviction when
-/// the total DCM cache exceeds [DicomLruCache.evictionThresholdBytes].
+/// A downloaded `.dcm` in the LRU cache. The Hive box stores these as JSON
+/// keyed by local filename; [lastAccess] drives eviction order.
 class DicomLruEntry {
   const DicomLruEntry({
     required this.name,
@@ -42,9 +39,8 @@ class DicomLruEntry {
   /// File size in bytes (captured at insertion time).
   final int size;
 
-  /// Whether the local file has been evicted (deleted to free space).
-  /// The Hive entry is kept so we know the file was once cached; the next
-  /// viewer open re-downloads it transparently and clears this flag.
+  /// The local file was deleted to free space; the entry stays so the next
+  /// viewer open re-downloads it and clears this flag.
   final bool evicted;
 
   DicomLruEntry copyWith({
@@ -67,20 +63,10 @@ class DicomLruEntry {
       };
 }
 
-/// Hive-backed LRU cache of downloaded `.dcm` originals on native platforms.
-///
-/// Xray images run 5–20 MB; a full-mouth series is ~18 images (up to 360 MB).
-/// Without eviction, `filesDir()` would grow unbounded on mobile devices.
-/// This cache tracks every downloaded `.dcm` and, when the total exceeds
-/// [evictionThresholdBytes] (500 MB by default), evicts the least-recently-
-/// accessed entries — deleting the local file while keeping the Hive entry
-/// marked as `evicted`. The next viewer open re-downloads transparently.
-///
-/// On web there is no filesystem, so this cache is never used (the viewer
-/// fetches the `.dcm` fresh per session into memory only).
+/// Hive-backed LRU cache of downloaded `.dcm` originals. Past
+/// [evictionThresholdBytes] the oldest files are deleted but their entries are
+/// kept (marked `evicted`), so `filesDir()` stays bounded.
 class DicomLruCache {
-  /// Creates an instance with a custom eviction threshold. For testing only —
-  /// the singleton uses the default 500 MB threshold.
   @visibleForTesting
   DicomLruCache.forTesting({
     this.evictionThresholdBytes = 1024,
@@ -103,8 +89,6 @@ class DicomLruCache {
   static final DicomLruCache _instance = DicomLruCache._();
   static DicomLruCache get instance => _instance;
 
-  /// When the total size of non-evicted entries exceeds this, the LRU
-  /// entries are evicted (local files deleted) until usage drops below it.
   final int evictionThresholdBytes;
   final String? storagePath;
   final String boxName;
@@ -119,9 +103,8 @@ class DicomLruCache {
 
     final initialization = _initialize();
     _initialization = initialization;
-    // If opening fails, clear the memoized future so a later call retries and
-    // no half-open box is left behind (which would throw
-    // LateInitializationError on every subsequent access).
+    // On a failed open, clear the memoized future so a later call retries
+    // instead of reusing a half-open box that throws on every access.
     unawaited(initialization.catchError((_) {
       if (identical(_initialization, initialization)) {
         _initialization = null;
@@ -146,8 +129,6 @@ class DicomLruCache {
     return _box!;
   }
 
-  /// Records a `.dcm` download (or updates the access timestamp on re-open).
-  /// After insertion, runs eviction if the threshold is exceeded.
   Future<void> touch(String name, int size) async {
     try {
       final box = await _openBox;
@@ -164,8 +145,6 @@ class DicomLruCache {
     }
   }
 
-  /// Marks [name] as accessed (updates [DicomLruEntry.lastAccess]) without
-  /// changing the size. Called when the viewer opens an already-cached file.
   Future<void> markAccessed(String name) async {
     try {
       final box = await _openBox;
@@ -226,10 +205,8 @@ class DicomLruCache {
     return entries.fold<int>(0, (sum, e) => sum + e.size);
   }
 
-  /// If total size exceeds [evictionThresholdBytes], evicts LRU entries
-  /// (deletes their local files, marks them `evicted`) until usage is
-  /// below the threshold. At least one entry always survives (the most
-  /// recently accessed) so the viewer never evicts the file being viewed.
+  // Evicts oldest entries until usage is under [evictionThresholdBytes]. The
+  // newest entry always survives, so the viewer never evicts the open file.
   Future<void> _evictIfNeeded() async {
     try {
       final entries = await activeEntries;

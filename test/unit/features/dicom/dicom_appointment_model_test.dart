@@ -2,12 +2,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Appointment model changes for DICOM integration:
-///  - `dcmImgs` (slot 18) delta serialization.
-///  - `viewableDcmImgs` getter filtering via `isADcmName`.
-///  - `pushIfChanged` intentionally excludes `dcmImgs` (adding X-rays must
-///    not push to the patient; other devices learn via PocketBase sync).
-///  - `isADcmName` utility.
+// dcmImgs stays out of pushIfChanged: X-rays reach other devices via PocketBase sync.
 void main() {
   group('Appointment.dcmImgs — delta serialization', () {
     test('round-trips a non-empty list', () {

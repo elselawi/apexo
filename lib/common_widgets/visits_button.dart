@@ -3,19 +3,12 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The way from a chart to the patient's whole list of visits.
-///
-/// A chart is 960 pixels wide, so the action can afford its name — and "All
-/// appointments" says more than a calendar glyph ever will. On a phone-sized
-/// screen the same action has to fit beside a title, a subtitle and Minimize, so
-/// it falls back to the glyph alone; the tooltip keeps it readable either way.
 class PatientVisitsButton extends StatelessWidget {
   const PatientVisitsButton({super.key, required this.onPressed});
 
   final VoidCallback onPressed;
 
-  /// Below this the header has no room for the label: the chart is drawn at the
-  /// width the screen leaves, which on a phone is the screen itself.
+  // below this the header has no room for the label, so only the glyph fits.
   static const double _labelBreakpoint = 1000;
 
   @override

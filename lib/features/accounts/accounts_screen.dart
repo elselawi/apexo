@@ -197,10 +197,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   WidgetStatePropertyAll(Colors.grey.withAlpha(30)))
           : null,
       child: Row(
-        // A `Row` defaults to `mainAxisSize.max`, and a `Row` hands a non-flex
-        // child **unbounded** width — so this one claimed whatever the command
-        // bar had and reported `A RenderFlex overflowed by 16 pixels on the
-        // right` at a 1280px window (and 5.3px from the counts row it sat in).
+        // Row hands non-flex children unbounded width; without min this overflows.
         mainAxisSize: MainAxisSize.min,
         children: [
           RotatingWrapper(

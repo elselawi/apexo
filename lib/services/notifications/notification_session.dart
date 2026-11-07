@@ -2,24 +2,14 @@ import 'dart:async';
 
 import 'package:pocketbase/pocketbase.dart';
 
-/// Whether the notification session belongs to a staff account or a patient
-/// portal link.
 enum NotificationSessionKind { staff, patient }
 
-/// The state of session restoration as far as notification work is concerned.
-///
-/// A nonempty login token is *not* proof that the stores and permissions are
-/// ready. This coordinator is published only at the end of a successful
-/// activation, so a push that arrives during startup waits for the real
-/// boundary instead of running against a half-built session.
+/// A login token is not proof that stores and permissions are ready;
+/// activation publishes this phase at its end.
 enum NotificationSessionPhase { restoring, active, absent }
 
-/// An immutable, session-scoped set of values a notification job can use
-/// without rereading mutable login globals.
-///
-/// [generation] increases on every state transition. Any asynchronous
-/// continuation that wants to mutate current state must compare its snapshot
-/// with [NotificationSessionCoordinator.isCurrent] after every await.
+/// Immutable snapshot of a session. An async continuation that mutates state
+/// must re-check [NotificationSessionCoordinator.isCurrent] after every await.
 class NotificationSessionSnapshot {
   const NotificationSessionSnapshot({
     required this.generation,
@@ -37,15 +27,13 @@ class NotificationSessionSnapshot {
   final String server;
   final String accountId;
 
-  /// The staff auth token captured for relay-key resolution. Empty for a
-  /// patient session.
+  /// Staff auth token for relay-key resolution; empty for a patient session.
   final String authToken;
 
   /// The staff email captured alongside [authToken]. Empty for a patient.
   final String email;
 
-  /// The PocketBase connection the staff session was activated with. Null for
-  /// a patient session, which already carries [clinicKey] from its link.
+  /// Null for a patient session, which carries [clinicKey] from its link instead.
   final PocketBase? pocketBase;
 
   /// The patient link's relay key, when this is a patient session.
@@ -56,20 +44,15 @@ class NotificationSessionSnapshot {
   bool get isUsable => server.isNotEmpty && accountId.isNotEmpty;
 }
 
-/// Owns the notification-session boundary: restoring, active or absent.
-///
-/// The service deliberately does not wait on `login.ready` from inside an
-/// activation; that would wait on itself. Instead the login and patient-side
-/// services publish the boundary after their activation work is complete, and
-/// [invalidate] resolves every waiter as absent on logout or a failed restore.
+/// Does not wait on `login.ready` inside an activation, since that would wait
+/// on itself; login and patient services publish the boundary when ready.
 class NotificationSessionCoordinator {
   NotificationSessionCoordinator({
     this.waitTimeout = const Duration(seconds: 60),
   });
 
-  /// Upper bound for a push or toast click waiting for a session. A hidden
-  /// process is already bounded natively; this keeps a malformed/blocked
-  /// restore from leaving a Dart waiter pending forever.
+  /// Upper bound for a click waiting on a session, so a blocked restore cannot
+  /// leave a Dart waiter pending.
   final Duration waitTimeout;
 
   final List<void Function()> _listeners = [];
@@ -82,15 +65,14 @@ class NotificationSessionCoordinator {
 
   NotificationSessionPhase get phase => _phase;
 
-  /// Monotonic transition counter, used by callers that schedule a delayed
-  /// "no session" resolution and must not overwrite a newer activation.
+  /// Monotonic counter; a delayed "no session" resolution must not overwrite a
+  /// newer activation.
   int get revision => _generation;
 
   NotificationSessionSnapshot? get active => _active;
 
-  /// Marks the beginning of a restore or a new activation. Any previous
-  /// snapshot stops being current immediately, without resolving waiters: the
-  /// new activation will either publish or mark the state absent.
+  /// Invalidates the previous snapshot immediately but leaves waiters pending;
+  /// the new activation publishes or marks the state absent.
   void beginRestoring() {
     if (_disposed) return;
     _generation++;
@@ -146,8 +128,6 @@ class NotificationSessionCoordinator {
     return snapshot;
   }
 
-  /// No stored session, a failed restore, or a logout. Waiters complete with
-  /// null instead of hanging until a native deadline.
   void markAbsent() {
     if (_disposed) return;
     _generation++;
@@ -164,8 +144,6 @@ class NotificationSessionCoordinator {
   /// Alias used by logout paths: the current session is no longer usable.
   void invalidate() => markAbsent();
 
-  /// Completes with the active snapshot, or null when the app is logged out,
-  /// the restore failed, or [waitTimeout] elapsed.
   Future<NotificationSessionSnapshot?> waitForUsableSession({
     Duration? timeout,
   }) async {
@@ -210,8 +188,7 @@ class NotificationSessionCoordinator {
       try {
         listener();
       } catch (_) {
-        // A listener is an observer; it must not break the state transition
-        // that another listener (or a waiter) depends on.
+        // A throwing listener must not break the transition or the waiters it feeds.
       }
     }
   }

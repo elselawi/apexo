@@ -9,13 +9,8 @@ import 'package:apexo/utils/que.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../core/model.dart';
 
-/// The avatar's letter: the first *whole* character of an item's title.
-///
-/// `("${title} ").substring(0, 1)` splits a surrogate pair. Titles do start
-/// with an emoji — a labwork's is `"📌 undelivered"` — and half of one is not a
-/// string Flutter will draw: the paragraph builder rejects it with
-/// `Invalid argument(s): string is not well-formed UTF-16`, which fails the
-/// frame the item appears in.
+/// The title's first whole character: taking a substring would split an emoji's
+/// surrogate pair, which Flutter rejects as malformed UTF-16.
 String initialOf(Model item) {
   final title = item.title.isEmpty ? " " : item.title;
   return String.fromCharCode(title.runes.first);
@@ -85,12 +80,8 @@ class _ItemTitleState extends State<ItemTitle> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // `Flexible`, and no *minimum*: the floor used to be the caller's
-              // `maxWidth`, and a dashboard square hands this row 117.3px of
-              // space while asking for `maxWidth: 123` — which is exactly the
-              // `A RenderFlex overflowed by 5.7 pixels on the right` that redded
-              // `dashboard 02`. The chip ellipsizes its own text, so it is the
-              // side that gives.
+              // Flexible, with no minimum: the row may be narrower than
+              // `maxWidth`, and the chip ellipsizes rather than overflowing.
               Flexible(
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
@@ -115,13 +106,8 @@ class _ItemTitleState extends State<ItemTitle> {
   }
 }
 
-/// An item's round identity, on its own: its picture when it has one, its first
-/// letter in the record's own colour otherwise.
-///
-/// Split out of [ItemTitle] for the places that show a patient without their
-/// name — the day's follow-up band, where the name is the tooltip and the row of
-/// faces is the whole message. Image requests are retained across rebuilds and
-/// refreshed only when the source row or filename changes.
+/// An item's avatar, shown where the name is not. The image request is kept
+/// across rebuilds and refreshed only when the row or filename changes.
 class ItemAvatar extends StatefulWidget {
   const ItemAvatar({
     super.key,
@@ -228,9 +214,8 @@ class TreatmentLabels extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 40,
-      // A chip is its 18px icon, 3px of padding above and below, and a 1px
-      // border: 26. At 25 the chip's own column was a pixel taller than the
-      // row it was given, and the row it sat in reported an overflow.
+      // 26 = 18px icon + 3px vertical padding each side + 1px border; 25 left
+      // the chip taller than its row, which overflowed.
       height: showPalmer ? null : 26,
       child: ListView(
         shrinkWrap: showPalmer,

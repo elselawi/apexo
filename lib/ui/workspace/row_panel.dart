@@ -5,19 +5,7 @@ import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:apexo/core/model.dart';
 import 'package:apexo/core/store.dart';
 
-/// A panel that edits **one** stored record through the app's [Store].
-///
-/// This is the storage half of the panel refactor. [Panel] is everything
-/// `PanelScreen` needs and deliberately knows nothing about how records are
-/// stored; this is what the app's Hive [Store] gives it. One class per
-/// storage backend is the whole point of that split — so this is the same idea
-/// as the migration branch's `RowPanel` over `localpocket`, against the store
-/// the app actually uses.
-///
-/// The constructor keeps the shape the feature panels were already written
-/// against (`item`, `store`, `title`, `canNotBeNew`, `checkUnsavedChanges`,
-/// `onSave`), so a feature names this class instead of the old `Panel<T>` and
-/// changes nothing else.
+/// A panel that edits one stored record through the app's [Store].
 final class RowPanel<T extends Model> extends Panel
     implements DraftAcknowledgements {
   RowPanel({
@@ -48,12 +36,8 @@ final class RowPanel<T extends Model> extends Panel
   })  : _existing = existing ?? (store.get(item.id) != null),
         _savedJson = savedBaseline ?? jsonEncode(item.toJson()),
         super(
-          // The old constructor took one `title` that already knew whether the
-          // record existed; the host wants the two questions apart. Splitting it
-          // here keeps that in one place instead of in every feature, and the
-          // header still ends up right: the opener calls `readTitle()` before
-          // showing the panel, which fills in a stored record's own name, and
-          // `newTitle` covers the record that has no name yet.
+          // One `title` comes in; the host wants "named yet?" and "its name"
+          // apart, so it becomes `newTitle` and `recordTitle`.
           newTitle: title,
           recordTitle: () async => item.title,
         );
@@ -67,12 +51,11 @@ final class RowPanel<T extends Model> extends Panel
   /// The label the header shows while the record does not exist yet.
   final String title;
 
-  /// A panel that can never be new (one aggregating records, keyed by a
-  /// synthetic id): the header shows the id, never a "new …" label.
+  /// A panel that can never be new, such as one aggregating records under a
+  /// synthetic id.
   final bool canNotBeNew;
 
-  /// Answers [hasPendingEdits] when the caller manages more than one record and
-  /// therefore keeps the snapshot itself.
+  /// Answers [hasPendingEdits] for a caller that tracks more than one record.
   final bool Function()? checkUnsavedChanges;
 
   /// Replaces the default `store.set(item)` when the save is the caller's.
@@ -80,32 +63,23 @@ final class RowPanel<T extends Model> extends Panel
 
   final String? Function()? validate;
 
-  /// Whether the record was stored when the panel opened.
-  ///
-  /// Not the same question as "does it have an id": a new record carries an id
-  /// before it is ever written.
+  /// Whether the record was stored when the panel opened — not the same question
+  /// as having an id, which a new record has before it is written.
   bool _existing;
 
-  /// The record's JSON as of the last save, for the unsaved-changes check.
-  ///
-  /// A panel that adopts work a window was holding starts at the *stored* JSON
-  /// ([savedBaseline]) rather than at its item's: the item already carries the
-  /// work, so the panel opens saying there is something to save.
+  /// The record's JSON as of the last save. A panel adopting a window's work
+  /// passes the stored JSON as `savedBaseline`, so it opens dirty.
   String _savedJson;
 
   @override
   String get itemId => item.id;
 
-  /// The record's own draft, as JSON: what the work of a window of this record
-  /// is written over.
+  /// The record's own draft, as JSON — what a window's work is written over.
   @override
   Map<String, dynamic> get draftJson => item.toJson();
 
-  /// Takes in the work a window of this record was holding.
-  ///
-  /// The fields are written onto the draft the panel already holds, rather than
-  /// replacing it: the panel's own windows edit that very draft, so a new copy
-  /// of it would leave them editing something the panel no longer saves.
+  /// Writes the incoming fields onto the draft the panel already holds: its
+  /// windows edit that same draft, so replacing it would leave them stale.
   @override
   void adoptDraft(Map<String, dynamic> json) {
     item.fromJson(json);
@@ -117,8 +91,6 @@ final class RowPanel<T extends Model> extends Panel
   @override
   bool get isArchived => item.archived == true;
 
-  /// A caller that manages several records answers for itself; otherwise the
-  /// record's own JSON against the snapshot taken when the panel opened.
   @override
   bool get hasPendingEdits =>
       checkUnsavedChanges?.call() ?? (jsonEncode(item.toJson()) != _savedJson);
@@ -133,19 +105,14 @@ final class RowPanel<T extends Model> extends Panel
       store.set(store.modeling(
           jsonDecode(jsonEncode(item.toJson())) as Map<String, dynamic>));
     }
-    // The record is stored now, so it is clean and it exists: without this the
-    // panel would keep saying "Cancel" over work it has just saved, and the
-    // next close would ask about changes that are already in the store.
+    // The record is stored now: without re-baselining, the panel would keep
+    // offering to save work already written and ask again on close.
     markSaved();
     recordSaved(item.id);
   }
 
-  /// Re-baselines the unsaved-changes check after a write that did not go
-  /// through [persist].
-  ///
-  /// The gallery saves an appointment the moment a photo is uploaded or
-  /// deleted, so the record is stored and the panel is already clean; without
-  /// this it would keep offering to save what it has just saved.
+  /// Re-baselines the unsaved check after a write that bypassed [persist] (a
+  /// photo upload saves at once) and marks the record stored.
   @override
   void markSaved() {
     _savedJson = jsonEncode(item.toJson());

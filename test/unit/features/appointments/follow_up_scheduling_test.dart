@@ -21,9 +21,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/model_factory.dart';
 
-/// A follow-up is a promise about a **day**, and it belongs to the **patient**.
-/// These tests are that sentence, once per case — including the two surfaces
-/// that edit it.
+/// A follow-up is a day-level promise owned by the patient, not by a visit.
 void main() {
   late List<Patient> originalPatients;
   late List<Appointment> originalAppointments;
@@ -362,8 +360,7 @@ void main() {
   });
 
   group('the day\'s follow-ups', () {
-    // The day's inbox is read against today: a promise has two readings — the
-    // day it is for, and how late it is — so these dates are relative.
+    // The inbox is read against today, so these dates are relative.
     final today = dayOnly(DateTime.now());
 
     test('are the patients whose promise falls on that day', () {

@@ -21,13 +21,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 bool get canScheduleBooking =>
     login.perm(Perm.patients).some && login.perm(Perm.appointments).some;
 
-/// Schedules one booking request through the *existing* patient and appointment
-/// sheets, then acknowledges the inbox only after clinic PocketBase has the
-/// appointment.
-///
-/// Cancelling a sheet creates no record for that sheet; a confirmed new patient
-/// remains if the appointment sheet is later cancelled. A Worker failure leaves
-/// the saved appointment intact and its inbox link pending.
+/// Schedules via the existing patient/appointment sheets, acknowledging the
+/// inbox only after PocketBase has it; otherwise the link stays pending.
 Future<bool> scheduleBookingRequest(
   BuildContext context,
   BookingRequest request,
@@ -85,8 +80,6 @@ Future<bool> _scheduleBookingRequest(
     return _acknowledge(context, current, link.appointmentId, generation);
   }
 
-  // 2. Suggest the first future intersection of the stored candidates, the
-  //    requested window and the *current* hours.
   BookingMoment? suggestion;
   List<String> closedDates = const [];
   try {
@@ -196,8 +189,7 @@ Future<bool> _confirmedByClinic(String appointmentId,
   }
 }
 
-/// The patient step of [scheduleBookingRequest], exposed so the dialog itself
-/// can be exercised without a live Worker.
+/// The patient step of [scheduleBookingRequest], exposed for testing.
 @visibleForTesting
 Future<String?> chooseBookingPatient(
   BuildContext context,
@@ -213,10 +205,8 @@ Future<String?> chooseBookingPatient(
   );
 }
 
-/// Whose visit is it?
-///
-/// Existing patients whose number matches the request are *offered*, never
-/// preselected: the receptionist still taps the person they recognise.
+/// Matches are offered, never preselected: the receptionist taps the person
+/// they recognise.
 class _PatientChoiceDialog extends StatefulWidget {
   const _PatientChoiceDialog({required this.request, required this.suggestion});
 
@@ -231,9 +221,8 @@ class _PatientChoiceDialogState extends State<_PatientChoiceDialog> {
   String? _selected;
   late final List<Patient> _matches = _patientsWithNumber(widget.request.phone);
 
-  /// Patients whose stored number ends where the request's number ends, so a
-  /// national-only entry still finds an international request. Exact matches
-  /// come first; the list stays short and is only a hint.
+  /// Matches on the number's last 9 digits so a national-only entry still finds
+  /// an international request; exact matches are listed first.
   static List<Patient> _patientsWithNumber(String phone) {
     final needle = _digitsOnly(phone);
     if (needle.length < 6) return const [];

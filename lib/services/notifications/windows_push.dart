@@ -3,28 +3,21 @@ import 'windows_push_platform_stub.dart'
 
 export 'windows_push_service.dart';
 
-/// Entry point for Windows Notification Services (WNS) pushes.
-///
-/// Windows is the one platform whose transport is not Firebase. Receiving is
-/// started from [Messaging.initializeReceiving] before login; registration and
-/// toast-click promotion are requested separately, so no non-Windows build
-/// imports the channel plumbing.
+/// WNS push entry point: Windows uses native WNS instead of Firebase, and
+/// receiving starts before login while registration is requested separately.
 abstract final class WindowsPush {
   /// Whether this build can use WNS at all: only a native Windows build can.
   static bool get isSupportedPlatform => platform.isWindowsPlatform;
 
-  /// Starts the native receiver and launch-payload capture. Safe to call before
-  /// any session exists.
+  /// Safe to call before any session exists; receiving does not wait for login.
   static Future<void> startReceiving() => platform.startWindowsPushReceiving();
 
-  /// Requests registration for the current kind of session. The service waits
-  /// for the session coordinator to publish a usable session, then registers in
-  /// the background; this method does not wait for the network.
+  /// Registers in the background once a matching session is published; it does
+  /// not wait for the network.
   static void requestRegistration({required bool isPatient}) =>
       platform.requestWindowsPushRegistration(isPatient: isPatient);
 
-  /// Reveals a hidden push process and cancels its pending exit. A no-op when
-  /// there is no hidden process (or this is not Windows).
+  /// Cancels a hidden push process's pending exit; no-op when there is none.
   static Future<void> promoteToInteractive() =>
       platform.promoteWindowsPushInstance();
 }

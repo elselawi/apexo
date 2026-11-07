@@ -8,11 +8,8 @@ String bookingWeekdayName(int weekday) =>
 /// The 1-based weekday number (1 = Monday … 7 = Sunday) of a wire day key.
 int bookingWeekdayNumber(String day) => bookingWeekdays.indexOf(day) + 1;
 
-/// The wire day keys in the order the clinic's calendar starts its week
-/// (Settings → calendar → starting day of week), Monday-first by default.
-///
-/// Only the display order changes: the configuration always travels as
-/// `mon … sun`, so the Worker and the public page never see this rotation.
+/// Wire day keys in the clinic's calendar order (Monday-first by default). Only
+/// display order rotates; the configuration always travels as `mon … sun`.
 List<String> bookingWeekdaysForDisplay([String? startDay]) {
   final first = switch ((startDay ?? globalSettings.startDayOfWeek)
       .trim()

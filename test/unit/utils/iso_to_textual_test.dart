@@ -1,8 +1,7 @@
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// txt() returns capitalized keys (e.g., "Permanent" not "permanent").
-/// This matcher does case-insensitive substring matching.
+/// Case-insensitive because `txt()` returns capitalized values ("Permanent").
 Matcher containsI(String substring) => predicate<String>(
       (s) => s.toLowerCase().contains(substring.toLowerCase()),
       'contains case-insensitively "$substring"',

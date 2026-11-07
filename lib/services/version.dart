@@ -59,8 +59,8 @@ class _VersionService {
   String _macosDownloadLink = "";
   List<String> changelog = [];
 
-  /// Only macOS needs manual update notifications — all other platforms
-  /// (Windows MS Store, Play Store, App Store) auto-update via their stores.
+  /// Only macOS needs manual updates; every other platform auto-updates via its
+  /// store (MS Store, Play Store, App Store).
   bool get needsUpdateNotification => !kIsWeb && Platform.isMacOS;
 
   /// The download link for the current platform (only valid for macOS).

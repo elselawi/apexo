@@ -55,9 +55,6 @@ class GalleryUploadConfig {
       UploadSource.files
     },
   });
-  /// The record store the files are uploaded to. Required: an upload without a
-  /// store would have to guess one, and guessing meant every feature's files
-  /// went to the appointments collection.
   final Store store;
   final Future<void> Function(List<String> newNames) modelPersistence;
   final bool canUpload;
@@ -92,20 +89,17 @@ class GridGallery extends StatefulWidget {
   final String rowId;
   final List<String> imgs;
 
-  /// DICOM X-ray filenames (`*.dcm`/`*.dicom`) rendered alongside
-  /// [imgs] as PNG previews. Each cell shows a "DCM" badge; tapping opens
-  /// the interactive viewer instead of the photo slideshow.
+  /// DICOM X-ray filenames rendered alongside [imgs] as PNG previews; a tap
+  /// opens the interactive viewer instead of the photo slideshow.
   final List<String> dcmImgs;
   final Future<void> Function(String img) onPressDelete;
 
-  /// Delete handler for DCM entries. If `null`, [onPressDelete] is reused —
-  /// callers that pass [dcmImgs] should supply this so both `.dcm` + `.png`
-  /// are removed (see `Store.deleteDcmImg`).
+  /// Deletes a DCM entry. `null` reuses [onPressDelete]; pass this so both the
+  /// `.dcm` and its `.png` preview are removed (see `Store.deleteDcmImg`).
   final Future<void> Function(String dcmName)? onPressDeleteDcm;
 
-  /// Tap handler for DCM entries. Defaults to [openDicomViewerWindow] when
-  /// `null`; supplied explicitly so callers (e.g. read-only previews) can
-  /// override or suppress it.
+  /// Tap handler for DCM entries. When `null` the DCM is treated as a regular
+  /// file and downloads; read-only previews use this to override routing.
   final void Function(BuildContext context, String rowId, String dcmName)?
       onTapDcm;
   final int countPerLine;
@@ -120,12 +114,7 @@ class GridGallery extends StatefulWidget {
   final void Function(bool)? onProgress;
   final GalleryUploadConfig? uploadConfig;
 
-  /// Whose gallery this is — the patient and day of the visit, say. A photo's
-  /// window says it, so several open at once can be told apart.
   final String Function()? owner;
-
-  /// The record these photos belong to, for a photo's own window: it leads back
-  /// to the panel that holds them. Null where there is no such panel.
   final Future<void> Function()? onOpenRecord;
 
   @override
@@ -148,16 +137,12 @@ class _GridGalleryState extends State<GridGallery>
         )
       : 0;
 
-  /// Photos + DCM X-rays, DCMs appended after photos. Layout, clipping, and
-  /// tap/delete routing all operate on this combined view; per-cell DCM
-  /// behaviour is decided by membership in [_dcmNames] (NOT by name pattern —
-  /// a `.dcm` file attached to a note/expense stays a regular file).
+  // Photos first, DCM X-rays after; clipping and per-index tap/delete follow
+  // this order.
   List<String> get _displayImgs => [...widget.imgs, ...widget.dcmImgs];
 
-  /// The set of names that are DCM X-rays (sourced from [GridGallery.dcmImgs]).
-  /// Only these get the badge / spinner placeholder / viewer routing /
-  /// dedicated delete. A `.dcm`-named entry in `imgs` (e.g. a note attachment)
-  /// is NOT in this set and keeps regular-file behaviour.
+  // DCM names come from `GridGallery.dcmImgs`: a `.dcm` file in `imgs` (a note
+  // attachment, say) is not one of these and keeps regular-file behaviour.
   Set<String> get _dcmNames => widget.dcmImgs.toSet();
 
   /// Photos only — the slideshow is for images; DCMs open the viewer.
@@ -257,16 +242,13 @@ class _GridGalleryState extends State<GridGallery>
   Future<void> _doDelete(String img) async {
     if (_isDeleting) return;
     _isDeleting = true;
-    // The photo's own window outlives this gallery: deleting from it reaches
-    // here after the panel that holds the gallery may be gone — so the owner
-    // is only told about it while there is one to tell.
+    // A photo window outlives its gallery, so `onProgress` is only reachable
+    // while the gallery is still mounted.
     final onProgress = mounted ? widget.onProgress : null;
     onProgress?.call(true);
     if (mounted) setState(() {});
     try {
-      // DCM X-rays need a dedicated delete (removes both .dcm + .png preview).
-      // Only entries explicitly in `dcmImgs` get this path — a `.dcm` file
-      // attached to a note/expense deletes via the regular `onPressDelete`.
+      // A DCM deletes both the `.dcm` and its `.png` preview.
       if (_dcmNames.contains(img)) {
         final dcmDelete = widget.onPressDeleteDcm ?? widget.onPressDelete;
         await dcmDelete(img);
@@ -347,9 +329,6 @@ class _GridGalleryState extends State<GridGallery>
     }, errorTag: "uploadingFiles");
   }
 
-  /// Runs [work], manages the uploading spinner, handles errors.
-  /// [work] is responsible for calling [GalleryUploadConfig.onPhotosAdded]
-  /// incrementally as each item completes. Returns `true` on success.
   Future<bool> _runUpload(
     GalleryUploadConfig cfg,
     Future<List<String>> Function() work, {
@@ -400,12 +379,8 @@ class _GridGalleryState extends State<GridGallery>
   // ── Slideshow / viewer ──
 
   Future<void> _handleFileTap(String img) async {
-    // DCM X-rays open the interactive viewer (which parses the raw .dcm
-    // itself — no dependency on the PNG preview being ready yet). Only entries
-    // explicitly in `dcmImgs` route here — a `.dcm` file attached to a
-    // note/expense falls through to the regular download path below.
-    // A DCM opens in the viewer its owner passes in. Without one — a gallery
-    // that is not a record's X-rays — it is a file like any other and downloads.
+    // A DCM opens in the viewer its owner passes in (it parses the raw `.dcm`,
+    // so no PNG preview is needed); with no handler it downloads like any file.
     if (_dcmNames.contains(img) && widget.onTapDcm != null) {
       widget.onTapDcm!(context, widget.rowId, img);
       return;
@@ -446,21 +421,12 @@ class _GridGalleryState extends State<GridGallery>
     );
   }
 
-  /// Whose photos these are, and which file — enough for a window to say what it
-  /// is when several are open.
   String _joinOwner(String fileName) => [
         if ((widget.owner?.call() ?? '').isNotEmpty) widget.owner!(),
         if (fileName.isNotEmpty) fileName,
       ].join(' · ');
 
-  /// Shows photos in a window of their own — beside the app, not over it.
-  ///
-  /// A photo is something you glance at while you keep working, so it takes a
-  /// window the way a scan or a chart does: drawn, downloaded, deleted and
-  /// closed from the window's own tools, and closed by its frame like any other.
-  ///
-  /// The photos load *inside* that window: opening one never puts a blocking
-  /// dialog over the app behind it.
+  /// Opens photos in a standalone window rather than a dialog over the app.
   void _showImageWindow({
     required String id,
     required String title,
@@ -586,8 +552,6 @@ class _GridGalleryState extends State<GridGallery>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(WindowsIcons.warning),
-            // The gallery is as wide as its `rowWidth`, or narrower where it is
-            // given less: the note wraps rather than pushing past the edge.
             Flexible(
               child: Txt(
                 txt("noFiles"),

@@ -3,17 +3,8 @@ import 'dart:io';
 import 'package:apexo/services/localization/en.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// Re-integration of `tools/localization_verify.dart` logic into the
-/// test suite. This test performs the same audits as the standalone script:
-///   1. All locale files have identical dictionary keys
-///   2. No `txt("...")` calls reference missing keys
-///   3. No dictionary keys are definitively unused
-///   4. Dynamic `txt()` calls are enumerated (informational)
-
 // ── Helpers (adapted from verify.dart) ──────────────────────────────
 
-/// Regex-extract string key-value pairs from a locale class body.
-/// Matches `"key": "value"` pairs, handling escaped quotes.
 Map<String, String> _extractDictFromSource(String source) {
   final map = <String, String>{};
   final regex = RegExp(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*:\s*"((?:[^"\\]|\\.)*)"');
@@ -235,9 +226,8 @@ void main() {
             }
           }
 
-          // Static analysis cannot prove that keys used by runtime-generated
-          // or platform-specific UI are unused. Keep this as an audit signal,
-          // but do not make the full suite depend on the current UI inventory.
+          // Static analysis can't prove a key unused (dynamic UI), so this is
+          // an audit signal rather than a failing assertion.
           expect(definitelyUnused, isA<List<String>>());
         }
       });

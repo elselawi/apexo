@@ -23,8 +23,7 @@ import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
 void main() {
-  // The pointer is the app's own: a test that leaves one behind places the
-  // next window where an earlier tap was.
+  // The pointer is global: one left behind places the next window at an old tap.
   setUp(WindowOrigin.clear);
   tearDown(WindowOrigin.clear);
 
@@ -171,8 +170,7 @@ void main() {
           of: find.byType(MenuFlyout),
           matching: finder,
         );
-    // The menu appends the patient's visit count, and says the web page has
-    // not been generated yet with an empty ring.
+    // The suffix shows the visit count, and an empty ring for a missing web page.
     expect(suffix(find.text('(0)')), findsWidgets);
     expect(suffix(find.byIcon(FluentIcons.circle_ring)), findsWidgets);
     expect(tester.takeException(), isNull);

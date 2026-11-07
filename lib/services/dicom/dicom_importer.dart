@@ -43,9 +43,8 @@ class DicomParsedFile {
   final String patientId;
   final DateTime? dcmDate;
 
-  /// The best available calendar date for this file: the DICOM study date,
-  /// falling back to the file's modification time when the tag is missing.
-  /// Never epoch (1970) — that would bury an undated X-ray decades in the past.
+  /// Study date, else the file's mtime — never epoch, which would bury an
+  /// undated X-ray decades in the past.
   DateTime get effectiveDate => dcmDate ?? mtime;
 
   @override
@@ -121,13 +120,8 @@ class DicomPendingImport {
 
   int get fileCount => files.length;
 
-  /// Stable identity for this batch, used for UI selection and widget keys
-  /// and for the persisted rejection / manual-match hints.
-  ///
-  /// Anonymous studies (blank DICOM patient IDs) cannot use the empty string:
-  /// every anonymous batch would share it, so selecting, unmatching, or
-  /// approving one would affect them all. Fall back to the first file's dedup
-  /// key, which is unique per anonymous file.
+  /// Identity for selection and persisted hints. Anonymous batches fall back
+  /// to the first file's dedup key so they don't all share the empty string.
   String get selectionKey => dicomPatientId.isNotEmpty
       ? dicomPatientId
       : (files.isNotEmpty ? 'anonymous:${files.first.dedupKey}' : 'anonymous');
@@ -161,9 +155,8 @@ class DicomPendingImport {
   }
 }
 
-/// Outcome of one approval attempt. A batch is complete when [failedFiles]
-/// is empty; already-imported files therefore produce a successful,
-/// idempotent result with no failed files.
+/// Outcome of one approval attempt; already-imported files count as success,
+/// so re-approving is idempotent.
 class DicomApprovalResult {
   const DicomApprovalResult({
     required this.successfulFiles,
@@ -271,11 +264,8 @@ enum ScanPhase {
 
 // --------------- Import phase ---------------------
 
-/// High-level phase of an import run.
-///
-/// [importProgress] alone cannot tell the UI that all files were uploaded but
-/// the appointment JSON is still being synchronized with the server. That
-/// final sync can block for several seconds, so it gets its own phase.
+/// Import phases. `syncing` is separate because the final server sync can
+/// block for seconds after the last file has uploaded.
 enum ImportPhase { idle, uploading, syncing }
 
 // --------------- Core scan + parse + match ------------------------------------------------------------------
@@ -344,8 +334,6 @@ Future<_ScanResult> _doScan({
       patientId = cached.patientId.trim();
       dcmDateRaw = cached.dcmDate;
 
-      // Cached files with no complete DICOM identity remain skipped without
-      // being grouped into a shared or partially specified identity.
       if (!_hasUsableDedupKey(cached.dedupKey)) {
         skipped.add(DicomSkippedRecord(
             entry.path, 'missing DICOM instance identity, skipped'));
@@ -392,10 +380,8 @@ Future<_ScanResult> _doScan({
         continue;
       }
 
-      // Skip volumetric scans (CBCT, CT) — they produce hundreds of slices
-      // that are clinically meaningless as individual 2D images.  The
-      // original files stay on disk; the dentist uses dedicated 3D software.
-      // we're currently commenting it out since it seems to skip even regular RVG
+      // Volumetric scans (CBCT/CT) are hundreds of slices, useless as 2D
+      // images; the originals stay on disk for dedicated 3D software.
 
       if (meta.isVolumetric) {
         skipped.add(DicomSkippedRecord(
@@ -492,8 +478,6 @@ bool _hasUsableDedupKey(String key) {
   return parts.length == 3 && parts.every((part) => part.trim().isNotEmpty);
 }
 
-/// Fraction of [dicomDates] that match existing appointments for
-/// [candidateId] in [appointmentDayMap].  Returns 0.0–1.0.
 double _dateScore(List<DateTime> dicomDates, String candidateId,
     Map<String, Set<DateTime>> appointmentDayMap) {
   if (dicomDates.isEmpty) return 0.0;
@@ -516,9 +500,8 @@ List<DicomPendingImport> _buildPending(
 ) {
   final groups = <String, List<DicomParsedFile>>{};
   for (final f in parsed) {
-    // Blank DICOM patient IDs are not a usable link identity. Keep such files
-    // isolated by their file identity instead of grouping unrelated patients
-    // into one approval batch.
+    // Blank DICOM patient IDs can't identify a patient, so such files group by
+    // their own dedup key instead of all landing in one batch.
     final groupKey = f.patientId.trim().isEmpty
         ? 'anonymous:${f.dedupKey}'
         : 'patient:${f.patientId.trim()}';
@@ -529,9 +512,8 @@ List<DicomPendingImport> _buildPending(
   for (final entry in groups.entries) {
     final files = entry.value;
     final dicomPatientId = files.first.patientId.trim();
-    // Persisted hints/rejections are keyed per batch. Named patients use the
-    // DICOM patient ID; anonymous batches use the dedup-key group key so they
-    // no longer all collapse onto the empty string.
+    // Hints and rejections are keyed per batch: the DICOM patient ID, or the
+    // anonymous group key, since the empty string would collide.
     final storeKey = dicomPatientId.isEmpty ? entry.key : dicomPatientId;
 
     final nameCounts = <String, int>{};
@@ -589,8 +571,8 @@ List<DicomPendingImport> _buildPending(
     }
 
     if (matchedId == null && dicomPatientName.isNotEmpty) {
-      // If the dentist previously rejected the fuzzy suggestion, don't
-      // suggest it again — leave the match empty so they pick manually.
+      // A previously rejected suggestion stays rejected: leave the match empty
+      // so the dentist picks manually.
       if (!unmatchedIds.contains(storeKey)) {
         String? bestId;
         String? bestName;
@@ -704,8 +686,7 @@ void _isolateScan(_ScanMessage msg) async {
     shouldCancel: () => cancelled,
   );
 
-  // Close the cancel port so the isolate can exit. An isolate does not
-  // terminate as long as any ReceivePort is open.
+  // An isolate won't exit while a ReceivePort is open, so close the cancel port.
   cancelReceivePort?.close();
   msg.resultPort.send(result);
 }
@@ -875,9 +856,8 @@ class DicomImporter {
 
   // --------------- Scan ---------------------
 
-  /// `true` when the most recent [scanAndBuildPending] returned early because
-  /// it was cancelled. Callers must then keep the existing pending list
-  /// instead of replacing it with the (empty) cancelled result.
+  // Set when the last scan was cancelled; callers must then keep the existing
+  // pending list rather than replacing it with the empty cancelled result.
   bool _lastScanCancelled = false;
   bool get lastScanWasCancelled => _lastScanCancelled;
 
@@ -891,10 +871,8 @@ class DicomImporter {
     try {
       return await _scanAndBuildPending();
     } finally {
-      // Always return the scan-phase state to idle. Without this, an exception
-      // raised mid-scan (e.g. a Hive error while persisting side effects)
-      // leaves `scanPhase` pinned at `persisting`, keeping `isScanning` true
-      // and permanently disabling the "Scan now" button.
+      // Reset the phase to idle even on error; a mid-scan exception would
+      // otherwise pin `scanPhase` and permanently disable the "Scan now" button.
       _finishScan();
     }
   }
@@ -1078,15 +1056,8 @@ class DicomImporter {
     }
   }
 
-  // Note: date-proximity scoring was removed when matching moved into the
-  // isolate (the isolate can't read appointment dates). Confidence is now
-  // name-only. The UI's date-match indicators still work because they read
-  // appointments.byPatient on the main isolate via the controller.
-
   // --------------- Scan runner (isolate / direct) ------------------------------------------------------
 
-  /// Runs the scan via isolate (native) or directly (web), depending on
-  /// [_useIsolate]. The caller handles cleanup on error.
   Future<_ScanResult> _runScan({
     required String watchDir,
     required Set<String> importedKeys,
@@ -1130,9 +1101,8 @@ class DicomImporter {
     );
   }
 
-  /// Spawns an isolate, wires progress + cancel ports, and returns the
-  /// [_ScanResult] when the isolate finishes. Does NOT catch errors the
-  /// caller is responsible for [_killIsolate] + [_finishScan] on failure.
+  // Does not catch errors: the caller must call [_killIsolate] and [_finishScan]
+  // when the isolate fails.
   Future<_ScanResult> _scanInIsolate({
     required String watchDir,
     required Set<String> importedKeys,
@@ -1265,9 +1235,8 @@ class DicomImporter {
         }
         await _clearPendingMatch(pending.selectionKey);
       } catch (e, st) {
-        // Do not continue with imported markers if the patient link could not
-        // be persisted. Otherwise the next scan hides these files while the
-        // DICOM patient remains unlinked.
+        // Roll back the file markers if the patient link couldn't be persisted,
+        // otherwise the next scan hides files whose patient is still unlinked.
         for (final f in toProcess) {
           try {
             await _removeKey?.call(f.dedupKey);
@@ -1305,8 +1274,8 @@ class DicomImporter {
         );
       }
 
-      // Group by calendar day (normalize to date-only to avoid time-component
-      // drift creating duplicate appointments for the same study date).
+      // Group by date-only day; time components would split one study date into
+      // duplicate appointments.
       final byDate = <DateTime, List<DicomParsedFile>>{};
       for (final f in toProcess) {
         final raw = f.effectiveDate;
@@ -1332,9 +1301,8 @@ class DicomImporter {
           appt = existing.first;
           wasCreated = false;
         } else {
-          // The PocketBase row must exist before an online file upload can
-          // target it. If every upload then fails the row is archived below
-          // so it never lingers as an empty appointment.
+          // The PocketBase row must exist before an online upload can target it;
+          // if every upload fails it is archived below so it never lingers empty.
           appt = Appointment.fromJson({})
             ..patientID = targetId
             ..isDone = true
@@ -1362,9 +1330,6 @@ class DicomImporter {
               throw StateError('handleNewDcm returned an empty filename');
             }
 
-            // check the existing dcmImgs
-            // remove those that has the same upload identitiy
-            // those are leftovers from previous upload
             appt.dcmImgs = appt.dcmImgs
                 .where((x) => !DicomImporter.sameDcmUploadIdentity(x, dcmName))
                 .toList();
@@ -1373,8 +1338,8 @@ class DicomImporter {
             groupSucceeded++;
           } catch (e, st) {
             try {
-              // The registry marker is a reservation, not proof that the
-              // upload succeeded. Failed processing must be retryable.
+              // The registry marker is a reservation, not proof of upload success,
+              // so a failed file must be unmarked to stay retryable.
               await _removeKey?.call(f.dedupKey);
             } catch (rollbackError, rollbackStack) {
               rollbackFailures.add(rollbackError);
@@ -1394,9 +1359,6 @@ class DicomImporter {
           done++;
           importProgress((current: done, total: total));
         }
-        // A newly-created appointment that received no files would otherwise
-        // linger as an empty record in PocketBase (and the patient's chart)
-        // when every upload failed — archive it instead.
         if (wasCreated && groupSucceeded == 0) {
           appt.archived = true;
         }
@@ -1406,8 +1368,8 @@ class DicomImporter {
         await _ensureAppointmentPersisted();
       }
 
-      // Note: progress is left at (total, total) callers are responsible
-      // for resetting to (0, 0) when appropriate (see batchApprove).
+      // Progress stays at (total, total); callers reset it to (0, 0) when
+      // appropriate.
       approveSw.stop();
       log.info(
           'DicomImporter.approveImport: done $done/$total files imported in '
@@ -1455,14 +1417,8 @@ class DicomImporter {
   static bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  /// Clears a single file from the DICOM import registry so it can be
-  /// re-discovered on the next directory scan.
-  ///
-  /// [dcmFilename] is the PB/local filename (e.g. `dcm_abc123.dcm`).
-  /// Reads the local copy from `filesDir()`, extracts the dedup key from
-  /// its DICOM metadata, and removes that key from [dicomLinks].
-  ///
-  /// Returns `true` if the registry entry was found and removed.
+  /// Removes this file's dedup key from the import registry so the next scan
+  /// rediscovers it.
   Future<bool> unregisterFile(String dcmFilename) async {
     final override = unregisterOverrideForTesting;
     if (override != null) return override(dcmFilename);
@@ -1483,9 +1439,8 @@ class DicomImporter {
             'removed dedup key "$key" from registry');
         return true;
       }
-      // A marker may already be absent after a previous cleanup. Treat that
-      // idempotent state as success, but let persistence exceptions reach the
-      // catch block above and remain retryable.
+      // A marker may already be missing after a previous cleanup, which counts
+      // as success, but persistence exceptions must still reach the catch.
       return !await _isImported(key);
     } catch (e, s) {
       logger('DicomImporter.unregisterFile error: $e', s, 2);

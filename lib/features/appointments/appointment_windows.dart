@@ -53,17 +53,10 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
 /// The windows a visit offers, in the order it offers them.
-///
-/// The visit's session builds its list from [appointmentWindows], the row context
-/// menu offers one item per entry, and callers name a window through the enum,
-/// so none of them can drift from the others.
 enum AppointmentWindow {
   /// The pre-op form: when the visit is, who operates it, and what is planned.
   details('details', "appointment", WindowsIcons.calendar),
 
-  /// The dental chart, beside the pre-op form: the treatments given at this
-  /// visit, with the record's own teeth and the other visits beside it as
-  /// history.
   dentalChart(kDentalChartWindowId, kTreatmentsTitleKey, FluentIcons.teeth),
   operative('operative', "operativeDetails", FluentIcons.medical_care),
   labwork('labwork', "labwork", FluentIcons.manufacturing),
@@ -74,9 +67,8 @@ enum AppointmentWindow {
   /// The window's [PanelWindow.id], for panels and openers to name it by.
   final String id;
 
-  /// The window's title key. A side window must answer "which appointment is
-  /// this?" on its own: several visits can be open at once, and their labels are
-  /// all "Operative details".
+  /// The window's title key: several visits can be open at once, so a side
+  /// window must say which one it is.
   final String titleKey;
   final IconData icon;
 
@@ -94,24 +86,12 @@ List<AppointmentWindow> appointmentWindows(Appointment? appointment) => [
       AppointmentWindow.gallery,
     ];
 
-/// The window of a visit that is the record's own opening form: what an opener
-/// means when it asks for "the visit" rather than for one of its tools.
+/// The window an opener means by "the visit", as opposed to one of its tools.
 String get appointmentRecordWindowId => AppointmentWindow.details.id;
 
 /// The windows of [session]'s visit, built once and owned by the session.
-///
-/// A window says what it is, whose it is and which record its Save writes: the
-/// session is that record, and no window names a different one (plan §6.2-6).
-///
-/// [onOpenRecord] is how a photo's own window leads back to the visit that holds
-/// it — null while the visit is already beside its patient, where there is
-/// nowhere further to go.
-///
-/// [attached] says whether these windows are drawn beside the visit's patient. A
-/// visit in its patient's panel cannot change patient by being saved — that would
-/// re-host a live draft — so its patient line is read-only there (plan §8.2). The
-/// same windows standing on their own keep the picker: that is how an orphan gets
-/// a patient at all.
+/// `attached` windows are drawn beside the patient and must not change patient
+/// on save (that would re-host a live draft); standalone windows keep the picker.
 List<PanelWindow> appointmentSessionWindows(
   AppointmentSession session, {
   Future<void> Function()? onOpenRecord,
@@ -119,15 +99,10 @@ List<PanelWindow> appointmentSessionWindows(
 }) {
   final appointment = session.item;
   if (attached) {
-    // Beside the patient: the **chart is the visit's window**, the appointment
-    // itself is the band's, and everything else hangs off the band as an
-    // attachment (the design brief).
     return <PanelWindow>[
       _chartWindow(session, attached: true),
-      // The visit's labwork order and photos are attachments, never dock chips:
-      // the band is the visit's identity and stays on screen even when the chart
-      // is put away, so it is the frame that can offer them — and the post-op
-      // card inside the chart draws the same tray again.
+      // Photos and labwork are band attachments: the band outlives the chart and
+      // is the frame that can offer them.
       _labworkWindow(session, attachedTo: PanelWindow.bandAttachment),
       _galleryWindow(
         session,
@@ -136,9 +111,8 @@ List<PanelWindow> appointmentSessionWindows(
       ),
     ];
   }
-  // On their own — a patient this account may not see, or a visit whose patient
-  // is gone: every part keeps a window, because there is no band to hold the
-  // appointment and no chart to hang the rest off.
+  // Standalone (patient hidden or gone) every part keeps a window: no band to
+  // hold the appointment and no chart to hang the rest off.
   return <PanelWindow>[
     for (final entry in appointmentWindows(appointment))
       switch (entry) {
@@ -147,8 +121,6 @@ List<PanelWindow> appointmentSessionWindows(
             title: entry.titleKey,
             icon: entry.icon,
             subtitle: entry.ownerFor(appointment),
-            // The pre-op form is wide on purpose: the schedule row, the
-            // operators, the notes and the price stop wrapping at 560.
             matchesPanelWidth: false,
             preferredWidth: kAppointmentDetailsWindowWidth,
             minHeight: 440,
@@ -176,8 +148,6 @@ List<PanelWindow> appointmentSessionWindows(
               followUpDraft: session.followUpDraft,
               onEdited: session.refreshDirty,
             ),
-            // The operative details' own delete, in the window's footer beside
-            // its Save and Close — whichever window shows this record.
             footerActions: [
               _DeleteVisitButton(
                 key: WK.operativeDeleteVisit,
@@ -193,10 +163,6 @@ List<PanelWindow> appointmentSessionWindows(
 }
 
 /// The visit's chart, with the post-op record under it.
-///
-/// Beside the patient the chart is the visit's **workspace**: the appointment is
-/// in the band above, the teeth in the middle, and the post-op record pinned at
-/// the foot — one surface, no tabs to hunt through (the design brief).
 PanelWindow _chartWindow(
   AppointmentSession session, {
   required bool attached,
@@ -206,8 +172,6 @@ PanelWindow _chartWindow(
   return dentalChartWindow(
     session.chart,
     saveLabel: 'saveVisit',
-    // The chart carries the post-op record when it is the visit's window, so it
-    // asks for the room both need; standing on its own it is the chart alone.
     minHeight:
         attached ? kDentalChartWindowMinHeight : kDentalChartBodyMinHeight,
     maxHeight: attached ? kDentalChartWindowMaxHeight : 720,
@@ -220,17 +184,11 @@ PanelWindow _chartWindow(
     ),
     actions: attached && patient != null
         ? <Widget>[
-            // The patient's whole list of visits, from the chart's own title:
-            // reaching the list must not cost the chart its place in the row.
             PatientVisitsButton(
               onPressed: () => unawaited(showPatientVisits(patient.id)),
             ),
           ]
         : const <Widget>[],
-    // Where the visit's operative record is shown, its delete is too: beside the
-    // patient that record lives under this chart, so this window's footer is the
-    // one that carries it — the same action the operative window offers on its
-    // own, and the one the band keeps for the visit beside its patient.
     footerActions: [
       _DeleteVisitButton(key: WK.chartDeleteVisit, session: session),
     ],
@@ -238,8 +196,7 @@ PanelWindow _chartWindow(
 }
 
 PanelWindow _labworkWindow(AppointmentSession session, {String? attachedTo}) {
-  // Shared by the window's body and its footer: the editor starts an order and
-  // the footer takes it away, so either end has to see the other's answer.
+  // Shared by the body and footer: either end must see the other's order state.
   final hasOrder = ValueNotifier<bool>(session.item.hasLabwork);
   return PanelWindow(
     attachedTo: attachedTo,
@@ -261,18 +218,12 @@ PanelWindow _labworkWindow(AppointmentSession session, {String? attachedTo}) {
         hasOrder: hasOrder,
       ),
     ],
-    // A chip that only says "Labwork" cannot tell an order from an empty
-    // form; the badge says one was written, and whether it came back.
     chipPreview: () => VisitLabworkChipBadge.of(session.item),
   );
 }
 
-/// The visit's delete, in the footer of whichever window shows its operative
-/// record — beside that window's Save and Close.
-///
-/// Beside its patient the operative record lives at the foot of the chart, so
-/// the chart window carries this; standing on its own the visit has the
-/// operative window, which carries it too. Both are the same write.
+/// The visit's delete, carried by whichever window shows its operative record —
+/// beside the patient the chart, standalone the operative window.
 class _DeleteVisitButton extends StatelessWidget {
   const _DeleteVisitButton({super.key, required this.session});
 
@@ -280,8 +231,8 @@ class _DeleteVisitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Archiving a visit takes its clinical record with it: full access to
-    // visits, the same rule its context menu keeps.
+    // Archiving takes the visit's clinical record with it, so it needs full
+    // visits access — same rule as the band's delete.
     if (!session.canArchive) return const SizedBox.shrink();
     final appointment = session.item;
     return DeleteButton(
@@ -303,10 +254,7 @@ class _DeleteVisitButton extends StatelessWidget {
   }
 }
 
-/// The labwork window's remove, in its footer beside its Save and Close.
-///
-/// It is there only while an order is: what it offers is taking the order away,
-/// and with no order there is nothing to take.
+/// The labwork window's remove, shown only while there is an order to remove.
 class _RemoveLabworkButton extends StatelessWidget {
   const _RemoveLabworkButton({
     required this.appointment,
@@ -315,8 +263,7 @@ class _RemoveLabworkButton extends StatelessWidget {
 
   final Appointment appointment;
 
-  /// The same answer the window's body shows, so starting an order there brings
-  /// this button out and removing it here puts the body's link back.
+  /// The window body's order state, shared so both ends redraw together.
   final ValueNotifier<bool> hasOrder;
 
   @override
@@ -339,8 +286,7 @@ class _RemoveLabworkButton extends StatelessWidget {
               Txt(appointment.patient?.title ?? ""),
             ],
           ),
-          // The body owns the change: it flips the order off, marks the visit
-          // edited, and redraws both ends of the window from the one answer.
+          // The body owns the change; this only flips the shared order state.
           onConfirm: () => hasOrder.value = false,
           style: _footerDeleteStyle,
           child: ButtonContent(WindowsIcons.delete, txt('removeLabwork')),
@@ -350,8 +296,6 @@ class _RemoveLabworkButton extends StatelessWidget {
   }
 }
 
-/// A footer delete reads like the Save and Close beside it, in the colour of the
-/// action it performs.
 final ButtonStyle _footerDeleteStyle = greyButtonStyle.copyWith(
   textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
   backgroundColor: const WidgetStatePropertyAll(Colors.errorPrimaryColor),
@@ -377,21 +321,13 @@ PanelWindow _galleryWindow(
       ),
       onlyIfSaved: true,
       padding: 0,
-      // A grid of photos: it needs room for a row or two of them to be worth
-      // opening, and scrolls itself beyond that.
       minHeight: 460,
       maxHeight: 680,
-      // A camera icon says a gallery exists; two of its pictures say what is in
-      // it, which is the question asked before opening it.
       chipPreview: () => VisitGalleryChipPreviews.of(session.item),
     );
 
-/// Deletes the visit [session] edits: archives it, takes it off any panel
-/// carrying it, and puts away the windows standing on it.
-///
-/// A visit deleted from one of its own windows has nothing left to show — the
-/// archive is the record's, and the draft it drew goes with the window, the way
-/// the band's delete takes the visit off the patient's panel.
+/// Archives the visit and closes its panels and windows: deleted from one of its
+/// own windows, the draft it drew has nothing left to show.
 Future<void> _deleteVisit(AppointmentSession session) async {
   try {
     await session.setArchived(true);
@@ -410,21 +346,15 @@ Future<void> _deleteVisit(AppointmentSession session) async {
   }
 }
 
-/// The width the pre-op form asks for, when a visit stands on its own. The band
-/// replaces it beside a patient; this is what the standalone window still uses.
 const double kAppointmentDetailsWindowWidth = 560.0;
 
-/// Says once that a visit is gone — a notification that names a record this
-/// device no longer has, or has not synced yet.
-///
-/// One message, and nothing opens: an editor for a record that is not there
-/// would write a new one, under an id nobody chose (plan §4.7).
+/// Says once that a visit is gone. Nothing opens: an editor for a missing record
+/// would write a new one under an id nobody chose.
 Future<void> showAppointmentUnavailable() async {
   final BuildContext? context;
   try {
-    // The app installs this when its own content is built; a test that only
-    // exercises an opener has none, and a record that is gone is not worth
-    // failing a test over.
+    // bContext is set only once the app's content is built; tests that exercise
+    // an opener have none.
     context = bContext;
   } catch (_) {
     return;
@@ -441,8 +371,7 @@ Future<void> showAppointmentUnavailable() async {
   );
 }
 
-/// The post-op dictation button, when the clinic has it on: what is dictated is
-/// merged into [appointment], and [onEdited] lets the owner redraw.
+/// Post-op dictation button; what is dictated is merged into [appointment].
 Widget? operativeVoiceAction(Appointment appointment,
     {VoidCallback? onEdited}) {
   if (!network.isOnline() || !globalSettings.aiServicesEnabled) return null;
@@ -506,12 +435,11 @@ class AppointmentGalleryPane extends StatelessWidget {
 
   final Appointment appointment;
 
-  /// Reports a bulk upload/delete so the visit's session can show it as
-  /// progress.
+  /// Reports a bulk upload/delete so the session can show it as progress.
   final ValueChanged<bool>? onProgress;
 
-  /// A write landed outside the visit's own Save, on these fields only, so the
-  /// visit's draft is clean on them and still dirty on everything else.
+  /// A write landed outside the visit's Save on these fields only, so the draft
+  /// is clean on them and still dirty elsewhere.
   final void Function(Iterable<String> fields)? onFieldsSaved;
 
   /// The way back to the visit from one of its photos' own windows.
@@ -519,8 +447,7 @@ class AppointmentGalleryPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Other visits of the same patient that have pictures, below this visit's:
-    // deduped by id, in the order the lists give them.
+    // Other visits of this patient with pictures, deduped by id in list order.
     final patient = appointment.patient;
     final otherImages = <Appointment>[];
     if (patient != null) {
@@ -580,20 +507,14 @@ class _OtherAppointmentsPhotos extends StatelessWidget {
   }
 }
 
-/// The pre-op form as a **window**: when the visit is, who operates it, and what
-/// is planned.
-///
-/// Beside a patient it is not used — the band carries this form, compact, and the
-/// patient's name is the panel's own. A visit that stands on its own keeps the
-/// window, the patient picker and all, because that is how an orphan gets a
-/// patient at all.
+/// The pre-op form as a standalone window, patient picker included: beside a
+/// patient the band carries the form, so this is how an orphan gets one.
 class AppointmentDetailsForm extends StatefulWidget {
   const AppointmentDetailsForm(this.appointment, {super.key, this.onEdited});
 
   final Appointment appointment;
 
-  /// Tells the visit's session that its draft changed (see
-  /// [AppointmentOperativeForm.onEdited]).
+  /// Tells the session its draft changed (see [AppointmentOperativeForm.onEdited]).
   final VoidCallback? onEdited;
 
   @override
@@ -647,8 +568,8 @@ class _AppointmentDetailsFormState extends State<AppointmentDetailsForm> {
                           FluentIcons.add_friend, txt("newPatient")),
                     ),
                     onPressed: () async {
-                      // The patient is stored by the sheet, so this visit can
-                      // point at a real record without opening one.
+                      // The sheet stores the patient, so this visit can point at
+                      // it without opening a window.
                       final patient = await addPatient(context);
                       if (patient == null || !mounted) return;
                       setState(() {
@@ -745,14 +666,7 @@ class _AppointmentDetailsFormState extends State<AppointmentDetailsForm> {
   }
 }
 
-/// The post-op record, drawn **compact** — it lives at the foot of the visit's
-/// chart, under the teeth it describes, not in a window of its own.
-///
-/// Every field the old operative window had is still here, laid out for the wide
-/// chart footer: the notes take three lines, prescriptions and the money take one
-/// each, and what is left (a payment difference, the dictation button) fits under
-/// them. Typing in it still completes the visit, exactly as it always did — the
-/// band says so at once (plan §8.1).
+/// The post-op record, drawn compact at the foot of the visit's chart.
 class AppointmentOperativeForm extends StatefulWidget {
   const AppointmentOperativeForm(
     this.appointment, {
@@ -766,8 +680,8 @@ class AppointmentOperativeForm extends StatefulWidget {
   /// The visit session's patient-owned follow-up draft.
   final FollowUpDraft? followUpDraft;
 
-  /// Tells the visit's session that its draft changed, so the window's Save and
-  /// the band's unsaved mark light up while the user types.
+  /// Tells the session its draft changed, so Save and the band's unsaved mark
+  /// update while the user types.
   final VoidCallback? onEdited;
 
   @override
@@ -780,11 +694,8 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
   final MoneyEditingController priceController = MoneyEditingController();
   final MoneyEditingController paidController = MoneyEditingController();
 
-  /// The two amounts are typed in one order — the price, then what was taken —
-  /// so Tab walks them in that order whatever else is on screen. Focus traversal
-  /// otherwise reads the whole scene, and the chart's neighbours (the list of
-  /// visits, the windows beside it) put their own fields and buttons between
-  /// these two.
+  /// Tab walks price → paid whatever else is on screen: default focus traversal
+  /// reads the whole scene, and the chart's neighbours sit between the two.
   late final FocusNode priceFocus = FocusNode(
     debugLabel: 'appointmentPrice',
     onKeyEvent: (node, event) => _tab(event, withShift: false)
@@ -800,9 +711,8 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
 
   bool didNotEditPaidYet = true;
 
-  /// Tab alone, or with nothing but Shift: the walk between the two amounts.
-  /// Anything a shortcut or the window manager owns (Ctrl + Tab, Alt + Tab) is
-  /// left alone.
+  /// Tab alone or with Shift only: Ctrl/Alt/Meta + Tab belong to shortcuts and
+  /// the window manager.
   static bool _tab(KeyEvent event, {required bool withShift}) {
     if (event is! KeyDownEvent) return false;
     if (event.logicalKey != LogicalKeyboardKey.tab) return false;
@@ -837,8 +747,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
   @override
   void didUpdateWidget(covariant AppointmentOperativeForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // The footer sits under a chart whose scope the user can switch: a new visit
-    // is a new post-op record, not the old one with a new chart above it.
+    // A new visit behind the same footer is a new post-op record, not the old one.
     if (!identical(oldWidget.appointment, widget.appointment)) {
       _fillControllers();
       didNotEditPaidYet = widget.appointment.paid == 0;
@@ -885,10 +794,6 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // One title row: the section's name, and the controls that act on the
-        // record rather than edit one of its fields. On a phone the redundant
-        // "is done" caption gives way so the checkbox and the print action can
-        // stay; the title itself shrinks before anything overflows.
         Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(2, 2, 2, 2),
           child: LayoutBuilder(
@@ -960,11 +865,6 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
             },
           ),
         ),
-        // The two free-text parts of the record — what was done and what was
-        // prescribed — share one row when the chart has the room for both, and
-        // each takes its own line on a phone. A 960-pixel chart wastes half its
-        // width on two short stacked fields; a 390-pixel sheet would crush both
-        // into one unreadable line.
         LayoutBuilder(
           builder: (context, constraints) {
             final notes = LiveTranscribingTextField(
@@ -1080,9 +980,6 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
                     ),
                   );
             if (constraints.maxWidth < 480) {
-              // A phone gives the two money fields their row and the payment
-              // difference the line under it, instead of squeezing three things
-              // into one.
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1115,11 +1012,8 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
             );
           },
         ),
-        // The record looks forward as well as back: the day the patient is
-        // expected again is part of what this visit decided, so it is written
-        // down beside the notes that decided it. It is the *patient's* promise —
-        // the visit only sets it — and "in two weeks" counts from this visit.
-        // A clinic that does not use follow-ups never sees the row.
+        // The follow-up is the patient's promise, not the visit's: the visit only
+        // sets it, and "in two weeks" counts from this visit's date.
         if ((appointment.patientID ?? '').isNotEmpty)
           MStreamBuilder<Object?>(
             streams: [globalSettings.observableMap.stream],
@@ -1136,9 +1030,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
               );
             },
           ),
-        // Dictation is offered only while it can work: the setting is on and
-        // there is a network to send the audio over. Both are live, so the
-        // button leaves the moment either does.
+        // Dictation needs both the AI setting and a network, and both are live.
         MStreamBuilder<Object?>(
           streams: [
             network.isOnline.stream,
@@ -1158,8 +1050,6 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
     );
   }
 
-  /// One money field: a small label inside the field, so two of them fit the
-  /// width a 960-pixel chart has without a label line each.
   Widget _moneyField({
     required Key fieldKey,
     required FocusNode focusNode,
@@ -1190,25 +1080,14 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
   }
 }
 
-/// The visit's appointment form, drawn **inside the band** the patient panel
-/// gives it.
-///
-/// When, how long, whose and what was planned are the questions the old pre-op
-/// window answered; they are four compact fields — when and how long on one
-/// row, whose on the next — and a notes box, so the visit does not need a
-/// window, a row slot, or a click to answer them. Every field's glyph lives
-/// inside its own box, so the band's rows all start on one edge.
-///
-/// The patient is deliberately absent: the band sits inside the patient's own
-/// panel, which names them two centimetres above. A visit that stands on its own
-/// still gets the full form, patient picker and all (`AppointmentDetailsForm`).
+/// The pre-op form drawn inside the band. The patient is absent on purpose: the
+/// band already sits in the patient's own panel.
 class AppointmentBandDetails extends StatefulWidget {
   const AppointmentBandDetails(this.appointment, {super.key, this.onEdited});
 
   final Appointment appointment;
 
-  /// Tells the visit's session that its draft changed (see
-  /// [AppointmentOperativeForm.onEdited]).
+  /// Tells the session its draft changed (see [AppointmentOperativeForm.onEdited]).
   final VoidCallback? onEdited;
 
   @override
@@ -1228,9 +1107,8 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
   @override
   void didUpdateWidget(covariant AppointmentBandDetails oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A different visit behind the same band is a different form, not the same
-    // one with a new title. The note field is the one piece of state the band
-    // owns, so it follows the appointment it is given.
+    // A different visit behind the same band is a different form: the note field
+    // follows the appointment it is given.
     if (!identical(oldWidget.appointment, widget.appointment)) {
       _notes.text = widget.appointment.preOpNotes;
     }
@@ -1255,10 +1133,6 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // When and how long, on one row at every width: the date, the time and
-        // the duration keep their places instead of reflowing as the band
-        // narrows. The date takes whatever the other two leave, so a date that
-        // fits is never ellipsized for want of width the row has to spare.
         Row(
           children: [
             Flexible(
@@ -1326,8 +1200,6 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
           ],
         ),
         const SizedBox(height: 4),
-        // Whose: a line of its own at every width, so the row above never
-        // changes shape with the panel.
         _field(
           tooltip: txt('doctors'),
           child: _CompactOperators(
@@ -1341,8 +1213,7 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
           controller: _notes,
           expands: false,
           maxLines: 3,
-          // The band is already dense, and the visit keeps its dictation in the
-          // chart's post-op record: no mic button under this box.
+          // Dictation lives in the chart's post-op record, so no mic here.
           micPlacement: MicPlacement.none,
           padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4),
           style: const TextStyle(fontSize: 11),
@@ -1356,14 +1227,6 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
     );
   }
 
-  /// A field with a tooltip: the band has no room for a label line above each
-  /// control, so the control names itself and the tooltip says it again on
-  /// hover. A [width] pins a field that shares its row; a field without one
-  /// takes the width its row gives it.
-  ///
-  /// Every field's glyph lives **inside** its own box — the calendar and the
-  /// clock `commonDate` and `time` already carry, the duration's timer, the
-  /// operators' medical — so the boxes all start at the band's edge together.
   Widget _field({
     required String tooltip,
     required Widget child,
@@ -1376,25 +1239,14 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
   }
 }
 
-/// The visit's one tool as a dock **inside its band**: operative details.
-///
-/// The operative record is not a window of its own any more: it lives at the foot
-/// of the visit's chart, and this button opens that chart, where the fields are.
-/// The band is the visit's permanent surface, so it is the one control that can
-/// promise the record is a click away whatever the row is showing (the design
-/// brief).
-///
-/// The visit's other editors — its labwork order and its photos — are not tools
-/// in this dock: they are **attachments**, drawn as a tray at the band's foot and
-/// again on the post-op card inside the chart, exactly as a patient's photos hang
-/// off the patient's panel (`PanelWindow.bandAttachment`).
+/// The band's operative-details button. The record lives at the foot of the
+/// visit's chart, so this opens the chart rather than a window of its own.
 class AppointmentBandDock extends StatelessWidget {
   const AppointmentBandDock({super.key, required this.session});
 
   final AppointmentSession session;
 
-  /// The panel carrying this session, if one is. The band is only drawn by that
-  /// panel, so this is the surface the button acts on.
+  /// The panel carrying this session; the band is only drawn by that panel.
   Panel? get _panel => PanelsManager.active()
       .where((panel) => identical(panel.attached, session))
       .firstOrNull;
@@ -1406,8 +1258,6 @@ class AppointmentBandDock extends StatelessWidget {
       return const SizedBox.shrink();
     }
     return Padding(
-      // No side inset of its own: the band already pads its content, and the
-      // band's one button starts on the same edge as the fields above it.
       padding: const EdgeInsetsDirectional.fromSTEB(0, 4, 0, 1),
       child: Align(
         alignment: AlignmentDirectional.centerStart,
@@ -1427,8 +1277,6 @@ class AppointmentBandDock extends StatelessWidget {
   }
 }
 
-/// One tool in the band's dock: its glyph, its name, and whether its surface is
-/// already on screen.
 class _BandWindowChip extends StatelessWidget {
   const _BandWindowChip({
     super.key,
@@ -1450,9 +1298,7 @@ class _BandWindowChip extends StatelessWidget {
       children: [
         Icon(icon, size: 12),
         const SizedBox(width: 5),
-        // One chip is as wide as its word, never wider than the band: a
-        // language that spells "operative details" at length must wrap the
-        // tray, not overflow the bubble.
+        // Capped so a long translation ellipsizes instead of overflowing the band.
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 150),
           child: Txt(
@@ -1472,21 +1318,15 @@ class _BandWindowChip extends StatelessWidget {
   }
 }
 
-/// The operators of a visit as one compact chip: who is on it, and a flyout to
-/// change that without unfolding a full tag editor in a 350-pixel band.
-///
-/// The flyout itself is the calendar's — [AppointmentOperatorsFlyout] — so an
-/// operator is ticked the same way here and in the timeline.
-///
-/// The same permission rule as the full `OperatorsPicker`: an account that may
-/// only see its own visits reads the names, and cannot re-cast them.
+/// The visit's operators as one chip, using the calendar's flyout. Same
+/// permission rule as `OperatorsPicker`: an account that may only see its own
+/// visits reads the names but cannot re-cast them.
 class _CompactOperators extends StatefulWidget {
   const _CompactOperators({required this.appointmentId, this.onChanged});
 
   final String appointmentId;
 
-  /// Called after a tick, so the visit's own forms — the band's draft, its
-  /// dirty state — can settle around the write that just landed.
+  /// Called after a tick so the band's draft and dirty state follow the write.
   final VoidCallback? onChanged;
 
   @override
@@ -1509,16 +1349,12 @@ class _CompactOperatorsState extends State<_CompactOperators> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    // The live visit, not the copy this band was built with: a tick in the
-    // flyout writes the draft and the store, and the chip has to name who is
-    // on the visit the moment the box is ticked.
+    // The live visit, not the copy the band was built with: a tick in the flyout
+    // writes both draft and store, so the chip must read the live record.
     final names = (liveAppointment(widget.appointmentId)?.operatorsIDs ??
             const <String>[])
         .map(accounts.nameOrEmailFromID)
         .toList();
-    // The operators have a line of their own in the band, so they are named in
-    // full: truncating a clinician to their first name is not a space saving, it
-    // is a different person. Only a name wider than the line is ellipsized.
     final label = names.isEmpty ? txt('selectDoctors') : names.join(', ');
     return FlyoutTarget(
       controller: _flyout,
@@ -1536,24 +1372,18 @@ class _CompactOperatorsState extends State<_CompactOperators> {
                   ),
                 )),
         builder: (context, states) => Container(
-          // The band's width, not a clipped 150 pixels: the band has the room,
-          // and a second operator must not become an ellipsis after the first.
           padding: const EdgeInsetsDirectional.fromSTEB(6, 2, 6, 2),
           decoration: BoxDecoration(
             color: FluentTheme.of(context).menuColor,
             border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
             borderRadius: BorderRadius.circular(5),
           ),
-          // As tall as the date and the time beside it — the pickers put a
-          // 34-pixel content line in the same 2-pixel padding — so the band's
-          // fields read as one set rather than as boxes of three heights.
+          // 34px matches the date/time pickers' content line beside it, so the
+          // band's fields read as one set.
           child: SizedBox(
             height: 34,
             child: Row(
               children: [
-                // The glyph sits inside the box, where the date's calendar, the
-                // time's clock and the duration's timer sit: a glyph outside
-                // would push this box off the edge the others start at.
                 Icon(FluentIcons.medical, size: 12, color: theme.inactiveColor),
                 const SizedBox(width: 5),
                 Expanded(

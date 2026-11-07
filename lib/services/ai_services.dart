@@ -4,11 +4,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/push_relay.dart';
 import 'package:http/http.dart' as http;
 
-/// Base class for all AI-powered services that use the Apexo AI Worker.
-///
-/// Provides shared token management (24h bearer token with auto-renewal)
-/// and common request helpers. Subclasses extend this for specific
-/// features like receipt scanning, post-op notes, dental history, etc.
+/// Base for Worker-backed AI services; they share one persisted 24h bearer token.
 class AIService {
   /// The fixed Worker endpoint for all AI features.
   static const String workerUrl = 'https://dataextraction.apexo.app';
@@ -17,10 +13,6 @@ class AIService {
   static Future<String>? _authFuture;
   static String? _authServer;
   static String? _authCredential;
-
-  // ---------------------------------------------------------------------------
-  //  Token management (shared across all AI services)
-  // ---------------------------------------------------------------------------
 
   /// Authenticates with the Worker and returns a bearer token valid for 24h.
   static Future<String> _authenticate(String server, String credential) async {
@@ -33,8 +25,7 @@ class AIService {
       headers: {'x-server': server, 'x-worker-key': key},
     );
     if (r.statusCode != 200) {
-      // Parse error body gracefully — the worker may return non-JSON
-      // on some failure modes; fall back to a generic message.
+      // The worker may return non-JSON on failure; fall back to a generic message.
       Map<String, dynamic> parsed = {};
       try {
         parsed = jsonDecode(r.body) as Map<String, dynamic>;
@@ -80,10 +71,6 @@ class AIService {
       }
     }
   }
-
-  // ---------------------------------------------------------------------------
-  //  Helpers
-  // ---------------------------------------------------------------------------
 
   /// Creates a [http.MultipartRequest] with the bearer token attached.
   static Future<http.MultipartRequest> createMultipartRequest(

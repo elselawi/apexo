@@ -8,9 +8,6 @@ import "package:intl/number_symbols_data.dart";
 
 bool _registered = false;
 
-/// Registers number and date symbols for locales `intl` does not ship.
-///
-/// Safe to call repeatedly.
 void ensureCustomIntlLocalesInitialized() {
   if (_registered) return;
   _registered = true;

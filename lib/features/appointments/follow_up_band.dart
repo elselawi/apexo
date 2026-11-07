@@ -13,22 +13,8 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The day's follow-ups, floating over the page.
-///
-/// A follow-up is not an appointment: it has no hour, so it cannot be a block on
-/// the timeline or a row in the agenda without inventing one. It is instead the
-/// day's *inbox* — patients waiting to be given a time — and it floats over the
-/// day it belongs to so it is read before the day itself is worked through.
-///
-/// Two states, one band:
-///
-/// * **Folded** — the phone, the count and the faces. The faces are the fastest
-///   way through the day: one click opens that patient's follow-up card (their
-///   day, their phone, the visit that keeps the promise), and on the timeline a
-///   face can be dragged onto the grid to book the hour it is dropped on.
-/// * **Unfolded** — tapping the band itself (never a face) grows it into a sheet
-///   that lists the same patients by name, each with their contact buttons, so
-///   the whole round of calls can be made without leaving the day.
+/// The day's follow-ups. A follow-up has no hour, so it cannot be a timeline
+/// block or an agenda row and floats over the day instead.
 class FollowUpBand extends StatefulWidget {
   const FollowUpBand({
     super.key,
@@ -39,8 +25,7 @@ class FollowUpBand extends StatefulWidget {
 
   final List<FollowUpDue> followUps;
 
-  /// Books the follow-up's visit — at [at] when it was dropped on a time, on the
-  /// follow-up's own day otherwise.
+  /// Books the follow-up's visit; a null `at` means the follow-up's own day.
   final void Function(FollowUpDue followUp, {DateTime? at})? onBook;
 
   /// Whether the faces can be dragged onto a timeline.
@@ -98,9 +83,7 @@ class _FollowUpBandState extends State<FollowUpBand> {
           ),
         ],
       ),
-      // One band that grows into a sheet. Only the state that is showing is
-      // built — the folded faces are gone while the list is up, so nothing
-      // hidden can be dragged, tabbed to or read out.
+      // One state at a time: hidden faces must not stay draggable or focusable.
       child: AnimatedSize(
         duration: const Duration(milliseconds: 260),
         curve: Curves.easeOutCubic,
@@ -149,8 +132,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
             color: accent.withValues(alpha: 0.22),
           ),
           const SizedBox(width: 8),
-          // The faces get every pixel the handle leaves: from the divider to the
-          // band's own edge, fading at whichever edge still has more behind it.
           Expanded(
             child: _FaceStrip(
               followUps: [...onDay, ...overdue],
@@ -165,9 +146,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
     );
   }
 
-  /// The band's own handle: its glyph, what it is, and the count. Tapping it is
-  /// what unfolds the band — a face is never the thing that opens the sheet —
-  /// and tapping it again folds the sheet away.
   Widget _header(BuildContext context) {
     final dark = FluentTheme.of(context).brightness == Brightness.dark;
     const accent = kFollowUpAccent;
@@ -246,11 +224,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
     );
   }
 
-  /// Unfolded: the same patients, by name, with the buttons that reach them.
-  ///
-  /// It takes the band's **whole width**, exactly as the folded faces do: a
-  /// sheet that narrowed while opening would make the band jump sideways on the
-  /// page, and the band is one surface in two states, not two surfaces.
   Widget _sheet(
     BuildContext context,
     List<FollowUpDue> onDay,
@@ -337,8 +310,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
         padding: const EdgeInsetsDirectional.fromSTEB(6, 3, 6, 3),
         child: Row(
           children: [
-            // The face and the name are the way into the record: the sheet says
-            // who is due, and the record says why.
             _draggable(
               followUp,
               MouseRegion(
@@ -368,10 +339,8 @@ class _FollowUpBandState extends State<FollowUpBand> {
                         style:
                             theme.typography.bodyStrong?.copyWith(fontSize: 12),
                       ),
-                      // What the promise is *for*: the clinic calls about the
-                      // note, not about the word "tomorrow". A late one still
-                      // says so, beside the note it is late for — and when there
-                      // is no note, the line itself is the one that says it.
+                      // With no note the label itself says "overdue", so the
+                      // chip is only drawn beside a note.
                       Row(
                         children: [
                           if (overdue && note.isNotEmpty)
@@ -452,9 +421,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
     );
   }
 
-  /// One patient's face in the folded band: hover says whose it is, a click
-  /// opens their follow-up card (never a booking made behind their back), and on
-  /// the timeline it can be dragged onto an hour.
   Widget _face(FollowUpDue followUp, {required bool overdue}) {
     final face = FollowUpCardTarget(
       key: WK.followUpAvatar(followUp.patient.id),
@@ -485,12 +451,6 @@ class _FollowUpBandState extends State<FollowUpBand> {
   }
 }
 
-/// The folded band's faces.
-///
-/// It takes every pixel the band leaves it — from the divider to the band's own
-/// edge — and while there are more faces than fit, the edge they are cut at
-/// fades out instead of ending in a hard slice. No scrollbar, no hint text: the
-/// fade is the affordance.
 class _FaceStrip extends StatefulWidget {
   const _FaceStrip({required this.followUps, required this.faceBuilder});
 
@@ -548,8 +508,7 @@ class _FaceStripState extends State<_FaceStrip> {
     final strip = SingleChildScrollView(
       controller: _scroll,
       scrollDirection: Axis.horizontal,
-      // Room above and below for a face's hover ring, and a little air after
-      // the last face so its ring is never sliced by the band's edge.
+      // Room so the scroll viewport never clips a face's hover ring.
       padding: const EdgeInsetsDirectional.fromSTEB(0, 2, 6, 2),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -591,8 +550,6 @@ class _FaceStripState extends State<_FaceStrip> {
   }
 }
 
-/// One patient's face, on its own: a ring in the follow-up colour, a lift on
-/// hover, and the name as its tooltip — the band is scanned, not read.
 class _FollowUpFace extends StatefulWidget {
   const _FollowUpFace({
     required this.patient,
@@ -660,8 +617,6 @@ class _FollowUpFaceState extends State<_FollowUpFace> {
   }
 }
 
-/// What the pointer carries while a face is being dragged to an hour: the face,
-/// the name, and the fact that letting go books the visit.
 class _FollowUpDragFeedback extends StatelessWidget {
   const _FollowUpDragFeedback({required this.followUp});
 

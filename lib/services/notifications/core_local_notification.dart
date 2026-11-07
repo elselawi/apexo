@@ -27,20 +27,16 @@ class LocalNotificationsService {
   final _androidInitializationSettings =
       const AndroidInitializationSettings('@mipmap/ic_launcher');
 
-  // iOS and macOS initialization settings, shared since both use the same
-  // Darwin plugin. Permission is not requested here: FirebaseMessagingService
-  // asks for it before local notifications are initialized, and the display
-  // permission is app-wide, so asking again would only repeat the request.
+  // Shared Darwin settings. FirebaseMessagingService requests the app-wide
+  // display permission before this, so asking again would only repeat it.
   final _darwinInitializationSettings = const DarwinInitializationSettings(
     requestAlertPermission: false,
     requestBadgePermission: false,
     requestSoundPermission: false,
   );
 
-  // Windows settings: the app name shown on the toast, the MSIX identity that
-  // may display as this app, and the COM class id the plugin registers for
-  // activation. All three live in WindowsNotificationIdentity so the packaging
-  // uses the same values.
+  // The AUMID and activation GUID must match what the packaging declares, so
+  // both come from WindowsNotificationIdentity.
   final _windowsInitializationSettings = const WindowsInitializationSettings(
     appName: WindowsNotificationIdentity.appName,
     appUserModelId: WindowsNotificationIdentity.appUserModelId,
@@ -58,8 +54,8 @@ class LocalNotificationsService {
   //Flag to track initialization status
   bool _isFlutterLocalNotificationInitialized = false;
 
-  //Counter for generating unique notification IDs on platforms whose plugin
-  // does not use the id as a persistent toast tag.
+  // Non-Windows plugins do not treat the id as a persistent tag, so a counter
+  // is enough.
   int _notificationIdCounter = 0;
 
   /// Windows toast id allocation. A test replaces this to avoid Hive.
@@ -67,16 +63,11 @@ class LocalNotificationsService {
   static Future<int> Function() windowsNotificationId =
       toast_ids.nextWindowsNotificationId;
 
-  /// The last notification handed to the OS.
-  ///
-  /// A device's notification centre cannot be read from Dart, so an end-to-end
-  /// test asserts this instead: it is exactly what the platform was asked to
-  /// display.
+  /// The last notification handed to the OS. An end-to-end test asserts this
+  /// because the notification centre cannot be read from Dart.
   @visibleForTesting
   ({String? title, String? body, String? payload})? lastShown;
 
-  /// Initializes the local notifications plugin for Android, iOS, macOS and
-  /// Windows.
   Future<void> init() async {
     if (_isFlutterLocalNotificationInitialized) {
       return;
@@ -93,10 +84,8 @@ class LocalNotificationsService {
       windows: _windowsInitializationSettings,
     );
 
-    // A cold toast click can arrive through this callback while the app is
-    // still restoring its session. Do not inspect credentials here: the
-    // asynchronous handler captures the payload immediately and waits for the
-    // real session boundary.
+    // A cold toast click can arrive before the session is restored, so do not
+    // inspect credentials here; the handler waits at the session boundary.
     var callbackSeen = false;
     String? launchDetailsPayload;
     Timer? launchDetailsTimer;
@@ -106,8 +95,7 @@ class LocalNotificationsService {
         callbackSeen = true;
         if (launchDetailsPayload != null &&
             launchDetailsPayload == response.payload) {
-          // The launch-details recovery below already handed this exact cold
-          // click to the shared handler.
+          // Launch-details recovery already handled this exact cold click.
           launchDetailsPayload = null;
           launchDetailsTimer?.cancel();
           launchDetailsTimer = null;
@@ -119,10 +107,8 @@ class LocalNotificationsService {
           backgroundNotificationResponse,
     );
 
-    // The Windows plugin can deliver a cold click through the callback during
-    // initialization, but some plugin/platform combinations only expose it via
-    // `getNotificationAppLaunchDetails`. Handle it exactly once, and only if the
-    // callback did not already do so.
+    // The Windows plugin reports a cold click through the callback or, on some
+    // builds, only through `getNotificationAppLaunchDetails`; handle it once.
     try {
       final launch = await _flutterLocalNotificationsPlugin
           .getNotificationAppLaunchDetails();
@@ -132,8 +118,8 @@ class LocalNotificationsService {
           response != null) {
         launchDetailsPayload = response.payload;
         PushListeners.foregroudRes(response);
-        // The duplicate callback, when there is one, arrives during startup.
-        // Do not suppress a genuine later click on the same toast forever.
+        // The duplicate callback arrives during startup; expire the suppression
+        // so a later click on the same toast still works.
         launchDetailsTimer = Timer(const Duration(seconds: 2), () {
           launchDetailsPayload = null;
           launchDetailsTimer = null;
@@ -177,8 +163,8 @@ class LocalNotificationsService {
       priority: Priority.high,
     );
 
-    // iOS and macOS notification details. The banner and list presentations
-    // cover the newer Apple systems, where `presentAlert` no longer applies.
+    // Banner/list cover newer Apple systems, where `presentAlert` no longer
+    // applies.
     const darwinDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBanner: true,
@@ -187,9 +173,7 @@ class LocalNotificationsService {
       presentSound: true,
     );
 
-    // Combine platform-specific details. Windows has no per-notification
-    // settings beyond its defaults here: the toast is shown under the AUMID
-    // the initialization settings registered.
+    // Windows defaults are enough: the toast uses the AUMID registered at init.
     final notificationDetails = NotificationDetails(
       android: androidDetails,
       iOS: darwinDetails,
@@ -218,9 +202,8 @@ class LocalNotificationsService {
     try {
       return await windowsNotificationId();
     } catch (error, stack) {
-      // A failed allocation must not silently reuse tag zero: that is exactly
-      // the collision the persistent allocator exists to prevent. Fall back to
-      // a random positive 31-bit id for this toast, and log only the kind.
+      // A failed allocation must not fall back to tag zero, the collision the
+      // persistent allocator prevents; use a random 31-bit id for this toast.
       logger(
         "Could not allocate a Windows notification id "
         "(${error.runtimeType}); using a per-process fallback.",

@@ -1,7 +1,5 @@
-/// Pins the contract of a panel that keeps its own drafts: every question the
-/// panel host asks about persistence — is there work to save, save it, is it
-/// archived — is answered by the callbacks the caller supplied, and a caller
-/// that cannot archive is offered no archive button rather than a dead one.
+/// The panel delegates persistence to its caller's callbacks; a caller that
+/// cannot archive gets no archive button.
 library;
 
 import 'package:apexo/ui/workspace/delegated_panel.dart';
@@ -134,8 +132,7 @@ void main() {
   });
 
   test('records what the caller\'s save answered with', () async {
-    // The caller holds the drafts, so its save is what says which records were
-    // written; the panel records the answer, so no caller has to report it.
+    // the caller's save returns the written ids; the panel records them itself.
     final panel = panelFor(onSave: () async => ['order1', 'order2', 'order1']);
 
     expect(panel.savedId, isNull, reason: 'nothing has been saved yet');
@@ -167,8 +164,7 @@ void main() {
     await panel.readTitle();
     expect(panel.displayTitle, 'Supplier One');
 
-    // Re-read on every save, so a name that only becomes real when the record is
-    // written shows too.
+    // the title is re-read after each save, so a name created by the write shows.
     await panel.save();
     expect(panel.displayTitle, 'Supplier One',
         reason: 'never `itemId`, which is an id whenever the caller had one');

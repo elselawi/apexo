@@ -63,8 +63,7 @@ void main() {
         body: SizedBox.shrink(),
       );
 
-  /// How far the button is out of its corner: 0 while it is away, 1 when it has
-  /// arrived.
+  /// The button's fade: 0 while it is away, 1 when it has arrived.
   double presence(WidgetTester tester) => tester
       .widget<FadeTransition>(
         find.descendant(
@@ -381,8 +380,7 @@ void main() {
     await pumpButton(tester, direction: TextDirection.rtl);
     await tester.pumpAndSettle();
 
-    // The panel takes the left column there, so the content — and the button —
-    // is on its right.
+    // The panel takes the left column in RTL, so the button sits to its right.
     final button = tester.getRect(find.byKey(WK.closeAllWindows));
     expect(button.left, greaterThanOrEqualTo(350),
         reason: 'the button is drawn over the panel it sits beside');

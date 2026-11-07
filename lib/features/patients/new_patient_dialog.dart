@@ -10,12 +10,6 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
 
-/// The sheet a patient is created from.
-///
-/// Creation starts here rather than in an empty panel: the name — and the
-/// phone reception books them by — are asked for before there is a record, so
-/// [onSave] receives a patient that can be stored as it is. Nothing is opened
-/// as a draft.
 class NewPatientDialog extends StatefulWidget {
   const NewPatientDialog({
     super.key,
@@ -26,8 +20,8 @@ class NewPatientDialog extends StatefulWidget {
 
   final void Function(Patient patient) onSave;
 
-  /// Contact details a booking request already carries. Prefill only: staff
-  /// still confirm the record, and an unverified name/phone never auto-merges.
+  /// Prefill from a booking request; staff still confirm, and it never
+  /// auto-merges.
   final String? initialName;
   final String? initialPhone;
 
@@ -53,8 +47,6 @@ class _NewPatientDialogState extends State<NewPatientDialog> {
     super.dispose();
   }
 
-  /// The phone is optional, but text that holds no number at all is worth
-  /// flagging before the record is stored with a phone it cannot use.
   bool get _phoneHasNoNumber =>
       _phone.text.trim().isNotEmpty &&
       PhoneNumberExtractor.extract(_phone.text).isEmpty;
@@ -132,11 +124,7 @@ class _NewPatientDialogState extends State<NewPatientDialog> {
   }
 }
 
-/// Asks for a new patient's name and phone, and stores what the sheet says.
-///
-/// Returns the stored patient, or null when the sheet was dismissed. Callers
-/// open the record — or use it — afterwards: the patient already exists, so
-/// nothing they do can leave a draft behind.
+/// Stores and returns the patient, or null when dismissed. No draft is opened.
 Future<Patient?> addPatient(
   BuildContext context, {
   String? initialName,

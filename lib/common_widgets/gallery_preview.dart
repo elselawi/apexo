@@ -32,8 +32,6 @@ class _GalleryDeleteButton extends StatelessWidget {
 
 // ─── File preview widget ─────────────────────────────────────────────────
 
-/// A unified preview widget that auto-detects whether [name] is an image
-/// (by extension) and shows either a loaded thumbnail or a file placeholder.
 class FileDeletePreview extends StatelessWidget {
   const FileDeletePreview({
     super.key,

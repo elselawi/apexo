@@ -56,9 +56,7 @@ void main() {
     });
 
     test('a test process keeps its files in a directory of its own', () async {
-      // Hive locks the files it opens, and the test runner runs several test
-      // files at once: two processes sharing one directory would fail to open
-      // the same box.
+      // Hive locks boxes, so each parallel test file needs its own directory.
       expect(isTestEnvironment, isTrue);
       final dir = await filesDir();
       expect(path.isAbsolute(dir), isTrue);

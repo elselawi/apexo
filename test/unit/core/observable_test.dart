@@ -447,8 +447,6 @@ void main() {
       List<DictEvent>? received;
       dict.observe((e) => received = e);
 
-      // MyClass has empty targetsToPushTo by default → falls into the
-      // else branch (modify event with empty modifiedKeys).
       dict.set(MyClass.fromJson({'id': 'no-push-targets'}));
       await flushNotifications();
 
@@ -567,9 +565,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // diffJson — top-level helper used by ObservableDict and mergeConflict
-  // ---------------------------------------------------------------------------
   group('diffJson', () {
     test('empty on both sides → empty set', () {
       expect(diffJson({}, {}), isEmpty);
@@ -640,9 +635,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // ObservablePersistingObject — persists to a Hive box and notifies observers
-  // ---------------------------------------------------------------------------
   group('ObservablePersistingObject', () {
     late Directory hiveDirectory;
 

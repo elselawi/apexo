@@ -86,8 +86,7 @@ void main() {
     });
 
     test('scalar union: default-absent field does not override set field', () {
-      // Local has age=0 (default, omitted from JSON). Remote has age=12.
-      // Union should take remote's 12.
+      // local omits the default age, so union keeps remote's 12.
       final local = {'id': 'x', 'name': 'Alice'};
       final remote = {'id': 'x', 'name': 'Alice', 'age': 12};
       final merged = mergeConflict(
@@ -144,11 +143,6 @@ void main() {
 
     test('map deletion NOT preserved without a base version (known limitation)',
         () {
-      // Local has teeth {31, 38}, remote deleted 38 (only has 31).
-      // Remote wins the timestamp, but without a common-ancestor (base)
-      // version we cannot distinguish "remote never had 38" from "remote
-      // deleted 38".  Union merge therefore re-adds 38 from the loser.
-      // This is the documented tombstone limitation of 2-way merge.
       final local = {
         'id': 'x',
         'teeth': {'31': 'crown', '38': 'filling'}
@@ -360,8 +354,6 @@ void main() {
     });
 
     test('unknown list field (not in special sets) treated as scalar LWW', () {
-      // A list field that's not operatorsIDs/tags/prescriptions should
-      // fall through to whole-field LWW, not union.
       final local = {
         'id': 'x',
         'customList': ['a', 'b']
@@ -418,9 +410,6 @@ void main() {
     });
 
     test('map: mixed same-key and different-key conflicts', () {
-      // Key 31: both have it, different values → LWW.
-      // Key 38: only remote has it → survives.
-      // Key 45: only local has it → survives.
       final local = {
         'id': 'x',
         'teeth': {'31': 'local-crown', '45': 'local-filling'}
@@ -489,8 +478,6 @@ void main() {
         remoteJson: remote,
         localWins: false, // remote (empty) wins timestamp
       );
-      // Remote deleted all teeth and wins → but union still takes
-      // local's keys (known limitation: deletions not preserved).
       final teeth = merged['teeth'] as Map<String, dynamic>;
       expect(teeth['31'], 'crown');
     });
@@ -567,24 +554,17 @@ void main() {
     });
 
     test('tags empty on one side, LWW winner is the empty side → omitted', () {
-      // If winner deleted all tags (empty list), and it's the only side
-      // with the field, LWW takes winner's empty list → omitted (since
-      // empty lists are omitted by toJson convention). But here loser
-      // also has tags, so winner's empty list wins → tags omitted.
+      // LWW takes the winner's empty list, so tags stays [] (not omitted).
       final local = {
         'id': 'x',
         'tags': ['vip']
       };
       final remote = {'id': 'x', 'tags': <String>[]};
-      // Remote wins (empty list) → tags should be taken from remote
-      // (empty) → but LWW takes winner's value which is [] → omitted.
       final merged = mergeConflict(
         localJson: local,
         remoteJson: remote,
         localWins: false, // remote wins
       );
-      // Remote's tags is [] — LWW takes it. But [] is falsy-ish in our
-      // merge: we take winner[key] which is []. It stays as [].
       expect(merged['tags'], const <String>[]);
     });
 
@@ -688,9 +668,7 @@ void main() {
 
     test('dcmImgs: regular image in dcmImgs list, server has it as non-dcm',
         () {
-      // Edge case: a .png filename somehow ends up in dcmImgs.
-      // The server has it, but _isNotDcmFileStatic filters it out for
-      // the dcmImgs merge. So it should be dropped from dcmImgs.
+      // the dcm merge filters non-DICOM names even when the server has them.
       final local = {
         'id': 'x',
         'dcmImgs': ['scan.dcm', 'weird.png']
@@ -703,8 +681,6 @@ void main() {
         serverFiles: ['scan.dcm', 'weird.png'],
       );
       final dcmImgs = (merged['dcmImgs'] as List).cast<String>().toSet();
-      // weird.png is not a .dcm file, so it's filtered out of dcmImgs
-      // even though the server has it.
       expect(dcmImgs, {'scan.dcm'});
     });
 
@@ -869,9 +845,6 @@ void main() {
     });
 
     test('localWins=true and localWins=false produce same union fields', () {
-      // Fields that are union-based (scalar one-sided, map different keys,
-      // operatorsIDs) should produce the same result regardless of LWW
-      // winner. Only LWW-conflicted fields should differ.
       final local = {
         'id': 'x',
         'phone': '555', // union (only local)
@@ -923,8 +896,6 @@ void main() {
     });
 
     test('map with non-Map value (malformed) → treated as empty', () {
-      // Defensive: if a map field somehow holds a non-Map value,
-      // _toStringMap returns {} and the merge doesn't crash.
       final local = {'id': 'x', 'teeth': 'not-a-map'};
       final remote = {
         'id': 'x',
@@ -981,8 +952,6 @@ void main() {
     });
 
     test('no serverFiles provided (default empty) → images dropped', () {
-      // When serverFiles is not passed (defaults to const []), all image
-      // references are dropped unless they're pending uploads.
       final local = {
         'id': 'x',
         'imgs': ['a.png']
@@ -1388,8 +1357,7 @@ void main() {
       expect((await remote.getSince(version: 0)).rows.length, equals(1));
       expect((await remote.getSince(version: 0)).version, greaterThan(0));
 
-      // synchronization check
-      // version is only updated through synchronization
+      // local version only advances on synchronize, not on a write.
       expect(await store.local!.getVersion(), equals(0));
       final sync = await store.synchronize();
       expect(sync.length, equals(2));
@@ -1409,8 +1377,7 @@ void main() {
       expect(remoteRows.rows.length, equals(1));
       expect(remoteRows.rows[0].id, equals(store.docs.values.first.id));
       expect(remoteRows.rows[0].data, contains('"archived":true'));
-      // synchronization check
-      // version is only updated through synchronization
+      // local version only advances on synchronize, not on a write.
       expect(await local.getVersion(), equals(0));
       final sync = await store.synchronize();
       expect(sync.length, equals(2));
@@ -1431,8 +1398,7 @@ void main() {
       expect(remoteRows.rows[0].id, equals(store.docs.values.first.id));
       expect(remoteRows.rows[0].data, contains('"age":18'));
 
-      // synchronization check
-      // version is only updated through synchronization
+      // local version only advances on synchronize, not on a write.
       expect(await local.getVersion(), equals(0));
       final sync = await store.synchronize();
       expect(sync.length, equals(2));
@@ -1760,13 +1726,8 @@ void main() {
       expect(store.get(id1)?.name, equals("name1"));
       expect(store.get(id3)?.name, equals("name3"));
 
-      // id2 conflicted. With field-level merge:
-      // - `name`: both sides have a non-default value that differs →
-      //   LWW. The local change was made ~1s after the remote put, so
-      //   on a clock-synced machine local wins → "modified-name".
-      //   (If the local clock is behind, remote wins → "name2".)
-      // - `age`: both sides have a non-default value (local 0, remote 12)
-      //   that differs → LWW (same winner as `name`).
+      // the local edit is ~1s newer than the remote put, so a synced clock makes
+      // local win both LWW fields.
       final id2Name = store.get(id2)?.name;
       final id2Age = store.get(id2)?.age;
       // Both fields conflict and resolve by the same LWW winner.
@@ -1807,28 +1768,20 @@ void main() {
 
       final sync = await store.synchronize();
 
-      // --- Deterministic invariants (do not depend on which side wins) ---
-      //
-      // The conflict count is the number of IDs present in BOTH the
-      // deferred set and the remote updates — it does not depend on
-      // timestamps, so it is always 1 here (id1).
+      // conflicts counts ids present in both the deferred set and the remote
+      // updates, so it is 1 here (id1) regardless of clocks.
       expect(sync, isNotEmpty);
       expect(sync[0].exception, equals(null));
       expect(sync[0].conflicts, equals(1));
       // Sync always converges to "nothing to sync".
       expect(sync.last.exception, equals("nothing to sync"));
 
-      // id2 and id3 are remote-only (no conflict) → always take the
-      // remote value.
+      // id2 and id3 are remote-only, so their remote values always win.
       expect(store.get(id2)?.age, equals(12));
       expect(store.get(id3)?.age, equals(13));
 
-      // id1 conflicted. With field-level merge:
-      // - `name`: only the remote side has it (local JSON omits it) →
-      //   union takes "name1".  Deterministic regardless of clock skew.
-      // - `age`: both sides have a non-default value (local 11, remote
-      //   111) that differs → LWW.  The winner depends on the sub-second
-      //   cross-clock race (see note above).
+      // id1: only remote set name, so union keeps "name1"; age differs and is
+      // LWW, decided by the sub-second clock race.
       expect(store.get(id1)?.name, equals("name1"),
           reason: 'name should be "name1" — only the remote side set it, so '
               'union merge preserves it regardless of LWW winner');
@@ -1865,28 +1818,20 @@ void main() {
 
       final sync = await store.synchronize();
 
-      // --- Deterministic invariants (do not depend on which side wins) ---
-      //
-      // The conflict count is the number of IDs present in BOTH the
-      // deferred set and the remote updates — it does not depend on
-      // timestamps, so it is always 2 here (id1 and id3).
+      // conflicts counts ids present in both the deferred set and the remote
+      // updates, so it is 2 here (id1 and id3) regardless of clocks.
       expect(sync, isNotEmpty);
       expect(sync[0].exception, equals(null));
       expect(sync[0].conflicts, equals(2));
       // Sync always converges to "nothing to sync".
       expect(sync.last.exception, equals("nothing to sync"));
 
-      // id2 is remote-only and id4 is local-only (no conflicts) →
-      // always take their respective values.
+      // id2 is remote-only and id4 local-only, so each side's value always wins.
       expect(store.get(id2)?.name, equals("remote-2"));
       expect(store.get(id4)?.name, equals("local-4-newly-added"));
 
-      // id1 and id3 conflicted. With field-level merge:
-      // - `name`: both sides have a non-default value that differs →
-      //   LWW (sub-second cross-clock race, see note above).
-      // - `age`: only the remote side set it (local JSON omits it) →
-      //   union takes the remote value.  Deterministic regardless of
-      //   clock skew.
+      // id1/id3: only remote set age, so union keeps 111/13; name differs and is
+      // LWW, decided by the sub-second clock race.
       expect(store.get(id1)?.age, equals(111),
           reason: 'id1 age should be 111 — only the remote side set it, so '
               'union merge preserves it regardless of LWW winner');

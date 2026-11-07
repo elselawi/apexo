@@ -1,6 +1,5 @@
-/// Adds readable framework diagnostics to Sentry breadcrumbs and scope context.
-/// Widget creation sites are included only when Flutter collected them; release
-/// builds generally lack the debug-only inspector and creator information.
+/// Adds readable framework diagnostics to Sentry breadcrumbs and scope context;
+/// widget creation sites are debug-only and absent in release builds.
 library;
 
 import 'dart:async';
@@ -13,8 +12,6 @@ const int _maxErrorLength = 160;
 const int _maxMessageLength = 400;
 const int _maxInformationLength = 800;
 
-/// One line that locates [details]: which library caught it, what was happening,
-/// what broke, and the widget that caused it.
 String describeFlutterError(FlutterErrorDetails details) =>
     _describeFlutterError(details, errorCausingWidget(details));
 
@@ -30,14 +27,8 @@ String _describeFlutterError(FlutterErrorDetails details, String? widget) {
   return _clampLines(parts.join(' · '), _maxMessageLength);
 }
 
-/// The creation site of the widget the framework blames, or the chain it was
-/// built from, e.g. `WindowShell ← LayoutBuilder ← …`, or null when the
-/// framework tracked neither.
-///
-/// The `WidgetInspectorService` block that names the widget's file and line is
-/// only added while the inspector runs — in debug and profile builds, with
-/// widget creation tracking on. The `debugCreator` chain is also debug-only;
-/// without either, the error's context may still name the failing widget.
+/// Creation site of the widget the framework blames, or the chain it was built
+/// from; null in release builds, where `debugCreator` and inspector data are absent.
 String? errorCausingWidget(FlutterErrorDetails details) {
   final collector = details.informationCollector;
   if (collector == null) return null;
@@ -58,15 +49,12 @@ String? errorCausingWidget(FlutterErrorDetails details) {
     }
     return creator;
   } catch (_) {
-    // The collector is a closure over the failing widget's own state: whatever
-    // made it fail can make this fail too. A missing breadcrumb is better than
-    // a second error inside the error handler.
+    // The collector can fail the same way the widget did; a missing breadcrumb
+    // beats a second error thrown inside the error handler.
   }
   return null;
 }
 
-/// Everything the framework collected about [details], on one line: the widget
-/// that caused it, the advice for fixing it, the constraints it was given.
 String? flutterErrorInformation(FlutterErrorDetails details) {
   final collector = details.informationCollector;
   if (collector == null) return null;
@@ -98,8 +86,8 @@ Future<void> recordFlutterError(FlutterErrorDetails details) async {
       _oneLine(details.exception.toString()),
       _maxMessageLength,
     );
-    // Both mutations happen before yielding to Sentry's error handler. Waiting
-    // for breadcrumb observers first would leave this event without its context.
+    // Both run before yielding to Sentry's handler; awaiting the observers first
+    // would leave this event without its context.
     final contextUpdate = Sentry.configureScope((scope) {
       return scope.setContexts('last framework error', <String, dynamic>{
         ...data,
@@ -117,14 +105,12 @@ Future<void> recordFlutterError(FlutterErrorDetails details) async {
       breadcrumbUpdate,
     ]);
   } catch (_) {
-    // Error reporting must not create another unhandled error or interrupt
-    // Flutter's existing handler when diagnostics or SDK observers fail.
+    // Reporting must not throw or interrupt Flutter's existing error handler.
   }
 }
 
-/// Sends every framework error through [recordFlutterError] before handing it to
-/// the handler already installed — Sentry's own, when called after
-/// `SentryFlutter.init`.
+/// Wraps Flutter's current error handler so every framework error is recorded
+/// first; install after `SentryFlutter.init` to chain Sentry's handler.
 void installFlutterErrorReporting({FlutterExceptionHandler? previous}) {
   final next = previous ?? FlutterError.onError;
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -133,8 +119,8 @@ void installFlutterErrorReporting({FlutterExceptionHandler? previous}) {
   };
 }
 
-/// Collapses repeated app, framework and console messages within [window].
-/// Navigation and other SDK breadcrumbs retain their data and are not filtered.
+/// Suppresses repeated app, framework and console breadcrumbs within [window];
+/// navigation and other SDK breadcrumbs pass through untouched.
 class BreadcrumbLimiter {
   BreadcrumbLimiter({
     this.window = const Duration(seconds: 2),
@@ -146,8 +132,8 @@ class BreadcrumbLimiter {
 
   final DateTime Function() _clock;
 
-  /// Bounded: an app that logs unbounded distinct messages must not grow this
-  /// map for the life of the session.
+  /// Bounded at [_maxSignatures], so an app logging unbounded distinct messages
+  /// cannot grow this map for the life of the session.
   final Map<(String?, String?, SentryLevel?), _Repeated> _seen = {};
 
   static const int _maxSignatures = 100;
@@ -189,8 +175,8 @@ class _Repeated {
 String _describe(DiagnosticsNode node) {
   final description = node.toDescription();
   if (description.isNotEmpty) return description;
-  // A diagnostics property builds its description inside an `assert`, so in a
-  // release build it reads as empty — its value is still there.
+  // A diagnostics property builds its description inside an `assert`, so release
+  // builds read it as empty; its value is still there.
   if (node is DiagnosticsProperty) {
     final value = node.value;
     if (value != null) return value.toString();

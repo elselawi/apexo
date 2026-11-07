@@ -6,9 +6,7 @@ import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 
-/// A logged "skipped file" entry. Surfaced in the DICOM screen
-/// as an expandable "Skipped files" section so the dentist can see why a
-/// file wasn't imported.
+/// A skipped file shown in the DICOM screen's "Skipped files" section.
 class DicomSkippedEntry {
   const DicomSkippedEntry({
     required this.path,
@@ -39,14 +37,8 @@ class DicomSkippedEntry {
       };
 }
 
-/// Hive-backed log of DICOM files that were skipped during a scan.
-///
-/// Box name: `dicom_skipped`. Keyed by path + timestamp (to allow the same
-/// path to appear multiple times across scans if it keeps failing). Values
-/// are JSON-encoded [DicomSkippedEntry].
-///
-/// Surfaced in the DICOM screen as an expandable "Skipped files"
-/// section so the dentist can investigate why a file wasn't imported.
+/// Hive log of skipped files, keyed by path + timestamp (the same file may fail
+/// again) and shown in the DICOM screen so the dentist can investigate.
 class DicomSkippedLog {
   DicomSkippedLog._();
 
@@ -62,9 +54,8 @@ class DicomSkippedLog {
 
     final initialization = _initialize();
     _initialization = initialization;
-    // If opening fails, clear the memoized future so a later call retries and
-    // no half-open box is left behind (which would throw
-    // LateInitializationError on every subsequent access).
+    // Clear the memoized future on failure so a later call retries instead of
+    // reusing a half-open box (LateInitializationError on every access).
     unawaited(initialization.catchError((_) {
       if (identical(_initialization, initialization)) {
         _initialization = null;
@@ -86,8 +77,7 @@ class DicomSkippedLog {
     return _box!;
   }
 
-  /// Logs a skipped file. Idempotent per (path, reason) within the same
-  /// scan — avoids flooding the log with the same entry on every resync.
+  /// Idempotent per (path, reason) within a scan, so a resync does not flood it.
   Future<void> add({required String path, required String reason}) async {
     try {
       final box = await _openBox;
@@ -96,8 +86,7 @@ class DicomSkippedLog {
         reason: reason,
         timestamp: DateTime.now().toIso8601String(),
       );
-      // Keyed by path so repeated skips of the same file update the entry
-      // rather than accumulating duplicates across scans.
+      // Repeated skips update the entry rather than accumulating duplicates.
       await box.put(path, jsonEncode(entry.toJson()));
     } catch (e, s) {
       // best-effort logging — never crash on the logging path

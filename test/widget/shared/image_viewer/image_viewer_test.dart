@@ -19,8 +19,7 @@ final Uint8List _pixel = Uint8List.fromList(const [
   0x42, 0x60, 0x82,
 ]);
 
-/// The photo viewer a window hosts: the tools that belong on the photo, and
-/// nothing that belongs to the frame around it.
+/// The viewer body holds only photo tools; window chrome belongs to the host.
 void main() {
   Future<void> pumpViewer(
     WidgetTester tester, {
@@ -72,8 +71,7 @@ void main() {
     expect(find.text(txt('erase')), findsNothing);
 
     expect(tester.takeException(), isNull);
-    // fluent_ui holds a short tap-feedback timer: let it fire so the test ends
-    // without one pending.
+    // fluent_ui leaves a short tap-feedback timer pending; pump past it.
     await tester.pump(const Duration(milliseconds: 200));
   });
 
@@ -81,8 +79,7 @@ void main() {
       (tester) async {
     await pumpViewer(tester);
 
-    // Closing belongs to the window header; the body never offers a second way
-    // out, and offers no delete where the caller does not delete.
+    // Close belongs to the window header, not to the photo body.
     expect(find.text(txt('close')), findsNothing);
     expect(find.text(txt('delete')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -136,8 +133,6 @@ void main() {
       (tester) async {
     await pumpViewer(tester, withNames: false, withPen: false);
 
-    // No names: nothing to download and nothing to delete by. No pen: nothing
-    // to draw with.
     expect(find.text(txt('download')), findsNothing);
     expect(find.text(txt('delete')), findsNothing);
     expect(find.text(txt('draw')), findsNothing);

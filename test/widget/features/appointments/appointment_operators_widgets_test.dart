@@ -17,10 +17,6 @@ import 'package:pocketbase/pocketbase.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// Who is on a visit, as the one list every operators control opens.
-///
-/// The list is drawn from the visit as it reads now, so a box ticked in it says
-/// so at once — not after the flyout is closed and opened again.
 void main() {
   late List<Appointment> previousAppointments;
   late List<RecordModel> previousAccounts;
@@ -156,8 +152,7 @@ void main() {
       ),
     );
 
-    // The chip's own pill, not the list: the flyout draws in the overlay,
-    // beside the chip rather than inside it.
+    // The flyout draws in the overlay, so its rows are not inside the chip.
     Finder inChip(String text) => find.descendant(
           of: find.byType(TimelineChip),
           matching: find.text(text),

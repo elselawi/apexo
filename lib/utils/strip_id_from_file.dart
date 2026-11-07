@@ -4,41 +4,20 @@ String stripIDFromFileName(String fileName) {
   return fileName.replaceAll(identifierPattern, '');
 }
 
-/// One PocketBase suffix: `_` plus at least six alphanumerics immediately
-/// before a `.` — the last extension for a normal upload, the first dot of the
-/// extension chain for a compound name.
+/// One PocketBase suffix: `_` plus at least six alphanumerics before a dot, in a
+/// name that may contain several dots.
 final RegExp _storedFileSuffix = RegExp(r'_[A-Za-z0-9]{6,}(?=\.)');
 
-/// [name] with one PocketBase suffix taken off, or `null` when it has none.
-///
-/// Unlike [stripIDFromFileName] this looks for the suffix before **any** dot,
-/// not only before the final extension, because a preview is named after the
-/// original's *suffixed* name: `x_ab12cd34ef.dcm` is uploaded as
-/// `x_ab12cd34ef.dcm.png` and PocketBase suffixes it again, giving
-/// `x_ab12cd34ef_0cizfojiej.dcm.png` — the second suffix sits before `.dcm`,
-/// not before `.png`.
+/// [name] with one PocketBase suffix removed, or null when it has none. The
+/// suffix can precede any dot: a preview is `x_ab12cd34ef_0cizfojiej.dcm.png`.
 String? withoutStoredFileSuffix(String name) {
   final match = _storedFileSuffix.firstMatch(name);
   return match == null ? null : name.replaceRange(match.start, match.end, '');
 }
 
-/// Whether [a] and [b] name the same stored file, allowing for the random
-/// suffix PocketBase appends.
-///
-/// PocketBase never keeps the name a file was uploaded under: it inserts random
-/// characters before the extension (`xray.jpg` → `xray_ab12cd34ef.jpg`). A
-/// record's filename column can therefore hold *either* spelling of the same
-/// file — the name from before the upload was reported back, or PocketBase's —
-/// so comparing two names by equality alone declares a file that is right there
-/// to be missing, and the image cannot be read or drawn at all.
-///
-/// One suffix is taken off either side before comparing, which covers a plain
-/// upload and the doubly-suffixed preview above.
-///
-/// The rule cannot tell PocketBase's random token from a name part that merely
-/// looks like one (`report_20240101.pdf`), so a caller must match exactly first
-/// and treat this as the fallback — which is what the attachment module does,
-/// and the convention [stripIDFromFileName] already applies to display names.
+/// Whether [a] and [b] name the same stored file once PocketBase's random suffix
+/// is stripped from either side; the token is ambiguous with real name parts
+/// (`report_20240101.pdf`), so callers must try an exact match first.
 bool sameStoredFileName(String a, String b) {
   if (a == b) return true;
   final strippedA = withoutStoredFileSuffix(a);

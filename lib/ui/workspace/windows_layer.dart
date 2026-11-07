@@ -31,14 +31,6 @@ part 'window_building.dart';
 const Duration _openDuration = Duration(milliseconds: 200);
 const Duration _closeDuration = Duration(milliseconds: 150);
 
-/// Every window the app floats above itself: a panel's own windows, and the
-/// windows that stand on their own — a record opened from a table, a scan, a
-/// photo.
-///
-/// Each sits wherever it was put, in a stack you can drag windows around in, and
-/// each is as tall as its content. On a phone, where nothing fits beside a panel,
-/// the newest one comes over it as a sheet that slides down from the top edge —
-/// the same edge the dock's buttons sit on.
 class WindowsLayer extends StatelessWidget {
   const WindowsLayer({
     super.key,
@@ -48,20 +40,15 @@ class WindowsLayer extends StatelessWidget {
     this.refreshStreams = const <Stream<Object?>>[],
   });
 
-  /// False outside the staff app (login, the patient side), where nothing
-  /// floats.
+  /// False outside the staff app (login, patient side), where nothing floats.
   final bool visible;
 
   final double screenWidth;
 
-  /// Where the windows each kind of panel was left with are remembered. The host
-  /// passes the settings store; a test passes its own. Null uses [windowDefaults],
-  /// which remembers nothing until a host binds it.
+  /// Remembered window layouts from the host; null uses [windowDefaults].
   final WindowDefaults? defaults;
 
-  /// What else a window's labels read, so a record edited elsewhere relabels the
-  /// window that shows it. The host passes its stores; the layer itself knows no
-  /// store, no feature and no record — which is what keeps it below both.
+  /// Extra stores window labels read, so edits elsewhere relabel open windows.
   final List<Stream<Object?>> refreshStreams;
 
   @override
@@ -90,8 +77,6 @@ class WindowsLayer extends StatelessWidget {
   }
 }
 
-/// One window on screen, described by what it is rather than by a widget — so a
-/// rebuild (a language change, a theme change) rebuilds the window too.
 class _WindowsArea extends StatefulWidget {
   const _WindowsArea({
     super.key,
@@ -113,11 +98,6 @@ class _WindowsArea extends StatefulWidget {
 }
 
 class _WindowsAreaState extends State<_WindowsArea> {
-  /// What the row last showed: which windows, at what widths, in what order.
-  ///
-  /// A count would not do. The chart asks for 960, a pre-op form for 560 and a
-  /// tool for the panel's width, so "two windows fit" describes one selection and
-  /// says nothing about the next (plan §1).
   WindowsPlan _plan = WindowsPlan.none;
 
   /// What is on screen, and what is folding away from it.
@@ -127,47 +107,30 @@ class _WindowsAreaState extends State<_WindowsArea> {
   /// Replacing content in an existing frame must not replay its entrance.
   final Set<String> _replacements = <String>{};
 
-  /// The entry the phone sheet is showing, which is the only one a phone has an
-  /// exit animation for.
+  /// The entry the phone sheet shows; the only one a phone animates out.
   String? _shown;
 
-  /// The window the app last asked for, kept in front of the row for as long as
-  /// it is on screen: a focus that arrives before the rest of the row has been
-  /// planned must not be buried by the next frame.
+  /// The window the app last asked for, kept in front: a focus that arrives
+  /// before the row is planned must not be buried by the next frame.
   String? _focusKey;
 
-  /// The window the app last asked for while a phone is drawing sheets: a phone
-  /// shows one window at a time, and the one just asked for is the one to show.
-  ///
-  /// It survives the list being rebuilt, because that list puts a panel's own
-  /// windows *after* the standing ones — the order the wide screen stacks them
-  /// in, where the panel's sit above — so "the newest entry" would keep showing
-  /// the panel's window and leave a window asked for over it behind.
+  /// The sheet a phone is showing, kept across rebuilds because the list puts a
+  /// panel's own windows after the standing ones.
   String? _sheetFocus;
 
-  /// Where each window sits, by key, and the order they stack in — bottom first.
-  ///
-  /// A placement outlives the window being put away: a window you minimize comes
-  /// back where you left it. The value is the window's *intent*; what is drawn is
-  /// that intent clamped to the screen, so shrinking the screen can never strand
-  /// a window off it, and growing it back returns the window to its own corner.
+  /// Where each window sits, by key, and the stack order, bottom first.
+  /// Values are intent, clamped to the screen when drawn so nothing is stranded.
   final Map<String, ValueNotifier<WindowPlacement>> _places = {};
   final List<String> _stack = <String>[];
 
-  /// How much room each window was given by the last arrangement, by key: a
-  /// window is drawn no taller than its cell, so it never covers the one below.
+  /// Room each window was given by the last arrangement: it is drawn no taller.
   final Map<String, double> _cells = {};
 
-  /// The height each window that was opened at a tap asked for, by key, once it
-  /// has been laid out — the height it is then lifted by, so the whole of it fits
-  /// above the bottom edge of the screen ([placementAt]).
-  ///
-  /// Only the windows a tap placed need this: a window in the row is given its
-  /// cell's room by the arrangement and never starts scrolled.
+  /// Height each tap-opened window asked for once laid out, by key, so it can
+  /// be lifted whole above the bottom edge ([placementAt]).
   final Map<String, double> _heights = {};
 
-  /// The windows whose own height has been read, so they are placed by it rather
-  /// than measured again on every frame.
+  /// Windows already measured, so their height is not read again every frame.
   final Set<String> _fitted = {};
 
   StreamSubscription<int>? _workspaceSub;
@@ -175,12 +138,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
 
   PanelWorkspace? get _workspace => widget.panel?.workspace;
 
-  /// The records this panel draws in its row, from the panel's edge outwards: the
-  /// visit it carries beside itself, then its own record (plan §4.1).
-  ///
-  /// The visit's group exists only while a visit is attached, and its memory is
-  /// keyed by the visit **kind** and the slot — never by the visit's id, or every
-  /// visit would open differently (plan §6.2-4).
+  /// The groups the row draws, attached record first. A visit's group exists
+  /// only while attached, and its memory is keyed by kind and slot, never by id.
   List<WindowGroup> get _groups {
     final panel = widget.panel;
     if (panel == null) return const <WindowGroup>[];
@@ -202,9 +161,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
         slot: kHostSlot,
         id: '${panel.singularName}:${panel.itemId}',
         session: panel,
-        // The row's floating windows, plus the attachments that hang off the
-        // panel itself: an attachment still has to be drawn when it is open, it
-        // just never takes a row slot (see `computeWindowsPlan`).
+        // The panel's floating windows plus its attachments: an open one is
+        // drawn but never takes a row slot.
         windows: _hostWindows(panel, attached),
         label: () => panel.displayTitle,
         kind: panel.singularName,
@@ -215,14 +173,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
     ];
   }
 
-  /// The panel's own windows, less the ones the record it carries replaces.
-  ///
-  /// A visit's chart *is* the chart while that visit is on screen: the patient's
-  /// own entry for the same editor is not offered (the dock hides it, and
-  /// [PanelScreen]'s workspace button drives the visit's), so the row must not
-  /// open it either. Leaving it in the candidates let it win whenever the visit's
-  /// chart did not fit — on a short screen the wrong record's chart appeared, and
-  /// the visit's post-op record with it had no window to sit in (plan §4.3).
+  /// The panel's own windows minus those the attached record replaces: while a
+  /// visit's chart is on screen the patient's own entry must not win instead.
   List<PanelWindow> _hostWindows(
     Panel panel,
     HostedRecordSession? attached,
@@ -241,16 +193,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
     ];
   }
 
-  /// What each group asks the row for, in the row's order.
-  ///
-  /// [hostOpens] is the panel's `opensWithWindows`: a record asked for on its own
-  /// — a dashboard row that means "this patient", not "their chart" — brings its
-  /// own windows neither up nor away. That flag is about the panel's record: a
-  /// visit attached to it still opens the window its opener asked for (plan §4.7).
-  ///
-  /// A window that needs the record stored first is not one the screen opens by
-  /// itself — but the opener may still have asked for it by name, and an opener
-  /// that names a window knows what it is asking for.
+  /// What each group asks the row for. [hostOpens] drops only the host's
+  /// remembered windows; a window needing a saved record opens only if named.
   List<WindowGroupDemand> _demands({required bool hostOpens}) =>
       <WindowGroupDemand>[
         for (final group in _groups)
@@ -269,8 +213,6 @@ class _WindowsAreaState extends State<_WindowsArea> {
           ),
       ];
 
-  /// The width the panel takes on this screen — none when no panel is open, so
-  /// the whole screen is free for the windows that are.
   double get _panelWidth => widget.panel == null
       ? 0
       : computePanelWidth(screenWidth: widget.screenWidth);
@@ -290,20 +232,13 @@ class _WindowsAreaState extends State<_WindowsArea> {
     );
   }
 
-  /// The window the opener asked for, as a row key.
-  ///
-  /// A window the user has just asked the panel to show wins over everything
-  /// else: pressing "all appointments" on a chart means the list, even if that
-  /// costs the chart its place (it keeps its draft, and the band keeps its chip).
-  /// After that the attached record's request wins: a caller that opened a visit's
-  /// treatment plan came for that visit, not for whatever its patient's panel
-  /// would have shown by itself.
+  /// The row key of the window the opener asked for: an explicit request wins,
+  /// then the attached record's request, then the panel's own initial window.
   String? get _focus {
     final panel = widget.panel;
     if (panel == null) return null;
     final attached = panel.attached;
-    // The windows this panel may actually put in the row: one an attached record
-    // replaces is not one of them, however it is asked for.
+    // Only windows this panel really offers: a replaced one is not among them.
     final hostWindows = _hostWindows(panel, attached);
     bool offersHost(String id) => hostWindows.any((window) => window.id == id);
     final requested = panel.requestedWindow;
@@ -333,20 +268,17 @@ class _WindowsAreaState extends State<_WindowsArea> {
       ),
       focus: _focus,
     );
-    // The request has been honoured (or honestly could not be): a second plan
-    // must not keep forcing the window it named over the user's arrangement.
+    // The request is honoured (or could not be): a second plan must not keep
+    // forcing the window it named over the user's arrangement.
     widget.panel?.requestedWindow = null;
     return plan;
   }
 
-  /// False until the first arrangement has been made. Its place is
-  /// [didChangeDependencies], not [initState]: how many rows of windows a screen
-  /// holds is read from the screen, and inherited widgets cannot be asked that
-  /// early.
+  /// False until the first arrangement, which must wait for
+  /// [didChangeDependencies]: the row count is read from inherited widgets.
   bool _arranged = false;
 
-  /// Rebuilds this state. The drawing half lives in an extension, which may not
-  /// call the protected [setState] itself.
+  /// setState for the drawing extension, which cannot call it itself.
   void _rebuild(VoidCallback fn) => setState(fn);
 
   @override
@@ -354,13 +286,11 @@ class _WindowsAreaState extends State<_WindowsArea> {
     super.initState();
     _bindWorkspace();
     _listenToWorkspace();
-    // A window opened from elsewhere in the app reaches this layer through
-    // [WindowsManager]'s own stream; the panel's through its workspace's.
+    // Windows opened elsewhere reach this layer through [WindowsManager]'s
+    // stream; the panel's own through its workspace's.
     _live = _entries();
-    // The stack starts in the order the windows are listed, so a window the
-    // opener asked for can be lifted before the first frame is drawn — a panel
-    // that just came to the front is a new state, and its focus request would
-    // otherwise never be read.
+    // Start the stack in listing order so a window the opener asked for can be
+    // lifted before the first frame is drawn.
     _stack.addAll([for (final entry in _live) entry.key]);
     _bringFocusedForward();
   }
@@ -373,23 +303,14 @@ class _WindowsAreaState extends State<_WindowsArea> {
       return;
     }
     _arranged = true;
-    // One plan, and only one: [_arrange] computes it. Computing it here as well
-    // would spend the window the app asked for — a one-shot request — on a plan
-    // nothing draws, and the second plan would put that window away again before
-    // the first frame that could have shown it.
+    // One plan only: computing it here too would spend the one-shot focus
+    // request on a plan nothing draws.
     _arrange();
-    // The panel may have opened in the same frame this layer was built for: a
-    // window that was standing over the app steps aside on a phone.
     _stepAsideForPanel();
   }
 
-  /// Teaches the panel where to send what the user opens and puts away: the
-  /// host owns the memory, the panel only reports the change.
-  ///
-  /// The memory is keyed by the record's **kind** and the **slot** — `patient/host`,
-  /// `appointment/attached` — so every visit of every patient opens the way the
-  /// last one was left. Keying it by the record's id would make the layout
-  /// per-visit (plan §6.2-4).
+  /// Reports the workspace's open/close changes to the host's layout memory,
+  /// keyed by record kind and slot — never by the record's id.
   void _bindWorkspace() {
     final panel = widget.panel;
     if (panel == null) return;
@@ -401,9 +322,7 @@ class _WindowsAreaState extends State<_WindowsArea> {
     };
   }
 
-  /// The kind the record in [slot] is, for the layout memory. Empty when the
-  /// slot holds no record: a memory of "the appointment slot of no appointment"
-  /// is not a preference anyone can use.
+  /// The kind of the record in [slot]; empty when the slot holds none.
   String _kindForSlot(String slot) {
     final panel = widget.panel;
     if (panel == null) return '';
@@ -416,9 +335,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
   void _listenToWorkspace() {
     unawaited(_workspaceSub?.cancel());
     _workspaceSub = _workspace?.revision.stream.listen((_) => _sync());
-    // Attaching a visit mutates a panel that is already on screen: nothing
-    // rebuilds the layer for it, so it listens for the change itself (plan
-    // §6.2-2).
+    // Attaching a visit mutates the panel in place, so nothing rebuilds the
+    // layer for it; listen for the change.
     unawaited(_attachmentsSub?.cancel());
     _attachmentsSub = widget.panel?.attachments.stream.listen((_) {
       if (!mounted) return;
@@ -438,25 +356,20 @@ class _WindowsAreaState extends State<_WindowsArea> {
     if (panelChanged) {
       _bindWorkspace();
       _listenToWorkspace();
-      // Another record's panel: its own remembered windows decide the row, even
-      // on the same screen.
+      // Another record's panel: its own remembered windows decide the row.
       _arrange();
     } else {
       _followScreen();
     }
-    // Already rebuilding: recompute what is on screen without asking for
-    // another frame.
+    // Already rebuilding: recompute what is on screen without another frame.
     final live = _entries();
     _settle(live);
     _live = live;
     _bringFocusedForward();
   }
 
-  /// On a phone a panel takes the whole screen. A window that was hanging over
-  /// the app — the list whose button opened this panel — steps aside, rather
-  /// than sitting on top of the panel with its barrier over it.  ///
-  /// A window with unsaved work is left alone: it would be worse to throw the
-  /// work away than to have it stay on top until it is saved or closed.
+  /// On a phone a standing window steps aside for the panel, unless it holds
+  /// unsaved work — losing that is worse than leaving it on top.
   void _stepAsideForPanel() {
     if (widget.screenWidth >= kWindowsBreakpoint || widget.panel == null) {
       return;
@@ -474,15 +387,13 @@ class _WindowsAreaState extends State<_WindowsArea> {
     });
   }
 
-  /// Brings the window the app last asked for in front — reopening a window
-  /// that is already up must not leave it buried under the ones opened since.
+  /// Moves the window the app last asked for to the front, so reopening it does
+  /// not leave it buried.
   void _bringFocusedForward() {
     final focus = WindowsManager.takeFocus() ?? _workspace?.takeFocus();
     if (focus == null) return;
     if (widget.screenWidth < kWindowsBreakpoint) {
-      // A phone draws one window at a time, so "in front" means "on screen":
-      // the window the app just asked for is the sheet, even though the panel's
-      // own windows come after it in the list they are drawn from.
+      // A phone draws one window at a time, so "in front" means "the sheet".
       _sheetFocus = focus;
       return;
     }
@@ -506,9 +417,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
     super.dispose();
   }
 
-  /// Puts the sheet a phone is showing away — the first step Back walks out by
-  /// (plan §4.2). A hosted window goes back to its dock; a window standing on
-  /// its own closes, asking first if it holds work.
+  /// Puts the phone's sheet away before Back touches the panel under it: a
+  /// hosted window returns to its dock, a standalone closes after its prompt.
   bool _dismissSheet() {
     final entry = _entryFor(_shown);
     if (entry == null) return false;
@@ -516,13 +426,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
     return true;
   }
 
-  /// Opens a screenful of windows: the ones the user left on the last panel of
-  /// each kind, or the group's own first picks — unless the panel was asked to
-  /// come alone, in which case its own windows stay in its dock until the user
-  /// asks for one.
-  ///
-  /// The plan is the answer, and the workspace holds it: which windows, how wide,
-  /// in what order (plan §6.2-5).
+  /// Opens a screenful: the remembered windows per kind, or the group's first
+  /// picks — unless the panel was asked to come alone.
   void _arrange() {
     final panel = widget.panel;
     if (panel == null) return;
@@ -535,15 +440,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
     panel.workspace.applyPlan(_plan);
   }
 
-  /// Follows the screen: a resize that changes what fits — or crosses the phone
-  /// breakpoint — rearranges what is on screen, exactly as opening the panel
-  /// would have on that screen.
-  ///
-  /// Only the screen does this. A rebuild for something else — the store
-  /// emitting after a visit's checkbox is ticked, a language change, a save —
-  /// leaves what the user is looking at exactly where it is: re-planning would
-  /// put the row back to the remembered defaults, closing the window the app had
-  /// just asked for.
+  /// Re-plans only when the screen changes: re-planning on any other rebuild
+  /// would reset the row to remembered defaults and close the window asked for.
   void _followScreen() {
     if (!_screenChanged) return;
     _arrange();
@@ -560,9 +458,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
         seen.panelWidth != _panelWidth;
   }
 
-  /// Everything that should be on screen right now: the standalone windows,
-  /// then the panel's own and the record it carries, so the panel's sit above
-  /// them in the stack.
+  /// Everything on screen: standalone windows first, then the panel's own, so
+  /// the panel's sit above them in the stack.
   List<_WindowEntry> _entries() {
     final entries = <_WindowEntry>[
       for (final floating in WindowsManager.open())
@@ -580,8 +477,6 @@ class _WindowsAreaState extends State<_WindowsArea> {
     return entries;
   }
 
-  /// Recomputes what is on screen, keeping the windows that left for the length
-  /// of their closing animation.
   void _sync() {
     if (!mounted) return;
     setState(() {
@@ -592,9 +487,8 @@ class _WindowsAreaState extends State<_WindowsArea> {
     });
   }
 
-  /// Moves the windows that are no longer listed into [_closing], where they
-  /// stay until their closing animation reports it is done — and takes back any
-  /// window that came back while it was still folding away.
+  /// Moves windows that left into [_closing] until their exit animation ends,
+  /// and takes back ones that returned.
   void _settle(List<_WindowEntry> live) {
     final keys = {for (final entry in live) entry.key};
     _replacements.retainAll(keys);
@@ -614,14 +508,12 @@ class _WindowsAreaState extends State<_WindowsArea> {
         _closing.remove(previous.key);
       }
     }
-    // A window that is on screen again is not leaving, however recently it
-    // started to: forgetting this is what would leave it drawn at zero opacity
-    // but still taking clicks.
+    // A window on screen again is not leaving: forgetting this leaves it drawn
+    // at zero opacity but still taking clicks.
     _closing.removeWhere((key, entry) {
       if (!keys.contains(key)) return false;
-      // It came back before it finished leaving, so it is a new window and not
-      // the one that was folding away: the place it is drawn at is the place it
-      // is opened from now, not where the window before it was left.
+      // It returned mid-exit, so it is a new window: a standalone forgets the
+      // place it was left in.
       if (!entry.isHosted) _places.remove(key)?.dispose();
       return true;
     });
@@ -632,20 +524,15 @@ class _WindowsAreaState extends State<_WindowsArea> {
       if (group != null && live.any((e) => e.model.replacementGroup == group)) {
         continue;
       }
-      // One at a time means the windows queued behind the one on screen were
-      // never shown, so they have no exit to animate: only the window that is
-      // up folds away.
+      // One at a time: the queued windows were never shown, so only the one on
+      // screen has an exit to animate.
       if (oneAtATime && entry.key != _shown) continue;
       _closing[entry.key] = entry;
     }
   }
 
-  /// A window that has finished folding away is forgotten — and, if it closed
-  /// for good, so is where it stood: a window opened again comes from where it
-  /// is opened, not from where the one before it was left.
-  ///
-  /// A panel's own window keeps its place, because minimizing it is not closing
-  /// it: it comes back where you put it.
+  /// Forgets a window that finished folding away. A standalone loses its place;
+  /// a hosted one keeps it, because minimizing is not closing.
   void _forget(String key) {
     final entry = _closing[key];
     if (entry == null) return;
@@ -662,8 +549,6 @@ class _WindowsAreaState extends State<_WindowsArea> {
       return const SizedBox.shrink();
     }
     if (widget.screenWidth < kWindowsBreakpoint) {
-      // One window at a time: the one the app last asked for, else the newest,
-      // or the one still folding away.
       final shown = _entryFor(_sheetFocus) ??
           (_live.isNotEmpty ? _live.last : _closing.values.lastOrNull);
       _shown = shown?.key;
@@ -688,14 +573,12 @@ class _WindowsAreaState extends State<_WindowsArea> {
     return _closing[key];
   }
 
-  /// The room windows have, asked where they are drawn: beside the panel when
-  /// one is open, the whole screen when none is.
   _AreaMetrics get _metrics {
     final viewPadding = MediaQuery.paddingOf(context);
     final size = MediaQuery.sizeOf(context);
     final panelWidth = _panelWidth;
-    // The panel sits on the trailing edge of the screen, so the windows keep to
-    // the other side of it — whichever side the reading direction makes that.
+    // The panel sits on the trailing edge, so windows keep to whichever other
+    // side the reading direction makes.
     final panelOnTheLeft = panelWidth > 0 && _rtl;
     final panelOnTheRight = panelWidth > 0 && !_rtl;
     final bounds = WindowBounds(

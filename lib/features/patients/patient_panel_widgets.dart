@@ -137,9 +137,7 @@ class PatientAppointments extends StatelessWidget {
   final Patient patient;
   final List<AppointmentSections> hide;
 
-  /// How a visit is opened from this list. A list that is a window of its own
-  /// passes its own opener, so tapping a visit can make way for the visit instead
-  /// of leaving the list open behind it.
+  /// Overrides visit opening so a standalone list can make way for the visit.
   final void Function(Appointment appointment, AppointmentWindow window)?
       onOpenAppointment;
 
@@ -151,9 +149,6 @@ class PatientAppointments extends StatelessWidget {
           final apts = patient.allAppointments;
           return Column(
             children: [
-              // The one thing in this history that has not happened yet: the
-              // patient's next follow-up, with the two acts it allows — book the
-              // visit that keeps it, or take it back.
               FollowUpSummaryCard(
                 patientID: patient.id,
                 onBook: login.perm(Perm.appointments).some
@@ -283,10 +278,6 @@ class PatientAppointments extends StatelessWidget {
         });
   }
 
-  /// Books a visit for the patient's follow-up, with the patient already
-  /// chosen — the same sheet "add appointment" opens, minus the two questions
-  /// the promise already answered. A promise that is late is booked from today:
-  /// its own day is in the past.
   Future<void> _bookFollowUp(BuildContext context) async {
     final currentPatient = patients.get(patient.id);
     final day = patientFollowUpDay(patient.id);

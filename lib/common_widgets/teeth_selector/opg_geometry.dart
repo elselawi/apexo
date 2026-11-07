@@ -20,25 +20,12 @@ class _ArchSeat {
   /// Width the tooth is drawn at, which is its own share of the curve.
   final double drawSpan;
 
-  /// Root-to-crown drawing height. Anterior teeth (incisors and canines) are
-  /// elongated vertically to utilize the vertical room at the top and bottom
-  /// of the arch.
+  /// Root-to-crown drawing height.
   final double length;
 }
 
-/// Places [isos] along one jaw's arch, sizing them by their share of the curve
-/// so a molar still reads wider than an incisor on a phone. The seats come back
-/// relative to the jaw's centre.
-///
-/// The teeth stand on the anatomical ovoid/pyramidal arch line their *crowns*
-/// trace:
-/// - Central and lateral incisors (`pos 1, 2`) sit along the anterior segment
-///   with a slight midline diastema/gap between the two centrals and extra
-///   breathing room + gentle rotation on the laterals.
-/// - Canines (`pos 3`) sit squarely at the corner bend of the arch.
-/// - Premolars and molars (`pos 4..8`) diverge progressively outward toward the
-///   wisdom teeth, forming a pyramid on the upper jaw (and an inverted pyramid
-///   on the lower jaw) that reaches the left and right edges of the chart.
+/// Seats for [isos] along a jaw's arch, sized by each tooth's share of the
+/// curve length; offsets are relative to the jaw's centre.
 List<_ArchSeat> _seatsAlongArch({
   required List<String> isos,
   required bool isUpper,
@@ -51,23 +38,19 @@ List<_ArchSeat> _seatsAlongArch({
   ];
   final total = weights.fold<double>(0, (sum, weight) => sum + weight);
 
-  // Average tooth span estimate so the crown curve sits inside the outer arch
-  // boundary by the radial distance from crown to root tip.
+  // Average tooth size, used to keep the crown curve inside the outer arch.
   final approxArc = _archArc(rx: rx, ry: ry);
   final avgDrawSpan = (approxArc / isos.length) * toothFill;
   final avgHalfLen = avgDrawSpan * 0.78;
 
-  // Keep a small radial inset at the top/bottom (where incisors stand upright)
-  // and a slightly smaller horizontal inset at the posterior ends (where tilted
-  // wisdom teeth reach outward).
+  // Tilted posterior teeth reach outward, so the horizontal inset is smaller.
   final crownRx = math.max(12.0, rx - avgHalfLen * 0.62);
   final crownRy = math.max(12.0, ry - avgHalfLen * 0.85);
 
   Offset crownPoint(double progress) =>
       _archPointAt(progress, rx: crownRx, ry: crownRy);
 
-  // Arc-length parameterization table so every tooth receives its exact
-  // mesiodistal share of the arch curve.
+  // Arc-length table so shares are measured along the curve, not by angle.
   const steps = 240;
   final lengths = List<double>.filled(steps + 1, 0);
   var previous = crownPoint(0);
@@ -96,10 +79,7 @@ List<_ArchSeat> _seatsAlongArch({
     return (index - 1 + within) / steps;
   }
 
-  // Anchor the canine (`pos 3`) at the exact midpoint of the arch corner, and
-  // keep the four incisors (`pos 1, 2` on both sides) inside the anterior
-  // segment with breathing room between the two centrals and between each
-  // lateral and its neighbouring central.
+  // Lock the canine to the corner midpoint, laterals to the anterior segment.
   final cornerBounds = _archCornerShareBounds(rx: crownRx, ry: crownRy);
   final anteriorStartIdx = isos.indexWhere((iso) => iso.endsWith('2'));
   final canineIdx = isos.indexWhere((iso) => iso.endsWith('3'));
@@ -120,10 +100,6 @@ List<_ArchSeat> _seatsAlongArch({
   final targetCanineMid = cornerBounds.rightCornerMid;
   final targetAnteriorStart = cornerBounds.rightCornerEnd;
 
-  // Leave a distinct midline gap between the left and right central incisors
-  // (`0.491` vs `0.509`), and shift the lateral incisors slightly outward
-  // toward the canine corner so they have breathing room away from the
-  // centrals.
   const midlineHalfGap = 0.009;
   const anteriorEnd = 0.5 - midlineHalfGap;
 
@@ -146,8 +122,7 @@ List<_ArchSeat> _seatsAlongArch({
           math.max(1e-6, 0.5 - rightAnteriorStartRaw);
       mapped = targetAnteriorStart + t * (anteriorEnd - targetAnteriorStart);
       if (pos == 2) {
-        // Nudge the lateral incisor slightly away from the central incisor for
-        // extra interproximal breathing room.
+        // Extra interproximal gap between the lateral and central incisors.
         mapped -= 0.0045;
       }
     }
@@ -159,9 +134,6 @@ List<_ArchSeat> _seatsAlongArch({
           weights[(isos.length ~/ 2 - 1).clamp(0, isos.length - 1)]) /
       (2 * total);
 
-  // Anterior teeth (`pos 1, 2, 3`) get a larger width & vertical length boost
-  // so they stand out prominently and utilize the vertical room at the top and
-  // bottom of each arch.
   double widthFactorForPos(int pos) => switch (pos) {
         1 => 1.15,
         2 => 1.14,
@@ -220,15 +192,14 @@ List<_ArchSeat> _seatsAlongArch({
   return seats;
 }
 
-/// How much of the notation's own size a compact tooth can carry: scaled down
-/// so Palmer / ISO / Universal labels never overlap on small phone screens.
+/// Fraction of a notation's font size a compact tooth can carry, so the labels
+/// do not overlap on small screens.
 double _notationScale(double band, double toothSpan) => math.min(
       (band / 24.0).clamp(0.46, 0.72),
       toothSpan <= 0 ? 0.65 : (toothSpan / 29.0).clamp(0.44, 0.72),
     );
 
-/// The length of the curve an [rx]×[ry] arch runs, which is also the total
-/// width of the teeth that stand on it.
+/// Arc length of an [rx]×[ry] arch, i.e. the total tooth width it holds.
 double _archArc({required double rx, required double ry}) {
   const steps = 80;
   var length = 0.0;
@@ -241,15 +212,8 @@ double _archArc({required double rx, required double ry}) {
   return length;
 }
 
-/// How far a tooth leans off upright, in radians, and which way.
-///
-/// Uses explicit anatomical tooth angles by position (`1..8` / `1..5`) so that:
-/// - Central incisors (`pos 1`) stand nearly vertical (`~2°`).
-/// - Lateral incisors (`pos 2`) have only a gentle tilt (`~9°`), staying part
-///   of the anterior front row rather than turning the corner.
-/// - Canines (`pos 3`) sit right at the ~38° corner angle of the arch.
-/// - First and second premolars (`pos 4, 5`) and molars (`pos 6, 7, 8`) open
-///   progressively along the ovoid/pyramidal buccal slope (`~50°–60°`).
+/// How far a tooth leans off upright, in radians; the sign flips on the
+/// patient's right side and again on the lower jaw.
 double _fanTilt(
   String iso,
   int index,
@@ -288,26 +252,17 @@ Offset _toothAxis(double rotation, {required bool isUpper}) => isUpper
     ? Offset(math.sin(rotation), -math.cos(rotation))
     : Offset(-math.sin(rotation), math.cos(rotation));
 
-/// Share of `rx` occupied by the anterior incisor segment (`12–11–21–22`).
-/// Sized so the two central incisors have a clear midline space between them
-/// and the lateral incisors have breathing room away from the centrals while
-/// the canines remain on the arch corners.
+/// Anterior incisor segment width as a share of `rx`.
 const double _archFrontHalfShare = 0.295;
 
 /// Radius of the canine corner bend as a fraction of the smaller half-axis.
 const double _archCornerShare = 0.22;
 
-/// Outward divergence angle (radians, `~27.5°` off vertical) of the posterior
-/// buccal segments from the canine corner out to the wisdom teeth: each
-/// successive tooth (`4 -> 5 -> 6 -> 7 -> 8`) sits progressively further apart
-/// horizontally than the pair before it, forming a pyramid on the upper jaw and
-/// an inverted pyramid on the lower jaw.
+/// Posterior buccal divergence from vertical, in radians (~27.5°).
 const double _archPosteriorSplay = 0.48;
 
-/// Returns the arc-length fractions along `_archPointAt` where the right-side
-/// canine corner midpoint and inner end sit, so `_seatsAlongArch` can lock the
-/// canine (`pos 3`) onto the corner and keep the lateral incisor (`pos 2`) on
-/// the anterior segment.
+/// Arc-length fractions on `_archPointAt` where the right canine corner's
+/// midpoint and inner end sit.
 ({double rightCornerMid, double rightCornerEnd}) _archCornerShareBounds({
   required double rx,
   required double ry,
@@ -377,21 +332,8 @@ const double _archPosteriorSplay = 0.48;
   );
 }
 
-/// A point along one jaw's anatomical ovoid/pyramidal arch curve.
-///
-/// [progress] runs `0 → 1` from the patient's right third molar (`18`/`48`) to
-/// their left (`28`/`38`), laid out in upper-jaw coordinates (`y = -ry` at the
-/// anterior midline, `y = 0` at the posterior ends):
-/// 1. Patient's right posterior buccal segment (`18 → 14`), sloping inward from
-///    `-rx` toward the canine corner so `18–28` are widest apart, `17–27`
-///    slightly narrower, `16–26` narrower still, `15–25` narrower, and `14–24`
-///    narrower approaching the canine.
-/// 2. Right canine corner arc (`13`/`43`), where the buccal slope bends into
-///    the anterior segment.
-/// 3. Gently curved anterior incisor segment (`12, 11, 21, 22`).
-/// 4. Left canine corner arc (`23`/`33`).
-/// 5. Patient's left posterior buccal segment (`24 → 28`), flaring outward to
-///    `+rx`.
+/// A point on one jaw's arch; [progress] runs 0→1 from the patient's right third
+/// molar to the left, in upper-jaw coordinates (`y = -ry` at the midline).
 Offset _archPointAt(
   double progress, {
   required double rx,
@@ -402,12 +344,10 @@ Offset _archPointAt(
 
   var left = progress.clamp(0.0, 1.0) * m.total;
 
-  // 1. Patient's right posterior buccal segment (18..14 -> 13): gently bowed
-  // ovoid curve from (-rx, 0) up and inward to rightCornerStart.
+  // 1. Right posterior run: bowed from (-rx, 0) to the corner start.
   if (left <= m.sideLen) {
     final t = m.sideLen == 0 ? 0.0 : (left / m.sideLen).clamp(0.0, 1.0);
-    // Slight outward ovoid belly so the molars/premolars trace a natural dental
-    // arch while monotonically widening from 14 out to 18.
+    // Outward belly so the posterior run bows instead of running straight.
     final linear = Offset.lerp(m.rightEnd, m.rightCornerStart, t)!;
     final belly = math.sin(t * math.pi) * (rx - m.frontHalf) * 0.08;
     return Offset(linear.dx - belly, linear.dy);
@@ -427,8 +367,7 @@ Offset _archPointAt(
   // 3. Anterior incisor segment (12, 11, 21, 22)
   if (left <= m.frontLen) {
     final u = m.frontLen == 0 ? 0.5 : (left / m.frontLen).clamp(0.0, 1.0);
-    // Subtle anterior arch curvature (1.5px crown dome at central incisors) so
-    // the four incisors stay level while reading as a natural anterior curve.
+    // 1.5px dome so the four incisors read as a curve, not a flat line.
     final dome = math.sin(u * math.pi) * 1.5;
     return Offset(-m.frontHalf + left, -ry - dome);
   }
@@ -456,10 +395,7 @@ Offset _archPointAt(
   return Offset(linear.dx + belly, linear.dy);
 }
 
-/// The box the teeth of a jaw occupy, relative to that jaw's centre: matches
-/// the exact rotated bounding box of each `_compactTooth` (`seat.length +
-/// band * 1.1` tall by `seat.drawSpan` wide) so the arch fills the full
-/// horizontal width right to `0..width` without overflowing.
+/// Rotated bounding box of a jaw's teeth plus the `band` padding around them.
 ({double left, double right, double top, double bottom}) _seatsExtent(
   List<_ArchSeat> seats,
   double band,
@@ -483,8 +419,6 @@ Offset _archPointAt(
   return (left: left, right: right, top: top, bottom: bottom);
 }
 
-/// Where one facing pair of compact arches sits, and the seats its teeth
-/// stand on.
 class _CompactPairLayout {
   const _CompactPairLayout({
     required this.toothBand,
@@ -494,8 +428,7 @@ class _CompactPairLayout {
     required this.lowerSeats,
   });
 
-  /// Room each tooth keeps beyond its root tip (the apex icons) and beyond its
-  /// crown (its notation).
+  /// Space each tooth keeps past root tip (apex icons) and crown (notation).
   final double toothBand;
   final Offset upperCenter;
   final Offset lowerCenter;
@@ -503,11 +436,8 @@ class _CompactPairLayout {
   final List<_ArchSeat> lowerSeats;
 }
 
-/// Lays one facing pair of jaws into [band], sizing the curve to the room it is
-/// given: the teeth are only ever as big as the curve they stand on, so a
-/// taller chart buys bigger teeth rather than more empty space in the middle of
-/// the mouth. How they fan is [_seatsAlongArch]'s business; the fit here only
-/// decides how large the mouth ends up.
+/// Fits one facing pair of jaws into [band]: a taller chart buys bigger teeth
+/// rather than more empty space in the middle.
 _CompactPairLayout _layoutCompactPair({
   required double width,
   required Rect band,
@@ -538,8 +468,7 @@ _CompactPairLayout _layoutCompactPair({
       toothFill: toothFill,
     );
 
-    // The pair is as tall as its two jaws plus the daylight between them, and
-    // the curve grows a little slower than that, so the step is damped.
+    // Damped step: ry grows slower than the measured shortfall.
     final upperExtent = _seatsExtent(upperSeats, toothBand);
     final lowerExtent = _seatsExtent(lowerSeats, toothBand);
     final needed = (upperExtent.bottom - upperExtent.top) +
@@ -547,8 +476,7 @@ _CompactPairLayout _layoutCompactPair({
         jawGap;
     ry = math.max(20.0, ry + (band.height - needed) / 2.2);
 
-    // Stretch rx so the outermost posterior teeth reach the left and right
-    // edges of the canvas.
+    // Damped stretch so the outermost posterior teeth reach the canvas edges.
     final widest = <double>[
       upperExtent.right.abs(),
       upperExtent.left.abs(),

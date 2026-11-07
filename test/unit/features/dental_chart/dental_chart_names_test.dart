@@ -7,9 +7,7 @@ import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/services/localization/en.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// One chart, two names: what it writes differs by the record hosting it, so the
-/// window must say which one you are looking at — and the button that opens it
-/// must say the same thing as the window it opens.
+// One chart, two labels: a record's chart and a visit's treatments chart; docks must match.
 void main() {
   final patient = Patient.fromJson({'id': 'chart-name-patient', 'title': 'P'});
   final appointment =
@@ -25,8 +23,6 @@ void main() {
   });
 
   test('each panel\'s dock names the chart as the chart itself does', () {
-    // The dock button and the window it opens are two views of one editor: a
-    // mismatch would label the same window twice.
     final patientChart = patientWindows()
         .firstWhere((window) => window.id == kDentalChartWindowId);
     final visitChart = appointmentWindows(appointment)

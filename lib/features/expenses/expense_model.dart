@@ -41,9 +41,6 @@ class Expense extends Model {
     return photos.where((name) => isAnImageName(name)).toList();
   }
 
-  // id: id of the expense item (inherited from Model)
-  // title: title of the expense item (inherited from Model, useless)
-
   /* 1 */ bool isSupplier = false;
   /* 2 */ String supplierName = "";
 

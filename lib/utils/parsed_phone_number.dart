@@ -2,20 +2,9 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/utils/phone_numbers_extractor.dart';
 import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 
-/// Represents a phone number parsed from any input (national or international).
-///
-/// Provides synchronous access to country code, national number, ISO code,
-/// number type, and formatted representations.
 class ParsedPhoneNumber {
-  /// Parses [rawInput] using the given defaultRegion for national numbers.
-  ///
-  /// The input can be:
-  /// - International format: starts with '+', '00', or '011'
-  /// - National format: any number without international prefix, interpreted
-  ///   as belonging to defaultRegion (e.g. '07701234567' for Iraq).
-  ///
-  /// Throws an [ArgumentError] if the input cannot be parsed into a valid
-  /// phone number.
+  /// Parses [rawInput] as international ('+', '00', '011') or as national to the
+  /// clinic's country; throws [ArgumentError] when it is not a valid number.
   ParsedPhoneNumber(this.rawInput) {
     // Clean input: remove spaces, dashes, parentheses, dots, etc.
     final cleaned = _normalize(rawInput);
@@ -58,10 +47,6 @@ class ParsedPhoneNumber {
     return value.replaceAll(RegExp(r'(?!^\+)\D'), '');
   }
 
-  // ----------------------------------------------------------------------
-  // Basic getters
-  // ----------------------------------------------------------------------
-
   /// The E.164 representation (e.g. "+9647701234567").
   String get e164 => '+${parsed.countryCode}${parsed.nsn}';
 
@@ -80,16 +65,8 @@ class ParsedPhoneNumber {
   /// True if the number is valid.
   bool get isValid => _isValid;
 
-  // ----------------------------------------------------------------------
-  // Number type detection
-  // ----------------------------------------------------------------------
-
   bool get isMobile => parsed.isValid(type: PhoneNumberType.mobile);
   bool get isFixedLine => parsed.isValid(type: PhoneNumberType.fixedLine);
-
-  // ----------------------------------------------------------------------
-  // Formatting methods
-  // ----------------------------------------------------------------------
 
   /// National format (e.g. "(212) 555-1234" for US, "0770 123 4567" for Iraq).
   String toNationalFormat() => parsed.formatNsn();
@@ -105,10 +82,6 @@ class ParsedPhoneNumber {
 
   /// Returns the E.164 format (the same as [e164]).
   String toE164Format() => e164;
-
-  // ----------------------------------------------------------------------
-  // Comparison and equality
-  // ----------------------------------------------------------------------
 
   @override
   bool operator ==(Object other) {

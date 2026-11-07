@@ -9,13 +9,8 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart' show nonVirtual, protected;
 
-/// A panel, as the host sees it: everything [PanelScreen] needs from whatever is
-/// on screen, independent of how the records behind it are stored.
-///
-/// A panel is the **owner** of the record its windows edit — [WindowRecordSession]
-/// is that fact, named so a window can ask for it without knowing what kind of
-/// panel is answering — and it can also carry visits beside itself (see
-/// [attach]).
+/// A panel as the host sees it. It owns the record its windows edit
+/// ([WindowRecordSession]) and can carry a visit alongside it (see [attach]).
 abstract base class Panel implements WindowRecordSession {
   Panel({
     required this.windows,
@@ -38,131 +33,75 @@ abstract base class Panel implements WindowRecordSession {
     this.carriedBandFooter,
   });
 
-  /// The windows this panel offers, in priority order. The first **row** window
-  /// is drawn in the panel itself; the rest of the row floats beside it. Windows
-  /// with [PanelWindow.attachedTo] set are attachments and are not in the row.
+  /// In priority order: the first row window is drawn inline, the rest float beside it.
   final List<PanelWindow> windows;
 
-  /// The windows the row draws: everything that is not an attachment.
-  ///
-  /// Computed on every read rather than frozen at construction: the list of
-  /// windows is built from what the user may see, and a permission that changes
-  /// while the panel is open must not leave a window behind that the panel may
-  /// no longer show.
+  /// Computed on every read: a permission change while open must not leave its window behind.
   List<PanelWindow> get rowWindows => <PanelWindow>[
         for (final window in windows)
           if (!window.isAttachment) window
       ];
 
-  /// The editor the panel keeps inline — what its first tab used to be. Null
-  /// for a panel with no windows at all.
   PanelWindow? get primaryWindow =>
       rowWindows.isEmpty ? null : rowWindows.first;
 
-  /// The editors the panel floats: the row's windows after the inline one, in
-  /// priority order. A screen with room for two of these opens the first two.
   List<PanelWindow> get floatingWindows =>
       rowWindows.length <= 1 ? const <PanelWindow>[] : rowWindows.sublist(1);
 
-  /// The windows hanging off the panel itself — a patient's photos and page,
-  /// drawn as an attachment tray under the body rather than as row windows.
   List<PanelWindow> get panelAttachments => <PanelWindow>[
         for (final window in windows)
           if (window.attachedTo == PanelWindow.panelAttachment) window,
       ];
 
-  /// The windows hanging off [windowId], drawn as a tray on that window's own
-  /// frame.
   List<PanelWindow> attachmentsOf(String windowId) => <PanelWindow>[
         for (final window in windows)
           if (window.attachedTo == windowId) window,
       ];
 
-  /// The window the opener wants on screen, by [PanelWindow.id] — the one that
-  /// answers the question the user asked when they opened the panel. Null when
-  /// the panel decides by itself.
+  /// The window the opener wants shown; null lets the layer decide.
   final String? initialWindow;
 
-  /// Whether opening the panel also puts the windows this screen has room for on
-  /// screen. False for an opener that came for the record itself — a dashboard
-  /// row that means "this new patient", not "their chart" — which leaves every
-  /// window one click away in the dock, and none of them in the way.
+  /// Whether opening also puts windows on screen; false leaves all of them in the dock.
   final bool opensWithWindows;
 
-  /// The colour this kind of record is known by — see `PanelAccents`. Null keeps
-  /// the theme's accent.
   final Color? accent;
 
-  /// Which of [windows] are on screen. Lives on the panel, so a window's state
-  /// survives the panel's rebuilds and goes away with the panel itself.
-  ///
-  /// The host sets [PanelWorkspace.onUserChange] when it attaches the panel, so
-  /// what the user opens and puts away is remembered for the next panel of the
-  /// same kind — without the panel knowing where that memory lives.
+  /// Which of [windows] are on screen. Lives on the panel, so it survives its
+  /// rebuilds; the host binds [PanelWorkspace.onUserChange] to remember it per kind and slot.
   late final PanelWorkspace workspace = PanelWorkspace();
 
   final IconData icon;
   final String singularName;
   final String unicodeSymbol;
 
-  /// What the header shows while the record does not exist yet ("New patient"):
-  /// nothing on a record that is not there can name it, so the opener does.
-  /// Null falls through to [itemId].
-  ///
-  /// This is a localization *key*, not a sentence: the widget translates it
-  /// when drawing, so a language switch relabels a live panel. A real name
-  /// passes through `txt` unchanged, so a caller may hand one in.
+  /// Header title while the record is new; falls back to [itemId]. This is a
+  /// localization key, or a real name — translated where it is drawn, not here.
   final String? newTitle;
 
-  /// Reads the record's own title. The opener supplies it, because only it can
-  /// name its schema's rows — [readTitle] asks before the panel is shown and
-  /// again after every save.
+  /// Reads the record's title; the opener supplies it since only it knows the schema's rows.
   final Future<String?> Function()? recordTitle;
 
   @override
   final bool showBottomControls;
 
-  /// The localization key for this panel's own Save — "savePatient" — so the
-  /// bottom bar says which of the two records on screen it writes (plan §4.4).
+  /// Localization key for this panel's own Save (e.g. "savePatient"), translated by the bottom bar.
   final String saveLabel;
 
-  /// The window whose switch carries the unsaved dot while a record this panel
-  /// **carries** holds a draft — a patient's chart, which is where a visit's
-  /// work happens. The dot is on the record's workspace because that is what the
-  /// draft is: a visit is charted, not listed, and a retained draft whose chart
-  /// is closed must still say so from the button that reopens it.
-  ///
-  /// Null for a panel that carries nothing.
+  /// The window whose switch shows the unsaved dot when a carried record has a
+  /// draft, even with that window closed. Null when the panel carries nothing.
   final String? carriedDraftWindowId;
 
-  /// The row windows this panel offers as **workspace buttons**, inside its own
-  /// body — a patient's chart and Visits list.
-  ///
-  /// A panel that lists them here does not also list them in a dock: one window
-  /// has one control, so nothing on screen offers the same thing twice.
+  /// Row windows offered as buttons inside the panel body instead of in its dock.
   final List<String> workspaceWindows;
 
-  /// Whether this panel presents its secondary windows as **attachments** rather
-  /// than as a dock under the header.
-  ///
-  /// A patient's photos and page hang off the panel (an attachment tray under
-  /// the record), and its chart and Visits list are the labelled workspace
-  /// buttons inside it: that is the whole surface, and a dock would only repeat
-  /// it. Other panels keep their dock untouched.
+  /// Secondary windows drawn as attachments rather than in a dock under the header.
   final bool attachmentLayout;
 
   final Widget? additionalControls;
   final Widget? archiveButtonReplacement;
 
-  /// A widget drawn directly **under the band** of the record this panel
-  /// carries — the record's own facts that the carried record also edits.
-  ///
-  /// A patient's next follow-up is set by a dentist while a visit is open (its
-  /// operative record edits it too), so it must stay reachable while the visit's
-  /// band covers the patient's own form; that is exactly the slot this fills. It
-  /// is built by the feature, so the workspace never learns what a patient is.
-  ///
-  /// Null for a panel that carries nothing, or offers no such field.
+  /// Drawn under a carried record's band: the carried record can edit this field
+  /// too, so it must stay reachable while the band covers the record's own form.
   final Widget? carriedBandFooter;
 
   @override
@@ -173,12 +112,8 @@ abstract base class Panel implements WindowRecordSession {
 
   String get identifier => identifierFor(singularName, itemId, isNew: isNew);
 
-  /// The identifier a panel of this kind shows for [itemId] — the record's own
-  /// id, or the kind's "new" name while the record is not stored yet.
-  ///
-  /// The same rule [identifier] follows, so an opener can ask "is this record's
-  /// panel already open?" before it builds one, and its answer cannot disagree
-  /// with what [PanelsManager.open] would do with the panel it builds.
+  /// The id a panel of this kind uses for [itemId]; must match [identifier], so a
+  /// caller can ask whether this record's panel is open before building one.
   static String identifierFor(
     String singularName,
     String itemId, {
@@ -186,34 +121,19 @@ abstract base class Panel implements WindowRecordSession {
   }) =>
       isNew ? 'new+$singularName' : itemId;
 
-  /// The record's own draft, as JSON — what the work of a window is written
-  /// over.
-  ///
-  /// Empty for a panel that owns no record: it has no draft of its own to
-  /// write anything over.
   Map<String, dynamic> get draftJson => const <String, dynamic>{};
 
-  /// Takes in the work a window of this record was holding: the record's own
-  /// fields, written over the draft this panel already holds.
-  ///
-  /// A panel that opens over a window adopts the work rather than leaving two
-  /// drafts of one record on screen: the panel carries it, starts dirty on it,
-  /// and its own Save is the one write.
-  ///
-  /// A panel that owns no record — or one that tracks several — has nothing to
-  /// take in, and does nothing.
+  /// Takes in work a window of this record still held, so the panel becomes the
+  /// record's one draft: it starts dirty and its own Save is the only write.
   void adoptDraft(Map<String, dynamic> json) {}
 
-  /// Completes when the panel is finished: saved, or closed without saving.
-  /// Every removal from the stack settles it too, so awaiting it never hangs.
+  /// Completes when the panel is done, saved or not; removal from the stack settles it too.
   @override
   Future<void> get result => _result.future;
 
   final Completer<void> _result = Completer<void>();
 
-  /// Settles [result]: the panel is done — saved, or closed without saving.
-  /// Idempotent: [save] and `PanelsManager` both call it, and whichever is
-  /// first is the answer.
+  /// Settles [result]; idempotent, since [save] and `PanelsManager` both call it.
   void settle() {
     if (!_result.isCompleted) _result.complete();
   }
@@ -223,21 +143,15 @@ abstract base class Panel implements WindowRecordSession {
   /// The ids of the records this panel's own saves wrote, in the order written
   List<String> get savedIds => List.unmodifiable(_savedIds);
 
-  /// The one id an opener hands back: the first record this panel saved, or
-  /// `null` when it saved none — the same `null` a panel that was closed
-  /// produces, so a caller reads "nothing was saved" in exactly one way.
+  /// The first record this panel's save wrote; null when nothing was saved, closed or otherwise.
   String? get savedId => _savedIds.isEmpty ? null : _savedIds.first;
 
-  /// Records one record this panel's save wrote, from the kind's own [persist]
-  /// and from nothing else: a [DelegatedPanel]'s `onSave` answers with the ids
-  /// it wrote and the panel records them here, so no caller has to remember.
+  /// Records an id this panel's save wrote; called from [persist], not by callers.
   @protected
   void recordSaved(String id) {
     if (!_savedIds.contains(id)) _savedIds.add(id);
   }
 
-  /// The id of the record this panel is showing — never null, even while the
-  /// record is still unsaved.
   @override
   String get itemId;
 
@@ -246,33 +160,17 @@ abstract base class Panel implements WindowRecordSession {
 
   bool _titleRead = false;
 
-  /// A plain-text label for the panel switcher: the record's own title, else the
-  /// opener's placeholder while the record is new, else [itemId].
-  ///
-  /// The row id shows only when nothing named the record at all — each schema
-  /// names its rows through its own extension, so the opener supplies
-  /// [recordTitle] to read it.
-  ///
-  /// Whatever this returns — a key ([newTitle]) or a real name ([recordTitle])
-  /// — is translated where it is drawn, never here: only a build knows the
-  /// current language.
+  /// Label for the panel switcher: live title, else the read title, else [newTitle]
+  /// while new, else [itemId]. Never translated here — a key goes out unchanged.
   @override
   String get displayTitle =>
       liveTitle?.call() ?? _recordTitle ?? (isNew ? newTitle : null) ?? itemId;
 
-  /// The record's title, read live rather than remembered — for a record whose
-  /// name can change while its panel is open, such as a supplier that is
-  /// renamed from inside the panel.
-  ///
-  /// A panel that reads its title once keeps showing the old name after the
-  /// rename that happened inside it.
+  /// Reads the title on each call, so a rename made inside the panel is not stale.
   final String Function()? liveTitle;
 
-  /// Reads [recordTitle] into the header.
-  ///
-  /// The opener runs it before showing the panel, so the first frame is right;
-  /// the host runs it as a safety net, and [save] runs it again with `refresh`
-  /// so a name typed into a new record shows once the record exists.
+  /// Reads [recordTitle] into the header; `refresh` forces a re-read, which [save]
+  /// does after persisting so a new record's name appears.
   Future<void> readTitle({bool refresh = false}) async {
     if (_titleRead && !refresh) return;
     _titleRead = true;
@@ -287,22 +185,11 @@ abstract base class Panel implements WindowRecordSession {
   @override
   bool get isArchived;
 
-  /// Whether the panel currently holds work that is not persisted yet — the
-  /// host's question, answered by each panel for itself.
   @override
   bool get hasPendingEdits;
 
-  /// Publishes [anyUnsavedChanges] into [hasUnsavedChanges], which is what the
-  /// header's dot and a close prompt watch: closing this panel closes the visit
-  /// it carries, so the visit's work counts too (plan §2.4).
-  ///
-  /// A panel whose answer is pushed (`pendingEditsSignal`) hears about an edit
-  /// without being asked; a panel whose draft is edited in place — a row panel's
-  /// fields, an owned visit session's windows — has to be asked, so the owner of
-  /// each owned session is asked here too.
-  ///
-  /// The Save button does **not** read this: it reads [hasPendingEdits], because
-  /// this panel's Save writes this panel's record and nothing else (plan §4.5).
+  /// Refreshes [hasUnsavedChanges] for the header dot and the close prompt, after
+  /// asking each owned session. Save reads [hasPendingEdits] instead — this record only.
   @override
   void refreshDirty() {
     for (final session in _owned) {
@@ -314,8 +201,7 @@ abstract base class Panel implements WindowRecordSession {
     }
   }
 
-  /// The sessions this panel carries, whether or not they are selected: a
-  /// retained draft outlives being swapped out of the row.
+  /// Every session the panel carries, attached or not: a retained draft outlives the row.
   final List<HostedRecordSession> _owned = <HostedRecordSession>[];
 
   /// The one session whose windows are in the row.
@@ -324,13 +210,8 @@ abstract base class Panel implements WindowRecordSession {
   /// The window of [_attached] the opener asked for, by [PanelWindow.id].
   String? _attachedFocus;
 
-  /// Emits whenever what this panel carries changes — a visit attached,
-  /// detached or dropped.
-  ///
-  /// Attaching mutates a panel that is already on screen, and nothing else
-  /// observes that: the layer rebuilds on the panel *object* changing, which it
-  /// does not when a visit joins it. Without this signal `attach()` compiles,
-  /// runs, and shows nothing (plan §6.2-2).
+  /// Emits when what the panel carries changes. Attaching mutates a panel already on
+  /// screen, and nothing rebuilds on that, so this stream is the only trigger.
   final ObservableState<int> attachments = ObservableState(0);
 
   /// Every session this panel is responsible for, selected or not.
@@ -342,55 +223,36 @@ abstract base class Panel implements WindowRecordSession {
   /// The window of the attached session the opener asked for, if any.
   String? get attachedFocus => _attachedFocus;
 
-  /// The panel's own window the user asked for **now** — a chart's "all
-  /// appointments", the band's unsaved count, a list the user tapped.
-  ///
-  /// The layer reads it once, as the row's focus, and clears it: the request is
-  /// an instruction to show one window now, not a permanent arrangement. The
-  /// arrangement itself is the remembered open set (see `WindowDefaults`).
+  /// The panel's own window asked for now; the layer reads it once and clears it. The
+  /// remembered arrangement lives in `WindowDefaults`, not here.
   String? requestedWindow;
 
-  /// Asks for one of the panel's own windows: on screen, in front of the record.
-  ///
-  /// What a control outside the window means — a chart's "all appointments", the
-  /// band's unsaved count, a list the user tapped. The layer reads it once, as
-  /// the row's focus, and clears it: the request is an instruction to show one
-  /// window now, not a permanent arrangement. Choosing it does, however, end the
-  /// request the record's opener made — a visit's chart is no longer the window
-  /// to show just because the visit was opened for it.
+  /// Asks for one of the panel's own windows now, ending the opener's request: a
+  /// visit's chart is no longer the window to show just because it was opened for it.
   void showWindow(String id) {
     requestedWindow = id;
     _attachedFocus = null;
     workspace.show(id);
   }
 
-  /// Whether anything this panel is responsible for holds unsaved work: its own
-  /// record, or any visit it carries — including one whose windows are not on
-  /// screen (plan §2.4).
+  /// This panel's record or any visit it carries, on screen or not, has unsaved work.
   bool get anyUnsavedChanges =>
       hasPendingEdits || _owned.any((session) => session.hasPendingEdits);
 
-  /// Makes [session] the record whose windows are in the row, keeping its draft
-  /// — and every other draft this panel already owns.
-  ///
-  /// Never prompts: a draft is not discarded by looking at another one (plan
-  /// §2.5). [focus] names the window the opener came for; the layer opens it if
-  /// the row has room.
+  /// Makes [session] the record in the row, keeping its draft and every other draft
+  /// this panel owns; never prompts. [focus] is the window the opener came for.
   void attach(HostedRecordSession session, {String? focus}) {
     if (!_owned.any((owned) => identical(owned, session))) {
       _owned.add(session);
     }
     _attached = session;
     _attachedFocus = focus;
-    // The opener's own request, made here as well as in the layer's plan: a
-    // window asked for by name is on screen as soon as the visit is attached,
-    // whether or not this panel's row has been planned yet.
+    // the named window must show before the row is planned, so it cannot wait for the layer.
     if (focus != null) workspace.show(focus, slot: kAttachedSlot);
     attachments(attachments() + 1);
   }
 
-  /// Takes the attached record out of the row, **keeping** ownership: its draft
-  /// is the user's until the panel is done with it.
+  /// Takes the attached record out of the row but keeps it: its draft stays the user's.
   void detach() {
     if (_attached == null) return;
     _attached = null;
@@ -399,8 +261,7 @@ abstract base class Panel implements WindowRecordSession {
     attachments(attachments() + 1);
   }
 
-  /// Drops [session] for good: its draft is not written and it leaves the
-  /// registry. This is what "discard" means, and the only thing that loses work.
+  /// Discards [session] for good: its draft is never written, and it leaves the registry.
   void disposeSession(HostedRecordSession session) {
     _owned.removeWhere((owned) => identical(owned, session));
     if (identical(_attached, session)) {
@@ -412,10 +273,7 @@ abstract base class Panel implements WindowRecordSession {
     attachments(attachments() + 1);
   }
 
-  /// Drops every session this panel carries — the panel itself is going away,
-  /// so nothing would be left to show or save them.
-  ///
-  /// Not a save: a caller that wants the work written saves first.
+  /// Drops every carried session without saving; a caller that wants the work written saves first.
   void releaseSessions() {
     final sessions = _owned.toList();
     _owned.clear();
@@ -428,29 +286,20 @@ abstract base class Panel implements WindowRecordSession {
     if (sessions.isNotEmpty) attachments(attachments() + 1);
   }
 
-  /// A signal the host can watch instead of sampling [hasPendingEdits], for a
-  /// kind whose answer changes without the host asking. Null when the kind has
-  /// nothing to push: a [DelegatedPanel]'s answer is its caller's callback,
-  /// which the host can only ask.
+  /// Pushes unsaved changes for a kind whose answer changes without being asked; null
+  /// when the host can only poll [hasPendingEdits] (a [DelegatedPanel]'s callback).
   ObservableState<int>? get pendingEditsSignal => null;
 
-  /// The header title widget of this panel: [displayTitle], greyed out once the
-  /// record is archived.
-  ///
-  /// Shared as-is; no panel has needed a different header.
-  ///
-  /// [displayTitle] is translated here, at draw time: `Txt` renders its input
-  /// verbatim, so a key would show as the raw key on screen. `txt` returns a
-  /// non-key unchanged, so a real name is handed through as-is.
+  /// Header title: [displayTitle], greyed when archived. Translated here because `Txt`
+  /// draws its input verbatim, while `txt` passes a real name through unchanged.
   Widget buildTitle(BuildContext context) => Txt(
         txt(displayTitle),
         overflow: TextOverflow.ellipsis,
         style: TextStyle(fontSize: 13, color: isArchived ? Colors.grey : null),
       );
 
-  /// Persists the editor's current state, re-reads the title, then settles
-  /// [result]. The kinds implement [persist]; overriding this would skip the
-  /// settlement.
+  /// Persists, settles [result], then re-reads the title. Kinds implement [persist];
+  /// overriding this would skip the settlement.
   @nonVirtual
   @override
   Future<void> save() async {

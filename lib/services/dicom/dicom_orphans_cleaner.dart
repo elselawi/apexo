@@ -4,26 +4,12 @@ import 'package:path/path.dart' as p;
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:flutter/foundation.dart';
 
-/// NOTE:
-/// This feature is not yet used nor referenced in any production code
-/// I was planning to use it with a UI button in the settings.
-/// But I'm currently not inclined to.
-/// Since cleaning is now part of the uploading process.
-///
-///
-/// However, everything in this file works as expected
-/// and should kept for future use.
+/// Not wired to production — cleaning is part of the upload now — but it works
+/// and is kept for future use.
 
-/// Deletes DICOM originals and previews that are not referenced by a row's
-/// `dcmImgs` JSON field. This is intentionally dry-run by default.
-///
-/// Definition: a DCM orphan file is a file that has been uploaded to the disk in PB
-/// yet not mentioned in the JSON.
-///
-///
-/// It never deletes ordinary photos, never changes appointment JSON, and
-/// never changes the local DICOM link registry. Call with `dryRun: false`
-/// only after reviewing [DcmOrphanCleanupResult.orphanFiles].
+/// Deletes DICOM originals/previews not referenced by a row's `dcmImgs`. Dry-run
+/// by default; never touches photos, JSON or the local link registry. Pass
+/// `dryRun: false` only after reviewing the result.
 Future<DcmOrphanCleanupResult> cleanupOrphanDcmFiles({
   bool dryRun = true,
 }) async {
@@ -42,8 +28,7 @@ Future<DcmOrphanCleanupResult> cleanupOrphanDcmFiles({
     if (dryRun) continue;
 
     try {
-      // The initial list is only a candidate set. Re-read the row and
-      // recompute against its current JSON/file state before deleting.
+      // Re-read the row and recompute before deleting; the scan list is only candidates.
       final current = await _getDcmFileRow(row.id);
       final currentOrphans = orphanDcmFileNames(
         serverFiles: current.files,
@@ -70,9 +55,8 @@ Future<DcmOrphanCleanupResult> cleanupOrphanDcmFiles({
   );
 }
 
-/// Fetches the server-authoritative `data` JSON and `imgs` file list for
-/// every row in this store. One page contains both pieces, so callers can
-/// validate many DICOM references without one request per appointment.
+/// Server JSON and file list for every row in this store; one page carries both,
+/// so many references are validated without a request per appointment.
 Future<List<RemoteDcmFileRow>> getDcmFileRows() async {
   final result = <RemoteDcmFileRow>[];
   var page = 1;
@@ -118,8 +102,7 @@ Map<String, dynamic> _asJsonMap(Object? value) {
   return <String, dynamic>{};
 }
 
-/// Re-reads one row immediately before destructive cleanup so references
-/// added after the initial scan are not deleted from the stale snapshot.
+/// Re-reads the row before destructive cleanup so newer references are not lost.
 Future<RemoteDcmFileRow> _getDcmFileRow(String rowID) async {
   final record = await appointments.remote!.remoteRows.getOne(
     rowID,
@@ -174,20 +157,16 @@ class DcmOrphanCleanupResult {
       deletedFilesByRow.values.expand((files) => files).toList();
 }
 
-/// Computes DICOM originals/previews present in [serverFiles] but absent
-/// from the row's referenced `dcmImgs` list. Matching is case-insensitive.
-/// A preview is considered owned by its original (`foo.dcm.png` belongs to
-/// `foo.dcm`), so both are retained when the original is referenced.
+/// Files in [serverFiles] but absent from the row's `dcmImgs`, case-insensitive;
+/// a preview stays while its original is referenced.
 @visibleForTesting
 List<String> orphanDcmFileNames({
   required List<String> serverFiles,
   required List<String> referencedDcmFiles,
 }) {
   final refs = <String>{};
-  // PocketBase may append a collision suffix to the stored name
-  // (`dcm_abc.dcm` → `dcm_abc_x1.dcm`), so also match by logical upload
-  // identity — otherwise a referenced file with a suffix looks orphaned and
-  // would be deleted.
+  // A PB collision suffix makes a referenced file look orphaned, so also match
+  // by logical upload identity.
   final refIdentities = <String>{};
   for (final name in referencedDcmFiles) {
     final lower = p.basename(name).toLowerCase();

@@ -11,9 +11,8 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/hash.dart';
 
-/// Application-owned authentication binding. The store owns its persistence
-/// lane and remote resources; this binding owns external callback registrations
-/// and serial replacement of its Hive adapter.
+/// Binds a store to the session: owns its external callback registrations and
+/// serial replacement of its Hive adapter; the store owns persistence/remote.
 class StoreSessionBinding<G extends Model> {
   StoreSessionBinding({
     required this.store,

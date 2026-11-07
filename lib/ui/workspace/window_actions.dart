@@ -8,16 +8,8 @@ import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The Save a window carries when it stands on its own, beside the Close that
-/// goes with it.
-///
-/// Save is offered only by a window that writes something ([savable]); Close
-/// asks before throwing away unsaved work, and reads as Cancel while there is
-/// work to lose.
-///
-/// A window that is *docked* to a panel sets [confirmClose] to false: closing it
-/// puts it back in the panel's dock and loses nothing — the draft, and the panel's
-/// own Save, are still there.
+/// A window's Save and Close row. Docked windows set [confirmClose] false:
+/// closing one only returns it to its dock, losing nothing.
 class WindowActions extends StatefulWidget {
   const WindowActions({
     super.key,
@@ -32,12 +24,9 @@ class WindowActions extends StatefulWidget {
     this.extraActions = const <Widget>[],
   });
 
-  /// Whether the window writes anything at all. A list or a scan does not, and
-  /// gets Close alone.
   final bool savable;
 
-  /// Whether the draft differs from what was stored, as last sampled. Its owner
-  /// samples it once — the header's Close needs the same answer as this one.
+  /// Whether the draft was dirty at the last sample; [hasChanges] asks live.
   final bool dirty;
 
   /// The same question, asked live: a sample can be a beat behind the typing.
@@ -46,21 +35,14 @@ class WindowActions extends StatefulWidget {
   final Future<void> Function() onSave;
   final VoidCallback onClose;
 
-  /// Whether closing has to ask first. True for a window that stands on its own
-  /// — closing it destroys the only copy of the draft — and false for one docked
-  /// to its panel, where closing only puts it away.
   final bool confirmClose;
 
   /// Told after a save lands, so the window can re-read whether it is clean.
   final VoidCallback? onSaved;
 
-  /// The localization key for this Save, so the button says **which** record it
-  /// writes — "Save visit" rather than a "save" that could mean either of the
-  /// two records the row is showing (plan §4.4).
+  /// Localization key for the Save label, naming which record the row writes.
   final String saveLabel;
 
-  /// The record's own actions, drawn in this row beside Save and Close — a
-  /// window's delete, and nothing that edits a field.
   final List<Widget> extraActions;
 
   @override
@@ -94,9 +76,6 @@ class _WindowActionsState extends State<WindowActions> {
           top: BorderSide(color: theme.resources.dividerStrokeColorDefault),
         ),
       ),
-      // A wrap rather than a row: the same row of actions, but a window narrow
-      // enough for three of them drops one to a second line instead of
-      // overflowing its edge.
       child: Wrap(
         alignment: WrapAlignment.spaceEvenly,
         crossAxisAlignment: WrapCrossAlignment.center,
@@ -107,9 +86,8 @@ class _WindowActionsState extends State<WindowActions> {
           if (widget.savable)
             IconButton(
               key: WK.windowSave,
-              // Pressable even while the sample still says "clean": a draft is
-              // written in place, and a save that has nothing to write costs
-              // nothing — while a Save that ignores the press looks broken.
+              // Enabled even when the sample says clean: a save with nothing
+              // to write costs nothing, and a dead press looks broken.
               onPressed: _saving ? null : _save,
               style: greyButtonStyle.copyWith(
                 textStyle:

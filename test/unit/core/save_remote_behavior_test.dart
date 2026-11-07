@@ -200,8 +200,8 @@ void main() {
     previousAppointmentsRemote = appointments.remote;
     remote = SaveRemote(storeName: 'appointments', pbInstance: pb);
     remote.timer?.cancel();
-    // dicom_orphans_cleaner.dart operates on the appointments store's global
-    // remote rather than on a SaveRemote argument.
+    // dicom_orphans_cleaner.dart reads the global appointments.remote rather
+    // than a SaveRemote argument.
     appointments.remote = remote;
   });
 
@@ -943,9 +943,6 @@ void main() {
       expect(api.updateCount, 0);
     });
 
-    // -------------------------------------------------------------------
-    // DICOM upload deduplication integration tests
-    // -------------------------------------------------------------------
     test('DICOM: both original + preview exist → returns existing, no upload',
         () async {
       api.files = ['dcm_scan.dcm', 'dcm_scan.dcm.png'];

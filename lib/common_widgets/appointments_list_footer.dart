@@ -14,9 +14,8 @@ class AppointmentsListFooter extends StatelessWidget {
   });
   final String? forPatientID;
 
-  /// How the list opens the visit it starts here. A list that is a window of its
-  /// own passes its own opener, so a new visit makes way for the panel that holds
-  /// it instead of leaving the list behind. Defaults to opening the visit.
+  /// A list drawn as its own window passes an opener here so that window closes
+  /// itself before the new visit opens.
   final void Function(Appointment appointment)? onOpen;
 
   @override
@@ -33,8 +32,8 @@ class AppointmentsListFooter extends StatelessWidget {
             ],
           ),
           onPressed: () async {
-            // The sheet fills in the visit; what it hands back is already
-            // stored, so the visit opens as a record rather than a draft.
+            // the sheet stores the visit before returning, so open it as a
+            // record, not a draft.
             final created = await addAppointment(
               context,
               patientID: forPatientID,

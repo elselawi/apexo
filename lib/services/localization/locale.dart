@@ -22,22 +22,13 @@ class _Localization {
 
   List<En> list = [En(), Ar(), Es(), El(), Fa(), Ku(), Fr(), Tr(), It(), Ur()];
 
-  /// The language on screen, owned here rather than in the settings store.
-  ///
-  /// Every `txt()` and every [Txt] needs the language and nothing else this
-  /// module holds. Reading it from `LocalSettings` made the 113 files that
-  /// translate a string depend on the whole settings store — and, through it,
-  /// on the application binding and every feature behind it. A service that owns
-  /// a language must not know what a store is.
-  ///
-  /// The store still persists the choice: it pushes it here when it loads and
-  /// when the user picks another language (`LocalSettings.selectedLocale`).
+  /// The language on screen. Kept here, out of `LocalSettings`, so `txt()` and
+  /// [Txt] do not depend on the whole settings store; the store pushes changes in.
   final selected = ObservableState<int>(0);
 
   En get s => list[selected()];
 
-  /// Selects the language at [index], clamped to the languages that exist — a
-  /// preference written by a build with more languages must not crash `txt()`.
+  /// Clamps [index]: a value saved by a build with more languages must not crash `txt()`.
   void select(int index) {
     final next = index < 0
         ? 0
@@ -81,8 +72,7 @@ class Txt extends Text {
   @override
   Widget build(BuildContext context) {
     return StreamBuilder(
-        // The language alone: a text widget has no business rebuilding when the
-        // calendar system or the money format changes.
+        // Rebuilds on language only, not on other settings like calendar or money format.
         stream: locale.selected.stream,
         builder: (context, snapshot) {
           return Text(

@@ -67,8 +67,7 @@ void main() {
     await tester.tap(category);
     await tester.pumpAndSettle();
     expect(find.text(txt('bookingSubtitle')), findsWidgets);
-    // Signed out: the card explains the feature instead of offering the claim
-    // form, which needs a superuser session.
+    // Signed out: the claim form needs a superuser session, so the card explains.
     expect(find.text(txt('bookingNotConfigured')), findsOneWidget);
   });
 

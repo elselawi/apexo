@@ -8,8 +8,8 @@ class _LabworksController {
     appointments.observableMap.observe((_) {
       _nullifyCaches();
     });
-    // The not-delivered lists are filtered by the patients they belong to, so a
-    // patient archived or restored changes them without any visit being touched.
+    // Not-delivered lists derive from patients, so archiving a patient must
+    // invalidate them.
     patients.observableMap.observe((_) {
       _nullifyCaches();
     });

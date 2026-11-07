@@ -16,8 +16,6 @@ import 'package:pocketbase/pocketbase.dart';
 class PushRelay {
   static bool deviceIsPut = false;
 
-  /// The client every relay call goes through: a test answers with a status
-  /// instead of a real Worker.
   @visibleForTesting
   static http.Client client = http.Client();
 
@@ -25,9 +23,8 @@ class PushRelay {
       "https://apexo-notifications-relay.alisaleem.workers.dev";
   static const relayKeyIDInCollection = "notifications_k";
 
-  /// A background registration must not monopolize a refresh forever. The
-  /// server may still finish an accepted request after this local timeout; the
-  /// next bounded refresh is what reconciles that.
+  /// Bounds a background registration; the server may still finish an accepted
+  /// request, and the next bounded refresh reconciles it.
   @visibleForTesting
   static Duration registrationRequestTimeout = const Duration(seconds: 20);
 
@@ -49,9 +46,6 @@ class PushRelay {
     }
   }
 
-  /// This function ensures that a key specific to this server exists
-  /// it tries to fetch it from the database, and if it doesn't exist, it creates it
-  /// this function must be called right after a successful login occured
   static Future<String> ensureKey() async {
     final pb = login.pb;
     if (pb == null) {
@@ -68,11 +62,8 @@ class PushRelay {
     );
   }
 
-  /// Resolves the relay key using only values captured for [snapshot].
-  ///
-  /// This is deliberately not [ensureKey]: that method reads the mutable
-  /// `login` globals, which can already describe the next account by the time a
-  /// background registration resumes.
+  /// Uses only [snapshot] values: `ensureKey` reads mutable `login` globals,
+  /// which may already describe the next account on a resumed registration.
   static Future<String?> ensureKeyForSnapshot(
     NotificationSessionSnapshot snapshot,
   ) async {
@@ -107,27 +98,16 @@ class PushRelay {
       }).timeout(registrationRequestTimeout);
       return newKey;
     } catch (_) {
-      // Another bounded attempt may have created it between the read and the
-      // create. Re-read once rather than replacing a key that already exists.
+      // Another attempt may have created it between read and create; re-read
+      // once instead of replacing a key that already exists.
       final raced = await _getRelayKeyFrom(pb);
       if (raced != null && raced.isNotEmpty) return raced;
       rethrow;
     }
   }
 
-  /// This function puts a new device into the relay database
-  /// The server would add the token only if it doesn't exist
-  ///
-  /// [platform] is the [PushPlatform] value recorded with the device, so the
-  /// relay knows which transport to use and which OS to shape a push for. It
-  /// defaults to the relay's backward-compatible [PushPlatform.fcm]; passing
-  /// `null` (or an empty string) omits the field entirely rather than claiming
-  /// a platform this build could not identify.
-  ///
-  /// Returns whether the relay accepted the device. A missing key, a rejected
-  /// registration (`400`) or an unexpected reply all return `false` so the
-  /// caller can retry: the relay answers `200 ok` only when the device is
-  /// stored. Network failures still throw, as before.
+  /// [platform] defaults to [PushPlatform.fcm]; `null` or empty omits the field.
+  /// Returns false unless the relay answers `200 ok`; network failures throw.
   static Future<bool> putDevice({
     bool isPatient = false,
     String? platform = PushPlatform.fcm,
@@ -148,12 +128,8 @@ class PushRelay {
     return accepted;
   }
 
-  /// Registers one immutable device tuple.
-  ///
-  /// Unlike [putDevice], this helper never reads mutable login/patient globals
-  /// and never changes [deviceIsPut]. The Windows service checks its snapshot
-  /// before recording the result, so a request that belonged to a previous
-  /// account cannot mutate the current one.
+  /// Never reads mutable login/patient globals or sets [deviceIsPut]; the caller
+  /// re-checks its snapshot so a stale request cannot mutate current state.
   static Future<bool> registerDeviceSnapshot({
     required String clinicServer,
     required String clinicKey,
@@ -180,8 +156,6 @@ class PushRelay {
     return response.statusCode == 200 && response.body == "ok";
   }
 
-  /// This function replaces an old token with a new one
-  /// when FCM refreshes the token
   static Future<void> replaceToken(String oldToken, String newToken) async {
     if (newToken.isEmpty || oldToken == newToken) return;
     final isPatient = login.url.isEmpty && patientSide.server.isNotEmpty;
@@ -189,8 +163,8 @@ class PushRelay {
     final server = isPatient ? patientSide.server : login.url;
     if (relayKey == null || relayKey.isEmpty || server.isEmpty) return;
     if (oldToken.isEmpty) {
-      // The first registration of this device: keep recording the OS, which
-      // is what the relay uses to shape the push for this device.
+      // First registration: record the OS, which the relay uses to shape this
+      // device's push.
       await putDevice(isPatient: isPatient, platform: PushPlatform.current);
       return;
     }
@@ -206,19 +180,15 @@ class PushRelay {
     );
   }
 
-  /// Sends [bulkData] to the relay, and reports what the relay said.
-  ///
-  /// Throws [PushRelayException] when a push was not accepted for a reason that
-  /// may pass later — no relay key yet, a 5xx, a connection that died — so the
-  /// caller keeps it queued. A 4xx is permanent (the relay will never take this
-  /// payload), so it is logged and dropped rather than retried forever.
+  /// Throws [PushRelayException] for retryable failures (missing key, 5xx,
+  /// connection death) so the caller keeps the datum queued; a 4xx is dropped.
   static Future<void> sendPush(List<PushData> bulkData) async {
     if (bulkData.isEmpty) return;
 
     final relayKey = await _getRelayKey();
     if (relayKey == null) {
-      // The key is minted at login: not having it yet is retryable, not a
-      // reason to throw the push away.
+      // The key is minted at login, so a missing one is retryable, not a reason
+      // to drop the push.
       throw PushRelayException('the clinic has no relay key yet');
     }
     await sendPushWithKey(relayKey, bulkData);
@@ -237,16 +207,14 @@ class PushRelay {
     await Future.wait([
       for (final data in bulkData)
         () async {
-          // A copy: a caller that queues this datum after a failure must still
-          // hold the targets it computed.
           final targets = [
             for (final id in data.targetIDs)
               if (id != login.currentAccountID) id,
           ];
           if (targets.isEmpty) return;
 
-          // Rendered here, in this device's language: the relay has no text of
-          // its own, and attaches this to the iOS alert push.
+          // Rendered here in this device's language: the relay has no text and
+          // attaches this alert to the iOS push.
           final List<String> alert;
           final http.Response res;
           try {
@@ -288,8 +256,8 @@ class PushRelay {
   }
 }
 
-/// Thrown when the relay could not take a push for a reason that may pass
-/// later: the caller keeps the datum queued and retries on the next sync.
+/// A retryable relay rejection: the caller keeps the datum queued and retries
+/// on the next sync.
 class PushRelayException implements Exception {
   PushRelayException(this.message);
   final String message;

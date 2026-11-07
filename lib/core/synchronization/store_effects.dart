@@ -1,7 +1,6 @@
 import '../../core/synchronization/push_data.dart';
 
-/// Application effects used by a store, independent of authentication and UI.
-/// The default is inert so isolated stores need no application singletons.
+/// Store side effects. Defaults are inert so isolated stores need no app singletons.
 class StoreEffects {
   const StoreEffects();
 

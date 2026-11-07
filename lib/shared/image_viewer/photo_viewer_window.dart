@@ -7,13 +7,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import 'image_viewer.dart';
 
-/// A record's photos, loaded where they are shown.
-///
-/// The wait lives here rather than in a dialog over the app: a photo can take a
-/// moment to arrive, and that moment belongs inside the window that asked for
-/// it, not on top of everything else the dentist is doing. Once the photos are
-/// here, [ImageViewer] does the rest — it knows nothing about stores, files or
-/// loading.
+/// A record's photos, loaded in the window itself so the wait stays inside it.
+/// [ImageViewer] only renders and knows nothing about stores, files or loading.
 class PhotoViewerWindow extends StatefulWidget {
   const PhotoViewerWindow({
     super.key,
@@ -40,18 +35,14 @@ class PhotoViewerWindow extends StatefulWidget {
   final Map<String, String>? drawings;
   final void Function(String imageId, String drawing)? onSaveDrawing;
 
-  /// Deletes the photo it is given, by its index in [images]. Null where the
-  /// dentist may look but not delete.
+  /// Deletes the photo at the given index in [images]; null means view-only.
   final ValueChanged<int>? onDelete;
 
   /// Runs once the photo on screen is deleted, so the window can close with it.
   final VoidCallback? onClosed;
 
-  /// How the photos are fetched. The app reads them from the record's files;
-  /// a test supplies its own.
-  ///
-  /// The seam exists for the tests alone — the app always reads the record's
-  /// own files — so nothing in the app should reach for it.
+  /// Loader seam for tests only: the app always reads the record's own files, so
+  /// nothing in the app should pass this.
   @visibleForTesting
   final Future<List<ImageProvider<Object>>> Function()? load;
 
@@ -62,12 +53,8 @@ class PhotoViewerWindow extends StatefulWidget {
 class _PhotoViewerWindowState extends State<PhotoViewerWindow> {
   late Future<List<ImageProvider<Object>>> _loading = _load();
 
-  /// The photos that were loaded, so they can be taken out of the image cache
-  /// when this viewer goes away.
-  ///
-  /// The full-size photos of an X-ray are the biggest thing the app loads, and
-  /// the window that shows them outlives the gallery that opened it — so
-  /// nothing else would ever take them out again.
+  // The loaded photos, evicted on dispose: full-size X-rays are the biggest thing
+  // the app loads and outlive the gallery that opened them.
   final Set<ImageProvider<Object>> _loaded = <ImageProvider<Object>>{};
 
   Future<List<ImageProvider<Object>>> _load() async {
@@ -112,8 +99,6 @@ class _PhotoViewerWindowState extends State<PhotoViewerWindow> {
     widget.onClosed?.call();
   }
 
-  /// The one place the window talks to the dentist while it has no photo yet:
-  /// what it is doing, or what went wrong and the way to try again.
   Widget _message(String text, {bool waiting = false}) {
     return Center(
       child: Column(

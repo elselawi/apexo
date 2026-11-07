@@ -11,9 +11,6 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// What a visit's attachment chip says beyond its own name: the gallery shows
-/// the pictures it opens, and the labwork order shows whether it exists and
-/// whether it has come back.
 void main() {
   final onePixelPng = base64Decode(
       'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAACklEQVR4nGMAAQAABQABDQottAAAAABJRU5ErkJggg==');

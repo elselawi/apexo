@@ -10,33 +10,12 @@ import 'package:apexo/utils/logger.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-/// Registers the DICOM scan lifecycle with the login system, before any login
-/// can run.
-///
-/// The periodic auto-scan is started by the `login.activators['dicom']` entry
-/// the [DicomController] constructor installs. [dicomCtrl] is a
-/// lazily-initialized top-level `final` — a Dart file-level `final` is only
-/// created on first *use* — and nothing touched it that early: the DICOM route
-/// and screen reference it only when the dentist opens that page. So the
-/// activator was registered **after** `login.activate()` had already run its
-/// callbacks, the periodic scan never started, and X-rays were only ever picked
-/// up by the manual scan on the DICOM page.
-///
-/// `main()` calls this at startup. Returns the controller, so the call cannot
-/// be mistaken for a no-op.
+/// Touches [dicomCtrl] so the `login.activators['dicom']` scan hook is registered
+/// before `login.activate()` runs; a lazy top-level `final` is not created on import.
 DicomController initializeDicomScan() => dicomCtrl;
 
-/// Initializes the `dicom_toolkit` native (Rust/WASM) engine.
-///
-/// Must be called once at app startup, after `WidgetsFlutterBinding
-/// .ensureInitialized()`, and before any DICOM parse / render / export call.
-///
-/// Wraps [DicomToolkit.init] in a `try/catch` so that a failure to load the
-/// native engine does not prevent the rest of Apexo from booting. DICOM
-/// features will simply be unavailable (surfaced to the user later via the
-/// feature gates). All other app functionality is unaffected.
-///
-/// Returns `true` if initialization succeeded, `false` otherwise.
+/// Loads the native DICOM engine. Must run after `ensureInitialized()` and
+/// before any DICOM call; failure is non-fatal, so the app still boots.
 Future<bool> initDicomToolkit() async {
   try {
     await DicomToolkit.init();
@@ -52,24 +31,8 @@ Future<bool> initDicomToolkit() async {
 /// PNG magic header (first 8 bytes of any valid PNG file).
 const _pngMagic = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
 
-/// Headless export verification — confirms that `DicomExport().toPngBytes()`
-/// works without an active widget surface (i.e. from a background pipeline).
-///
-/// This is a manual verification helper — not wired to any automated test.
-///
-/// Flow:
-///   1. Reads the `.dcm` file at [filePath] (defaults to the shipped test
-///      fixture at `test/fixtures/dicom/sample.dcm`).
-///   2. Parses it with `DicomParser().parse()` (full parse: metadata + pixels).
-///   3. Renders a PNG via `DicomExport().toPngBytes()` using DICOM-default
-///      windowing.
-///   4. Logs whether the result is non-empty and starts with the PNG magic
-///      header.
-///
-/// On web, local file access is unavailable.
-///
-/// Returns `true` if headless export succeeded (non-empty PNG bytes with the
-/// correct magic header), `false` otherwise. The result is also logged.
+/// Manual check, not wired to an automated test, that PNG export works without
+/// an active widget surface.
 Future<bool> verifyHeadlessExport({String? filePath}) async {
   if (kIsWeb) {
     log.warning(
@@ -147,17 +110,8 @@ Future<bool> verifyHeadlessExport({String? filePath}) async {
   }
 }
 
-/// Manual verification helper — scans [dirPath] for `.dcm` files and parses
-/// each, logging the extracted metadata (patientName, patientId, studyDate,
-/// sopInstanceUid, modality, dimensions) for valid files, and logging
-/// failures to the `dicom_skipped` log.
-///
-/// This is a **manual verification helper** — not wired to any automated
-/// test (the Rust FFI library isn't loaded under `flutter test`). The user
-/// triggers it from a temporary debug button or `flutter run` console call.
-///
-/// Defaults to `C:\dcm`. Returns
-/// the number of successfully-parsed files.
+/// Manual scan/parse check for a directory of `.dcm` files, not wired to an
+/// automated test because the Rust FFI library isn't loaded under `flutter test`.
 Future<int> verifyDicomScan({String dirPath = r'C:\dcm'}) async {
   if (kIsWeb) {
     log.warning('verifyDicomScan: skipped on web (no local file access).');

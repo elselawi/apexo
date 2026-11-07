@@ -2,11 +2,8 @@ import 'dart:typed_data';
 
 import 'dicom_io_stub.dart' if (dart.library.io) 'dicom_io_native.dart';
 
-/// A stat-only entry for a `.dcm` file discovered during a directory scan.
-///
-/// No file bytes are read when producing this — just a `File.stat()` call.
-/// The [DicomFileCache] keys on `path` and checks `mtime + size`
-/// to decide whether the file can be skipped entirely on the next scan.
+/// A stat-only entry for a `.dcm` file; no bytes are read. [DicomFileCache]
+/// keys on `path` and reuses an entry when `mtime` and `size` both match.
 class DicomFileEntry {
   const DicomFileEntry({
     required this.path,
@@ -28,21 +25,16 @@ class DicomFileEntry {
       'DicomFileEntry(path: $path, mtime: $mtime, size: $size)';
 }
 
-/// Conditional-import facade for native filesystem access (directory scan +
-/// byte reads). Web gets a no-op stub; native gets the `dart:io` impl.
-///
-/// **Platform split** (per plan): scanning is only invoked on Windows, but
-/// the conditional import compiles on all platforms so the app builds
-/// everywhere. The stub returns empty/null on web.
+/// Conditional-import facade for filesystem access: native gets the `dart:io`
+/// impl, web a no-op stub, so the app builds on both.
 abstract class DicomIO {
-  /// Recursively lists all `.dcm` files under [path], returning stat-only
-  /// entries (no file opens). Files modified within the last 5 seconds are
-  /// skipped (partial-write lock protection — files modified <5s ago).
+  /// Recursively lists `.dcm` files under [path] as stat-only entries; files
+  /// modified in the last 5 seconds are skipped (partial-write protection).
   static Future<List<DicomFileEntry>> scanDirectory(String path) =>
       DicomIOImpl.scanDirectory(path);
 
-  /// Reads all bytes from the file at [path]. Returns null on failure (e.g.,
-  /// exclusive lock during write, file deleted between scan and read).
+  /// Returns null on failure, e.g. an exclusive write lock or the file being
+  /// deleted between the scan and the read.
   static Future<Uint8List?> readBytes(String path) =>
       DicomIOImpl.readBytes(path);
 }

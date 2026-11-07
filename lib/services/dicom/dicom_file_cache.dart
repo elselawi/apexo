@@ -6,12 +6,8 @@ import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 
-/// Cached metadata for a `.dcm` file, keyed by absolute path.
-///
-/// At scale (40,000+ files), opening and parsing metadata for
-/// every file on every scan is noticeable. This cache stores the parsed
-/// metadata + the file's `mtime + size` so unchanged files can be skipped
-/// entirely (no file open, no parse) on subsequent scans.
+/// Parsed metadata for one `.dcm`, cached by path with the file's `mtime` and size
+/// so an unchanged file is skipped without opening or parsing it.
 class DicomCachedMeta {
   const DicomCachedMeta({
     required this.mtime,
@@ -55,9 +51,7 @@ class DicomCachedMeta {
   /// DICOM study date (YYYYMMDD string, as stored in the file).
   final DateTime? dcmDate;
 
-  /// Whether this file is part of a volumetric scan (CBCT/CT).
-  /// Cached so that cache-hit scans can skip volumetric files without
-  /// re-parsing metadata.
+  /// Whether this file is a CBCT/CT volume, cached so scans can skip it unparsed.
   final bool isVolumetric;
 
   Map<String, dynamic> toJson() => {
@@ -71,16 +65,8 @@ class DicomCachedMeta {
       };
 }
 
-/// Hive-backed cache of parsed DICOM metadata, keyed by absolute file path.
-///
-/// Box name: `dicom_file_cache`. Stores [DicomCachedMeta] as JSON strings.
-///
-/// Usage during a scan:
-/// 1. `isUnchanged(path, mtime, size)` → if true, reuse cached metadata
-///    via `get(path)` without opening or parsing the file.
-/// 2. Else: open + parse + `put(path, ...)` to update the cache.
-/// 3. After the scan, `pruneMissing(currentPaths)` evicts entries for files
-///    that have been deleted from disk.
+/// Hive-backed metadata cache keyed by absolute path. A scan reuses an entry when
+/// [isUnchanged], and [pruneMissing] drops files deleted from disk.
 class DicomFileCache {
   DicomFileCache._();
 
@@ -96,9 +82,8 @@ class DicomFileCache {
 
     final initialization = _initialize();
     _initialization = initialization;
-    // If opening fails, clear the memoized future so a later call retries and
-    // no half-open box is left behind (which would throw
-    // LateInitializationError on every subsequent access).
+    // Clear the memoized future on failure so a later call retries instead of
+    // reusing a half-open box (LateInitializationError on every access).
     unawaited(initialization.catchError((_) {
       if (identical(_initialization, initialization)) {
         _initialization = null;
@@ -121,9 +106,7 @@ class DicomFileCache {
     return _box!;
   }
 
-  /// Returns true if the cache has an entry for [path] with the same
-  /// [mtime] and [size] — meaning the file hasn't changed since it was
-  /// last parsed, and the cached metadata can be reused.
+  /// True when the cached entry has the same [mtime] and [size].
   Future<bool> isUnchanged(String path, DateTime mtime, int size) async {
     try {
       final box = await _openBox;
@@ -161,8 +144,7 @@ class DicomFileCache {
     }
   }
 
-  /// Evicts cache entries whose path is not in [currentPaths] — i.e., files
-  /// that have been deleted from disk since the last scan.
+  /// Drops entries whose path is not in [currentPaths], i.e. files deleted from disk.
   Future<void> pruneMissing(Set<String> currentPaths) async {
     try {
       final box = await _openBox;
@@ -180,9 +162,7 @@ class DicomFileCache {
     }
   }
 
-  /// Returns a snapshot of the entire cache (path → meta). Used by
-  /// [DicomImporter] to pass the cache into the scan isolate as plain data
-  /// (the isolate can't touch Hive).
+  /// Snapshot for passing into the scan isolate, which cannot touch Hive.
   Future<Map<String, DicomCachedMeta>> get snapshot async {
     try {
       final box = await _openBox;

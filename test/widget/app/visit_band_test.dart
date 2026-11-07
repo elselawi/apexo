@@ -22,13 +22,6 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../helpers/fake_session.dart';
 import '../../helpers/pump_app.dart';
 
-/// What the user sees when a panel carries a record (plan §4.4, §4.6).
-///
-/// A patient panel has no dock: its own workspaces (the chart, the list of
-/// visits) are labelled buttons inside the record, its photos and page are
-/// attachments under it, and a carried visit draws a bubble with the appointment
-/// form, its own tool dock, its own Save and the control that closes it while
-/// keeping the draft.
 void main() {
   setUp(() {
     PanelsManager.closeAll();
@@ -156,8 +149,7 @@ void main() {
     // Two Saves, each saying which record it writes.
     expect(find.text(txt('savePatient')), findsWidgets);
     expect(find.text(txt('saveVisit')), findsWidgets);
-    // A panel that presents its windows as attachments and header buttons has
-    // no second row of switches: the workspaces row *is* its dock.
+    // With attachments and header buttons, the workspaces row is the only dock.
     expect(find.byType(WindowDock), findsOneWidget);
     expect(
       find.descendant(
@@ -185,14 +177,13 @@ void main() {
 
     final footer = find.byKey(WK.patientFollowUpSet);
     expect(footer, findsOneWidget);
-    // Directly under the visit's bubble: the patient's own promise is not
-    // buried by the visit that records it.
+    // The follow-up row sits below the band, outside the visit's bubble.
     expect(
       tester.getTopLeft(footer).dy,
       greaterThanOrEqualTo(tester.getBottomLeft(find.byKey(WK.visitBand)).dy),
     );
-    // The panel's own record turns read-only while a visit is open; this row is
-    // outside it, because a visit is exactly where a follow-up is decided.
+    // The record turns read-only while a visit is open; this row stays live
+    // because a visit is exactly where a follow-up is decided.
     await tester.tap(footer);
     await tester.pumpAndSettle();
     expect(tapped, 1);
@@ -339,8 +330,6 @@ void main() {
       findsWidgets,
     );
 
-    // Typing a post-op note completes a visit exactly as it does today — but
-    // visibly, at once, and reversibly (plan §8.1).
     session.markDone(true);
     session.hasWork = true;
     session.refreshDirty();
@@ -512,8 +501,6 @@ void main() {
       itemId: 'visit-previewed',
       windows: [
         FakeSession.window('chart', saveLabel: 'saveVisit'),
-        // The tray a visit really draws: its labwork order and its gallery,
-        // each with something to say about what it holds.
         FakeSession.window(
           'labwork',
           saveLabel: 'saveVisit',
@@ -555,15 +542,13 @@ void main() {
     final panel = hostPanel();
     await pumpShell(tester, panel);
 
-    // The patient's birth year and notes live in the details editor, not in a
-    // second header line repeating them.
     expect(find.text('1989 · 37y · Penicillin allergy'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
   test('a slot names the block, a group id names the record', () {
-    // The layout memory is keyed by slot, never by record id: every visit opens
-    // the way the last one was left (plan §6.2-4).
+    // Layout memory is keyed by slot, never by record id, so every visit opens
+    // the way the last one was left.
     expect(rowKey(kAttachedSlot, 'operative'), 'attached/operative');
     expect(slotOfRowKey('attached/operative'), kAttachedSlot);
     expect(windowIdOfRowKey('attached/operative'), 'operative');

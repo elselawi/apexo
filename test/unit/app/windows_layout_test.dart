@@ -1,7 +1,3 @@
-/// The arithmetic behind the window layout, pinned on its own: how wide a window
-/// is drawn, how many open by themselves, and where a window is put. The widgets
-/// only place what these answer, so a mistake here would show up as a clipped,
-/// missing or unreachable window and nothing else could explain it.
 library;
 
 import 'package:apexo/ui/workspace/panel_width.dart';
@@ -11,8 +7,7 @@ import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-/// A wide window of its own — the chart's width, but the test's own number: a
-/// test of the layout must not depend on a feature's chart.
+/// The chart's width: the test's own number, so it depends on no feature.
 const double chartWidth = 960.0;
 
 void main() {
@@ -89,8 +84,7 @@ void main() {
         screenHeight: 1000,
       );
       expect(layout.compact, isFalse);
-      // 350-wide windows in 1230: three share the row — and only three, because
-      // a fourth would have to be stacked over one of them.
+      // 1230 holds three 350-wide windows; a fourth would not fit beside them.
       expect(layout.capacity, 3);
     });
 
@@ -101,8 +95,7 @@ void main() {
         panelWidth: 350,
         screenHeight: 1000,
       );
-      // 960 + 350 does not fit in 1230, so the form waits in the dock rather than
-      // being laid over the chart.
+      // 960 + 350 is wider than 1230, so the form stays in the dock.
       expect(layout.capacity, 1);
     });
 
@@ -131,8 +124,7 @@ void main() {
         floating: [window('a'), window('b'), window('c')],
         screenWidth: 1600,
         panelWidth: 350,
-        // A screen only one window tall: height is not what limits the row here,
-        // width is — three 350-wide windows share it.
+        // One window tall, so width alone caps the row at three.
         screenHeight: 400,
       );
       expect(layout.capacity, 3);
@@ -183,8 +175,7 @@ void main() {
       expect(slots[0].placement.left, 1592 - 350);
       expect(slots[1].placement.left, 1592 - 350 - 12 - 350);
       expect(slots[2].placement.left, 1592 - 2 * (350 + 12) - 350);
-      // …all at the same height, and each as tall as the screen: one row, never
-      // a pile and never a shorter window that would have to scroll.
+      // One row: same top, each as tall as the area, so nothing has to scroll.
       expect(slots.map((slot) => slot.placement.top), everyElement(8));
       expect(slots.map((slot) => slot.height), everyElement(area.height));
     });
@@ -212,9 +203,8 @@ void main() {
 
       // The chart is drawn at its own width…
       expect(slots[0].placement.left, 1592 - chartWidth);
-      // …and the window that has no room beside it is still placed, at the
-      // edge of the row — on top of the window already there, because the row
-      // is one row. It is the caller that keeps such a window in the dock.
+      // A window with no room beside it is still placed on top of its
+      // neighbour; keeping it in the dock is the caller's job.
       expect(slots[1].placement.left, 1592 - 350);
       expect(slots[1].placement.top, slots[0].placement.top);
     });
@@ -304,9 +294,6 @@ void main() {
 
     test('a window opened low with its height known is lifted by that height',
         () {
-      // A tap near the foot of the screen: the window's own height, not the
-      // least a window may be opened at, decides how far up it goes — so the
-      // whole of it sits on the screen and none of it has to be scrolled to.
       final lifted = placementAt(
         origin: Offset(700, area.bottom - 20),
         width: 350,
@@ -363,13 +350,6 @@ void main() {
       );
     });
   });
-
-  // ── The plan: what one row holds when its windows are not all the same width
-  //
-  // The chart asks for 960, a pre-op form for 560 and a tool for the panel's own
-  // 350, so a count of fitting windows describes one selection and says nothing
-  // about the next. These are the six screen profiles §1 priced the design from
-  // (plan §1, §4.3, §6.2-5).
 
   /// A window that asks for its own [width] and needs [minHeight] to be whole.
   PanelWindow sized(
@@ -451,8 +431,8 @@ void main() {
         ]),
       ]);
 
-      // 560 + 12 + 960 = 1532 of 996: the chart stays in the dock, and the window
-      // that does fit keeps its place.
+      // 560 + 12 + 960 = 1532 of 996: the chart waits in the dock, the pre-op
+      // keeps the row.
       expect(plan.selected, ['attached/preOperative']);
     });
 
@@ -497,8 +477,8 @@ void main() {
 
   group('the plan walks candidates instead of counting them', () {
     test('a narrow window after a wide one that did not fit still opens', () {
-      // The whole point of `continue` rather than `break`: the chart is too wide
-      // for what is left of the row, and the tool behind it is not.
+      // `continue`, not `break`: the chart is too wide for what is left, the
+      // tool behind it is not.
       final plan = planAt(1366, [
         visitWindows([
           sized('preOperative', 560),
@@ -673,8 +653,8 @@ void main() {
 
   group('the chart threshold', () {
     test('1902 is where the chart and the pre-op form first fit together', () {
-      // 560 + 12 + 960 = 1532 = 1902 − 350 − 12 − 8: the exact screen the
-      // threshold is derived from (plan §4.3).
+      // 560 + 12 + 960 = 1532 = 1902 − 350 − 12 − 8: the screen the threshold
+      // is derived from.
       final plan = planAt(1902, [
         visitWindows([
           sized('preOperative', 560),

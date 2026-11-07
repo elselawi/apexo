@@ -1,6 +1,3 @@
-/// use this class MStreamBuilder in flutter widget
-/// to listen to multiple streams, as opposed to Streambuilder
-/// which listens to a single one.
 library;
 
 import 'dart:async';
@@ -92,8 +89,8 @@ class _MStreamBuilderState<T> extends State<MStreamBuilder<T>> {
       slot.cancel();
     }
 
-    // Publish the new list *before* listening: a stream that emits synchronously
-    // on `listen` would otherwise write into a slot the current build cannot see.
+    // publish before listening: a stream emitting synchronously on `listen`
+    // would write into a slot this build cannot see.
     _slots
       ..clear()
       ..addAll(matched);
@@ -128,8 +125,7 @@ class _MStreamBuilderState<T> extends State<MStreamBuilder<T>> {
   }
 }
 
-/// One live subscription: the stream it listens to and the value that stream
-/// last delivered. Its position in `_slots` *is* its index in `data`.
+/// One live subscription; its position in `_slots` is its index in `data`.
 class _StreamSlot<T> {
   _StreamSlot(this.stream);
 
@@ -137,8 +133,7 @@ class _StreamSlot<T> {
   T? value;
   StreamSubscription<T>? subscription;
 
-  /// Set as soon as the slot is dropped, so an event from a subscription whose
-  /// `cancel()` has not completed yet is ignored.
+  /// Set on drop so an event from a `cancel()` still in flight is ignored.
   bool dropped = false;
 
   void cancel() {

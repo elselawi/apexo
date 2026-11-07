@@ -222,10 +222,8 @@ class _LoginScreenState extends State<LoginScreen> {
       child: ButtonContent(WindowsIcons.delete, txt("clear"), size: 16),
       onPressed: () {
         login.logout(true);
-        // `logout(true)` empties the **stored** url and email, but the three
-        // fields hold their own controllers and `fillFromPersistence` only ever
-        // writes a *non-empty* value back — so the form stayed filled with a
-        // session that no longer existed (`login 08`). Empty them here.
+        // logout(true) empties the stored url and email, and fillFromPersistence
+        // only writes non-empty values back, so the controllers must be cleared.
         setState(() {
           serverURLCtrl.clear();
           emailCtrl.clear();
@@ -253,8 +251,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final bool suppCamera =
         ImagePicker().supportsImageSource(ImageSource.camera);
 
-    // if it supports only one methood
-    // there's no need to show a menu
     if (suppCamera && !suppGallery) {
       unawaited(PatientSide.fromQR(
           ImagePicker().pickImage(source: ImageSource.camera)));

@@ -15,8 +15,6 @@ const String toastClsid = '51fc2ec1-f21e-4b3c-9f2b-71c28c7b0f7e';
 const String identityName = 'alisaleem.apexo.app';
 const String publisher = 'CN=275027E7-AE47-4DEE-B3D6-0BE5AF8D773E';
 
-/// The AUMID the Dart side ships. Its family name matches the installed package
-/// `alisaleem.apexo.app_0.15.2.0_x64__e460fpmm323ja`.
 const String aumid = 'alisaleem.apexo.app_e460fpmm323ja!apexo';
 
 const MsixConfig testMsix = MsixConfig(
@@ -207,8 +205,7 @@ void main() {
       expect(classesOf(servers.single).single.getAttribute('Id'), appId);
       expect(toastClsidOf(patched), isNull);
 
-      // The local toast contract is the msix tool's job; the patcher must not
-      // invent one, and verification says so.
+      // The msix tool owns the toast contract; the patcher must not invent one, so verification fails.
       expect(() => verifyOk(patched), throwsPatchError());
     });
 
@@ -360,8 +357,7 @@ void main() {
         () => patchManifestFile(
           file.path,
           appId: appId,
-          // A toast CLSID that disagrees with the manifest fails verification of
-          // the temporary file, after the patch itself succeeded.
+          // The patch succeeds, then verification of the temp file fails, so the original stays.
           msix: const MsixConfig(
             identityName: identityName,
             publisher: publisher,
@@ -505,9 +501,8 @@ void main() {
     });
 
     test('rejects a push class id that is not the application id', () {
-      // The class id is the Azure application (client) id, which is also the
-      // remoteId of CreateChannelAsync — an app registration's object id here
-      // produces a channel the relay is not authorized to send to.
+      // The class id is the Azure app (client) id and the `CreateChannelAsync`
+      // remoteId; an app registration object id yields a channel the relay rejects.
       final wrongIdentity = patchManifest(manifest(toast: true), appId: appId)
           .replaceAll(appId, '431f890b-3a77-4d0b-b52a-aa684ffed80d');
 

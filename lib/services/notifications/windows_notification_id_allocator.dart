@@ -5,12 +5,8 @@ import 'package:apexo/utils/safe_dir.dart';
 import 'package:apexo/utils/safe_hive_init.dart';
 import 'package:hive_flutter/adapters.dart';
 
-/// Persisted storage for the next Windows toast id.
-///
-/// The allocator talks to this interface so tests can use an in-memory store;
-/// production uses a Hive box in the app's files directory. It must work from a
-/// hidden process before any staff store is initialized, which is why it does
-/// not reuse a clinic's store.
+/// Persisted storage for the next Windows toast id; it must open from a hidden
+/// push process before any staff store exists, so it cannot reuse a clinic store.
 abstract interface class WindowsNotificationIdStore {
   Future<int> readNext();
 
@@ -57,17 +53,9 @@ class HiveWindowsNotificationIdStore implements WindowsNotificationIdStore {
   static const String _nextKey = 'next-id';
 }
 
-/// Allocates the numeric tag a Windows toast is shown with.
-///
-/// The installed Windows local-notifications plugin uses the numeric id as the
-/// toast Tag. A process-local counter restarts at zero in every hidden process,
-/// so successive pushes would replace the previous notification. This allocator
-/// persists the *next* id before returning the current one; a crash can skip an
-/// id, but two displayed notifications cannot share one.
-///
-/// The id stays in the positive signed 32-bit range the native tag accepts. On
-/// wraparound it restarts at 1; reaching that point takes 2,147,483,647
-/// notifications, and the previous tag has long left the notification centre.
+/// Allocates the toast Tag. A process-local counter restarts at zero in every
+/// hidden push process, so the next id is persisted before the current one is
+/// returned: a crash can skip an id, but two toasts cannot share one.
 class WindowsNotificationIdAllocator {
   WindowsNotificationIdAllocator({WindowsNotificationIdStore? store})
       : _store = store ?? HiveWindowsNotificationIdStore();

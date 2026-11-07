@@ -7,17 +7,7 @@ import 'package:apexo/features/settings/settings_stores.dart' show DF;
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The patient's next follow-up, drawn on the visit scope bar.
-///
-/// It is **not** a visit and must never read like one: it sits at the leading
-/// end of the timeline, past the newest dot, separated by the dashed line that
-/// means "still to come", it is a size larger than any visit dot, and it is
-/// drawn in the follow-up teal rather than the visit purple — with the glyph of
-/// the one thing that turns a follow-up into a visit: a phone call.
-///
-/// Hovering says when the patient is expected and how far off that is; clicking
-/// opens the same card the day's band opens — the day, the phone numbers, and
-/// the visit that would keep the promise (see [FollowUpCard]).
+/// The patient's follow-up on the visit scope bar; clicking opens [FollowUpCard].
 class FollowUpScopeDot extends StatefulWidget {
   const FollowUpScopeDot({
     super.key,
@@ -31,9 +21,7 @@ class FollowUpScopeDot extends StatefulWidget {
   /// The day the patient was asked to come back.
   final DateTime date;
 
-  /// Books the visit for that day, with [patient] already chosen. Null while
-  /// the account may not create visits; the card then keeps the contact details
-  /// alone.
+  /// Books the visit for that day; null when the account cannot create visits.
   final VoidCallback? onBook;
 
   @override
@@ -43,8 +31,7 @@ class FollowUpScopeDot extends StatefulWidget {
 class _FollowUpScopeDotState extends State<FollowUpScopeDot> {
   final OverlayPortalController _hover = OverlayPortalController();
 
-  /// The dot's own width, and the room the bar gives it: the dashed lead-in,
-  /// the circle, and the day under it, as the visit dots have.
+  // The dot's width: dashed lead-in, circle and day, as the visit dots have.
   static const double width = 58.0;
   static const double _trackY = 14.0;
   static const double _size = 21.0;
@@ -96,8 +83,6 @@ class _FollowUpScopeDotState extends State<FollowUpScopeDot> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // The future is drawn as a dashed continuation of the track:
-                    // the same line, the same height, but not yet walked.
                     PositionedDirectional(
                       start: 0,
                       top: _trackY - 0.5,
@@ -254,8 +239,6 @@ class _DashedLeadIn extends CustomPainter {
   bool shouldRepaint(_DashedLeadIn oldDelegate) => oldDelegate.color != color;
 }
 
-/// What a hover says: which day, how far off, and how to reach the patient — the
-/// question that follows "they are due back".
 class _FollowUpHoverCard extends StatelessWidget {
   const _FollowUpHoverCard({
     super.key,

@@ -15,12 +15,6 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../helpers/fake_session.dart';
 import '../../helpers/pump_app.dart';
 
-/// A panel carrying a record beside itself (plan §0, §2.3, §6.2-2).
-///
-/// The visit is not a panel: it is a session whose windows are drawn in the
-/// patient panel's own row. These tests prove the three things that make that
-/// real rather than intended — that attaching repaints, that the patient stays,
-/// and that a visit's window writes the visit.
 void main() {
   setUp(() {
     PanelsManager.closeAll();
@@ -117,9 +111,7 @@ void main() {
 
     final session = visitSession();
     panel.attach(session, focus: 'operative');
-    // One frame: nothing else rebuilds this layer — the panel object is the same
-    // object it always was — so an attach that shows nothing is the bug this
-    // proves against.
+    // The panel object is unchanged, so an attach that paints nothing is the bug.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 

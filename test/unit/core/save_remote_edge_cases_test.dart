@@ -5,11 +5,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-/// Unit-level tests for SaveRemote DTOs, filename hashing pattern,
-/// and edge cases that don't require a real PocketBase server.
-///
-/// For integration-level upload/download/delete tests against a live
-/// PocketBase instance, see `test/live_backend/core/save_remote_test.dart`.
 void main() {
   final client = MockClient((_) async => http.Response(
         '{"code":200,"message":"ok"}',
@@ -29,9 +24,6 @@ void main() {
     client.close();
   });
 
-  // ---------------------------------------------------------------------------
-  // RowToWriteRemotely DTO
-  // ---------------------------------------------------------------------------
   group('RowToWriteRemotely', () {
     test('defaults store to empty string', () {
       final r = RowToWriteRemotely(id: 'abc', data: '{"x":1}');
@@ -82,9 +74,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // Row DTO (extends RowToWriteRemotely)
-  // ---------------------------------------------------------------------------
   group('Row', () {
     test('extends RowToWriteRemotely and adds ts', () {
       const ts = 1700000000000;
@@ -99,8 +88,6 @@ void main() {
       final r = Row(id: 'r6', data: '{"a":1}', ts: 99);
       r.store = 'appointments';
       final j = r.toJson();
-      // Row inherits toJson from RowToWriteRemotely which only
-      // serializes id, data, store. ts is NOT in the JSON output.
       expect(j['id'], 'r6');
       expect(j['data'], '{"a":1}');
       expect(j['store'], 'appointments');
@@ -119,9 +106,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // VersionedResult DTO
-  // ---------------------------------------------------------------------------
   group('VersionedResult', () {
     test('holds version and rows (positional constructor)', () {
       final vr = VersionedResult(0, []);
@@ -147,9 +131,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // DICOM orphan-file detection
-  // ---------------------------------------------------------------------------
   group('RemoteDcmFileRow and DcmOrphanCleanupResult', () {
     test('extracts only list-valued dcmImgs references', () {
       final row = RemoteDcmFileRow(
@@ -269,14 +250,9 @@ void main() {
       );
     });
 
-    // -------------------------------------------------------------------
-    // dcmFilesToDelete: boundary scenarios
-    // -------------------------------------------------------------------
     test(
         'only original exists (no preview) → delete all to force clean re-upload',
         () {
-      // When only the DCM original is on the server but not its preview,
-      // everything must be deleted so the upload path recreates both.
       expect(
         SaveRemote.dcmFilesToDelete(
           retainedDcmName: 'dcm_scan.dcm',
@@ -289,8 +265,6 @@ void main() {
     test(
         'only preview exists (no original) → delete all to force clean re-upload',
         () {
-      // When only the generated preview is on the server but not the DCM,
-      // everything must be deleted so the upload path recreates both.
       expect(
         SaveRemote.dcmFilesToDelete(
           retainedDcmName: 'dcm_scan.dcm.png',
@@ -312,8 +286,7 @@ void main() {
     });
 
     test('pair + collision-suffix duplicates → keep pair, delete rest', () {
-      // The original + preview pair is protected; collision-suffix variants
-      // (e.g. from PocketBase filename collisions) are deleted.
+      // `_x29` stands in for PocketBase's collision suffix on the stored name.
       expect(
         SaveRemote.dcmFilesToDelete(
           retainedDcmName: 'dcm_scan.dcm',
@@ -373,8 +346,6 @@ void main() {
     test(
         'multiple unrelated pairs → only excess beyond the retained pair is deleted',
         () {
-      // Three different upload-identity pairs exist; only the two that
-      // don't match the retained name pair are deleted.
       expect(
         SaveRemote.dcmFilesToDelete(
           retainedDcmName: 'dcm_a.dcm',
@@ -580,9 +551,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // PocketBase timestamp formatting
-  // ---------------------------------------------------------------------------
   group('SaveRemote.formatForPocketBase', () {
     test('formats the epoch in PocketBase/SQLite UTC format', () {
       expect(remote.formatForPocketBase(0), '1970-01-01 00:00:00.000Z');
@@ -607,9 +575,6 @@ void main() {
     });
   });
 
-  // ---------------------------------------------------------------------------
-  // Filename hash pattern (_$hash format used by _findExistingByHash)
-  // ---------------------------------------------------------------------------
   group('Filename hash pattern', () {
     test('recognizes _hash.extension pattern', () {
       const filename = 'photo_h1a2b3c4d5e6f7g8.jpg';

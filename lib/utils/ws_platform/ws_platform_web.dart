@@ -1,10 +1,8 @@
 import 'package:web_socket_channel/html.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-/// Web WebSocket connection using the browser's native WebSocket.
-///
-/// Browser WebSockets do not support custom headers, so the Authorization
-/// token is passed as a query parameter (`?token=...`) instead.
+/// WebSocket via the browser's native WebSocket. Browsers cannot send custom
+/// headers, so the bearer token goes in a `?token=` query parameter.
 WebSocketChannel connectWebSocket(
   Uri uri,
   Map<String, String> headers,

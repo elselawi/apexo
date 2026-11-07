@@ -6,9 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
-  // These tests exercise DicomIO.scanDirectory which uses dart:io.
-  // They run in the Dart VM test runner (not web). On web, the conditional
-  // import stub returns empty — skip there.
+  // VM-only: scanDirectory needs dart:io; the web stub returns empty, so skip.
   const canRunIoTests = !kIsWeb;
 
   group('DicomIO.scanDirectory (partial-write skip)', () {

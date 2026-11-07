@@ -1,8 +1,5 @@
-/// Pins the contract that makes a panel awaitable: a panel is finished when it
-/// is saved or when it leaves the screen, and its future always resolves.
-///
-/// `RowPanel`'s half — the stored row a save hands back — is in
-/// `row_panel_test.dart`.
+/// A panel's result always resolves: it settles on save or when the panel
+/// leaves the screen.
 @Tags(['serial'])
 library;
 
@@ -16,8 +13,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  /// A panel that owns nothing, so the tests never touch a store: everything
-  /// this file asserts is the base class's machinery.
+  // a panel with no store behind it, so these tests only cover the base class.
   DelegatedPanel panelFor({String itemId = 'supplier1'}) => DelegatedPanel(
         itemId: itemId,
         singularName: 'orders',
@@ -35,10 +31,7 @@ void main() {
         ],
       );
 
-  /// Whether [panel]'s result has settled.
-  ///
-  /// The public contract is the future, not the completer behind it, so the
-  /// question is asked the way a caller asks it: does a listener run?
+  // ask through the public future: a listener is what a caller actually sees.
   Future<bool> settled(Panel panel) async {
     var done = false;
     unawaited(panel.result.whenComplete(() {

@@ -11,9 +11,8 @@ import 'package:apexo/ui/workspace/workspace_close_dialog.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A top-edge workspace command, beside the panel rather than over it.
-/// Unsaved owners are counted, including retained visits; closing asks whether
-/// to save or discard their work. A clean workspace still closes in one press.
+/// Counts unsaved owners, retained visits included; a dirty workspace asks save
+/// or discard, a clean one closes at once.
 class CloseAllButton extends StatefulWidget {
   const CloseAllButton({
     super.key,
@@ -86,8 +85,6 @@ class _CloseAllButtonState extends State<CloseAllButton>
   @override
   void didUpdateWidget(covariant CloseAllButton oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // A panel opening or closing moves the corner the button belongs in, and a
-    // narrow screen takes the room it needs away.
     _sample();
   }
 
@@ -100,9 +97,8 @@ class _CloseAllButtonState extends State<CloseAllButton>
     super.dispose();
   }
 
-  /// A panel fills the screen on a phone, and a narrow screen dims the app
-  /// behind a barrier while one is open: there is no corner beside the panel to
-  /// float in until the screen is wide enough to show both.
+  /// A phone panel fills the screen behind a barrier, so there is no corner
+  /// beside it until the screen is wide enough to show both.
   bool get _hasRoom =>
       widget.panelWidth == 0 || widget.screenWidth >= kWindowsBreakpoint;
 
@@ -163,10 +159,6 @@ class _CloseAllButtonState extends State<CloseAllButton>
     // Keep the command outside the panel, mirrored with the workspace in RTL.
     final edge = _margin + widget.panelWidth;
     final label = txt("closeAllWindows");
-    // The elevation a flyout gets: one soft shadow, under a surface that keeps
-    // its own hairline — rather than a stack of glows holding up a circle. On
-    // the pointer it reaches a little further out, the way a lifted control
-    // does, so the button is felt before it is read.
     final floatingShadow = BoxShadow(
       color: theme.shadowColor.withValues(alpha: _hovered ? 0.26 : 0.2),
       offset: _hovered ? const Offset(2, 3) : const Offset(1, 1),
@@ -191,9 +183,6 @@ class _CloseAllButtonState extends State<CloseAllButton>
                 onEnter: (_) => setState(() => _hovered = true),
                 onExit: (_) => setState(() => _hovered = false),
                 child: AnimatedScale(
-                  // Under the pointer the whole control steps up — body, glyph
-                  // and label together, as one thing — instead of only its fill
-                  // and shadow changing.
                   scale: _hovered ? 1.03 : 1,
                   duration: theme.fastAnimationDuration,
                   curve: theme.animationCurve,
@@ -213,9 +202,6 @@ class _CloseAllButtonState extends State<CloseAllButton>
                       key: WK.closeAllWindows,
                       onPressed: _saving || _dialogOpen ? null : _closeAll,
                       style: greyButtonStyle.copyWith(
-                        // A step above a standard control's padding: this is pressed
-                        // once at the end of a session, so it is given the room to
-                        // be hit without aiming.
                         padding: const WidgetStatePropertyAll(
                           EdgeInsetsDirectional.symmetric(
                             horizontal: 20,
@@ -228,9 +214,6 @@ class _CloseAllButtonState extends State<CloseAllButton>
                         ),
                         backgroundColor:
                             WidgetStateProperty.resolveWith((states) {
-                          // The grey the Close buttons wear, a step lighter while
-                          // the pointer is on it: a floating command still answers
-                          // the pointer, and at rest it is the same control.
                           if (states.isPressed) return Colors.grey[140];
                           if (states.isHovered) return Colors.grey[150];
                           return Colors.grey;

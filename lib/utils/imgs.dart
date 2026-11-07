@@ -46,22 +46,16 @@ Future<File> getOrCreateFile(String name) async {
   return File(path.join(await filesDir(), name));
 }
 
-/// The width of the thumb every gallery grid shows: the size PocketBase keeps a
-/// ready-made thumb for, and the size uploads generate for themselves.
+/// Thumb width. Must stay 100: the legacy local thumb names (see [_thumbName])
+/// and the PocketBase `?thumb=100x100` requests depend on it.
 const int kThumbSize = 100;
 
-/// The width a gallery's large preview shows its picture at.
-///
-/// Four times the grid's own tiles: enough for the one picture a gallery shows
-/// bigger, without fetching the original — a phone photo is several megabytes
-/// and decodes to tens of megabytes for a box a few hundred pixels wide.
+/// Large-preview width for the one picture a gallery shows bigger; fetching the
+/// original would decode tens of MB for a box a few hundred pixels wide.
 const int kPreviewSize = 640;
 
-/// The local file a thumb of [name] at [size] is kept in.
-///
-/// The 100px thumb keeps the name it has always had — every device's cache
-/// already holds one under it — while a larger preview says its size, so the
-/// two never overwrite each other.
+/// The local file a thumb of [name] at [size] is kept in. The 100px thumb keeps
+/// its old bare name, already cached on devices; larger sizes embed the size.
 String _thumbName(String name, [int size = kThumbSize]) {
   final stem = path.withoutExtension(name);
   final extension = path.extension(name);
@@ -108,8 +102,7 @@ Future<String> handleNewImage({
   if (fromLink || sourcePath.startsWith("blob:") || kIsWeb) {
     hashInput = sourcePath; // fallback: path hash
   } else {
-    // Async stat: this can run against a network share where a synchronous
-    // stat would freeze the UI isolate.
+    // Async stat: on a network share a sync stat would freeze the UI isolate.
     final mtime = await compute(_fileModified, sourcePath);
     hashInput = '${path.basename(sourcePath)}_$mtime'; // name + mtime
   }
@@ -147,8 +140,8 @@ Future<String> handleNewImage({
     file: sourceFile,
   );
 
-  // Rename local files to match the PB-assigned name — avoids a redundant
-  // re-download on first view and keeps the locally-generated thumbnail.
+  // Rename to the PB-assigned name so the first view reuses the local file and
+  // its thumb instead of re-downloading.
   if (!kIsWeb && savedFile != null && finalFileName != imgName) {
     try {
       final newPath = path.join(path.dirname(savedFile.path), finalFileName);
@@ -164,27 +157,16 @@ Future<String> handleNewImage({
   return finalFileName;
 }
 
-/// Bumped (incremented) each time a DCM PNG preview finishes generating.
-/// The gallery subscribes to this via `MStreamBuilder` so placeholder cells
-/// rebuild into real previews once the PNG lands.
+/// Bumped when a DCM PNG preview finishes; galleries listen to rebuild tiles.
 final ObservableState<int> dicomPngReady = ObservableState<int>(0);
 
-/// Background queue for DCM PNG preview generation. Serialised so we don't
-/// fire off dozens of concurrent Rust parse+render calls during a bulk import.
+/// Serialised so a bulk DCM import doesn't fire dozens of concurrent Rust
+/// parse+render calls.
 final _dcmPngQue =
     TaskQueue(delayBetweenTasks: const Duration(milliseconds: 50));
 
-/// Imports a `.dcm` file: saves the original to `filesDir()`, uploads it to
-/// PocketBase immediately, and queues PNG preview generation in the background.
-///
-/// Returns the PB-assigned `.dcm` filename **without waiting** for the PNG —
-/// the gallery shows a placeholder until [dicomPngReady] bumps.
-///
-/// On native: the `.dcm` is copied to `filesDir()` then uploaded. On web this
-/// is a no-op (DCM import is Windows-only); returns an empty string.
-///
-/// PNG generation failure is logged to [dicomSkippedLog] with the reason
-/// `"png_generation_failed"` — the `.dcm` is still preserved and viewable.
+/// Saves and uploads a `.dcm` immediately, then queues PNG preview generation.
+/// Returns the PB filename without waiting for the PNG.
 Future<String> handleNewDcm({
   required String rowID,
   required String sourcePath,
@@ -203,9 +185,8 @@ Future<String> handleNewDcm({
     return '';
   }
 
-  // Generate a unique filename.
-  // Async stat: watch folders can live on network shares where a synchronous
-  // stat blocks the UI isolate for the duration of the round-trip.
+  // Async stat: watch folders can sit on a network share, where a sync stat
+  // blocks the UI isolate.
   final mtime = await compute(_fileModified, sourcePath);
   final hashInput = '${path.basename(sourcePath)}_$mtime';
   final dcmName = 'dcm_${simpleHash(hashInput)}.dcm';
@@ -244,8 +225,6 @@ Future<String> handleNewDcm({
   return finalDcmName;
 }
 
-/// Background task: parse the full DicomParseResult, render a PNG preview,
-/// save it + a thumbnail locally, upload to PB, and bump [dicomPngReady].
 Future<void> _generateDcmPreview({
   required String rowID,
   required String dcmName,
@@ -315,23 +294,11 @@ Future<void> _generateDcmPreview({
   }
 }
 
-/// The providers already resolved, by file name and by what was asked of it —
-/// see [_cacheKey].
-///
-/// A provider is a small object: the pixels it decodes live in Flutter's own
-/// bounded image cache. What this map saves is the work *around* a picture —
-/// the disk lookup (and, on web, the file-name request), and on a device that
-/// does not hold the file yet, the download itself. Without it a gallery would
-/// ask the server for every file each time a window is opened.
-///
-/// Both thumbs and originals are kept: a tile shows a thumb, but the viewer
-/// asks for the original of every picture it shows, and a photo reopened must
-/// not be read off the disk again.
+/// Resolved providers by [_cacheKey]: saves the disk lookup and, when the file is
+/// not on this device yet, the download. Pixels live in Flutter's own image cache.
 final imgMemoryCache = <String, ImageProvider>{};
 
-/// How many pictures [imgMemoryCache] remembers. A visit's gallery, the cards
-/// around it and its photos' own window fit several times over; past this the
-/// oldest entry goes, which costs a disk lookup, never a download.
+/// [imgMemoryCache] size limit; an eviction costs a disk lookup, not a download.
 const int _imgCacheLimit = 120;
 
 final _imageHttpReqQue =
@@ -347,11 +314,8 @@ String _stripLastHashFromFileName(String name) {
 /// The size a cached entry stands for when the file itself was asked for.
 const int _kOriginalSize = 0;
 
-/// What one file's entries are told apart by.
-///
-/// Its 100px thumb keeps the file's own name — that is the entry a gallery
-/// reads on every tile, and the one the tests plant — while a larger preview
-/// and the original say which they are.
+/// What one file's entries are told apart by. The 100px thumb keeps the bare file
+/// name so existing device caches still hit; previews and originals get a prefix.
 String _cacheKey(String name, int size) {
   if (size == kThumbSize) return name;
   return size == _kOriginalSize ? 'original:$name' : '$size:$name';
@@ -365,18 +329,16 @@ Future<ImageProvider?> getImage(
   int thumbSize = kThumbSize,
 ]) async {
   if (isUrl(name)) {
-    // A file URL ends in the name it is stored under. A URL that names no file
-    // at all is not one this helper can place, so it is left whole — and
-    // answered below, where the app's own avatar is.
+    // A file URL's last segment is the stored file name; a URL naming no file is
+    // left whole and handled below (the avatar link).
     final segments = Uri.parse(name).pathSegments;
     if (segments.isNotEmpty && segments.last.isNotEmpty) {
       name = segments.last;
     }
   }
 
-  // DCM X-rays: never auto-fetch the raw .dcm (5–20 MB). Return the small
-  // PNG preview instead. The raw .dcm is only fetched on-demand inside the
-  // viewer panel (Phase 6).
+  // Never auto-fetch a raw .dcm (5–20 MB): return its small PNG preview instead.
+  // The raw file is fetched only on demand by the viewer.
   if (isADcmName(name)) {
     return getImage(rowID, '$name.png', thumb, resolve, thumbSize);
   }
@@ -393,15 +355,14 @@ Future<ImageProvider?> getImage(
   final key = _cacheKey(name, size);
   final cached = imgMemoryCache.remove(key);
   if (cached != null) {
-    // Asked for again: it is the newest entry now, so the entries around it
-    // are the ones that go when the cache is full.
+    // Re-inserted so it is the newest entry and the oldest are evicted first.
     imgMemoryCache[key] = cached;
     return cached;
   }
 
   final img = await _getImage(rowID, name, thumb, resolve, thumbSize);
-  // A lookup that found nothing is not remembered: an X-ray whose PNG preview
-  // has not been generated yet becomes available later.
+  // A miss is not cached: an X-ray whose PNG preview has not been generated yet
+  // becomes available later.
   if (img != null) {
     imgMemoryCache[key] = img;
     while (imgMemoryCache.length > _imgCacheLimit) {
@@ -411,31 +372,23 @@ Future<ImageProvider?> getImage(
   return img;
 }
 
-/// Thumb drawing in flight, by the file it will produce: several tiles ask for
-/// one picture at once, and it only needs drawing once.
+/// In-flight thumb jobs by produced file: concurrent tiles ask for one picture at
+/// once and it need only be drawn once.
 final _thumbJobs = <String, Future<File?>>{};
 
-/// Local thumb drawing, one picture at a time.
-///
-/// Drawing decodes the whole picture — tens of megabytes for a phone photo —
-/// and a gallery that opened on a dozen originals must not decode a dozen at
-/// once just to make their previews.
+/// Local thumb drawing, one picture at a time: each draw decodes a whole photo
+/// (tens of MB), so a gallery must not decode a dozen at once.
 final _thumbDrawQue = TaskQueue(delayBetweenTasks: Duration.zero);
 
-/// Makes the thumb of [name] at [size] from the original on this device.
-///
-/// The file itself being here — a photo this device imported, or one it has
-/// already shown at full size — is enough: the server's thumb is not worth a
-/// round trip when the pixels are already on the disk, and a gallery that
-/// opened offline still shows its pictures. Returns null when there is no
-/// original to work from, or when it cannot be drawn.
+/// Draws the thumb of [name] at [size] from the local original, avoiding a server
+/// round trip and working offline. Null if no original or it can't be drawn.
 Future<File?> _thumbFromLocal(String name, int size) {
   final thumbName = _thumbName(name, size);
   final inFlight = _thumbJobs[thumbName];
   if (inFlight != null) return inFlight;
   final job = _thumbDrawQue.add(() => _drawThumb(name, size)).whenComplete(() {
-    // The stored value is this very job, so it is dropped by key: returning it
-    // from here would make the completed future wait on itself.
+    // Dropped by key: the stored future is this very job, so returning it would
+    // make it wait on itself.
     _thumbJobs.removeWhere((other, _) => other == thumbName);
   });
   _thumbJobs[thumbName] = job;
@@ -454,8 +407,7 @@ Future<File?> _drawThumb(String name, int size) async {
     await cmd.executeThread();
     return await compute(_fileExists, thumb.path) ? thumb : null;
   } catch (_) {
-    // Not ours to draw (an SVG, a file the image package cannot read): the
-    // server's thumb is still worth asking for.
+    // Not drawable here (SVG, unreadable): fall back to the server's thumb.
     return null;
   }
 }
@@ -481,8 +433,7 @@ Future<ImageProvider?> _getImage(
     return Image.file(await getOrCreateFile(localName)).image;
   }
 
-  // The thumb is not here, but the picture may be: draw it here rather than
-  // ask the server for a copy of what this device already holds.
+  // Thumb missing but the original may be local: draw it instead of re-downloading.
   if (thumb) {
     final drawn = await _thumbFromLocal(name, thumbSize);
     if (drawn != null) return Image.file(drawn).image;
@@ -580,22 +531,15 @@ bool isAnImageName(String name) {
   return imageExtensions.contains(extension);
 }
 
-/// Returns `true` if [name] looks like a DICOM X-ray file
-/// (`.dcm` / `.dicom`). Case-insensitive — sensor software often emits
-/// uppercase `.DCM`. Used to distinguish X-rays from regular photos.
+/// True for `.dcm` / `.dicom`. Case-insensitive because sensor software often
+/// emits uppercase `.DCM`.
 bool isADcmName(String name) {
   const dcmExtensions = {'dcm', 'dicom'};
   final extension = name.split('.').last.toLowerCase();
   return dcmExtensions.contains(extension);
 }
 
-/// Downloads a file from the local cache or remote server and saves it
-/// via [saveFileUtility].
-///
-/// If [name] is already a URL (starts with `http`), it is downloaded directly.
-/// Otherwise the local cache is checked first on native platforms, then
-/// [rowId] + [name] are used to resolve a remote URL via [getImageLink].
-/// Web downloads always use the remote file, without accessing the filesystem.
+/// Saves [name] to the user's machine under its display name, not its stored name.
 Future<void> downloadFile(String? rowId, String name,
     {FileLinkResolver? resolve}) async {
   final saveAs = displayNameForFile(name);
@@ -622,11 +566,8 @@ Future<void> downloadFile(String? rowId, String name,
 
 bool isUrl(String s) => s.startsWith('http://') || s.startsWith('https://');
 
-/// Returns a human-readable display name from a stored filename or URL.
-///
-/// - URLs: extracts last path segment
-/// - Hash-prefixed names (`a3f8e2dc_invoice_2024.pdf`): strips the hash
-/// - Legacy plain hashes (`a3f8e2dc.pdf`): returns as-is
+/// Strips the URL path and the leading `<hash>_` from a stored name; a bare
+/// legacy hash name is returned unchanged.
 String displayNameForFile(String name) {
   // Strip URL to last path segment
   final base = name.contains('/') ? name.split('/').last : name;

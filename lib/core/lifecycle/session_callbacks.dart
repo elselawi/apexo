@@ -2,8 +2,7 @@ import 'dart:async';
 
 typedef SessionCallback = FutureOr<void> Function();
 
-/// Owns registrations for one session. Snapshot-dispatched callbacks become
-/// inert immediately on stop, even if a dispatcher has already copied them.
+/// Callbacks reached through an earlier snapshot do nothing after `stop()`.
 class SessionCallbacks {
   bool _active = true;
   final List<void Function()> _removals = [];

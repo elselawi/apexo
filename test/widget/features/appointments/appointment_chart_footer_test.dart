@@ -65,8 +65,7 @@ void main() {
         network.isOnline(connected);
         final visit = testAppointment(id: 'voice-visit');
         appointments.set(visit);
-        // Dictation belongs to the post-op record, which is now the foot of the
-        // visit's chart rather than a window of its own.
+        // Dictation lives in the post-op record at the foot of the chart.
         await pumpApexoApp(
             tester,
             Align(
@@ -78,8 +77,8 @@ void main() {
         network.isOnline(false);
         await tester.pumpAndSettle();
         expect(find.byType(AudioRecorderButton), findsNothing);
-        // Standing on its own the chart's footer is the way to the visit's other
-        // windows — as attachments, not as a second dock.
+        // Standalone, the footer is the way to the visit's other windows, as
+        // attachments.
         final session = appointmentDentalChart(visit);
         expect(session.footer, isNotNull);
         await pumpApexoApp(

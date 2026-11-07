@@ -20,8 +20,8 @@ final Uint8List _pixel = Uint8List.fromList(const [
   0x42, 0x60, 0x82,
 ]);
 
-/// The photo window: the wait for a photo happens inside it, and a failure is
-/// reported there rather than in a dialog over the app.
+/// The window owns its loading and error states; failures are not shown in a
+/// dialog over the app.
 void main() {
   Future<void> pumpViewer(
     WidgetTester tester, {
@@ -32,8 +32,7 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    // Pumped by hand: the window's waiting state is a spinner, and a spinner
-    // never settles.
+    // Pumped by hand: the waiting spinner never settles.
     await tester.pumpWidget(
       FluentApp(
         home: material.Directionality(
@@ -61,8 +60,6 @@ void main() {
     final loading = Completer<List<ImageProvider<Object>>>();
     await pumpViewer(tester, load: () => loading.future);
 
-    // The window is up, showing what it is waiting for — the app behind it is
-    // not covered by a dialog.
     expect(find.text(txt('gettingImages')), findsWidgets);
     expect(find.byType(ProgressRing), findsOneWidget);
 
@@ -98,8 +95,7 @@ void main() {
     // The photo is up: its own toolbar (download, and delete where allowed) is drawn on it.
     expect(find.text(txt('download')), findsWidgets);
 
-    // fluent_ui holds a short tap-feedback timer: let it fire so the test ends
-    // without one pending.
+    // fluent_ui leaves a short tap-feedback timer pending; pump past it.
     await tester.pump(const Duration(milliseconds: 200));
     expect(tester.takeException(), isNull);
   });

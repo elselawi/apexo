@@ -35,12 +35,6 @@ import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 import '../../../helpers/window_defaults.dart';
 
-/// A visit started from the patient's own chart, and what is on screen after it.
-///
-/// The flow the clinic uses every day: a record's chart is open, `+` starts a
-/// visit, and the visit takes over the chart slot. What the user must then see is
-/// the **visit's** chart — with its post-op record pinned under the teeth — and
-/// the visits list they open beside it must keep working.
 class _Shell extends StatelessWidget {
   const _Shell({required this.width});
 
@@ -145,8 +139,7 @@ void main() {
   testWidgets(
       'a visit started from the patient chart shows its chart and post-op record',
       (tester) async {
-    // A laptop window at 125 % scaling: short enough that the visit's chart asks
-    // for more height than the row has.
+    // A 125 %-scaled laptop: the chart needs more height than the row has.
     remember();
     final patient = testPatient(id: 'new-visit-patient');
     patients.set(patient);
@@ -290,9 +283,8 @@ void main() {
             of: find.byKey(field), matching: find.byType(EditableText)))
         .focusNode;
 
-    // The price and the amount taken are typed one after the other. Traversal
-    // reads the whole scene — the list of visits beside the chart puts its own
-    // controls between these two fields — so the pair keeps its own order.
+    // Traversal reads the whole scene and the chart's neighbours sit between
+    // the two, so these fields handle Tab themselves.
     await tester.tap(find.byKey(WK.fieldAppointmentPrice));
     await tester.pumpAndSettle();
     expect(focusOf(WK.fieldAppointmentPrice).hasFocus, isTrue);

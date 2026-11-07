@@ -7,9 +7,7 @@ import 'package:apexo/features/booking/booking_models.dart';
 import 'package:apexo/services/localization/locale.dart';
 
 /// A saved appointment whose inbox update has not reached the Worker yet.
-///
-/// Metadata only: never patient fields. Replayed only inside the same
-/// authenticated clinic/account session.
+/// Metadata only (never patient fields), replayed inside the same session.
 class PendingBookingLink {
   PendingBookingLink({
     required this.requestId,
@@ -24,12 +22,8 @@ class PendingBookingLink {
   final bool confirmed;
 }
 
-/// Session-scoped request cache.
-///
-/// Requests are derivative: they never upload patient data to PocketBase and
-/// never extend the Worker's retention. The cache is memory-only — the app has
-/// no certified platform secure-key store for a per-clinic Hive key, and the
-/// spec keeps requests in memory where secure key storage is unavailable.
+/// Session-scoped, memory-only cache: there is no certified secure-key store
+/// for a per-clinic Hive key, so requests must never be persisted.
 class BookingRequestsCache {
   final Map<String, List<BookingRequest>> _byFilter = {};
 
@@ -88,10 +82,8 @@ class BookingRequestsCache {
   void clear() => _byFilter.clear();
 }
 
-/// Polling and inbox state for one clinic/account session.
-///
-/// Every asynchronous result is bound to a generation captured when the work
-/// started, so a logout or clinic switch cannot publish stale patient data.
+/// Polling and inbox state for one clinic/account session. Async results are
+/// generation-bound so a logout or clinic switch cannot publish stale data.
 class BookingRequestsController {
   BookingRequestsController({BookingApi? api}) : _api = api;
 
@@ -266,8 +258,6 @@ class BookingRequestsController {
       if (generation == _generation) {
         refreshing(false);
         _markStaleIfNeeded();
-        // A healthy clinic polls on the foreground cadence; a failing one
-        // backs off. Neither path hammers the Worker.
         scheduleNextRefresh(connected() ? foregroundInterval : _backoff);
       }
     }
@@ -371,8 +361,8 @@ class BookingRequestsController {
     return version;
   }
 
-  /// Remembers an inbox update that could not be delivered: the appointment is
-  /// already saved, so the retry must never create another one.
+  /// Remembers an undelivered inbox update. The appointment is already saved,
+  /// so the retry must never create another one.
   void rememberPendingLink(BookingRequest request, String appointmentId,
       {bool confirmed = true}) {
     final list = [...pendingLinks()]
@@ -411,8 +401,8 @@ class BookingRequestsController {
         forgetPendingLink(link.requestId);
       } on BookingApiException catch (error) {
         if (generation != _generation) return;
-        // Erased, expired, or already handled elsewhere: stop retrying and let
-        // the next refresh reconcile visibly.
+        // Erased, expired, or handled elsewhere: stop retrying; the next refresh
+        // reconciles.
         if (error.keyRevoked) rethrow;
         if (error.notFound || error.conflict) forgetPendingLink(link.requestId);
       }

@@ -153,15 +153,13 @@ Future<String?> openAccount([AccountModel? account]) async {
     store: _accountStore,
     icon: FluentIcons.people,
     existing: !isNew,
-    // A localization key rather than a sentence: the header runs it through
-    // txt(), so it follows the language the app is in now.
+    // A localization key, not a sentence: the header runs it through txt().
     title: editingCopy.isAdmin ? "newAdmin" : "newUser",
     windows: [
       PanelWindow(
         id: 'account',
-        // A localization *key*, not a sentence: the window's title is
-        // translated where it is drawn, so a language switch relabels a window
-        // that is already open.
+        // A localization key: the title is translated where the window is drawn,
+        // so a language switch relabels a window that is already open.
         title: isNew
             ? (editingCopy.isAdmin ? "newAdmin" : "newUser")
             : (editingCopy.isAdmin ? "admin" : "user"),
@@ -351,8 +349,6 @@ const _threeLevel = [
   _PermLevelDef(2, "full"),
 ];
 
-/// Central registry of all permission selectors. Add a new entry here to
-/// add a permission slot everywhere (UI, padding, defaults, etc.).
 const _permissionDefs = [
   _PermDef(Perm.patients, "patients", _threeLevel),
   _PermDef(Perm.appointments, "appointments", _threeLevel),

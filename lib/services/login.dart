@@ -26,11 +26,8 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pocketbase/pocketbase.dart';
 
-/// Callbacks invoked during [Login.logout], before credentials are cleared.
-///
-/// Services that need to tear down session-scoped resources (e.g. the DICOM
-/// periodic timer) can register here without creating circular imports
-/// between `lib/services/` and `lib/features/`.
+/// Runs during `login.logout()` so services can tear down session-scoped
+/// resources without `lib/services/` importing `lib/features/`.
 final List<void Function()> onLogoutCallbacks = [];
 
 class _LoginService extends ObservablePersistingObject {
@@ -48,12 +45,8 @@ class _LoginService extends ObservablePersistingObject {
   int _logoutRevision = 0;
   int get logoutRevision => _logoutRevision;
 
-  /// Identifies the newest [activate] call.
-  ///
-  /// Incremented by every activation and by [logout]. Work that belongs to an
-  /// older generation must stop before it mutates login state, the shared auth
-  /// store, or the login screen — a late authentication response must never
-  /// reopen a session that was logged out (or replaced by a newer login).
+  /// Incremented by every [activate] and by [logout]; work holding an older
+  /// generation must stop, so a late auth response cannot reopen a dead session.
   int _activationGeneration = 0;
 
   bool _isCurrentActivation(int generation) =>
@@ -98,16 +91,6 @@ class _LoginService extends ObservablePersistingObject {
     return Perm.pad(savedPermissions);
   }
 
-  /// Fluent permission check — preferred over `permissions[index]`.
-  ///
-  /// ```dart
-  /// login.perm(Perm.photos).none       // == 0
-  /// login.perm(Perm.photos).some       // > 0
-  /// login.perm(Perm.photos).full       // >= 2
-  /// login.perm(Perm.expenses).exact(1) // == 1
-  /// login.perm(Perm.patients).min(2)   // >= 2
-  /// login.perm(Perm.appointments).not(2) // != 2
-  /// ```
   PermLevel perm(int slot) => _permissions.perm(slot);
 
   bool get currentLoginIsOperator {
@@ -170,11 +153,8 @@ class _LoginService extends ObservablePersistingObject {
 
   void logout([bool cleanCredentials = true]) {
     _logoutRevision++;
-    // In-flight activations stop at their next await: one may already hold a
-    // valid auth response that must not be adopted after this point.
     _activationGeneration++;
-    // Invalidate notification work before any state is cleared or a new session
-    // can be published. This resolves waiters and stops registration retries.
+    // Resolves notification waiters before any state changes, stopping registration retries.
     notificationSessions.invalidate();
     launch.open(Open.login);
     if (cleanCredentials) {
@@ -193,17 +173,11 @@ class _LoginService extends ObservablePersistingObject {
       JSBridge.setGlobalVariable("accountId", "");
       JSBridge.setGlobalVariable("shouldShowPrompt", "no");
     }
-    // Let registered services tear down session-scoped resources
-    // (e.g. DICOM periodic timer) before we clear state.
     for (final cb in onLogoutCallbacks) {
       cb();
     }
-    // The screen is the app's: it resets its route stack, closes its panels and
-    // its windows. A service that authenticates a clinic must not know they
-    // exist — it announces the end of the session and the app does the rest.
     SessionEvents.ended();
-    // Deferred push is keyed by server URL — reset so the next login
-    // opens the correct Hive box for the new server.
+    // Deferred push is keyed by server URL; reset so the next login opens the right box.
     deferredPush.reset();
     staticNotifications.clear();
     resetStaticNotificationDedupe();
@@ -211,13 +185,8 @@ class _LoginService extends ObservablePersistingObject {
     return loginCtrl.finishedLoginProcess();
   }
 
-  /// A private auth client with the same transport as [shared].
-  ///
-  /// Authentication runs on its own [PocketBase] (and therefore its own
-  /// [AuthStore]) so a response that arrives after [logout], or after a newer
-  /// activation, cannot write stale credentials into the shared store. Only
-  /// [activate] and [authenticateWithToken] adopt a result, and only while
-  /// their session is still current.
+  /// An auth client with its own [AuthStore], so a response arriving after
+  /// [logout] or a newer activation cannot write stale credentials into [shared].
   PocketBase _newAuthClient(PocketBase shared) {
     return PocketBase(
       shared.baseURL,
@@ -272,12 +241,8 @@ class _LoginService extends ObservablePersistingObject {
     }
   }
 
-  /// Refreshes the credentials of the **current** session.
-  ///
-  /// The request runs on a private client, so a response that lands after a
-  /// logout cannot repopulate [pb]'s auth store. The refreshed credentials are
-  /// committed only if the same session (same client, token, and activation)
-  /// asked for them; otherwise [inputToken] is returned and nothing changes.
+  /// Refreshes the current session's credentials; a response is adopted only if
+  /// the same client, token and activation asked for it, else [inputToken] is returned.
   Future<String> authenticateWithToken(String inputToken) async {
     final client = pb;
     if (client == null) {
@@ -301,8 +266,7 @@ class _LoginService extends ObservablePersistingObject {
     final generation = ++_activationGeneration;
     bool stale() => !_isCurrentActivation(generation);
 
-    // A stale activation must not paint the login screen either: its loading
-    // text is the only thing between the user and a usable form.
+    // A stale activation must not overwrite the loading text of the current one.
     void loading(String message) {
       if (!stale()) loginCtrl.loadingIndicator(message);
     }
@@ -322,9 +286,6 @@ class _LoginService extends ObservablePersistingObject {
 
     if (online && launch.isDemo == false) {
       try {
-        // Authentication runs on a private client so a response that lands
-        // after logout (or after a newer login) cannot repopulate the shared
-        // auth store. Only a current activation adopts the result.
         final authClient = _newAuthClient(pb!);
 
         // email and password authentication
@@ -406,10 +367,8 @@ class _LoginService extends ObservablePersistingObject {
           throw Exception("Error while creating the profile collections: $e");
         }
 
-        // Reconcile the server schema with the app's current collection
-        // definitions (rules/fields) when an admin is logged in. This is
-        // what ships rule changes to existing clinics. Pure upsert — it can
-        // never delete anything, and a failure never blocks login.
+        // Ships schema/rule updates to existing clinics: pure upsert that never
+        // deletes, and a failure never blocks login.
         try {
           if (isAdmin) {
             loading("Updating server schema");
@@ -454,18 +413,13 @@ class _LoginService extends ObservablePersistingObject {
       if (stale()) return;
       loginCtrl.proceededOffline(false);
     } else if (!online) {
-      // `proceededOffline` means "**this** session is the offline one": the
-      // shell's sync action disables itself on it and the errors action becomes
-      // a reconnect. It only defaulted to true on a cold start, so a login that
-      // *proceeded offline* left it at whatever the last online login made it
-      // (`false`) and the shell still offered a sync that could not work
-      // (`login 09`).
+      // Marks this session as the offline one: the shell disables sync and turns
+      // the errors action into a reconnect.
       loginCtrl.proceededOffline(true);
     }
 
     if (stale()) return;
-    // Initialize deferred push storage unconditionally (online OR offline)
-    // so stores can safely defer push notifications before identifyDevice() runs.
+    // Init online or offline so deferred pushes have a box when identifyDevice is skipped.
     deferredPush.init(inputURL);
 
     for (var callback in activators.values) {
@@ -486,16 +440,14 @@ class _LoginService extends ObservablePersistingObject {
     didAskForLoginAgain = false;
     launch.open(Open.staff);
     if (stale()) return;
-    // Announce notification readiness only after every store activator has run.
-    // A token is assigned before this point, so it cannot stand in for a usable
-    // session; this publication is the boundary pushes wait on.
+    // Publish readiness only after every activator ran: the token is assigned
+    // earlier, so it cannot stand in for a usable session.
     final staffAccountId = currentAccountID;
     if (staffAccountId.isEmpty || pb == null || token.isEmpty || url.isEmpty) {
       notificationSessions.markAbsent();
     } else {
-      // The snapshot must not share the mutable auth store of `login.pb`: a
-      // background registration that resumes after an account switch would
-      // otherwise send the next account's credentials with this snapshot.
+      // Must not share `login.pb`'s mutable auth store, or a registration that
+      // resumes after an account switch would send the next account's credentials.
       final notificationPb = PocketBase(url)..authStore.save(token, null);
       notificationSessions.publishStaff(
         server: url,
@@ -506,20 +458,15 @@ class _LoginService extends ObservablePersistingObject {
       );
     }
     if (stale()) return;
-    // The startup check runs from a one-second timer in `ApexoApp.createElement`
-    // — *before* the login that creates a clinic can set `launch.isFirstLaunch`,
-    // so the welcome dialog was unreachable (`login 12`). The check is idempotent:
-    // it shows the changelog for a version the device has not seen, and the
-    // welcome dialog only when this launch found no collections at all.
+    // The startup dialog check runs from a one-second timer, before a login can
+    // set `isFirstLaunch`; this session-start announcement is the second trigger.
     SessionEvents.started();
     if (stale()) return;
     return loginCtrl.finishedLoginProcess();
   }
 
-  /// activators are a series of callbacks that run after a successful login
-  /// each activator function would first connect to local storage then return another callback
-  /// the second callback (would be called only when online) connects to the server
-  /// and synchronizes the local storage with the server
+  /// Login activators: each connects local storage, then returns a callback that
+  /// syncs with the server and runs only when online.
   Map<String, Future<Future<void> Function()> Function()> activators = {};
 
   @override
@@ -546,10 +493,8 @@ class _LoginService extends ObservablePersistingObject {
       }
     } else {
       launch.open(Open.login);
-      // A patient link can restore after the staff token was found absent. Give
-      // that activation a short window to publish before resolving an early
-      // launch/click waiter as absent; the capture below also makes sure a
-      // login that starts in the meantime is not overwritten.
+      // A patient link can restore after the staff token was absent; wait 10 s
+      // before resolving waiters as absent, unless a newer session changed revision.
       final absentRevision = notificationSessions.revision;
       unawaited(Future<void>.delayed(const Duration(seconds: 10), () {
         if (notificationSessions.phase == NotificationSessionPhase.restoring &&

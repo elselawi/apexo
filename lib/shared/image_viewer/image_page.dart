@@ -4,11 +4,8 @@ import 'package:flutter/material.dart' hide Colors, IconButton;
 
 import 'drawing_canvas.dart';
 
-/// One page of the viewer: a photo you can pinch, pan and double-tap back to
-/// fit, with the pen's strokes drawn over it.
-///
-/// It reports the scale it is at, because a zoomed photo must not be swiped
-/// away from — the drag belongs to the photo, not to the pages beside it.
+/// One page of the viewer, with the pen's strokes over the photo. It reports its
+/// scale so a zoomed photo cannot be swiped away from.
 class ImageViewerPage extends StatefulWidget {
   const ImageViewerPage({
     super.key,
@@ -28,8 +25,7 @@ class ImageViewerPage extends StatefulWidget {
   /// The drawing already stored on this photo, in `DrawingCanvas`'s own format.
   final String? drawing;
 
-  /// Saves a new drawing. Null means this photo is not drawn on at all, and no
-  /// pen layer is put over it.
+  /// Saves a new drawing; null puts no pen layer over the photo, so no strokes show.
   final void Function(String)? onSaveDrawing;
 
   final bool isDrawingMode;
@@ -49,8 +45,7 @@ class _ImageViewerPageState extends State<ImageViewerPage>
   static const double _minScale = 1.0;
   static const double _maxScale = 5.0;
 
-  /// The zoom a double tap takes the photo to, and the zoom it is already past
-  /// when a double tap means "back to fit".
+  // Double tap zooms in to this scale; past it, double tap returns to fit.
   static const double _doubleTapScale = 2.0;
 
   final TransformationController _zoom = TransformationController();
@@ -61,12 +56,8 @@ class _ImageViewerPageState extends State<ImageViewerPage>
   Animation<Matrix4>? _zooming;
   TapDownDetails _doubleTapAt = TapDownDetails();
 
-  /// The photo's own shape, once it is known.
-  ///
-  /// The pen's strokes are stored against the photo, not against the box the
-  /// photo is shown in: a photo that is letterboxed would otherwise have its
-  /// annotations drawn over the bars beside it. Knowing the photo's shape lets
-  /// the photo be drawn at exactly that shape, so the strokes land on it.
+  // The photo's own shape. Strokes are stored against the photo, so drawing it
+  // at this shape keeps them off the letterbox bars.
   double? _aspectRatio;
 
   /// The photo whose shape has been asked for, so it is not asked twice.
@@ -80,8 +71,6 @@ class _ImageViewerPageState extends State<ImageViewerPage>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // The photo's shape is read from the screen it is shown on, so it can only
-    // be asked for once the inherited widgets are there.
     _resolveAspectRatio();
   }
 
@@ -93,15 +82,13 @@ class _ImageViewerPageState extends State<ImageViewerPage>
       _measured = null;
       _resolveAspectRatio();
     }
-    // The pen takes the drag away from the photo, so a photo that was zoomed
-    // in is put back to fit when the pen is put away — otherwise it stays
-    // stuck zoomed, with no way to pan it.
+    // The pen takes the drag from the photo, so leaving drawing mode also resets
+    // zoom; otherwise the photo stays zoomed with no way to pan it.
     if (oldWidget.isDrawingMode && !widget.isDrawingMode) {
       _animation.stop();
       _zooming = null;
       _zoom.value = Matrix4.identity();
-      // The viewer owns the zoom lock, and it is being built right now: the
-      // news waits for the frame to finish.
+      // Deferred: the viewer owns the zoom lock and is mid-build, so notify after the frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) widget.onScaleChanged(1.0);
       });
@@ -180,11 +167,6 @@ class _ImageViewerPageState extends State<ImageViewerPage>
     );
   }
 
-  /// The photo, while it loads and if it never arrives.
-  ///
-  /// A photo fades in once it is ready rather than popping in, and a broken one
-  /// says so in its own page: one unreadable file must not take the whole
-  /// viewer down with it.
   Widget _photo() {
     final image = Image(
       image: widget.image,
@@ -226,9 +208,6 @@ class _ImageViewerPageState extends State<ImageViewerPage>
     );
     final ratio = _aspectRatio;
     if (ratio == null) return image;
-    // The photo at its own shape, so that it fills the box the pen's strokes
-    // are drawn in: a letterboxed photo would have its annotations drawn over
-    // the bars beside it.
     return AspectRatio(aspectRatio: ratio, child: image);
   }
 

@@ -28,9 +28,8 @@ class _ChartsController {
       filter.observe(_nullifyCache);
     }
     filterByOperatorID.observe(_nullifyCache);
-    // Derived chart data depends on both source stores as well as filters.
-    // Without these observers, a chart accessed before a store mutation
-    // stays stale until the user changes a date/operator filter.
+    // Cached chart data depends on the stores as well as the filters; without
+    // these observers a chart stays stale until a filter changes.
     appointments.observableMap.observe(_nullifyCache);
     expenses.observableMap.observe(_nullifyCache);
   }
@@ -249,8 +248,6 @@ class _ChartsController {
   }
 
   int _daysSinceMonthStart(DateTime date) {
-    // The day of the month is already available as a property of DateTime
-    // We subtract 1 because the days of the month are 1-indexed (1-31)
     return date.day - 1;
   }
 
@@ -375,8 +372,8 @@ class _ChartsController {
     final int lastDayOfTargetMonth =
         DateTime(targetYear, targetMonth + 1, 0).day;
 
-    // If the input day is greater than the last day of the target month,
-    // or if it's the last day of the input month, use the last day of the target month
+    // Clamp to the target month's last day if the input day doesn't exist
+    // there or is itself the input month's last day.
     final int targetDay = (input.day > lastDayOfTargetMonth ||
             input.day == _daysInMonth(input.year, input.month))
         ? lastDayOfTargetMonth

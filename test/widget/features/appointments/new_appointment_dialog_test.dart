@@ -15,9 +15,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// The sheet's start time is the clock's hour and minute on [day]; opening and
-/// saving the sheet may cross a minute boundary, so both ends of the wait are
-/// allowed.
+/// Asserts the sheet starts at the clock's hour and minute on [day]; the minute
+/// may tick over while it opens and saves, so both ends of the wait are allowed.
 void expectStartsAt(
   DateTime actual,
   DateTime day,
@@ -42,8 +41,6 @@ void main() {
   late List<Patient> previousPatients;
   late Patient patient;
 
-  /// A day a week out: never today, so the sheet starts it at the current time
-  /// of day.
   final day = DateTime.now().add(const Duration(days: 7));
   final bareDay = DateTime(day.year, day.month, day.day);
 
@@ -266,9 +263,8 @@ void main() {
   testWidgets(
       'picking the patient from the dropdown and creating the visit '
       'leaves no torn-down field behind', (tester) async {
-    // The reported failure: the sheet's patient box is torn down while a
-    // suggestion is highlighted, and the box's teardown rebuilds a locked tree
-    // ("setState() … called when widget tree was locked").
+    // Regression: tearing the patient box down with a suggestion highlighted
+    // rebuilt a locked tree ("setState() … called when widget tree was locked").
     Appointment? created;
     await openSheet(tester, onSave: (appointment) => created = appointment);
 
@@ -308,8 +304,8 @@ void main() {
     await tester.tap(find.text('Ada Lovelace').last);
     await tester.pumpAndSettle();
 
-    // The field is full: its input is gone, and the one chip is the answer.
-    // Folding it to "+1" left the sheet with no sign of who the visit is for.
+    // A picked patient shows as one chip; the sheet used to fold it to "+1",
+    // hiding who the visit is for.
     expect(find.text('+1'), findsNothing);
     expect(
       find.descendant(

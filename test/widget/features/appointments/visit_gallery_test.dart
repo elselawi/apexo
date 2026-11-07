@@ -13,13 +13,8 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// The gallery's write is not the visit's Save.
-///
-/// A photo is uploaded the moment the user picks it; the pre-op notes typed
-/// beside it are not typed into a photo. Before this, `appointments.set(visit)`
-/// wrote the whole draft — notes and all — and `panel.markSaved` then told the
-/// visit it had nothing left to save, so the photo's write silently became the
-/// visit's write (plan §7.4).
+// A photo upload writes only the image fields; the visit's unsaved note must
+// stay dirty.
 void main() {
   late List<Appointment> originalAppointments;
 
@@ -110,8 +105,6 @@ void main() {
       () {
     final stored = storedVisit();
     appointments.set(stored);
-    // The visit's owner is its session: one draft, one Save, and an
-    // acknowledgement that names the fields it covers (plan §2.1).
     final session = appointmentSessions.getOrCreate(stored);
     session.item.preOpNotes = 'note being typed';
     session.refreshDirty();

@@ -62,12 +62,8 @@ List<MenuFlyoutItem> communicationActions(String num) {
   ];
 }
 
-/// Menu items to reach a patient: one submenu per phone number, plus email.
-///
-/// Leads with a separator, so it can be appended to a menu that already has
-/// items — only call it when there is something to reach.
-///
-/// Shared by the screens that open context menus on patient rows.
+/// Starts with a separator, for appending to an existing menu; only call it
+/// when there is something to reach.
 List<MenuFlyoutItemBase> contactMenuItems({
   required List<ParsedPhoneNumber> phones,
   required String email,

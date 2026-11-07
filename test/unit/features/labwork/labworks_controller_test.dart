@@ -43,9 +43,8 @@ void main() {
     login.savedPermissions = originalPerms;
   });
 
-  // ObservableBase.notifyObservers dispatches via a broadcast StreamController
-  // (async microtask). Draining pending microtasks lets the labworks controller's
-  // observer fire before we assert on the cached getters.
+  // ObservableBase.notifyObservers dispatches through an async broadcast stream,
+  // so drain microtasks before reading the cached getters.
   Future<void> flushObservers() => Future.microtask(() {});
 
   group('Labworks controller — singleton', () {
@@ -382,8 +381,6 @@ void main() {
       appointments.set(appt);
       injectedApptIds.add(appt.id);
 
-      // Draining microtasks lets the observer (registered in labworks
-      // constructor) refresh its caches.
       await flushObservers();
       await flushObservers(); // double-drain to be safe
 
@@ -412,8 +409,7 @@ void main() {
       expect(labworks.notDeliveredPatients.map((patient) => patient.id),
           contains(p.id));
 
-      // Nothing about the visit changed — the patient is what the list is
-      // filtered by, so their own record is what has to rebuild it.
+      // Only the patient changed; the patient-based lists are what must rebuild.
       patients.archive(p.id);
       await flushObservers();
       await flushObservers();

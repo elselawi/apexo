@@ -11,12 +11,6 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A visit's photos and X-rays as a compact card: its pictures, and the way
-/// into the visit that holds them.
-///
-/// One design for both places a visit's files are seen from outside the visit's
-/// own gallery: below a visit's gallery, where the patient's other visits with
-/// pictures are listed, and the patient's gallery, where every one of them is.
 class VisitPhotosCard extends StatelessWidget {
   const VisitPhotosCard(
     this.visit, {
@@ -30,13 +24,11 @@ class VisitPhotosCard extends StatelessWidget {
   /// The card's place in the list it is drawn in, if the list numbers its cards.
   final int? number;
 
-  /// How the card opens its visit. Defaults to [openAppointment], which opens
-  /// the visit beside the patient.
+  /// How the card opens its visit.
   final void Function(Appointment appointment, AppointmentWindow window)?
       onOpen;
 
-  /// Whether this user may delete this visit's pictures: the photos permission,
-  /// and the visit itself — the gate every other write to a visit uses.
+  /// Photos permission plus visit edit rights, like every other visit write.
   bool get _canDelete =>
       login.perm(Perm.photos).exact(1) &&
       canEditAppointments(visit.operatorsIDs);
@@ -69,13 +61,8 @@ class VisitPhotosCard extends StatelessWidget {
   }
 }
 
-/// One visit's photos and X-rays, as a gallery.
-///
-/// This is what the visit's own gallery window shows. The patient's gallery
-/// shows the same visit's files as a [VisitPhotosCard] — one per visit — and
-/// both routes change the files through the visit that holds them: a photo is
-/// uploaded to, deleted from and drawn on through that visit, whichever window
-/// the user happens to be looking at it in.
+/// One visit's photos and X-rays. Files are always written through the visit,
+/// whichever window is showing them.
 class VisitGallery extends StatefulWidget {
   const VisitGallery(
     this.visit, {
@@ -89,25 +76,21 @@ class VisitGallery extends StatefulWidget {
 
   final Appointment visit;
 
-  /// Whose photos these are — the visit's patient and day. A photo's own window
-  /// says it, so several open at once can be told apart.
+  /// Whose photos these are, so several photo windows can be told apart.
   final String Function()? owner;
 
-  /// The visit these photos belong to, for a photo's own window: it leads back
-  /// to the record that holds them.
+  /// Leads a photo's window back to the visit that holds it.
   final Future<void> Function()? onOpenRecord;
 
   /// Reports a bulk upload or delete so a panel can show it as progress.
   final ValueChanged<bool>? onProgress;
 
-  /// The visit's owner acknowledges *which* fields the gallery wrote — the files
-  /// and drawings, never the notes typed beside them. A visit's draft is only
-  /// clean on those fields, so unsaved clinical text survives an upload.
+  /// Acknowledges only the file fields the gallery wrote, so unsaved notes typed
+  /// into the visit draft survive an upload.
   final void Function(Iterable<String> fields)? onFieldsSaved;
 
-  /// Whether photos can be added here. Off where there is no visit window to
-  /// keep the write (the patient's gallery): a new file would still belong to
-  /// this visit, so adding one belongs to the visit's own gallery.
+  /// Whether photos can be added here; off in the patient's gallery, which has no
+  /// visit window to write through.
   final bool uploads;
 
   @override
@@ -117,15 +100,13 @@ class VisitGallery extends StatefulWidget {
 class _VisitGalleryState extends State<VisitGallery> {
   Appointment get visit => widget.visit;
 
-  /// Whether the user may change this visit's photos: the photos permission,
-  /// and the visit itself — the gate every other write to a visit uses.
+  /// Photos permission plus visit edit rights, like every other visit write.
   bool get canEdit =>
       login.perm(Perm.photos).exact(1) &&
       canEditAppointments(visit.operatorsIDs);
 
   void _wrote() {
-    // Only the fields this gallery owns reach the store: a photo upload must
-    // never commit the notes that happen to be typed into the visit's draft.
+    // Only the image fields reach the store; notes in the draft stay dirty.
     writeVisitImages(visit);
     widget.onFieldsSaved?.call(kVisitImageFields);
     if (mounted) setState(() {});

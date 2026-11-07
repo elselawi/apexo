@@ -24,16 +24,14 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-/// How long two notices for the same change are treated as the same event:
-/// long enough to cover the gap between the realtime pull and the relay's push
-/// for one change, short enough to never merge two real edits.
+/// Two notices for one change are merged within this window: it spans the gap
+/// between the realtime pull and the relay push, but not two real edits.
 const Duration staticNotificationDedupeWindow = Duration(seconds: 30);
 
 final Map<String, DateTime> _seenNotifications = {};
 
-/// The key two notices for the *same* change share: store, record,
-/// create-or-update and the changed field/value tuples (sorted by field, since
-/// the two producers may list them in any order).
+/// Dedupe key for one change: store, record, create/update and the sorted
+/// field/value tuples, since the two producers may order fields differently.
 String staticNotificationKey(PushData data) {
   final indices = List<int>.generate(
       data.updatedFields.length, (index) => index)
@@ -82,11 +80,8 @@ List<NotificationAction> actionsForPushData(PushData pushData) {
   ];
 }
 
-/// Dispatches an in-app notification for [pushData] unless the same change
-/// was already notified within [staticNotificationDedupeWindow].
-///
-/// When [ding] is true, plays the Windows notification sound and shows a toast
-/// (used by the store sync path).
+/// Adds an in-app notice for [pushData] once per dedupe window; [ding] also
+/// plays the notification sound (used by the store sync path).
 Future<bool> dispatchStaticNotification(
   PushData pushData, {
   IconData? icon,
@@ -123,29 +118,17 @@ Future<bool> dispatchStaticNotification(
   return true;
 }
 
-/// Safely extracts and decodes the [PushData] payload from an FCM-style data
-/// map — `{"payload": "<PushData JSON>"}` — without requiring a
-/// [RemoteMessage].
-///
-/// Windows Notification Services delivers the same envelope, which is why the
-/// parser is transport neutral: the wire format is the relay's, not FCM's.
-/// Returns `null` when the map has no valid `"payload"` JSON string.
+/// Decodes `{"payload": "<PushData JSON>"}` from any transport's data map.
+/// Windows delivers the same envelope, so this is not FCM-specific.
 ({String raw, PushData data})? pushPayloadOfData(Map<String, dynamic>? data) {
   final raw = data?["payload"];
   if (raw is! String || raw.isEmpty) return null;
   return tryParsePushPayload(raw);
 }
 
-/// Safely extracts and decodes the [PushData] payload from a [RemoteMessage].
-/// Returns `null` if the message has no valid `"payload"` JSON string.
 ({String raw, PushData data})? pushPayloadOf(RemoteMessage message) =>
     pushPayloadOfData(message.data);
 
-/// Parses the envelope a transport hands over as a string: the same
-/// `{"payload": "<PushData JSON>"}` map, JSON-encoded.
-///
-/// Returns `null` if [envelope] is null, empty, not a JSON object, or does not
-/// carry a valid payload.
 ({String raw, PushData data})? tryParsePushEnvelope(String? envelope) {
   if (envelope == null || envelope.isEmpty) return null;
   try {
@@ -157,8 +140,6 @@ Future<bool> dispatchStaticNotification(
   }
 }
 
-/// Safely parses a raw JSON string into [PushData], returning `null` if
-/// [raw] is null, empty, or malformed JSON.
 ({String raw, PushData data})? tryParsePushPayload(String? raw) {
   if (raw == null || raw.isEmpty) return null;
   try {
@@ -170,18 +151,13 @@ Future<bool> dispatchStaticNotification(
   }
 }
 
-/// The background notification callback runs in a separate isolate. It may
-/// only perform background-safe work; route navigation is deferred until the
-/// app is resumed through the normal FCM/local foreground callbacks.
+/// Runs in a separate isolate: only background-safe work here; navigation is
+/// deferred to the foreground callbacks.
 @pragma('vm:entry-point')
 void backgroundNotificationResponse(NotificationResponse response) {
-  // Intentionally no UI access or store synchronization in a background
-  // isolate. The payload remains available to the platform notification.
 }
 
-/// This function is called when a background message is received.
-/// It initializes Firebase and the local notifications plugin, and shows the
-/// notification. It should stay top-level to avoid isolate issues.
+/// Background FCM handler; stays top-level so the isolate entry point resolves.
 @pragma('vm:entry-point')
 Future<void> backgroundMsg(RemoteMessage message) async {
   await login.ready;
@@ -212,8 +188,6 @@ Future<void> backgroundMsg(RemoteMessage message) async {
 }
 
 abstract class PushListeners {
-  /// Hands a foreground push to the OS. A test replaces this to observe what
-  /// would have been shown without starting the notifications plugin.
   @visibleForTesting
   static Future<void> Function(
     String? title,
@@ -223,20 +197,12 @@ abstract class PushListeners {
     await Messaging.local?.showNotification(title, body, payload);
   };
 
-  /// Reveals a hidden Windows push process before a toast click is handled.
-  ///
-  /// Set by the notification initializer on Windows. Staying a callback keeps
-  /// the Windows-native channel implementation out of every platform that
-  /// imports the shared listener.
+  /// Set by the initializer on Windows. A callback keeps the Windows-native
+  /// channel out of every other platform that imports this file.
   static Future<void> Function()? promoteWindowsInstanceIfApplicable;
 
-  /// What every transport does with a push, whatever carried it.
-  ///
-  /// The stores behind the notice are synchronized first, so the record the
-  /// notice names is there when it is opened, then the in-app notice is added.
-  /// A push the app was already running for is also shown by the OS; a *user
-  /// click* on a notification navigates instead, since the tap is the user's
-  /// answer to the notice. A raw Windows push is never passed as a click.
+  /// Synchronizes the notice's store before adding the in-app notice, so the
+  /// record exists when it is opened; a tap navigates instead of re-showing it.
   static Future<void> handlePushData(
     PushData pushData, {
     bool openedFromNotification = false,
@@ -263,8 +229,7 @@ abstract class PushListeners {
     if (notificationSessions.revision != sessionRevision) return;
 
     if (openedFromNotification) {
-      // Retry before opening: a missing record must produce one message, not
-      // one before synchronization and another after it.
+      // Sync once more if the record is missing; the local store may be stale.
       if (pushData.store == "appointments" &&
           appointments.get(pushData.id) == null) {
         await appointments.synchronize();
@@ -299,19 +264,14 @@ abstract class PushListeners {
     final sessionRevision = notificationSessions.revision;
     binding.addPostFrameCallback((_) {
       if (notificationSessions.revision != sessionRevision) return;
-      // Resolve at execution time: synchronization or deletion may have changed
-      // the record since the notification was clicked.
+      // Resolve at execution time: the record may have changed since the click.
       unawaited(openAppointmentById(id));
     });
     binding.ensureVisualUpdate();
   }
 
-  /// The callback the local-notifications plugin invokes for a toast click.
-  ///
-  /// The payload is captured synchronously and handled on a guarded asynchronous
-  /// path: a cold click can arrive before the app has restored its session, and
-  /// dropping it because credentials are temporarily empty is what lost the
-  /// first record the user asked for.
+  /// The toast-click callback. The payload is captured synchronously and handled
+  /// asynchronously, so a cold click before session restore is not dropped.
   static void foregroudRes(NotificationResponse response) {
     unawaited(
       handleLocalNotificationClick(response).catchError(
@@ -327,13 +287,11 @@ abstract class PushListeners {
     );
   }
 
-  /// Handles a toast click after promoting any hidden process and waiting for a
-  /// genuinely usable session.
   static Future<void> handleLocalNotificationClick(
     NotificationResponse response,
   ) async {
-    // A click on a toast that a hidden push process displayed must reveal that
-    // process before any session/store work, and must cancel its pending exit.
+    // Promote before any session or store work: a toast shown by a hidden push
+    // process must reveal that process and cancel its pending exit.
     final promote = promoteWindowsInstanceIfApplicable;
     if (promote != null) await promote();
 
@@ -346,14 +304,8 @@ abstract class PushListeners {
     await handlePushData(parsed.data, openedFromNotification: true);
   }
 
-  /// A notification tap opened or resumed an FCM app: record the notice and
-  /// show the record it is about.
-  ///
-  /// The tap that launched the app gets here while the session is still
-  /// loading, hence the wait — without it the payload would look like it
-  /// belongs to no one and be dropped. Windows raw pushes do not use this path;
-  /// they are display events, and a local-toast click uses
-  /// [handleLocalNotificationClick] and the explicit session coordinator.
+  /// An FCM tap that launched or resumed the app is handled as a click, so it
+  /// navigates instead of showing another notification.
   static Future<void> causedTheAppToOpen(RemoteMessage message) async {
     final parsed = pushPayloadOf(message);
     if (parsed == null) return;

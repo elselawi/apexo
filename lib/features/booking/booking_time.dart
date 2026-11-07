@@ -27,9 +27,8 @@ List<String> bookingTimeZoneNames() {
   return names;
 }
 
-/// Windows zone names, as `DateTime.timeZoneName` reports them, mapped to the
-/// IANA zones the Worker validates. Windows is the desktop target and Dart
-/// exposes the OS name, not `zone.tab`.
+/// Windows zone names (what `DateTime.timeZoneName` reports) mapped to the IANA
+/// zones the Worker validates; Dart exposes the OS name, not `zone.tab`.
 const Map<String, String> _windowsTimeZones = {
   "Arabic Standard Time": "Asia/Baghdad",
   "Arab Standard Time": "Asia/Riyadh",
@@ -109,8 +108,8 @@ String? bookingSystemTimeZone() {
   final mapped = _windowsTimeZones[DateTime.now().timeZoneName];
   if (mapped != null && bookingLocation(mapped) != null) return mapped;
 
-  // Unknown name (localised Windows, or a non-Windows host): match the device
-  // offset against the database rather than guessing a city.
+  // Unknown name (localised Windows, or non-Windows): match the device offset
+  // against the database rather than guessing a city.
   final offset = DateTime.now().timeZoneOffset;
   if (offset.inMinutes % 60 == 0) {
     final hours = offset.inMinutes ~/ 60;
@@ -170,8 +169,8 @@ int bookingDaysBetween(String from, String to) =>
 class BookingMoment {
   BookingMoment({this.local, this.ambiguous = false, this.gap = false});
 
-  /// The instant expressed in the device's local zone, ready for the PMS
-  /// editor. Null when the clinic's wall clock does not exist (DST gap).
+  /// The instant in the device's local zone, ready for the PMS editor; null when
+  /// the clinic's wall clock does not exist (DST gap).
   final DateTime? local;
   final bool ambiguous;
   final bool gap;
@@ -179,10 +178,8 @@ class BookingMoment {
   bool get needsManualConfirmation => local == null || ambiguous;
 }
 
-/// Converts a clinic-local wall clock to the device-local instant.
-///
-/// DST gaps return no instant; folds are reported so scheduling asks for
-/// confirmation instead of picking an arbitrary offset.
+/// Converts a clinic-local wall clock to the device-local instant. DST gaps return
+/// no instant; folds are reported so scheduling asks for confirmation.
 BookingMoment bookingClinicMomentToLocal(
   String date,
   String time,
@@ -219,11 +216,8 @@ BookingMoment bookingClinicMomentToLocal(
   return BookingMoment(local: wall.toLocal(), ambiguous: ambiguous);
 }
 
-/// The first future intersection among the stored candidate dates.
-///
-/// Returns null when the preference has expired, falls on a closed date, or
-/// cannot be placed inside the current hours — the caller then asks for a new
-/// date instead of suggesting a past appointment.
+/// The first future intersection among the stored candidate dates, or null when
+/// the preference expired, hits a closed date, or cannot fit the current hours.
 BookingMoment? suggestedBookingMoment(
   BookingRequest request,
   BookingWeeklyHours effectiveHours, {

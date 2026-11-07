@@ -4,12 +4,8 @@ import 'package:apexo/core/reactive/observable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
-/// Everything the floating dental chart needs to edit one record's teeth.
-///
-/// The maps are the **live draft**: a panel hands in its editing copy, so the
-/// chart writes exactly what the panel's Save persists, and a chart opened on
-/// its own owns a copy and supplies [onSave] instead — which is what lets it
-/// answer [hasChanges] for its Close confirmation.
+/// Edits one record's teeth; [teeth] and [extraNotes] are the live draft a
+/// panel also saves, or the session's own copy when standalone with [onSave].
 final class DentalChartSession {
   DentalChartSession({
     required this.id,
@@ -35,14 +31,12 @@ final class DentalChartSession {
   /// Logical direction for the chart content's scope transition; chrome stays still.
   int navigationDirection = 0;
 
-  /// The window's label as a localization key — "Dental Chart" on a record,
-  /// "Treatments" on a visit, because what the same chart writes differs. The
-  /// host draws it, so a language switch relabels the chart while it is open.
+  /// Localization key for the window label; the host resolves it on build, so a
+  /// language switch relabels an open chart.
   final String titleKey;
 
-  /// The window's second line — whose chart this is, read on build so a renamed
-  /// patient stays current. The window's *title* is the chart itself; this is
-  /// the line under it that says which record it belongs to.
+  /// The window's second line: whose chart this is, read on build so a rename
+  /// stays current.
   final String Function() subtitle;
 
   final StateType type;
@@ -51,14 +45,10 @@ final class DentalChartSession {
   final Map<String, String> teeth;
   final Map<String, String> extraNotes;
 
-  /// Records to show beside the teeth, and everything known about the chart
-  /// that is not in [teeth]. Both are read on build, because they come from
-  /// stores that change while the window is open.
+  /// Both read on build, because their stores change while the window is open.
   final List<ToothHistory> Function() history;
   final Map<String, String> Function() oldNotes;
 
-  /// The heading of the history beside the teeth (`toothHistory` or
-  /// `toothAppointmentNotes`).
   final String historyTitle;
 
   final bool showPrimary;
@@ -66,12 +56,8 @@ final class DentalChartSession {
   /// Opens an appointment listed in the tooth history.
   final ValueChanged<String>? onOpenAppointment;
 
-  /// A header the owner adds above the chart (the scope bar). Built lazily, and
-  /// handed the session so it can check whether the chart holds unsaved work.
   final Widget Function(DentalChartSession session)? header;
 
-  /// A footer the owner adds under the chart (the dictation button). Built
-  /// lazily, and handed the session so it can report edits back to it.
   final Widget Function(DentalChartSession session)? footer;
 
   /// The standalone half — null only when a panel owns the draft and saves it.
@@ -80,8 +66,7 @@ final class DentalChartSession {
   /// Bumped on every edit, so whatever is drawing the chart redraws too.
   final ObservableState<int> revision = ObservableState(0);
 
-  /// What the chart looked like when it opened, and after its last save: the
-  /// baseline [hasChanges] is measured against.
+  /// Baseline for [hasChanges]: the draft as opened and after the last save.
   Map<String, String> _savedTeeth;
   Map<String, String> _savedExtraNotes;
 
@@ -92,19 +77,15 @@ final class DentalChartSession {
   /// Says an edit landed in [teeth] or [extraNotes].
   void changed() => revision(revision() + 1);
 
-  /// This chart's work, written over [stored] — the record as it is stored now.
-  ///
-  /// The same two fields [onSave] writes, so a panel that adopts it opens dirty
-  /// on exactly the work this window holds, and a visit's chart and a patient's
-  /// chart can be adopted by the same code.
+  /// Writes this chart's work over [stored] using the same two fields [onSave]
+  /// persists, so a panel can adopt it and open dirty.
   Map<String, dynamic> mergeInto(Map<String, dynamic> stored) => {
         ...stored,
         'teeth': Map<String, String>.from(teeth),
         'teethExtraNotes': Map<String, String>.from(extraNotes),
       };
 
-  /// Sets the baseline [hasChanges] is measured against (e.g. when a panel
-  /// adopts unsaved work from a standalone window).
+  /// Re-baselines [hasChanges], e.g. when a panel adopts a standalone window's work.
   void setBaseline({
     required Map<String, String> teeth,
     required Map<String, String> extraNotes,
@@ -131,8 +112,8 @@ final class DentalChartSession {
     changed();
   }
 
-  /// Persists a standalone chart, then re-baselines [hasChanges]. A failed save
-  /// leaves the session dirty and is rethrown to the window.
+  /// Saves a standalone chart, then re-baselines. A failed save leaves the
+  /// session dirty and rethrows.
   Future<void> save() async {
     final save = onSave;
     if (save == null) return;

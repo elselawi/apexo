@@ -37,15 +37,9 @@ class ToothStateWheel extends StatefulWidget {
   final ValueChanged<String>? onExtraNote;
   final List<ToothHistory> history;
 
-  /// Localization key naming what [history] holds — the patient's baseline and
-  /// earlier appointments for the treatment being recorded, or the notes
-  /// earlier appointments left on this tooth when it is browsed from the
-  /// patient's own records.
   final String historyTitle;
 
-  /// Called with the id of a record's appointment when the patient's history
-  /// offers to open it. The wheel closes itself first, so the caller only has
-  /// to bring the appointment up.
+  /// The wheel closes itself first; the caller only opens the appointment.
   final ValueChanged<String>? onOpenAppointment;
 
   @override
@@ -53,21 +47,14 @@ class ToothStateWheel extends StatefulWidget {
 }
 
 class _ToothStateWheelState extends State<ToothStateWheel> {
-  /// Shared geometry of the wheel and its folded view, and the length of the
-  /// animation that travels between them.
   static const _morph = Duration(milliseconds: 350);
 
-  /// The folded corners of the surface; while the ring is open the same box is
-  /// rounded by half its width, which is what draws the circle.
   static const _cornerRadius = 16.0;
 
   /// The chosen option's box, matching the option circles on the ring.
   static const _chip = _optionSize;
   static const _chipTop = 12.0;
 
-  /// The folded view hangs its controls on the surface's edges: the chosen
-  /// option on the leading edge and dictation on the trailing one, with the
-  /// notes field between them and the save/clear pair along the bottom.
   static const _edgeMargin = 14.0;
   static const _notesTop = 80.0;
   static const _rowHeight = 34.0;
@@ -84,9 +71,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   bool _isOtherMode = false;
   bool _hasNote = false;
 
-  /// Whether the ring of options is open. Recording a choice folds it away so
-  /// the chosen option can ride on top of the notes field; clearing the tooth
-  /// is what brings the ring back.
   late bool _optionsExpanded;
   late final TextEditingController _notesController;
   final TextEditingController _otherController = TextEditingController();
@@ -137,11 +121,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     final media = MediaQuery.of(context);
     final records = _records();
 
-    // Tapping anywhere that is not one of the floating surfaces (the wheel,
-    // the notes field, the header or the history card) dismisses the whole
-    // popup. The surfaces each absorb their own taps below, and none of the
-    // absorbing handlers touch semantics — the labelled controls inside them
-    // keep the accessibility tree exactly as it was.
+    // Tapping outside the floating surfaces dismisses the popup; the surfaces
+    // absorb their own taps without touching the semantics tree.
     return GestureDetector(
       onTap: widget.onTapClose,
       behavior: HitTestBehavior.opaque,
@@ -257,8 +238,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     final accent = _accentColor;
     final hasChoice = _hasChoice;
 
-    // The surface's shape is the wheel's own: the gaps around it belong to the
-    // popup, whose dismiss handler is waiting behind them.
     return AnimatedContainer(
       key: const ValueKey('choice-wheel'),
       duration: _morph,
@@ -267,9 +246,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
       width: size,
       decoration: BoxDecoration(
         color: theme.menuColor,
-        // The round wheel and the notes rectangle are the same square box:
-        // only the corner radius travels between them, so the morph keeps
-        // the overall width the ring was built around.
         borderRadius:
             BorderRadius.circular(collapsed ? _cornerRadius : size / 2),
         border: Border.all(
@@ -292,10 +268,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
           ),
         ],
       ),
-      // The clip keeps hit testing on the paint: the surface takes every tap
-      // that lands on it — the gaps between the ring's options included —
-      // while the corners of the box it is drawn in stay the dismiss
-      // handler's, so the popup still closes when they are tapped.
       child: TweenAnimationBuilder<double>(
         tween: Tween<double>(
             begin: size / 2, end: collapsed ? _cornerRadius : size / 2),
@@ -312,8 +284,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
         ),
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // The surface's own border insets this box, so the ring and the
-            // notes surface are laid out against the box they actually get.
             final box = constraints.maxWidth;
             return Stack(
               alignment: Alignment.center,
@@ -337,11 +307,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   Color get _accentColor =>
       _isOtherMode ? Colors.teal : labelToColor(_selectedLabel ?? '');
 
-  /// One option on the ring.
-  ///
-  /// Recording a choice folds the ring away: every option but the chosen one
-  /// shrinks out of sight and stops taking taps, while the chosen one rides to
-  /// the leading edge of the surface and stays there for good.
   Widget _optionButton(int index,
       {required bool collapsed, required double box}) {
     const ringRadius = 147.0;
@@ -351,8 +316,7 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     final hidden = collapsed && !isSelected;
     final angle = index * 2 * math.pi / options.length - math.pi / 2;
     final atTop = isSelected && collapsed;
-    // Kept clear of the edge by its grown size, so its painted edge lines up
-    // with the notes field below rather than its box.
+    // inset by its grown size so its painted edge lines up with the notes field.
     const lead = _edgeMargin + _chipGrow;
 
     return AnimatedPositioned(
@@ -378,20 +342,14 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// Records [label] on the tooth, or opens the custom editor for `other`.
-  ///
-  /// A second tap on the same option within [doubleTapWindow] confirms the
-  /// choice by closing the popup — "set it and get out", without waiting for
-  /// extra notes to be typed. Once a choice is recorded the ring stays folded;
-  /// the clear control is the way back to it.
+  // a second tap on the same option within this window closes the popup,
+  // confirming the choice without waiting for extra notes.
   static const doubleTapWindow = Duration(milliseconds: 350);
   Timer? _doubleTapTimer;
   String? _pendingTapLabel;
 
   void _choose(String label) {
     if (_pendingTapLabel == label) {
-      // Second tap on the same option: the choice is already recorded, so
-      // there is nothing left to edit — close the whole popup.
       _doubleTapTimer?.cancel();
       _pendingTapLabel = null;
       widget.onTapClose();
@@ -417,22 +375,13 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     }
 
     if (!_isOtherMode && label == _selectedLabel) {
-      // Already recorded: a recorded treatment keeps this folded view, and
-      // clearing it is the way back to the ring.
+      // tapping it again does nothing; clearing is the way back to the ring.
       return;
     }
 
     _select(label);
   }
 
-  /// The notes surface at the heart of the wheel.
-  ///
-  /// While the ring is open it is the familiar circle; recording a choice
-  /// widens it into a rounded rectangle tucked under the chosen option so a
-  /// full note fits comfortably. It carries the option's own colour rather
-  /// than a grey field box, and stays out of the way until there is something
-  /// to attach a note to — a chosen option, the custom "other" editor, or
-  /// notes carried in from a saved record.
   Widget _notesSurface(BuildContext context,
       {required bool collapsed, required double box}) {
     final theme = FluentTheme.of(context);
@@ -486,8 +435,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                   placeholder:
                       txt(_isOtherMode ? 'other' : 'extraInfoPlaceholder'),
                   autofocus: _isOtherMode,
-                  // Folded, dictation lives beside the chosen option; while
-                  // the ring is open it stays on the field, as before.
                   micPlacement:
                       collapsed ? MicPlacement.none : MicPlacement.bottomCenter,
                   onChanged: _isOtherMode ? _onOtherChanged : _onNotesChanged,
@@ -498,12 +445,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// The folded view's actions, along the bottom of the surface.
-  ///
-  /// Saving keeps the note — it was stored as it was typed — and closes the
-  /// wheel; clearing takes the choice, the note and the custom label with it
-  /// and puts the ring back. Save comes first, so it sits at the start of the
-  /// pair and the row mirrors with the ambient [Directionality].
+  // saving keeps the note because the field already reported every keystroke;
+  // clearing drops the choice, note and custom label and brings the ring back.
   Widget _foldedActions({required bool collapsed, required double box}) {
     final color = _accentColor;
     final visible = collapsed && _hasChoice;
@@ -547,11 +490,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// Dictation, at the trailing edge of the surface.
-  ///
-  /// It feeds whichever field is on the surface — the notes field, or the
-  /// custom "other" editor — so folding the ring never takes the microphone
-  /// away from what is being written.
   Widget _dictationButton({required bool collapsed, required double box}) {
     final available = transcriptionAvailable;
     final color = _accentColor;
@@ -562,20 +500,13 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
       curve: Curves.easeInOutCubic,
       left: rtl ? _edgeMargin : box - _edgeMargin - _dictationRow,
       top: _chipTop,
-      // Built only when dictation is actually on offer: the button owns a
-      // recorder, and there is no reason to hold one while it is unavailable.
+      // built only when dictation is available: the button owns a recorder.
       child: available
           ? _flank(
               visible: collapsed && _hasChoice,
-              // Hugs the trailing edge, so the slot's spare width — the room
-              // the button needs while it counts down — stays inwards, where
-              // it cannot push the option around.
               alignment: rtl ? Alignment.centerLeft : Alignment.centerRight,
-              // Wears the chosen option's colour, like the Save control below.
-              // The key follows the field it dictates into: the button binds
-              // its controller once, when it is built, so switching between
-              // the notes field and the custom "other" editor has to give it
-              // a new one to bind.
+              // the key follows the field it dictates into: the button binds
+              // its controller once, so switching fields must rebuild it.
               child: LiveTranscriptionButton(
                 key: ValueKey(
                     'wheel-dictation-${_isOtherMode ? 'other' : 'notes'}'),
@@ -589,11 +520,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// A slot at the trailing edge of the surface, faded in with the folded view.
-  ///
-  /// The slot is wider than the control it holds so the growing dictation
-  /// button — the one that counts down while recording — keeps its place
-  /// instead of pushing anything around.
+  // wider than the control it holds so the growing dictation button keeps its
+  // place instead of pushing anything around.
   Widget _flank({
     required bool visible,
     required Alignment alignment,
@@ -624,13 +552,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     _select(null);
   }
 
-  /// Brings an earlier record's treatment and note for this tooth into the
-  /// record being edited, which is what the history card's copy action is for.
-  ///
-  /// The wheel is the editor for that same tooth, so it takes the copy on
-  /// itself too: the treatment replaces the chosen one (a programmatic change
-  /// raises no tap), and the note would not reach the caller on its own, as
-  /// the field only reports what the user types.
+  // copies an earlier record's treatment and note into this tooth; setting the
+  // controller text fires no onChanged, so the note is reported by hand.
   void _copyRecord(ToothHistory record) {
     final treatment = record.teeth[widget.iso];
     if (treatment != null) _select(treatment);
@@ -649,8 +572,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     widget.onExtraNote?.call(text);
   }
 
-  /// The custom "other" option commits as it is typed — exactly like a note —
-  /// so the tooth is never left with an unsaved custom label.
   void _onOtherChanged(String text) {
     final label = text.trim();
     setState(() => _selectedLabel = label.isEmpty ? null : label);
@@ -682,13 +603,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
     );
   }
 
-  /// The records this tooth has to show.
-  ///
-  /// A tooth can carry a treatment recorded outside the records the wheel was
-  /// handed — in the patient's chart, or in an appointment this editor does
-  /// not list. Those arrive as [ToothStateWheel.oldNote] alone, so they are
-  /// dressed as a record of the patient's dental notes: without that the card
-  /// showed a bare treatment name, with no icon and no note to place it.
+  // a treatment recorded outside `history` arrives as `oldNote` alone; it is
+  // wrapped as a dateless dental-notes record so the card can render it.
   List<ToothHistory> _records() {
     final records = widget.history
         .where((record) =>
@@ -888,8 +804,6 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
                                         WindowsIcons.open_in_new_window,
                                         size: 12),
                                     onPressed: () {
-                                      // The wheel steps aside so the appointment
-                                      // comes up on the clinic floor behind it.
                                       widget.onTapClose();
                                       widget.onOpenAppointment!(
                                           record.appointmentId!);
@@ -912,13 +826,8 @@ class _ToothStateWheelState extends State<ToothStateWheel> {
   }
 }
 
-/// Size of an option's circle on the ring, and of the box the chosen one
-/// rides in afterwards.
 const _optionSize = 54.0;
 
-// How much the chosen option grows once it is the only one left on the
-// surface: with the ring folded away there is nothing to be highlighted
-// against, so the option simply takes more of the space for itself.
 const _chosenScale = 1.3;
 
 class _RadialButton extends StatelessWidget {
@@ -1001,10 +910,7 @@ class _RadialButton extends StatelessWidget {
   }
 }
 
-/// The in-wheel text surface shared by the extra-notes field and the custom
-/// "other" option editor — one look, one behaviour. It paints nothing of its
-/// own: the tinted, morphing surface behind it carries the colour, so the
-/// platform's default grey field box never shows through.
+// paints no decoration: the tinted surface behind it carries the colour.
 class _WheelTextField extends StatelessWidget {
   const _WheelTextField({
     super.key,
@@ -1039,12 +945,8 @@ class _WheelTextField extends StatelessWidget {
   }
 }
 
-/// Clips the wheel to the shape it is painted as.
-///
-/// A [CustomClipper] rather than the plain radius of a [ClipRRect], because
-/// only a clipper makes the clip take part in hit testing — and that is what
-/// lets the surface absorb taps inside its circle or its folded rectangle
-/// while the corners of the box around them fall through to the popup.
+// clips the wheel to its painted shape. [ClipRRect] only clips hit testing
+// when it is given a clipper, so the rounded shape is built here.
 class _SurfaceClipper extends CustomClipper<RRect> {
   const _SurfaceClipper(this.radius);
   final double radius;

@@ -125,8 +125,8 @@ void main() {
       expect(await first, 'first result');
       expect(await second, 'second result');
       expect(await nested, 'nested result');
-      // The first task starts immediately, so its re-entrant add is queued
-      // before the caller submits the second task.
+      // first task starts immediately, so its re-entrant add is queued before
+      // the second task is submitted.
       expect(events, ['first', 'nested', 'second']);
     });
 

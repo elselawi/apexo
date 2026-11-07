@@ -4,24 +4,13 @@ import 'package:apexo/services/dicom/dicom_skipped.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 
-/// Thin wrapper around `dicom_toolkit`'s [DicomParser].
-///
-/// All methods return `null` on failure (graceful skipping). Parse failures are
-/// logged to the skipped-files log with the optional [sourcePath] and the
-/// failure reason, so the reason a file never reached the gallery is recorded —
-/// read today by the manual `verifyDicomScan` helper.
-///
-/// Use [parseMetadata] for the fast header-only scan (no GPU, no pixel
-/// decode) — perfect for directory sweeps. Use [parse] for the full parse
-/// (metadata + pixels) needed by the viewer and PNG export.
+/// Thin wrapper over `dicom_toolkit`'s parser; failures return null and are logged
+/// to [DicomSkippedLog]. Use [parseMetadata] for sweeps, [parse] for pixels.
 class DicomParserWrapper {
   const DicomParserWrapper();
 
-  /// Parses only the DICOM metadata (28 typed fields). Fast — skips pixel
-  /// extraction via `skipPixels: true` in the Rust engine. No GPU needed.
-  ///
-  /// Returns `null` on any parse failure. If [sourcePath] is provided, the
-  /// failure is logged to [DicomSkippedLog] with the path and reason.
+  /// Header-only parse (no pixels, no GPU), for directory sweeps. Null on failure,
+  /// logged to [DicomSkippedLog] when [sourcePath] is given.
   Future<DicomMetadata?> parseMetadata(
     final Uint8List bytes, {
     final String? sourcePath,
@@ -43,13 +32,8 @@ class DicomParserWrapper {
     }
   }
 
-  /// Full parse: metadata + pixel data. Needed for the viewer and PNG export.
-  ///
-  /// Returns `null` on pixel-decode failure (e.g., unsupported compressed
-  /// transfer syntax). The caller may still have metadata from a prior
-  /// [parseMetadata] call — in that case the file is still importable (the
-  /// `.dcm` is preserved; the viewer will show an error per-file if it
-  /// can't decode).
+  /// Full parse (metadata + pixels) for the viewer and PNG export. Null on
+  /// pixel-decode failure; the file is still importable with its metadata.
   Future<DicomParseResult?> parse(
     final Uint8List bytes, {
     final String? sourcePath,

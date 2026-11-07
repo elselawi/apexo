@@ -2,8 +2,7 @@
 class HijriDate {
   const HijriDate(this.year, this.month, this.day);
 
-  /// Converts a Gregorian [DateTime] to a [HijriDate] using the standard
-  /// Civil (Kuwaiti / Tabular Islamic) arithmetic algorithm.
+  /// Civil (Kuwaiti / Tabular Islamic) arithmetic, not actual moon sighting.
   factory HijriDate.fromDateTime(DateTime date) {
     final jd = _gregorianToJulianDay(date.year, date.month, date.day);
     return _julianDayToHijri(jd);
@@ -22,8 +21,6 @@ class HijriDate {
     return _julianDayToGregorian(jd);
   }
 
-  /// Whether this Hijri year is a leap year in the 30-year cycle
-  /// (years 2, 5, 7, 10, 13, 16, 18, 21, 24, 26, 29).
   bool isLeapYear() => HijriUtils.isLeapYear(year);
 
   /// Number of days in this Hijri month (29 or 30).

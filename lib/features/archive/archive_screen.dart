@@ -69,9 +69,8 @@ class _ArchivedRow {
   final VoidCallback onRestore;
   final VoidCallback? onOpen;
 
-  /// Whether this user may put the record back: the same level the record's own
-  /// delete asks for, so an archived row cannot hand back what the page it came
-  /// from would not let them take away.
+  /// Whether this user may restore the record: the same level its own delete asks
+  /// for, so an archived row cannot be handed back by someone who could not remove it.
   final bool canRestore;
 }
 
@@ -155,8 +154,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     return _collectionCache[storeKey]!;
   }
 
-  /// Lightweight sort keys for the entire filtered dataset.
-  /// Only allocates id+storeKey+lowerTitle — no closures, no subtitles, no models.
+  /// Lightweight sort keys for the filtered set: id, store and lower title only.
   List<List<String>> get _sortKeys {
     final keys = <List<String>>[];
 
@@ -171,8 +169,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     return keys;
   }
 
-  /// Builds a full [_ArchivedRow] on demand from a [_SortKey].
-  /// Called only for visible items (via [ListView.builder]).
+  /// Builds a full row only for the visible items of the list.
   _ArchivedRow _rowForKey(List<String> key) {
     switch (key[1]) {
       case "patients":
@@ -272,9 +269,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     for (final key in _sortKeys) {
       if (_selected.contains(key[0])) {
         final row = _rowForKey(key);
-        // The bulk restore asks the same question the row's own restore asks:
-        // a user without the right may not hand back what they could not have
-        // taken away.
+        // Bulk restore asks the same question as the row's own restore.
         if (!row.canRestore) continue;
         row.onRestore();
       }
@@ -288,10 +283,6 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     final validIds = keys.map((k) => k[0]).toSet();
     _selected.removeWhere((id) => !validIds.contains(id));
   }
-
-  // ────────────────────────────────────────────────────────────────
-  // Build
-  // ────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -339,10 +330,6 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Command bar
-  // ────────────────────────────────────────────────────────────────
-
   Widget _buildCommandBar() {
     final count = _selected.length;
     return ScreenCommandBar(
@@ -356,19 +343,11 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Search
-  // ────────────────────────────────────────────────────────────────
-
   Widget _buildSearch() {
     return Expanded(
       child: TopSearch(controller: _searchController, setState: setState),
     );
   }
-
-  // ────────────────────────────────────────────────────────────────
-  // Store selector (ComboBox)
-  // ────────────────────────────────────────────────────────────────
 
   Widget _buildStoreSelector() {
     final items = <ComboBoxItem<String?>>[
@@ -426,10 +405,6 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Sort
-  // ────────────────────────────────────────────────────────────────
-
   Widget _buildSortButton() {
     return Button(
       onPressed: () {
@@ -450,10 +425,6 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     );
   }
 
-  // ────────────────────────────────────────────────────────────────
-  // Empty / no-results
-  // ────────────────────────────────────────────────────────────────
-
   Widget _buildNoResults() {
     return Expanded(
       child: Center(
@@ -466,10 +437,6 @@ class _ArchivedPageState extends State<_ArchivedPage> {
       ),
     );
   }
-
-  // ────────────────────────────────────────────────────────────────
-  // Table
-  // ────────────────────────────────────────────────────────────────
 
   Widget _buildTable(List<List<String>> keys) {
     return ListView.builder(
@@ -493,8 +460,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
             leading: const Icon(WindowsIcons.open_in_new_window),
             onPressed: row.onOpen,
           ),
-        // Restoring is the only way out of this page — nothing here deletes for
-        // good — and it is offered only to whoever could have deleted it.
+        // Restoring is the only way out of this page, and only for those who could delete.
         if (row.canRestore)
           MenuFlyoutItem(
             text: Txt(txt("restore")),

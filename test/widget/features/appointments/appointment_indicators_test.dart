@@ -567,8 +567,8 @@ void main() {
     final crowded = testAppointment(
       id: 'squeezed-chip',
       date: DateTime(2026, 1, 15, 10),
-      // The shortest slot, at the largest text the app is likely to be given:
-      // the chip has to give way somewhere, and it gives way by folding.
+      // The shortest slot at the largest text scale, where the chip can only
+      // give way by folding.
       duration: 15,
       preOpNotes: 'Sensitive to cold on the upper right',
       paid: 120,
@@ -605,9 +605,8 @@ void main() {
   });
 
   testWidgets('a short card keeps its payment beside the pile', (tester) async {
-    // The card the bug was reported on: the shortest slot, every badge, and
-    // money taken — at a text size the OS scales up. The money is the one
-    // thing the card never drops.
+    // The reported card: shortest slot, every badge, money taken, at an OS-scaled
+    // text size. Money is the one thing the card never drops.
     final paid = testAppointment(
       id: 'paid-chip',
       date: DateTime(2026, 1, 15, 10),
@@ -653,15 +652,14 @@ void main() {
   testWidgets('a narrow agenda row keeps its patient visible', (tester) async {
     final patient = testPatient(id: 'narrow-patient');
     patients.set(patient);
-    // The record is taken away, not archived: an archived patient is still in
-    // the store, and the next test would find it there.
+    // Removed, not archived: an archived patient stays in the store.
     addTearDown(() => patients.observableMap.remove(patient.id));
     final appointment = loaded()..patientID = patient.id;
 
     await pumpApexoApp(
       tester,
-      // About the narrowest a phone keeps the agenda: the chip rides on the
-      // note's line, so it takes nothing from the patient's name.
+      // A phone's narrowest agenda width; the chip rides on the note's line so
+      // the name keeps its room.
       SizedBox(
         width: 360,
         height: 400,

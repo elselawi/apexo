@@ -11,20 +11,8 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// The patient's next follow-up, on the patient's own page — under the band of
-/// the visit that may be open beside them.
-///
-/// A follow-up belongs to the patient, not to the visit that recorded it, but
-/// the dentist decides it with the notes in front of them. So the same promise is
-/// editable from both places, and both are views of one record: the visit's
-/// operative row writes here through `setFollowUp`, and this row writes to the
-/// very same field, live.
-///
-/// It is **folded while there is no promise**: a single tinted button in the
-/// band's own colour, so a patient without a follow-up does not carry an empty
-/// form. Clicking it opens the row on the intervals, with **no day chosen** — the
-/// dentist decides, the row does not decide for them — and saving stores the
-/// day and its note. Taking the promise back folds the row again.
+/// The patient's next follow-up. The visit's operative row and this row edit
+/// the same stored field, so it belongs to the patient, not to a visit.
 class PatientFollowUpBar extends StatefulWidget {
   const PatientFollowUpBar({super.key, required this.patientID});
 
@@ -35,12 +23,8 @@ class PatientFollowUpBar extends StatefulWidget {
 }
 
 class _PatientFollowUpBarState extends State<PatientFollowUpBar> {
-  /// Whether the dentist opened an empty row to write a new promise in. The row
-  /// is otherwise open exactly while the patient has a follow-up.
   bool _expanded = false;
 
-  /// A draft dropped with nothing behind it folds the row; a saved promise keeps
-  /// it open, so the day and its note stay in sight.
   void _onChanged() {
     if (!mounted) return;
     if (patientFollowUpDay(widget.patientID) == null && _expanded) {
@@ -59,15 +43,11 @@ class _PatientFollowUpBarState extends State<PatientFollowUpBar> {
         locale.selected.stream,
       ],
       builder: (context, _) {
-        // An optional feature: a clinic that does not chase recalls is not
-        // shown a row about one.
         if (!followUpsEnabled) return const SizedBox.shrink();
         final patient = patients.get(widget.patientID);
         // A patient that is not stored yet has nowhere to keep a promise.
         if (patient == null) return const SizedBox.shrink();
-        // A follow-up is something a dentist says at the end of a visit: a
-        // patient who has never been seen has nothing to come back from, so the
-        // row is not offered at all.
+        // A follow-up needs a visit behind it, so unseen patients get no row.
         if (patient.doneAppointments.isEmpty) return const SizedBox.shrink();
         final followUp = patient.followUpDay;
         final editable = login.perm(Perm.appointments).some;
@@ -90,13 +70,11 @@ class _PatientFollowUpBarState extends State<PatientFollowUpBar> {
                 ? FollowUpField(
                     key: const ValueKey('patient-follow-up-open'),
                     patientID: widget.patientID,
-                    // There is no visit to count from here: a promise made on
-                    // the patient's page is made from today.
+                    // No visit to count from here, so the promise runs from today.
                     anchor: DateTime.now(),
                     enabled: editable,
-                    // Nothing stored means the row was opened from the folded
-                    // button, and that button is the way back out: a row opened
-                    // by mistake must be closable without choosing a day.
+                    // With nothing stored the row came from the folded button, so it
+                    // can close without a day.
                     onCollapse: followUp == null
                         ? () => setState(() => _expanded = false)
                         : null,
@@ -121,9 +99,6 @@ class _PatientFollowUpBarState extends State<PatientFollowUpBar> {
 
     return HoverButton(
       key: WK.patientFollowUpSet,
-      // Opening the row is what promises the usual week: the day it suggests is
-      // a draft, there to accept, change or abandon — never a booking made
-      // behind the dentist's back.
       onPressed: canSet ? () => setState(() => _expanded = true) : null,
       builder: (context, states) {
         final hovered = states.contains(WidgetState.hovered) && canSet;

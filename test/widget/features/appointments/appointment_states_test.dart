@@ -20,11 +20,6 @@ import 'package:flutter_test/flutter_test.dart';
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
-/// The states a visit can be in when it is opened (plan §4.7, §0.1).
-///
-/// The one that must never regress is the locked patient: a visit of a record
-/// this account may not see opens on its own, and the patient's record is never
-/// put on screen.
 void main() {
   late List<int> permissions;
   late List<Patient> originalPatients;
@@ -86,8 +81,8 @@ void main() {
 
   testWidgets('a locked patient\'s visit opens stand-alone, never the record',
       (tester) async {
-    // The visit is somebody else's, and this account may only see its own
-    // patients: exactly what `Patient.locked` exists for.
+    // Below full access, a patient whose visits this account never operated is
+    // locked.
     login.savedPermissions = List.of(Perm.full)..[Perm.patients] = 1;
     final patient = testPatient(id: 'locked-patient', name: 'Locked Patient');
     patients.set(patient);
@@ -114,8 +109,8 @@ void main() {
 
   testWidgets('a visit with no patient opens stand-alone from the same session',
       (tester) async {
-    // Legacy/demo records only — the creation dialog refuses to make one — but a
-    // visit that exists must still open, and must not invent a patient panel.
+    // Only legacy/demo data has patient-less visits, and one still must open
+    // alone.
     final visit =
         testAppointment(id: 'orphan-visit', date: DateTime(2026, 6, 8));
     appointments.set(visit);
@@ -178,8 +173,6 @@ void main() {
     await openAppointment(visit);
 
     final panel = PanelsManager.active().single;
-    // The appointment form is the band; the post-op record is the chart's foot.
-    // So "the visit" is the chart, finished or not (the design brief).
     expect(panel.attachedFocus, AppointmentWindow.dentalChart.id,
         reason:
             'the visit opens on its workspace, which carries what was done');
@@ -220,7 +213,7 @@ void main() {
     await session.save();
 
     expect(appointments.get('archived-open-visit')!.archived, isTrue,
-        reason: 'a save is not an unarchive (plan §4.7)');
+        reason: 'a save is not an unarchive');
     expect(session.isArchived, isTrue);
   });
 
@@ -279,8 +272,8 @@ void main() {
   });
 
   test('openAppointment with no visit opens nothing at all', () {
-    // Intentional API change (plan §8.3): there is no "new visit" path here —
-    // the dialog that creates one stores it first.
+    // No "new visit" path: the creating dialog stores the visit, so this is a
+    // no-op.
     unawaited(openAppointment());
 
     expect(PanelsManager.active(), isEmpty);

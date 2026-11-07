@@ -2,20 +2,12 @@ import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:fluent_ui/fluent_ui.dart' show Color;
 
-/// The two slots a panel's row can hold.
-///
-/// A **slot** is stable for the life of the app and is what a remembered layout
-/// is keyed by (`kind/slot`); a group's **id** names one record and is only ever
-/// used for identity. Conflating the two is what would make the remembered
-/// layout per-visit (plan §6.2-4).
+/// Stable row slots. Remembered layouts are keyed by slot, not by record id.
 const String kAttachedSlot = 'attached';
 const String kHostSlot = 'host';
 
-/// The key a window has in the row: its slot and its own id.
-///
-/// A window's [PanelWindow.id] is unique inside its record, not across records —
-/// a patient and a visit both offer a `gallery` — so the row, which draws both,
-/// names them by slot as well. Two groups never share a slot.
+/// The key a window has in the row: its slot and its own id. A window id is
+/// unique within a record, so the slot namespaces records that share the row.
 String rowKey(String slot, String windowId) => '$slot/$windowId';
 
 /// The slot `key` says, for a key that names a window in the row.
@@ -31,11 +23,6 @@ String windowIdOfRowKey(String key) {
 }
 
 /// One record's windows, as one block of the row.
-///
-/// A patient panel draws two groups: its own record (the **host**), and the
-/// visit it carries beside itself (the **attached** one). They are laid out
-/// together and told apart by [slot], [label] and [accent] — the row is one row,
-/// and a window in it always says whose it is (plan §3).
 final class WindowGroup {
   const WindowGroup({
     required this.slot,
@@ -55,8 +42,7 @@ final class WindowGroup {
   /// The record this group is about, e.g. `patient:<id>` — identity only.
   final String id;
 
-  /// The record's owner: the panel for the host group, the record's session for
-  /// an attached one.
+  /// The panel for the host group, the record's session for an attached one.
   final WindowRecordSession session;
 
   /// The windows the record offers, in its own priority order.
@@ -74,8 +60,7 @@ final class WindowGroup {
   /// The glyph that marks the kind — 📅 for a visit, 👤 for a patient.
   final String? glyph;
 
-  /// The windows the user left open in this slot, or null when they never did.
-  /// An empty list is a choice: the group opens nothing by itself.
+  /// Windows left open in this slot; null never chose, an empty list chose none.
   final List<String>? remembered;
 
   /// The key [window] has in the row.

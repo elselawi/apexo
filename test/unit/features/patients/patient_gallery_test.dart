@@ -9,16 +9,14 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/model_factory.dart';
 
-/// The patient's gallery is a view over the visits that hold files: it adds no
-/// record of its own, so its list has to be exactly the visits the two image
-/// lists name — each once, newest first.
+/// The gallery adds no record of its own: it is exactly the union of both image
+/// lists, each visit once, newest first.
 void main() {
   late List<int> originalPerms;
 
   setUp(() {
     originalPerms = login.savedPermissions;
-    // A visit only shows at all for someone who may see it: the store's own
-    // "present" list — which the patient reads — is permission-filtered.
+    // The store filters visits by permission, so full perms are needed to see them.
     login.savedPermissions = Perm.full;
     appointments.observableMap.clear();
   });

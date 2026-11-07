@@ -4,32 +4,24 @@ import 'package:apexo/utils/imgs.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/foundation.dart' show listEquals;
 
-/// How many pictures a gallery chip previews: enough to say what the visit
-/// holds, few enough that the chip stays a chip rather than a strip.
 const int kGalleryChipPreviews = 2;
 
-/// The pictures a visit's gallery chip carries beside its name.
-///
-/// Photos come first and X-rays after — the order the agenda's gallery badge
-/// uses — and `getImage` resolves a `.dcm` to the PNG preview beside it, so an
-/// X-ray reads without the raw file. A visit with no pictures shows nothing:
-/// the camera icon already says what the chip opens, and an empty frame would
-/// promise pictures there are none of.
+/// The pictures a visit's gallery chip carries. Photos come before X-rays, as in
+/// the agenda badge; `getImage` resolves a `.dcm` to the PNG preview beside it.
 class VisitGalleryChipPreviews extends StatefulWidget {
   const VisitGalleryChipPreviews(this.appointment, {super.key});
 
   final Appointment appointment;
 
-  /// The previews [appointment] would show, or null when it has no pictures —
-  /// a chip that says nothing must not leave a gap where a picture would sit.
+  /// The chip, or null when the visit has no pictures: a gap would promise
+  /// pictures that are not there.
   static Widget? of(Appointment appointment) =>
       _namesOf(_live(appointment)).isEmpty
           ? null
           : VisitGalleryChipPreviews(appointment);
 
-  /// The visit as the chip should read it: the store's copy once it exists,
-  /// because that is where an upload lands. The record handed in may be the copy
-  /// its surface was laid out from, which an upload does not touch.
+  /// The store's copy of the visit when it exists: uploads land there, while the
+  /// record handed in may be the stale copy its surface was built from.
   static Appointment _live(Appointment appointment) =>
       appointments.get(appointment.id) ?? appointment;
 
@@ -45,9 +37,8 @@ class VisitGalleryChipPreviews extends StatefulWidget {
 }
 
 class _VisitGalleryChipPreviewsState extends State<VisitGalleryChipPreviews> {
-  /// The names [_images] belongs to. The record is edited in place, so the old
-  /// widget's own list cannot be compared with the new one: both read the same,
-  /// already-mutated appointment.
+  /// The names [_images] belong to. The appointment is edited in place, so old and
+  /// new widgets read the same mutated record and their lists cannot be compared.
   List<String> _names = const [];
   Future<List<ImageProvider?>> _images = Future.value(const <ImageProvider?>[]);
 
@@ -55,9 +46,8 @@ class _VisitGalleryChipPreviewsState extends State<VisitGalleryChipPreviews> {
   void initState() {
     super.initState();
     _load();
-    // The band and the post-op card each draw this chip from what they were
-    // given, and only the store hears every upload: following it is what keeps
-    // the two trays of one visit saying the same thing.
+    // Only the store hears every upload, so follow it to keep the band's chip and
+    // the post-op card's chip saying the same thing.
     appointments.observableMap.observe(_onStoreChanged);
   }
 
@@ -84,8 +74,7 @@ class _VisitGalleryChipPreviewsState extends State<VisitGalleryChipPreviews> {
   void _load() {
     _names = _namesNow;
     final id = widget.appointment.id;
-    // A draft the server has not seen has nothing to fetch; nothing is drawn
-    // for it, exactly as for a visit with no pictures.
+    // A draft with no id has nothing to fetch, so nothing is drawn for it.
     _images = id.isEmpty || _names.isEmpty
         ? Future.value(const <ImageProvider?>[])
         : Future.wait(_names.map((name) => getImage(id, name)));
@@ -113,8 +102,7 @@ class _VisitGalleryChipPreviewsState extends State<VisitGalleryChipPreviews> {
   }
 }
 
-/// One preview inside a chip: the same frame whether the picture has landed or
-/// not, so the chip does not resize as the image arrives.
+/// One preview in a fixed frame, so the chip does not resize as the image lands.
 class _ChipThumb extends StatelessWidget {
   const _ChipThumb({required this.image});
 
@@ -144,9 +132,6 @@ class _ChipThumb extends StatelessWidget {
   }
 }
 
-/// What a labwork chip says once an order has been written: a check when the
-/// work is back, an amber dot while the lab still has it — the two states the
-/// post-op card already spells out as "received" and "due".
 class VisitLabworkChipBadge extends StatelessWidget {
   const VisitLabworkChipBadge(this.appointment, {super.key});
 

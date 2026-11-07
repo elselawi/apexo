@@ -16,10 +16,8 @@ class _ToothGeometry {
   final List<Path> details;
 }
 
-/// Builds anatomically distinct tooth outlines in normalized coordinates:
-/// - `nx` in [-1..1]: `-nx` is MESIAL, `+nx` is DISTAL.
-/// - `ny` in [0..1]: `0` is root apex, `~0.58` is CEJ (cervical line), `1.0` is
-///   incisal edge / cusp tip.
+/// Normalized coords: `nx` -1 = mesial to 1 = distal; `ny` 0 = root apex to
+/// 1 = incisal edge / cusp tip, with the CEJ near 0.55.
 _ToothGeometry _buildToothGeometry({
   required int pos,
   required bool isUpper,

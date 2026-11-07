@@ -13,9 +13,6 @@ import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:image_picker/image_picker.dart';
 
-/// Shows a dialog with the scanned receipt data pre-filled and editable.
-/// Returns a [Future] that completes with the created [Expense] if saved,
-/// or `null` if cancelled.
 Future<Expense?> showScanReceiptDialog(
     BuildContext context, ImageSource source) async {
   // 1. Take/Capture photo

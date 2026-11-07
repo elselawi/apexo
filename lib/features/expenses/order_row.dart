@@ -45,9 +45,8 @@ class OrderRow extends StatefulWidget {
   final Expense? additionalSupplier;
   final bool supplierNameError;
 
-  /// A write that landed here and not through the owner's Save — a photo added
-  /// or deleted, the order archived. The owner re-baselines its dirty check by
-  /// it, so work already stored is not reported as unsaved.
+  /// A write made here outside the owner's Save (a photo, an archive), so the
+  /// owner can re-baseline its dirty check.
   final VoidCallback? onSaved;
 
   @override
@@ -66,9 +65,8 @@ class OrderRowState extends State<OrderRow>
 
   bool inProgress = false;
 
-  /// Notifier for the per-order "total due" calculation so the
-  /// [MoneyDisplay] updates in real-time without rebuilding the whole card
-  /// (which would cause photo flicker).
+  // Keeps total-due updates off the card rebuild: re-rendering the card flickers
+  // its photos.
   final ValueNotifier<double> _totalDueNotifier = ValueNotifier(0);
 
   late AnimationController _pulseController;
@@ -508,9 +506,8 @@ class OrderRowState extends State<OrderRow>
     final theme = FluentTheme.of(context);
 
     return CupertinoTextField(
-      // The two money fields of an order, addressed apart: the fixture types into
-      // `fieldOrderCost` / `fieldOrderPaid` (and `enterField` wants the key on a
-      // wrapper with the `EditableText` under it, which a field is).
+      // Fixtures type into `fieldOrderCost`/`fieldOrderPaid`; `enterField` needs the
+      // key on a wrapper with the `EditableText` under it, which a field is.
       key: isEditable
           ? (label == "due" ? WK.fieldOrderCost : WK.fieldOrderPaid)
           : null,
@@ -624,8 +621,7 @@ class OrderRowState extends State<OrderRow>
         const SizedBox(height: 8),
         GridGallery(
           onProgress: (busy) {
-            // The gallery can outlive this row — it lives in a window of its
-            // own — so the row may be gone by the time the work reports back.
+            // The gallery lives in its own window and can outlive this row.
             if (!mounted) return;
             setState(() {
               inProgress = busy;

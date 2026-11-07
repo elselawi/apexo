@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// A platform-adaptive hover widget.
-///
-/// On desktop (mouse connected), it behaves like [MouseRegion]:
-/// [onEnter] fires when the pointer enters, [onExit] fires when it leaves.
-///
-/// On touch devices (no mouse), [onEnter] fires on long-press and
-/// [onExit] fires when the user taps outside the widget.
+/// Without a mouse, long-press stands in for [onEnter] and an outside tap for
+/// [onExit].
 class AdaptiveHoverWidget extends StatefulWidget {
   const AdaptiveHoverWidget({
     super.key,

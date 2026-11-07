@@ -3,11 +3,8 @@ import 'dart:typed_data';
 import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/utils/logger.dart';
 
-/// Web / non-native no-op implementation of [DicomIOImpl].
-///
-/// Directory scanning is a Windows-only feature (xray software is
-/// Windows-only). On web, this stub returns empty results so the app
-/// compiles and runs — the DICOM import UI is never shown on web.
+/// Web no-op [DicomIOImpl]: scanning is Windows-only, so this stub lets the
+/// app build and run elsewhere without the DICOM import UI.
 class DicomIOImpl {
   static Future<List<DicomFileEntry>> scanDirectory(String path) async {
     log.info(

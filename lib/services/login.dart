@@ -44,6 +44,21 @@ class _LoginService extends ObservablePersistingObject {
   String pushNotificationsToken = "";
   bool didAskForLoginAgain = false;
 
+  // Tracks logout only: sync/reconnect callbacks stop when the user logs out.
+  int _logoutRevision = 0;
+  int get logoutRevision => _logoutRevision;
+
+  /// Identifies the newest [activate] call.
+  ///
+  /// Incremented by every activation and by [logout]. Work that belongs to an
+  /// older generation must stop before it mutates login state, the shared auth
+  /// store, or the login screen — a late authentication response must never
+  /// reopen a session that was logged out (or replaced by a newer login).
+  int _activationGeneration = 0;
+
+  bool _isCurrentActivation(int generation) =>
+      generation == _activationGeneration;
+
   String get currentAccountID {
     if (launch.isDemo) {
       return accounts.list().isEmpty ? "" : accounts.list().first.id;
@@ -154,6 +169,10 @@ class _LoginService extends ObservablePersistingObject {
   }
 
   void logout([bool cleanCredentials = true]) {
+    _logoutRevision++;
+    // In-flight activations stop at their next await: one may already hold a
+    // valid auth response that must not be adopted after this point.
+    _activationGeneration++;
     // Invalidate notification work before any state is cleared or a new session
     // can be published. This resolves waiters and stops registration retries.
     notificationSessions.invalidate();
@@ -192,84 +211,159 @@ class _LoginService extends ObservablePersistingObject {
     return loginCtrl.finishedLoginProcess();
   }
 
-  Future<String> _authenticateWithPassword(
-      String email, String password) async {
+  /// A private auth client with the same transport as [shared].
+  ///
+  /// Authentication runs on its own [PocketBase] (and therefore its own
+  /// [AuthStore]) so a response that arrives after [logout], or after a newer
+  /// activation, cannot write stale credentials into the shared store. Only
+  /// [activate] and [authenticateWithToken] adopt a result, and only while
+  /// their session is still current.
+  PocketBase _newAuthClient(PocketBase shared) {
+    return PocketBase(
+      shared.baseURL,
+      lang: shared.lang,
+      httpClientFactory: shared.httpClientFactory,
+    );
+  }
+
+  Future<({RecordAuth auth, bool admin})> _authenticateWithPasswordOn(
+      PocketBase client, String email, String password) async {
     try {
-      final auth =
-          await pb!.collection("_superusers").authWithPassword(email, password);
-      adminCollectionId = auth.record.collectionId;
-      return auth.token;
+      final auth = await client
+          .collection("_superusers")
+          .authWithPassword(email, password);
+      return (auth: auth, admin: true);
     } catch (e) {
       final auth =
-          await pb!.collection("users").authWithPassword(email, password);
-      savedPermissions = Perm.parse(auth.record.getStringValue("permissions"));
-      return auth.token;
+          await client.collection("users").authWithPassword(email, password);
+      return (auth: auth, admin: false);
     }
   }
 
-  Future<String> authenticateWithToken(String token) async {
-    try {
-      final auth = await pb!.collection("_superusers").authRefresh();
-      adminCollectionId = auth.record.collectionId;
-      return auth.token;
-    } catch (e) {
-      final auth = await pb!.collection("users").authRefresh();
-      savedPermissions = Perm.parse(auth.record.getStringValue("permissions"));
-      return auth.token;
+  Future<({RecordAuth auth, bool admin})> _authenticateWithTokenOn(
+      PocketBase client, String inputToken) async {
+    client.authStore.save(inputToken, null);
+    if (client.authStore.isValid == false) {
+      throw Exception("Invalid token");
     }
+    try {
+      return (
+        auth: await client.collection("_superusers").authRefresh(),
+        admin: true
+      );
+    } catch (e) {
+      return (
+        auth: await client.collection("users").authRefresh(),
+        admin: false
+      );
+    }
+  }
+
+  /// Copies a successful authentication into the live session.
+  void _adoptAuth({required RecordAuth auth, required bool admin}) {
+    final client = pb;
+    if (client == null) return;
+    client.authStore.save(auth.token, auth.record);
+    token = auth.token;
+    if (admin) {
+      adminCollectionId = auth.record.collectionId;
+    } else {
+      savedPermissions = Perm.parse(auth.record.getStringValue("permissions"));
+    }
+  }
+
+  /// Refreshes the credentials of the **current** session.
+  ///
+  /// The request runs on a private client, so a response that lands after a
+  /// logout cannot repopulate [pb]'s auth store. The refreshed credentials are
+  /// committed only if the same session (same client, token, and activation)
+  /// asked for them; otherwise [inputToken] is returned and nothing changes.
+  Future<String> authenticateWithToken(String inputToken) async {
+    final client = pb;
+    if (client == null) {
+      throw StateError('No PocketBase client is available to refresh.');
+    }
+    final generation = _activationGeneration;
+    final result =
+        await _authenticateWithTokenOn(_newAuthClient(client), inputToken);
+    if (!_isCurrentActivation(generation) ||
+        !identical(client, pb) ||
+        token != inputToken) {
+      return inputToken;
+    }
+    _adoptAuth(auth: result.auth, admin: result.admin);
+    return result.auth.token;
   }
 
   /// run a series of callbacks that would require the login credentials to be active
   Future<void> activate(
       String inputURL, List<String> credentials, bool online) async {
+    final generation = ++_activationGeneration;
+    bool stale() => !_isCurrentActivation(generation);
+
+    // A stale activation must not paint the login screen either: its loading
+    // text is the only thing between the user and a usable form.
+    void loading(String message) {
+      if (!stale()) loginCtrl.loadingIndicator(message);
+    }
+
     notificationSessions.beginRestoring();
     if ((pb == null || pb?.baseURL.isEmpty == true) ||
         launch.open() == Open.login) {
       pb = PocketBase(inputURL);
     }
 
-    loginCtrl.loadingIndicator("Connecting to the server");
-    loginCtrl.loginError("");
+    loading("Connecting to the server");
+    if (!stale()) loginCtrl.loginError("");
 
-    if (inputURL.isNotEmpty) {
+    if (inputURL.isNotEmpty && !stale()) {
       url = inputURL;
     }
 
     if (online && launch.isDemo == false) {
       try {
+        // Authentication runs on a private client so a response that lands
+        // after logout (or after a newer login) cannot repopulate the shared
+        // auth store. Only a current activation adopts the result.
+        final authClient = _newAuthClient(pb!);
+
         // email and password authentication
         if (credentials.length == 2) {
-          token =
-              await _authenticateWithPassword(credentials[0], credentials[1]);
+          final result = await _authenticateWithPasswordOn(
+              authClient, credentials[0], credentials[1]);
+          if (stale()) return;
+          _adoptAuth(auth: result.auth, admin: result.admin);
           email = credentials[0];
         }
         // token authentication
         if (credentials.length == 1) {
-          pb!.authStore.save(credentials[0], null);
-          if (pb!.authStore.isValid == false) {
-            throw Exception("Invalid token");
-          }
-          token = await authenticateWithToken(token);
+          final result =
+              await _authenticateWithTokenOn(authClient, credentials[0]);
+          if (stale()) return;
+          _adoptAuth(auth: result.auth, admin: result.admin);
           url = inputURL;
         }
 
         // create database if it doesn't exist
         try {
           try {
-            loginCtrl.loadingIndicator("Verifying collections");
+            loading("Verifying collections");
             await pb!
                 .collection(dataCollectionName)
                 .getList(page: 1, perPage: 1);
+            if (stale()) return;
             await pb!
                 .collection(publicCollectionName)
                 .getList(page: 1, perPage: 1);
+            if (stale()) return;
           } on ClientException catch (e) {
             if (e.statusCode != 404) rethrow;
+            if (stale()) return;
             launch.isFirstLaunch(true);
             if (isAdmin) {
-              loginCtrl
-                  .loadingIndicator("Creating collections for the first time");
+              loading("Creating collections for the first time");
               await initializePocketbase(pb!);
+              if (stale()) return;
             } else {
               logger(
                 "ERROR: The first login must be done by an admin user. Please contact the admin to create the database.",
@@ -285,18 +379,22 @@ class _LoginService extends ObservablePersistingObject {
         // create profiles if it doesn't exist
         try {
           try {
-            loginCtrl.loadingIndicator("Verifying profiles");
+            loading("Verifying profiles");
             await pb!
                 .collection(profilesCollectionName)
                 .getList(page: 1, perPage: 1);
+            if (stale()) return;
             await pb!
                 .collection(profilesViewCollectionName)
                 .getList(page: 1, perPage: 1);
+            if (stale()) return;
           } on ClientException catch (e) {
             if (e.statusCode != 404) rethrow;
+            if (stale()) return;
             if (isAdmin) {
-              loginCtrl.loadingIndicator("Creating profiles collections");
+              loading("Creating profiles collections");
               await initializeProfiles(pb!);
+              if (stale()) return;
             } else {
               logger(
                 "ERROR: The profiles must be created with a logged-in admin, NOT a regular user!",
@@ -314,21 +412,24 @@ class _LoginService extends ObservablePersistingObject {
         // never delete anything, and a failure never blocks login.
         try {
           if (isAdmin) {
-            loginCtrl.loadingIndicator("Updating server schema");
+            loading("Updating server schema");
             await reconcileSchema(pb!, clinicServer: url);
+            if (stale()) return;
           }
         } catch (e, s) {
           logger("Schema reconcile failed (continuing login): $e", s);
         }
 
         // notifications relay
-        loginCtrl.loadingIndicator("Initializing notifications");
+        loading("Initializing notifications");
         try {
           await Messaging.identifyDevice();
+          if (stale()) return;
         } catch (e, s) {
           logger("Could not initialize notifications: $e", s, 2);
         }
       } catch (e, s) {
+        if (stale()) return;
         askForLoginAgain(e);
 
         if (e.runtimeType != ClientException) {
@@ -350,6 +451,7 @@ class _LoginService extends ObservablePersistingObject {
         return loginCtrl.finishedLoginProcess(loginCtrl.loginError());
       }
 
+      if (stale()) return;
       loginCtrl.proceededOffline(false);
     } else if (!online) {
       // `proceededOffline` means "**this** session is the offline one": the
@@ -361,22 +463,29 @@ class _LoginService extends ObservablePersistingObject {
       loginCtrl.proceededOffline(true);
     }
 
+    if (stale()) return;
     // Initialize deferred push storage unconditionally (online OR offline)
     // so stores can safely defer push notifications before identifyDevice() runs.
     deferredPush.init(inputURL);
 
     for (var callback in activators.values) {
+      if (stale()) return;
       try {
         final secondStage = await callback();
+        if (stale()) return;
         if (online && launch.isDemo == false) await secondStage();
+        if (stale()) return;
         notifyAndPersist(); // this would persist the data to the disk so we don't have to login again
       } catch (e, s) {
+        if (stale()) return;
         logger("Error during running activators: $e", s);
       }
     }
 
+    if (stale()) return;
     didAskForLoginAgain = false;
     launch.open(Open.staff);
+    if (stale()) return;
     // Announce notification readiness only after every store activator has run.
     // A token is assigned before this point, so it cannot stand in for a usable
     // session; this publication is the boundary pushes wait on.
@@ -396,12 +505,14 @@ class _LoginService extends ObservablePersistingObject {
         email: email,
       );
     }
+    if (stale()) return;
     // The startup check runs from a one-second timer in `ApexoApp.createElement`
     // — *before* the login that creates a clinic can set `launch.isFirstLaunch`,
     // so the welcome dialog was unreachable (`login 12`). The check is idempotent:
     // it shows the changelog for a version the device has not seen, and the
     // welcome dialog only when this launch found no collections at all.
     SessionEvents.started();
+    if (stale()) return;
     return loginCtrl.finishedLoginProcess();
   }
 

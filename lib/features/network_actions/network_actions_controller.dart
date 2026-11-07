@@ -87,11 +87,17 @@ class _NetworkActions {
       await patientSide.activate();
       return;
     }
+    final logoutRevision = login.logoutRevision;
     await login.activate(login.url, [login.token], true);
-    if (loginCtrl.loginError().isNotEmpty) return;
+    if (logoutRevision != login.logoutRevision ||
+        loginCtrl.loginError().isNotEmpty) {
+      return;
+    }
     for (final callback in reconnectCallbacks.values.toList()) {
+      if (logoutRevision != login.logoutRevision) return;
       await callback();
     }
+    if (logoutRevision != login.logoutRevision) return;
     if (network.isOnline()) {
       _errors.clear();
       hasErrors(false);
@@ -107,9 +113,14 @@ class _NetworkActions {
         return;
       }
 
+      final logoutRevision = login.logoutRevision;
       await login.activate(login.url, [login.token], true);
-      if (loginCtrl.loginError().isNotEmpty) return;
+      if (logoutRevision != login.logoutRevision ||
+          loginCtrl.loginError().isNotEmpty) {
+        return;
+      }
       for (final callback in syncCallbacks.values.toList()) {
+        if (logoutRevision != login.logoutRevision) return;
         await callback();
       }
     } finally {

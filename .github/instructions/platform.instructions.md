@@ -1,196 +1,72 @@
 ---
-description: Cross-platform patterns for Apexo — conditional imports for web vs native, platform checks, JS bridge, image handling across platforms, file system access, and audio recording platform abstractions.
+description: Apexo cross-platform patterns — conditional imports, platform checks, image storage/retrieval across web and native, the JS bridge, and file system access.
 applyTo: "lib/utils/**"
 ---
 
-# Apexo Cross-Platform Patterns
+# Apexo Cross-Platform
 
-## Platform Targets
+One codebase, five targets: Android, iOS, Web, macOS, Windows.
 
-Apexo runs on **Android, iOS, Web, macOS, and Windows** from a single codebase. Platform differences are handled through three mechanisms:
+| Mechanism | When |
+|---|---|
+| Conditional import | The whole implementation differs by platform |
+| `kIsWeb` | Minor branching in shared code |
+| `Platform.isAndroid`/`isIOS`/… | OS branching — native only, never on web |
 
-| Mechanism | When to Use | Example |
-|-----------|-------------|---------|
-| **Conditional imports** | Entire implementation differs per platform | `import 'stub.dart' if (dart.library.js_interop) 'web.dart'` |
-| **`kIsWeb` checks** | Minor branching in shared code | `if (kIsWeb) { ... } else { ... }` |
-| **`Platform.isAndroid`/`isIOS`/etc.** | OS-specific branching (native only) | `if (Platform.isAndroid || Platform.isIOS) { ... }` |
+## Conditional imports
 
-## Conditional Import Pattern
+The facade declares the API and picks the implementation at compile time; the stub is the fallback:
 
-Apexo uses Dart's **conditional imports** to swap implementations at compile time. The pattern always uses three files:
-
-```
-lib/utils/<feature>/
-├── <feature>_service.dart   ← Public API (abstract class or facade)
-├── <feature>_stub.dart      ← Default/native implementation
-└── <feature>_web.dart       ← Web-specific implementation
-```
-
-### Example: Audio Platform
-
-**`audio_platform.dart`** (facade):
 ```dart
 import 'audio_platform_stub.dart'
     if (dart.library.html) 'audio_platform_web.dart';
-
-abstract class AudioPlatform {
-  static String getTempAudioPath() => AudioPlatformImpl.getTempAudioPath();
-  static Future<List<int>> readFileBytes(String path) =>
-      AudioPlatformImpl.readFileBytes(path);
-}
 ```
 
-**`audio_platform_stub.dart`** (native — Android, iOS, macOS, Windows):
-```dart
-class AudioPlatformImpl {
-  static String getTempAudioPath() =>
-      '${Directory.systemTemp.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
-  static Future<List<int>> readFileBytes(String path) async =>
-      await File(path).readAsBytes();
-}
-```
+The condition names the platform that is *not* the stub, so folder conventions vary — follow the existing file's choice:
 
-**`audio_platform_web.dart`** (web):
-```dart
-class AudioPlatformImpl {
-  static String getTempAudioPath() => 'audio_recording.m4a';
-  static Future<List<int>> readFileBytes(String path) async =>
-      (await http.get(Uri.parse(path))).bodyBytes;
-}
-```
+| Facade | Files | Condition | Purpose |
+|---|---|---|---|
+| `js/js_bridge.dart` | `js_stub` / `js_web` | `js_interop` | `window` globals, `sessionStorage` |
+| `audio_platform/audio_platform.dart` | `_stub` (native) / `_web` | `html` | recording paths, reading bytes |
+| `href/href_service.dart` | `_stub` / `_web` | `js_util` | current URL for patient deep links |
+| `ws_platform/ws_platform.dart` | `_stub` / `_web` | `html` | `connectWebSocket` |
+| `windows_ding/sound_service.dart` | `_stub` / `_windows` | `io` | Windows toast sound |
+| `services/dicom/dicom_io_service.dart` | `_stub` / `_native` | `io` | DICOM file I/O |
 
-### Available Conditional Import Facades
+`dart.library.io` = native, `dart.library.html` / `js_interop` / `js_util` = web.
 
-| Facade | Files | Purpose |
-|--------|-------|---------|
-| `lib/utils/js/js_bridge.dart` | `js_stub.dart` / `js_web.dart` | Set `window` globals, interact with `sessionStorage` |
-| `lib/utils/audio_platform/audio_platform.dart` | `audio_platform_stub.dart` / `audio_platform_web.dart` | Recording paths and file reading |
-| `lib/utils/href/href_service.dart` | `href_stub.dart` / `href_web.dart` | Get current URL (for patient-side deep links) |
-
-### Key Conditional Import Libraries
-
-| Dart library constant | Means the platform is... |
-|----------------------|--------------------------|
-| `dart.library.js_interop` | Web (has JS interop available) |
-| `dart.library.html` | Web (has HTML DOM available) |
-| `dart.library.io` | Native (has file I/O) |
-| `dart.library.js_util` | Web |
-
-## Image Handling (`lib/utils/imgs.dart`)
-
-### Upload Flow
-
-```
-handleNewImage(rowID, sourcePath, sourceFile, targetStore)
-  ├── Determine extension (.jpg, .png, etc.)
-  ├── Hash the path to generate a unique filename
-  ├── Native: Save to local filesDir → generate 100px thumbnail → upload to PocketBase
-  └── Web: Upload directly to PocketBase (no local filesystem)
-```
-
-### Retrieval Flow
-
-```
-getImage(rowID, name, thumb?, resolve?, thumbSize?)
-  ├── Check the app cache, keyed by file name + size (thumbs and originals apart)
-  ├── Web: Fetch from PocketBase file URL → NetworkImage
-  └── Native: Serve the local file when it is there — the thumb asked for, or a
-      thumb drawn from the local original; only then download from PocketBase
-```
-
-Callers never pass `thumb: false` for a tile: the grid asks for the 100px thumb
-(`kThumbSize`) and a gallery's one large preview asks for a 640px one
-(`kPreviewSize`). Originals are for the photo viewer, which asks for them by
-name and gets them from the local disk when they are there.
-
-Local files are named `<name>.thumb<ext>` for the 100px thumb and
-`<name>.thumb<size><ext>` above it, so a preview never overwrites a grid thumb.
-
-### Key Differences: Native vs Web
-
-| Operation | Native | Web |
-|-----------|--------|-----|
-| **File storage** | `filesDir()` from `safe_dir.dart` (app documents directory) | No local filesystem — PocketBase is the source of truth |
-| **Thumbnails** | Generated locally with `image` package (upload, and from a local original when only that is cached) | Requested from PocketBase with a `?thumb=WxH` query param |
-| **Upload source** | File path on disk | Blob URL or proxied through `https://imgs.apexo.app/` |
-| **Cache** | Memory (providers, per size) + disk (thumbs, previews, originals) | Memory only — a provider kept in `imgMemoryCache` is what spares the browser another request |
-
-### Image Upload via Store
-
-`Store.uploadImg()` in `lib/core/store.dart`:
-- **Online**: Uploads as `MultipartFile` to PocketBase's file field (`imgs+`)
-- **Offline**: Defers upload as a Hive entry with format `FILE||{rowID}||path:{0/1}`
-- **Web special case**: Blob URLs are fetched via `http.get()` and sent as bytes; external URLs are proxied through `https://imgs.apexo.app/`
-
-## JS Bridge (`lib/utils/js/js_bridge.dart`)
-
-Used to communicate with JavaScript on the web platform:
+## Platform checks
 
 ```dart
-JSBridge.setGlobalVariable("clinicKey", relayKey);         // Sets window.clinicKey
-JSBridge.removeItemFromSessionStorage("canvaskit_reload_count");  // Clears sessionStorage
+if (kIsWeb) { /* web */ } else { /* native */ }
+if (Platform.isAndroid || Platform.isIOS) { /* Firebase / FCM */ }
 ```
 
-On native platforms, these are **no-ops** (the stub prints a log and returns).
+Check `kIsWeb` **first**: `dart:io` is unavailable on web, so a bare `Platform.isX` does not compile there. When several files need the same distinction, expose one named value instead of repeating checks — e.g. `PushPlatform.current` (`wns`/`ios`/`macos`/`android`/`web`/`null`) and `DicomController.isSupported` (`!kIsWeb && Platform.isWindows`).
 
-Currently used for:
-- **Notifications** (`fcm/fcm.js`): Passing clinic key, server URL, account ID, language to the service worker
-- **Canvaskit**: Clearing Flutter web's Canvaskit reload counter
+## Files
 
-## Platform Checks in Shared Code
+All file I/O uses `filesDir()` (`lib/utils/safe_dir.dart`) — never a hardcoded path. Hive uses the same directory.
 
-### Common Patterns
+Images (`lib/utils/imgs.dart`):
 
-```dart
-// Check if running on web vs native
-if (kIsWeb) {
-  // web-only path
-} else {
-  // native path
-}
+- `handleNewImage(rowID:, sourcePath:, sourceFile:, targetStore:)`: hash the path to a name → native: save under `filesDir()`, generate a 100px thumb, upload; web: upload straight to PocketBase.
+- `getImage(rowID, name, [thumb, resolve, thumbSize])`: memory/disk cache first; native serves the local file when present, else downloads; web always fetches from PocketBase. A raw `.dcm` name resolves to its small PNG preview unless the viewer asks for the file.
+- A grid asks for the 100px thumb (`kThumbSize`), a gallery's large preview for 640px (`kPreviewSize`); only the photo viewer asks for the original.
+- Local thumbs are `<name>.thumb<ext>` (100px) and `<name>.thumb<size><ext>` — a preview never overwrites a grid thumb. Web asks PocketBase for `?thumb=WxH`.
+- `Store.uploadImg`/`deleteImg` own the transfer: online as a `MultipartFile` into `imgs+`; offline deferred as Hive `FILE||rowId||…` keys; web blob URLs are read as bytes and external URLs proxied through `https://imgs.apexo.app/?url=…`.
+- `resolveFileLink(rowId, name)` returns a remote URL when a resolver is bound, null otherwise (hide the file; not an error).
 
-// Check specific native platforms (only after confirming !kIsWeb)
-if (Platform.isAndroid || Platform.isIOS) {
-  // mobile-specific (Firebase, notifications)
-} else if (Platform.isWindows) {
-  // Windows-specific (ding sound)
-}
+## JS bridge
 
-// Prefer a single named value over scattered checks when the same distinction
-// is needed in more than one place (see `lib/services/notifications/push_platform.dart`)
-final pushPlatform = PushPlatform.current; // wns / ios / macos / android / web / null
-```
+`JSBridge.setGlobalVariable(key, value)` and `removeItemFromSessionStorage(key)` are no-ops on native. Used for the FCM service worker (`web/fcm/fcm.js`) and to clear Flutter web's Canvaskit reload counter.
 
-### Where Platform Checks Appear
-
-| Area | Check | Reason |
-|------|-------|--------|
-| `main.dart` | `kIsWeb == false` → init notifications | Web uses service worker, not Flutter FCM plugin |
-| `main.dart` | `kIsWeb` → clear Canvaskit | Web-specific Flutter rendering workaround |
-| `core_notifications_initializer.dart` | `PushPlatform.current` (`wns` vs the FCM platforms) | Windows has no Firebase; Android/iOS/macOS do |
-| `core_notifications_initializer.dart` | `Platform.isAndroid \|\| Platform.isIOS \|\| Platform.isMacOS` | The platforms with Firebase+FCM native plugins |
-| `windows_push_platform_io.dart` | `Platform.isWindows` behind a conditional import | Keeps the Windows channel code out of web and other native builds |
-| `static_notifications.dart` | `kIsWeb \|\| Platform.isWindows == false` | Sound + toast only on Windows desktop |
-| `imgs.dart` | `!kIsWeb` → local file operations | Web has no filesystem access |
-| `app.dart` | `!kIsWeb && Platform.isAndroid` → bottom padding | Android system nav bar insets |
-
-## File System Access (`lib/utils/safe_dir.dart`)
-
-All file I/O goes through `filesDir()` which returns the appropriate app documents directory per platform. Never use hardcoded paths.
-
-```dart
-import 'package:apexo/utils/safe_dir.dart';
-
-final dir = await filesDir();  // Cross-platform app documents directory
-```
-
-## Common Mistakes
+## Common mistakes
 
 | Mistake | Fix |
-|---------|-----|
-| Using `dart:io` directly without platform guard | Wrap in `if (!kIsWeb)` or use conditional imports |
-| Assuming `Platform.isX` works on web | Always check `kIsWeb` first — `Platform` from `dart:io` is unavailable on web |
-| Creating a conditional import but forgetting the stub | Every facade needs a stub for compilation on all platforms |
-| Using `File(path)` on web | Use conditional imports or `kIsWeb` guard — web has no `dart:io` |
-| Not testing image upload on both web and native | The flow is completely different — test both paths |
-| Hardcoding file paths | Always use `filesDir()` from `safe_dir.dart` |
+|---|---|
+| `dart:io` / `File` without a guard | Wrap in `if (!kIsWeb)` or use a conditional import |
+| `Platform.isX` on web | Check `kIsWeb` first |
+| Adding a facade without its stub | The build breaks on the other platforms |
+| Hardcoded paths | `filesDir()` |
+| Assuming image upload is one flow | Native and web differ — test both |

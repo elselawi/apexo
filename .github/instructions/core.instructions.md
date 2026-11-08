@@ -1,154 +1,100 @@
 ---
-description: Core architecture patterns for Apexo — Model base class, Store with local/remote sync, Observable reactive system, Hive persistence, and PocketBase sync. Applies when creating or modifying data models, stores, or core infrastructure.
+description: Apexo core patterns — Model contract, reactive observables, Store lifecycle and sync, Hive + PocketBase persistence, and the app-wiring boundary. Applies when creating or modifying models, stores, or core infrastructure.
 applyTo: "lib/core/**"
 ---
 
-# Apexo Core Architecture
+# Apexo Core
 
-## Overview
-
-Apexo uses a **custom reactive data layer** built on three pillars:
-
-| Layer | Class | Purpose |
-|-------|-------|---------|
-| **Data** | `Model` | Base class for all domain objects — defines serialization, identity, and computed properties |
-| **Reactivity** | `ObservableBase` / `ObservableState` / `ObservableDict` / `ObservablePersistingObject` | Custom observable system — no external state management library |
-| **Persistence + Sync** | `Store<G extends Model>` | Combines local storage (Hive) + remote sync (PocketBase) with debounced change processing |
+Three layers: `Model` (data), observables (reactivity), `Store<G extends Model>` (memory + Hive + PocketBase).
 
 ## Model (`lib/core/model.dart`)
 
-Every domain object extends `Model`. Key conventions:
+Every stored object extends `Model`: `id` (uuid), `archived` (soft delete), `title`, plus `locked`, `color` (deterministic from `id`), `avatar`, `imageRowId`, `labels`.
 
 ```dart
 class MyModel extends Model {
-  String name = '';
+  String name = "";
 
-  MyModel.fromJson(Map<String, dynamic> json) : super.fromJson(json) {
-    name = json["name"] ?? name;
+  MyModel.fromJson(super.json) : super.fromJson();
+
+  @override
+  void fromJson(Map<String, dynamic> json) {
+    super.fromJson(json);
+    if (json["name"] != null) name = json["name"] as String;
   }
 
   @override
   Map<String, dynamic> toJson() {
     final json = super.toJson();
-    final d = MyModel.fromJson({});  // default instance for diffing
-    if (name != d.name) json['name'] = name;  // only serialize if different from default
+    final d = MyModel.fromJson({});           // default instance
+    if (name != d.name) json["name"] = name;  // write only non-defaults
     return json;
   }
+
+  @override
+  MyModel copy(bool blank) => MyModel.fromJson(blank ? {} : toJson());
 }
 ```
 
-### Important Model Properties
+- A field reset to its default is **absent** from `toJson`, so merge code must delete the key rather than write the default.
+- `copy(blank)` is how panels and windows take an editable copy: edit the copy, `store.set` it.
+- Push hooks (`pushOnCreation`, `pushIfChanged`, `targetsToPushTo`, `jsonCopyForPush`) are read by `ObservableDict.set`; delivery is described in `notifications.instructions.md`. `synchronization/push_data.dart` is mirrored by `web/fcm/push_data.js` — change both.
 
-| Property | Purpose |
-|----------|---------|
-| `id` | Unique identifier (auto-generated UUID via `uuid()`) |
-| `archived` | Soft-delete flag — set to `true` to hide from normal views |
-| `title` | Human-readable label (shown in lists, search) |
-| `locked` | Override to return `true` when the current user shouldn't edit this item |
-| `color` | Deterministic color derived from `id` — used for visual identity in the UI |
-| `avatar` | Optional image URL for the item |
-| `labels` | Map of label → value for display in data tables |
-| `pushIfChanged` | List of field names that trigger a push notification when modified |
-| `targetsToPushTo` | List of user IDs to send push notifications to |
-| `pushOnCreation` | Whether to send a push when this item is first created |
-| `jsonCopyForPush` | Subset of JSON data included in push notifications |
+## Reactivity (`lib/core/reactive/`)
 
-### The `copy(blank)` Pattern
-
-Every model must implement `copy(bool blank)` — used by the panel system to create editable copies:
-
-```dart
-@override
-MyModel copy(bool blank) {
-  return MyModel.fromJson(blank ? {} : toJson());
-}
-```
-
-## Observable System (`lib/core/reactive/observable.dart`)
-
-### ObservableState\<T\>
-
-A single reactive value. **Call it to read, pass a value to write:**
-
-```dart
-final counter = ObservableState<int>(0);
-print(counter());     // read → 0
-counter(5);           // write → notifies all observers
-```
-
-Use `.stream` to listen, `.observe(callback)` to subscribe, `.silently(fn)` to mutate without notifying.
-
-### ObservableDict\<G\>
-
-A reactive key-value map used internally by `Store`. Tracks add/remove/modify events with the specific keys that changed.
-
-### ObservablePersistingObject
-
-Imported separately from `lib/core/persistence/observable_persisting_object.dart`. For singletons that need Hive persistence (e.g., `_LoginService`, `localSettings`). Extend it, define `toJson()`/`fromJson()`, and pass a unique `identifier` string.
+- `ObservableState<T>`: call with no argument to read, with a value to write and notify — `counter()`, `counter(5)`.
+- `ObservableBase`: `stream` (cached broadcast — pass this field, never a recreated stream), `observe`/`unObserve`, `silently(fn)` (mutate without notifying), `dispose()`.
+- `ObservableDict<G>`: the store's map. Emits `DictEvent`s (add/modify/remove with changed keys and old/new values). `notifyView()` redraws without persisting.
+- `ObservablePersistingObject`: a Hive-persisted singleton (`login`, `localSettings`, `patientSide`). Subclass it, implement `toJson`/`fromJson`, pass a unique `identifier`; call `notifyAndPersist()` to save.
 
 ## Store (`lib/core/store.dart`)
 
-The `Store<G extends Model>` is the central data management class. Every feature with persistent data gets one.
+```dart
+class Patients extends Store<Patient> {
+  Patients() : super(
+          effects: applicationStoreEffects,
+          loadDocuments: loadApplicationDocuments,
+          modeling: Patient.fromJson,
+          isDemo: launch.isDemo,
+          onSyncStart: ..., onSyncEnd: ...);
 
-### Lifecycle
+  late final _session = StoreSessionBinding<Patient>(
+    store: this, name: "patients", loadingMessage: "Synchronizing patients");
 
-1. **Construction**: Takes `modeling` (JSON→Model factory), optional `local` (Hive), and `remote` (PocketBase)
-2. **`loaded` future**: Loads all data from local Hive storage into memory
-3. **`init()`**: Sets up the sync timer and observers
-4. **Changes**: When the `observableMap` changes, changes are buffered, debounced, then persisted locally and pushed remotely
+  @override
+  void init() {
+    super.init();
+    _session.install();
+  }
+}
 
-### Key Methods
+final patients = Patients();
+```
 
-| Method | Purpose |
-|--------|---------|
-| `get(id)` | Retrieve a document by ID |
-| `set(item)` | Insert or update a document |
-| `delete(id)` | Remove a document |
-| `archive(id)` | Set `archived = true` |
-| `restore(id)` | Set `archived = false` |
-| `synchronize()` | Force a full pull from remote |
-| `docs` | All loaded documents (Map<String, G>) |
-| `list()` | All non-archived documents as a list |
-| `search(query)` | Full-text search across titles |
+| Member | Meaning |
+|---|---|
+| `docs` | every document, archived included |
+| `present` | non-archived, non-locked — what lists and pickers show |
+| `archived` | separate map of archived documents |
+| `get(id)`, `has(id)` | one document |
+| `set(item)`, `setAll(items)` | add or replace; memory first, persistence async |
+| `archive(id)`, `unarchive(id)` | soft delete and restore. `delete(id)` is `archive(id)` — **there is no hard delete** |
+| `synchronize()`, `inSync()` | sync pass; whether local and remote versions match |
+| `loaded`, `reload()`, `waitUntilChangesAreProcessed()` | first local load; reload; drain pending writes |
+| `uploadImg`, `deleteImg` | file attachments on the store's records |
 
-### Sync Behavior
+There is no `list()` or `search()`: read `present.values` and filter in the feature.
 
-- Changes are **debounced** (`debounceMS`, default 100ms)
-- Local writes happen immediately
-- Remote writes only when `remote.isOnline` is true
-- Offline changes are **deferred** and synced when connectivity returns
-- `manualSyncOnly: true` disables automatic sync (used for settings stores)
+**Sync:** a mutation is debounced (`debounceMS`, 100 ms) into `_processChanges`, persisted locally as soon as that queued pass runs (no network needed), and pushed remotely only while `remote.isOnline`; offline rows and files are deferred and replayed later. One `SerialOperationQueue` owns writes, sync passes and attachments. Pulls use a fixed upper timestamp with `(updated, id)` keyset paging. Conflicts resolve by timestamp winner (no three-way baseline) and pending local edits win; realtime rows arrive through `RealtimeSubscription`.
 
-### Explicit application wiring
+**Persistence:** each store gets Hive boxes `<name>-main` (document JSON by id) and `<name>-meta` (version, deferred timestamps). PocketBase keeps every store's rows in one `data` collection namespaced by its `store` column. Remote timestamps are `yyyy-MM-dd HH:mm:ss.SSSZ` (no `T`).
 
-Production stores pass `effects: applicationStoreEffects` and
-`loadDocuments: loadApplicationDocuments` from `lib/app/data/`.
-Core stores default to inert effects and an application-independent loader;
-tests can inject either without constructing login/settings singletons.
-`StoreSessionBinding` owns feature login/logout integration and callback cleanup.
-See the architecture/ownership section of `README.md` for the complete pattern.
+## App-wiring boundary
 
-## SaveLocal (`lib/core/persistence/save_local.dart`)
+Core stores default to inert `StoreEffects` and an application-independent loader. Production stores pass `applicationStoreEffects` and `loadApplicationDocuments` from `lib/app/data/`; tests inject recording stand-ins. Core must not import login, settings, notification delivery, dialogs or app logging.
 
-Hive-based persistence. Each store gets two Hive boxes:
-- **`{name}-main`**: Stores document JSON keyed by ID
-- **`{name}-meta`**: Stores version number and deferred sync timestamps
-
-## SaveRemote (`lib/core/persistence/save_remote.dart`)
-
-PocketBase-based sync. Key behaviors:
-- Uses a single `data` collection in PocketBase with a `store` column to namespace rows
-- **Timestamp-cursor sync**: pulls rows updated after the locally stored timestamp cursor (protocol unchanged)
-- **Online detection**: periodic health checks, auto-retry on failure
-- Timestamps formatted as `yyyy-MM-dd HH:mm:ss.SSS` (SQLite-compatible, no `T` separator)
+`StoreSessionBinding` owns the session: registers `login.activators[name]`, drains pending work before replacing the Hive adapter, builds `SaveRemote`, installs sync/reconnect/online/offline callbacks, and removes them on stop. Do not register those callbacks in a feature store; post-sync work goes in `afterSynchronize` and checks its `isCurrent` after every await.
 
 ## MultiStreamBuilder (`lib/core/multi_stream_builder.dart`)
 
-Combines multiple streams into a single builder — used throughout the app to react to multiple observable changes simultaneously:
-
-```dart
-MStreamBuilder(
-  streams: [store.stream, settings.stream],
-  builder: (context, _) { ... },
-)
-```
+`MStreamBuilder(streams: [...], builder: (context, data) {})` rebuilds when any listed observable stream emits.

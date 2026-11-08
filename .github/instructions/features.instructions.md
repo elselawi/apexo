@@ -1,333 +1,98 @@
 ---
-description: Feature structure pattern for Apexo — how features are organized with Model, Store, Screen, Panel, and Controller. Applies when creating new features, modifying feature screens, or working with the panel-based navigation system.
+description: Apexo feature patterns — file layout, store + session wiring, carried records (visits), follow-ups, panels, windows, screens, and creating records.
 applyTo: "lib/features/**"
 ---
 
-# Apexo Feature Architecture
+# Apexo Features
 
-## Feature File Structure
+## Layout
 
-Every feature in `lib/features/<name>/` follows a consistent pattern. The presence of each file depends on whether the feature manages persistent data:
+| Files | When |
+|---|---|
+| `<name>_model.dart`, `<name>_store.dart`, `<name>_screen.dart`, `open_<name>_panel.dart` | the feature stores data |
+| `<name>_screen.dart`, `<name>_controller.dart` (`ObservableState` + logic, no persistence), optional `open_<name>_panel.dart` | the feature stores nothing |
 
-### Features WITH persistent data (has a Store)
+A feature's model, queries and caches stay inside `lib/features/<f>/`; application/session wiring belongs to `lib/app/data/`. A controller is a plain class holding `ObservableState` values and logic, exported as a module-level singleton (`dashboardCtrl`) — no persistence, no sync. A large panel may split into `part '<name>_panel_widgets.dart';`. A file editing one field group is `<thing>_widget.dart`, never a second `open_*` file.
 
-| File | Required | Purpose |
-|------|----------|---------|
-| `<name>_model.dart` | ✅ | Extends `Model` — defines fields, serialization, computed properties |
-| `<name>_store.dart` | ✅ | Extends `Store<Model>` — singleton, data management, sync, cached queries |
-| `<name>_screen.dart` | ✅ | Full-screen list/datatable view of all items |
-| `open_<name>_panel.dart` | ✅ | Detail/edit panel builder — returns `Future<Model>` via `PanelsManager.open()` |
+## Store + session
 
-### Features WITHOUT persistent data (no Store)
-
-| File | Required | Purpose |
-|------|----------|---------|
-| `<name>_screen.dart` | ✅ | Main screen widget |
-| `<name>_controller.dart` | ✅ | Logic/state (not a Store — simpler reactive state) |
-
-### Examples
-
-```
-features/patients/              ← with Store
-├── patient_model.dart
-├── patients_store.dart
-├── patients_screen.dart
-└── open_patient_panel.dart
-
-features/dashboard/             ← without Store
-├── dashboard_screen.dart
-└── dashboard_controller.dart
-
-features/accounts/              ← without Store, but with panel
-├── accounts_screen.dart
-├── accounts_controller.dart
-└── open_account_panel.dart
-```
-
-## Store Pattern (`lib/features/<name>/<name>_store.dart`)
-
-Each store is a **singleton** instance exported at module level. Keep models,
-queries/caches and screens feature-local; application/session integration belongs
-to `lib/app/data/`.
-
-```dart
-class Patients extends Store<Patient> {
-  Patients() : super(
-    modeling: Patient.fromJson,
-    effects: applicationStoreEffects,
-    loadDocuments: loadApplicationDocuments,
-    isDemo: launch.isDemo,
-    onSyncStart: () => networkActions.isSyncing(networkActions.isSyncing() + 1),
-    onSyncEnd: () => networkActions.isSyncing(networkActions.isSyncing() - 1),
-  );
-
-  late final session = StoreSessionBinding<Patient>(
-    store: this,
-    name: 'patients',
-    loadingMessage: 'Synchronizing patients',
-    seedDemo: () => demoPatients(100),
-  );
-
-  @override
-  void init() {
-    super.init();
-    session.install();
-  }
-}
-```
-
-The binding installs the two-stage login activator, drains before replacing Hive,
-constructs remote persistence, and removes all session callbacks on stop.
-Do not register network/sync/logout callbacks separately in feature stores.
-Optional post-sync behavior stays feature-owned through `afterSynchronize`;
-use its `isCurrent` check after awaits before publishing session-bound state.
+One `StoreSessionBinding` per store, installed from `init()`; it owns login/logout, the Hive adapter swap and all sync/reconnect/online callbacks. Never register those callbacks in a feature store. Derived data belongs in getters over `present.values` (e.g. `allTags`). Register the singleton in `lib/app/data/initialize_stores.dart`.
 
 ## Layers below the features
 
-The features sit at the top. Two folders below them exist for code more than one
-feature uses, and neither may import a feature (a guard test enforces both):
+- `lib/ui/workspace/` — panels, windows, dock, layout. It may not import a feature; the app hands records in (`refreshStreams`, `WindowDefaults`, `fileLinkResolver`).
+- `lib/shared/` — editors more than one feature opens (`image_viewer/`, `dental_chart/`). They know teeth and pens, not patients; the feature supplies the model-bound glue (`patient_dental_chart.dart`).
 
-- `lib/ui/workspace/` — the window system: panels, windows, the dock and the
-  layer that draws them. It may use `core`, `services`, `common_widgets` and
-  itself. A record it needs — a store to relabel a window, a file URL to show —
-  is handed in by the app (see `refreshStreams`, `WindowDefaults`,
-  `fileLinkResolver`), never imported.
-- `lib/shared/` — editors more than one feature opens: `image_viewer/` and
-  `dental_chart/`. They know teeth, pages and pens, not patients or visits; the
-  feature supplies its model-bound glue (`patient_dental_chart.dart`,
-  `appointment_dental_chart.dart`, `patient_owner_line.dart`).
+## Carried records (a visit beside its patient)
 
-Naming: `open_<record>_panel.dart` opens a panel over a stored record and is
-built with `PanelsManager.open`; a window shown on its own with
-`WindowsManager.showStandalone` lives in the feature as
-`open_<record>_window.dart`. A file that edits one record's field group is
-`<thing>_widget.dart`, not a second `open_*` file.
+A record carried beside another has no `open_*_panel.dart`: its opener is `open_<record>.dart`, and it is a **session**, not a panel.
 
-A record that is **carried beside another** (a visit beside its patient) has no
-`open_*_panel.dart`: its opener is `open_<record>.dart`, because it opens no
-panel of its own. Such a record is a **session**, not a panel:
+- `<record>_session.dart` implements `HostedRecordSession` (never `Panel`) and owns the draft, the chart and the record's windows.
+- `<record>_sessions.dart` is the identity map: one id → one draft, cleared on logout. Two openers of the same record get the same session, so two windows cannot disagree.
+- The panel calls `Panel.attach(session, focus:)`; the footer's Close calls `detach()` (keeps the draft) and `disposeSession()` drops it. The panel draws the bubble-shaped **band** from the interface's own label, state and Save — never a copy.
+- Moving to another visit is a swap, not a discard: the visit left behind keeps its draft (teeth, operative details, band fields). `closeOpenDentalChartWindows` resets only a chart that would really be thrown away — a panel's own plan chart, or a standalone chart.
+- Every local mutation goes through `<record>_commands.dart`'s `appointmentCommand(id, mutate)`: it edits the open draft, or the store when none is open. With a draft open it also stores exactly the changed fields and acknowledges only those (`writeThrough`) — list checkboxes, calendar drags and toggles read the **store**, so a draft-only change is invisible and lost with the panel. A direct `store.set` on a carried record is the bug that reverts a calendar drag.
+- A write outside the record's Save (a gallery's files) writes only its own fields (`markFieldsSaved`).
+- The band carries the record's own form (`HostedRecordSession.bandContent`), keyed by record id so a different record is a different form.
+- The band's tool dock (`AppointmentBandDock`) opens the chart; it stays reachable while the chart is away.
+- Labwork and gallery are band **attachments** (`PanelWindow.bandAttachment`), drawn by `WindowAttachments` at the band's foot (`WK.visitBandAttachments`) and again on the post-op card in the chart (`WK.visitChartAttachments`); both trays switch the same windows in `kAttachedSlot`.
+- The band footer owns Delete/Restore, Close, the retained-draft hint and Save-when-dirty: standard `Button`s per act, `FilledButton` for the one that keeps the work. While a visit is attached, the panel's inline record is drawn read-only behind `AbsorbPointer` and a notice.
+- A window that is an editor *of* a record is an attachment: `PanelWindow.attachedTo` names the frame drawing its chip (`kDentalChartWindowId`, `bandAttachment`, `panelAttachment`); `WindowAttachments` draws the tray and keys chips `WK.attachmentToggle(id, owner: frameId)`.
+- Layout memory is keyed by record **kind + slot** (`appointment/attached`), never by id. Editor state belongs to the record (galleries keyed by visit id).
+- `minHeight` governs automatic opening only: an explicitly requested chart stays reachable on a short screen, scrolling.
+- Closing after Save rechecks every owner for pending edits and active writes; an edit or new attachment during a save keeps the panel open. Gallery progress outlives the gallery widget.
+- `canArchive` gates band and feature actions; `setArchived` enforces it again before writing.
+- A standalone editor backed by a draft passes `recordSession` to `WindowsManager.showStandalone`; close confirmation counts and saves the owner once across all its windows.
 
-- The session (`<record>_session.dart`) owns the draft, the chart or other
-  editors that belong to the record, and the record's windows. It implements
-  `HostedRecordSession` (`lib/ui/workspace/record_session.dart`) — never `Panel`.
-- The registry (`<record>_sessions.dart`) is the app's identity map: one id, one
-  draft, for the app session, cleared on logout. Two openers of the same record
-  get the same session, so two windows cannot disagree.
-- The panel that shows it calls `Panel.attach(session, focus:)`; closing the visit
-  (the footer's Close, backed by `detach()`) keeps the draft, `disposeSession()`
-  drops it. The panel draws a bubble-shaped **band** for it — it implements the
-  interface's own label, state and Save, never a copy.
-- Moving to another visit is a swap, not a discard: the visit left behind keeps its
-  draft — teeth, operative details and the band's fields alike — so nothing asks
-  first. The chart-swap guard (`closeOpenDentalChartWindows`) only resets a chart
-  that would really be thrown away: a panel's own plan chart, or a chart standing
-  on its own. The band says which retained visits still hold work.
-- Every local mutation of that record goes through
-  `<record>_commands.dart`'s `appointmentCommand(id, mutate)`: it edits the open
-  draft when there is one, and the store when there is not. With a draft open it
-  **also stores exactly the fields the mutation changed** and acknowledges only
-  those (`writeThrough`), because the controls that call it — a list checkbox, a
-  calendar drag, a labwork toggle — read the record from the store: a change held
-  only in the draft is invisible to them and is lost with the panel. A direct
-  `store.set(...)` on a carried record is still the bug that reverts a calendar
-  drag.
-- A write outside the record's Save (a gallery's files) writes **only its own
-  fields** and acknowledges only those (`markFieldsSaved`).
-- The band also carries the record's **own form** (`HostedRecordSession.bandContent`):
-  a visit's date, time, duration, operators and pre-op notes are compact fields
-  inside the band, so they need no window and no row slot. The band content is
-  keyed by the record's id: a different visit is a different form, never the old
-  fields under a new title.
-- The visit band also draws the record's **tool dock** (`AppointmentBandDock`): one
-  tool, operative details, whose fields live at the foot of the visit's chart, so
-  its button opens that chart. It stays reachable while the chart is away, because
-  the band is the visit's permanent surface.
-- The band's labwork order and gallery are **not** dock chips: they are
-  attachments of the band (`PanelWindow.bandAttachment`), drawn as a
-  `WindowAttachments` tray at the band's foot (`WK.visitBandAttachments`) and again
-  on the post-op card inside the visit's chart (`WK.visitChartAttachments`), the
-  way a patient's photos hang off the patient panel. Both trays switch the same
-  windows in the row's `kAttachedSlot`.
-- The band's **footer** owns the record's actions: Delete/Restore, Close, the
-  retained-draft hint with its "move to that visit" action, and Save when the
-  visit is dirty. It uses standard Fluent buttons so themes own the colours. While
-  a visit is attached, the panel's inline record is drawn read-only (visible, but
-  behind an `AbsorbPointer` and a short notice) because its Save is not the visit's
-  Save.
-- A window that is an editor *of* a record rather than its workspace is an
-  **attachment**: `PanelWindow.attachedTo` names the frame that draws its chip —
-  another window (`kDentalChartWindowId`), the record's band
-  (`PanelWindow.bandAttachment`), or `PanelWindow.panelAttachment` for the panel
-  itself. Attachments are never row windows and never first picks.
-  `byDefault: false` makes any other row window a labelled workspace button.
-- A panel that presents its windows this way sets `attachmentLayout: true` and
-  `workspaceWindows: [...]` (`Panel`): its labelled workspace buttons live inside
-  the record's own body instead of under the header. Both workspace buttons are
-  always drawn; filled means open, neutral means closed, and the filled one's
-  label is painted in the accent's own foreground colour. The pair is drawn
-  joined — no gap, and only the outer corners rounded — so it reads as one
-  control. `WindowDock` draws it, the same widget a panel with floating windows
-  uses for its switches: equal segments filling the panel's width, one flat
-  stroke, a filled segment in the record's accent while its window is open, and a
-  label too long for its segment ellipsised with the full name in the tooltip.
-  Opening the patient's plan closes the attached visit (its draft is retained)
-  rather than showing two charts.
-  `WindowAttachments` draws the tray; the key is
-  `WK.attachmentToggle(id, owner: frameId)` because two records may both offer a
-  `gallery`.
-- Naming the layout memory: keyed by record **kind + slot**
-  (`appointment/attached`), never by record id. Editor state, by contrast, belongs
-  to a record: key galleries by visit id and refresh labwork controllers when
-  their appointment changes.
-- Minimum height controls automatic opening, not an explicit request: a requested
-  chart remains reachable on a short screen, with its content scrolling.
-- Closing after Save must recheck every owner for pending edits and active writes.
-  An edit or a newly attached visit during a save must keep the panel open.
-  Gallery progress belongs to its record and must finish even after the gallery
-  widget leaves the screen.
-- A hosted session exposes `canArchive`; both the band and feature actions use
-  that capability, and `setArchived` enforces it again before writing.
-- A standalone editor backed by an existing draft passes `recordSession` to
-  `WindowsManager.showStandalone`. Close confirmation counts and saves the owner
-  once across all its windows and any panel carrying it. Unrelated windows omit
-  the owner and keep independent saves, even when they share a scope.
+## Follow-ups (optional)
 
-### Follow-ups
+- Off by default: `follow_ups_enab` ("1"/"0"). Every surface checks `followUpsEnabled`; `followUpsOn` and `applyFollowUpsForNewVisit` are inert while it is off.
+- `setFollowUp(patientID, date, {note})` writes the store and the open patient draft, acknowledging both fields, and bumps `followUpRevision` so both editing surfaces redraw.
+- A note follows its day: passing no note keeps the stored one; clearing the day clears the note.
+- `FollowUpField` edits a draft — Save writes day, note and removal together; Cancel drops; Delete takes the promise back at once. Never write per keystroke.
+- Presets write themselves out ("2 weeks") when they fit — decide by measuring (`_longPresetsFit`), not guessing — and fall back to `FollowUpPreset.label` ("10d").
+- Opening a row chooses no day; `onCollapse` folds a row opened by mistake.
+- `applyFollowUpsForNewVisit` is the recall rule, called from `addAppointment` — the one path every new visit takes.
+- `followUpsOn(day)` is the day's inbox: promises falling that day for patients not already booked.
+- Every follow-up surface uses `kFollowUpAccent`; the patient's row is drawn through `Panel.carriedBandFooter`, directly under the band.
 
-A **patient** may carry a follow-up: the day they were asked to come back, and the
-optional note saying what the visit is for (`Patient.followUpNote`). The day is a
-day, never an hour (`Patient.followUpDay`), and it outlives the visit that recorded
-it — a visit is where a dentist *sets* it, not where it lives.
-`follow_up_scheduling.dart` owns every rule:
+## Panels
 
-- **The feature is optional and off by default.** An admin turns it on in
-  settings › optional features, stored as `follow_ups_enab` ("1"/"0", like every
-  global setting id: 15 characters). Every surface asks `followUpsEnabled` — the
-  visit's field, the scope bar's dot, the patient's row, the history card and the
-  day's band — and `followUpsOn` / `applyFollowUpsForNewVisit` are inert while it
-  is off, so a hidden promise is never silently rewritten.
-
-- `setFollowUp(patientID, date, {note})` writes the **store** and, when the patient's
-  panel is open, its **draft**, acknowledging both fields (`markFieldsSaved`) so a
-  promise made from a visit neither dirties the patient's form nor is lost with a
-  Cancel. `followUpRevision` is bumped so both surfaces that edit it redraw at once:
-  the visit's operative row (`FollowUpField`, presets counted from the visit's day)
-  and the patient's own row under the carried band (`PatientFollowUpBar`, presets
-  counted from today, folded to a button while there is no promise).
-  A note follows its day: passing no note keeps the stored one, and clearing the
-  day clears the note with it.
-- `FollowUpField` edits a **draft**, not the record: the day, the note and their
-  removal are written together by Save, with Cancel to drop the draft and Delete to
-  take the promise back at once (the same act, and the same word, as the visit
-  band's Delete). Do not make a field write on every keystroke — the note is text,
-  and text is typed a letter at a time. The footer is the visit band's grammar:
-  standard `Button`s per act and a `FilledButton` for the one that keeps the work.
-- The interval chips spell themselves out — "10 days", "2 weeks" — whenever the row
-  is wide enough for the whole set, and fall back to `FollowUpPreset.label` ("10d")
-  when it is not. Decide with a measurement (`_longPresetsFit`), not a guess: the
-  same seven chips are 190px wide in English and 260 in Arabic.
-- Opening a row chooses **no day**. `PatientFollowUpBar` passes `onCollapse` for a
-  patient with no promise, so a row opened by mistake folds again without the
-  dentist having to pick a date to escape it.
-- `applyFollowUpsForNewVisit` is the recall rule, called from `addAppointment` —
-  the one place every new visit passes through. A visit on or after the follow-up
-  day keeps the promise and clears it; a visit before it leaves the promise
-  standing.
-- `followUpsOn(day)` is a day's inbox: the patients whose promise falls on that day
-  and who are not already booked. The floating `FollowUpBand` draws them as faces;
-  a face opens the shared `FollowUpCard` (the day, the note, the phones, the visit
-  that keeps the promise), the band's own handle unfolds it into a list of the same
-  patients — where the note *replaces* the "tomorrow" label, keeping a late one's
-  overdue label beside it — and on the timeline a face can be dragged onto the hour
-  to book.
-- Every follow-up surface is drawn in `kFollowUpAccent`: it must read as "not a
-  visit" before anything else.
-- The patient's row is drawn by the panel through `Panel.carriedBandFooter`,
-  directly under the band of the visit it may carry — so it stays editable while
-  the patient's own form is read-only.
-
-Tests mirror `lib/`: `test/widget/features/<feature>/`, `test/widget/app/` for
-the shell, `test/widget/shared/<editor>/` for a shared editor, and
-`test/widget/common_widgets/` for the atoms.
-
-## Panel pattern
-
-Use `RowPanel<T>` and its independent `RowDraft` for one stored record.
-Use `DelegatedPanel` for caller-managed collections with explicit save,
-pending-edit and archive callbacks. Both implement the non-generic `Panel`
-host contract. `panel.result` is a `Future<void>`; inspect `savedId`/
-`savedIds` for records written. Do not share drafts between panels.
-
-### Creating a record
-
-A new record is asked for in a sheet, not in an empty panel: the sheet
-(`new_<record>_dialog.dart`) collects the fields the record cannot start
-without, the helper beside it (`addPatient`, `addAppointment`) stores the
-record, and only then is it opened — so `isNew` is false and nothing the user
-does can leave a draft behind. The sheet does not invent a date: an appointment
-starts on the day — or at the moment — the caller came from, and a bare day
-takes the current time of day.
-
-### Adding a persistent feature
-
-1. Create the feature model/store/screen/panel opener under `lib/features/<name>/`.
-2. Supply explicit application effects/loader and one session binding.
-3. Initialize the singleton in `lib/app/data/initialize_stores.dart`.
-4. Add the route/screen and localized UI strings.
-5. Add deterministic tests with isolated Hive where persistence is involved.
-
-## Screen Pattern
-
-Screens use `MStreamBuilder` to react to store changes:
+`RowPanel<T>` edits one stored record and owns its draft:
 
 ```dart
-class PatientsScreen extends StatelessWidget {
-  const PatientsScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MStreamBuilder(
-      streams: [patients.observableMap.stream, showArchived.stream],
-      builder: (context, _) {
-        // Build datatable / list from patients.list()
-      },
-    );
-  }
-}
+RowPanel(item: Patient.fromJson(patient.toJson()), store: patients, title: ...,
+  windows: ..., icon: ..., singularName: "patient", unicodeSymbol: "👤");
 ```
 
-### Row actions
+- Required: `item` (an editable **copy**), `store`, `title`, `windows`, `icon`, `singularName`, `unicodeSymbol`. Optional: `canNotBeNew`, `checkUnsavedChanges`, `onSave`, `validate`, `savedBaseline`, `carriedBandFooter`, `accent`, `initialWindow`.
+- Its windows edit the same draft through `draftJson` / `adoptDraft`. `hasPendingEdits` compares current JSON with the last saved baseline; `persist()` validates, writes (`store.set` or `onSave`) and re-baselines via `markSaved()`.
+- `markFieldsSaved(fields)` acknowledges an immediate write without clearing the rest of the draft.
 
-A row that has actions also opens them on long press (touch) and right click
-(mouse, pen). Wrap the row in `ContextMenuRegion` from
-`lib/common_widgets/context_menu_region.dart` and build the same items the row's
-"more" button already shows — never a new permission-free shortcut:
+`DelegatedPanel` is for caller-managed collections with explicit save, pending-edit and archive callbacks. Both implement the non-generic `Panel`; `panel.result` is `Future<void>`, and `savedId` / `savedIds` name the records written. Never share a draft between panels.
+
+## Windows
+
+`PanelWindow` fields that matter: `id` (a stable name, used by menus, dock and chips — never a list position), `title` (a localization **key**, translated on draw), `icon`, `body`, `subtitle` (read on build), `footer`, `headerActions`, `footerActions`, `editsRecord`, `onlyIfSaved`, `byDefault`, `attachedTo`, `replacementGroup`, `chipPreview`.
+
+Declare the windows once as an enum — `<feature>_windows.dart` (`PatientWindow`, `ExpenseWindow`) when a menu or other file reads it, else beside the opener (`AppointmentWindow`) — and expose the reachable ones (`patientWindows()`); let both the panel and its menu items read that list.
+
+## Screens
+
+Screens react through `MStreamBuilder` on `store.observableMap.stream` plus any settings stream:
 
 ```dart
-ContextMenuRegion(
-  items: (context, controller) => [
-    MenuFlyoutItem(
-      text: Txt(txt("open")),
-      leading: const Icon(WindowsIcons.open_in_new_window),
-      onPressed: open,
-    ),
+MStreamBuilder(
+  streams: [
+    patients.observableMap.stream,
+    appointments.observableMap.stream,
+    PanelsManager.active.stream,
   ],
-  child: ListTile(...),
+  builder: (context, snapshot) { /* patients.present.values */ },
 )
 ```
 
-The region plays the platform feedback for the long press, anchors the menu at
-the pointer, and flips it in RTL. Reuse `controller` for a follow-up flyout
-(a delete confirmation); the menu closes by itself when an item is clicked.
-
-When the row opens a panel, offer **one item per panel window** instead of a
-single "open". Declare the windows once as an enum in the feature — in
-`<feature>_windows.dart` when a menu or another file reads it
-(`PatientWindow`, `ExpenseWindow`), or beside the opener when nothing outside
-it does (`AppointmentWindow`) — expose the reachable ones (`patientWindows()`,
-`appointmentWindows(appointment)`, `expenseWindows(...)`), and let both the
-panel and the menu read that list — then a menu item cannot land on the wrong
-window:
+A row with actions opens them on long press (touch) and right click (mouse, pen): wrap it in `ContextMenuRegion` (`lib/common_widgets/context_menu_region.dart`) and reuse the exact items of the row's "more" button. Offer **one item per panel window**, not a single "open":
 
 ```dart
 for (final window in patientWindows())
@@ -338,31 +103,27 @@ for (final window in patientWindows())
   ),
 ```
 
-Keep `PanelWindow.title` a localization **key**: the host runs it through
-`txt()`, so an open window relabels on a language switch. The window's `id` is
-what the dock button, the opener and the menu all name it by — never its
-position in a list.
+## Creating a record
 
-## Controller Pattern (for non-Store features)
+A new record is asked for in a sheet (`new_<record>_dialog.dart`) that collects the fields it cannot start without; the helper beside it (`addPatient`, `addAppointment`) stores the record, and only then is it opened — so `isNew` is false and nothing the user does can leave a draft behind. A sheet does not invent a date: it starts on the day or moment the caller came from, and a bare day takes the current time of day.
 
-Controllers are plain Dart classes that hold `ObservableState` values and business logic. They're simpler than Stores — no persistence, no sync:
+## Adding a persistent feature
 
-```dart
-class DashboardController {
-  final selectedView = ObservableState<int>(0);
-  // ... computed getters, action methods ...
-}
+1. Create the model, store, screen and panel opener under `lib/features/<name>/`.
+2. Pass explicit `applicationStoreEffects` + `loadApplicationDocuments`, and own one `StoreSessionBinding`.
+3. Register the singleton in `lib/app/data/initialize_stores.dart`.
+4. Add the `AppRoute`, its `_syncStores` case, and localized strings for every locale.
+5. Add deterministic tests with isolated Hive where persistence is involved.
 
-final dashboardCtrl = DashboardController();
-```
-
-## Common Mistakes
+## Common mistakes
 
 | Mistake | Fix |
-|---------|-----|
-| Mutating `item` directly instead of the editing copy | Always use `Model.fromJson(item.toJson() ?? {})` for the panel's editing copy |
-| Forgetting to call `.init()` on a new store | Add to `initializeStores()` in `lib/app/data/initialize_stores.dart` |
-| Not registering `login.activators` | Store won't have local/remote set up after login |
-| Using `Text(txt("key"))` in feature screens | Use `Txt(txt("key"))` so text updates on language switch |
-| Passing a raw key to `Txt`, e.g. `Txt("myKey")` | `Txt` renders its argument verbatim — the key itself would show; pass `Txt(txt("myKey"))` |
-| Not adding localization keys | Run `dart run lib/services/localization/verify.dart` to catch missing keys |
+|---|---|
+| Mutating the stored record instead of the panel's copy | `Model.fromJson(stored.toJson())` for the draft |
+| Forgetting `.init()` or the `initializeStores()` registration | The store never loads or activates |
+| Not installing a `StoreSessionBinding` | No local or remote persistence after login |
+| `Text(txt("key"))` | `Txt(txt("key"))` so a language switch redraws |
+| `Txt("key")` | `Txt` renders verbatim — pass `txt(...)` |
+| Adding a key to `en.dart` only | Add it to every locale, then run `dart run lib/services/localization/verify.dart` |
+| `store.set` on a carried record | `appointmentCommand(id, mutate)` |
+| Two `open_*` files for one record's field groups | One opener; other editors are `<thing>_widget.dart` |

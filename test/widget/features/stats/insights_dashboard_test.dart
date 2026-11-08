@@ -353,10 +353,45 @@ void main() {
     expect(chart.yAxis, [1, 0]);
     final cashFlow = find.byKey(const ValueKey('cash-flow'));
     await tester.ensureVisible(cashFlow);
+    expect(
+        tester.widget<InsightChartCard>(cashFlow).series.single, [120, 120]);
     await tester.tap(
         find.descendant(of: cashFlow, matching: find.byType(ToggleSwitch)));
     await tester.pumpAndSettle();
     final card = tester.widget<InsightChartCard>(cashFlow);
+    expect(card.series.single, [120, 0]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('cash flow charts collections by default and nets expenses when asked',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 1100));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    appointments.set(testAppointment(
+        id: 'insights-cash', date: DateTime(2024, 1, 1), paid: 120));
+    expenses.set(testExpense(
+        id: 'insights-cash-expense', date: DateTime(2024, 1, 1), cost: 20));
+    await pumpApexoApp(tester, const InsightsDashboard());
+
+    final cashFlow = find.byKey(const ValueKey('cash-flow'));
+    await tester.ensureVisible(cashFlow);
+    final flowModes =
+        find.descendant(of: cashFlow, matching: find.byType(ToggleButton));
+    var card = tester.widget<InsightChartCard>(cashFlow);
+    expect(card.series.single, [120, 120]);
+    expect(card.names.single, startsWith(txt('insightsCollections')));
+    expect(card.subtitle, txt('insightsCollectionsHint'));
+
+    await tester.tap(flowModes.at(1));
+    await tester.pumpAndSettle();
+    card = tester.widget<InsightChartCard>(cashFlow);
+    expect(card.series.single, [100, 100]);
+    expect(card.names.single, startsWith(txt('insightsNet')));
+    expect(card.subtitle, txt('insightsCashFlowHint'));
+
+    await tester.tap(flowModes.at(0));
+    await tester.pumpAndSettle();
+    card = tester.widget<InsightChartCard>(cashFlow);
     expect(card.series.single, [120, 120]);
     expect(tester.takeException(), isNull);
   });

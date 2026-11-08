@@ -1064,6 +1064,7 @@ class El implements En {
     "insightsNet": "Καθαρή ταμειακή ροή",
     "insightsCashFlow": "Ταμειακή ροή με την πάροδο του χρόνου",
     "insightsCashFlowHint": "Πληρωμές μείον έξοδα, ομαδοποιημένα ανά ημερομηνίες ραντεβού και αποδείξεων",
+    "insightsCollectionsHint": "Εισπράξεις πριν από τα έξοδα, ομαδοποιημένες ανά ημερομηνία ραντεβού",
     "insightsOutstanding": "Ανεξόφλητα υπόλοιπα",
     "insightsOutstandingHint": "Ανεξόφλητες χρεώσεις ραντεβού στην επιλεγμένη περίοδο",
     "insightsCumulative": "Σωρευτικά",

@@ -1070,6 +1070,8 @@ class It implements En {
     "insightsCashFlow": "Flusso di cassa nel tempo",
     "insightsCashFlowHint":
         "Pagamenti meno spese, raggruppati per date degli appuntamenti e delle ricevute",
+    "insightsCollectionsHint":
+        "Incassi al lordo delle spese, raggruppati per data dell'appuntamento",
     "insightsOutstanding": "Saldi insoluti",
     "insightsOutstandingHint":
         "Importi degli appuntamenti non pagati nel periodo selezionato",

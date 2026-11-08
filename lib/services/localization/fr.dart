@@ -1065,6 +1065,7 @@ class Fr implements En {
     "insightsNet": "Flux de trésorerie net",
     "insightsCashFlow": "Évolution de la trésorerie",
     "insightsCashFlowHint": "Paiements moins dépenses, regroupés par dates de rendez-vous et de reçus",
+    "insightsCollectionsHint": "Encaissements avant dépenses, regroupés par date de rendez-vous",
     "insightsOutstanding": "Soldes impayés",
     "insightsOutstandingHint": "Frais de rendez-vous impayés sur la période sélectionnée",
     "insightsCumulative": "Cumulé",

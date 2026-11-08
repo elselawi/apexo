@@ -1046,6 +1046,7 @@ class En {
     "insightsNet": "Net cash flow",
     "insightsCashFlow": "Cash flow over time",
     "insightsCashFlowHint": "Payments minus expenses, grouped by appointment and receipt dates",
+    "insightsCollectionsHint": "Payments received before expenses, grouped by appointment date",
     "insightsOutstanding": "Outstanding balances",
     "insightsOutstandingHint": "Unpaid appointment charges in the selected period",
     "insightsCumulative": "Cumulative",

@@ -1054,6 +1054,8 @@ class Tr implements En {
     "insightsCashFlow": "Zaman içinde nakit akışı",
     "insightsCashFlowHint":
         "Randevu ve makbuz tarihlerine göre gruplandırılmış ödemeler eksi giderler",
+    "insightsCollectionsHint":
+        "Giderler öncesi tahsilatlar, randevu tarihine göre gruplandırılmış",
     "insightsOutstanding": "Ödenmemiş bakiyeler",
     "insightsOutstandingHint": "Seçilen dönemdeki ödenmemiş randevu ücretleri",
     "insightsCumulative": "Kümülatif",

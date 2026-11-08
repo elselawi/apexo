@@ -30,7 +30,8 @@ class _InsightsDashboardState extends State<InsightsDashboard> {
   int section = 0;
   int pattern = 0;
   bool bars = false;
-  bool cumulative = false;
+  bool cumulative = true;
+  bool netCashFlow = false;
 
   String _money(double value) =>
       '${formatMoneyInText(value.toStringAsFixed(2))} ${currency()}';
@@ -281,22 +282,7 @@ class _InsightsDashboardState extends State<InsightsDashboard> {
           [data.done, data.missed],
           [txt('done'), txt('missed')]),
       if (revenue) ...[
-        _card(
-            'cash-flow',
-            txt('insightsCashFlow'),
-            txt('insightsCashFlowHint'),
-            data.labels,
-            [
-              cumulative
-                  ? InsightsData.cumulative(data.cashFlow)
-                  : data.cashFlow
-            ],
-            ['${txt('insightsNet')} ${currency()}'],
-            money: true,
-            controls: ToggleSwitch(
-                checked: cumulative,
-                onChanged: (value) => setState(() => cumulative = value),
-                content: Txt(txt('insightsCumulative')))),
+        _cashFlow(data),
         _card(
             'outstanding',
             txt('insightsOutstanding'),
@@ -318,6 +304,39 @@ class _InsightsDashboardState extends State<InsightsDashboard> {
             yAxis: data.debtByAge, color: insightColors[2])),
       ],
     ];
+  }
+
+  Widget _cashFlow(InsightsData data) {
+    final values = netCashFlow ? data.cashFlow : data.payments;
+    final label = netCashFlow ? txt('insightsNet') : txt('insightsCollections');
+    return _card(
+        'cash-flow',
+        txt('insightsCashFlow'),
+        netCashFlow
+            ? txt('insightsCashFlowHint')
+            : txt('insightsCollectionsHint'),
+        data.labels,
+        [cumulative ? InsightsData.cumulative(values) : values],
+        ['$label ${currency()}'],
+        money: true,
+        controls: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              ToggleButton(
+                  checked: !netCashFlow,
+                  onChanged: (_) => setState(() => netCashFlow = false),
+                  child: Txt(txt('insightsCollections'))),
+              ToggleButton(
+                  checked: netCashFlow,
+                  onChanged: (_) => setState(() => netCashFlow = true),
+                  child: Txt(txt('insightsNet'))),
+              ToggleSwitch(
+                  checked: cumulative,
+                  onChanged: (value) => setState(() => cumulative = value),
+                  content: Txt(txt('insightsCumulative'))),
+            ]));
   }
 
   Widget _card(String id, String title, String subtitle, List<String> labels,

@@ -1044,6 +1044,7 @@ class Fa implements En {
     "insightsNet": "جریان نقدی خالص",
     "insightsCashFlow": "جریان نقدی در طول زمان",
     "insightsCashFlowHint": "پرداخت‌ها منهای هزینه‌ها، گروه‌بندی‌شده بر اساس تاریخ نوبت‌ها و رسیدها",
+    "insightsCollectionsHint": "دریافتی‌ها پیش از کسر هزینه‌ها، گروه‌بندی‌شده بر اساس تاریخ نوبت‌ها",
     "insightsOutstanding": "مانده‌های پرداخت‌نشده",
     "insightsOutstandingHint": "هزینه‌های پرداخت‌نشده نوبت‌ها در بازه انتخاب‌شده",
     "insightsCumulative": "تجمعی",

@@ -1037,6 +1037,7 @@ class Ar implements En {
     "insightsNet": "صافي التدفق النقدي",
     "insightsCashFlow": "التدفق النقدي عبر الزمن",
     "insightsCashFlowHint": "المدفوعات ناقص المصروفات، مجمّعة حسب تواريخ المواعيد والإيصالات",
+    "insightsCollectionsHint": "التحصيلات قبل المصروفات، مجمّعة حسب تاريخ المواعيد",
     "insightsOutstanding": "الأرصدة المستحقة",
     "insightsOutstandingHint": "رسوم المواعيد غير المدفوعة في الفترة المحددة",
     "insightsCumulative": "تراكمي",

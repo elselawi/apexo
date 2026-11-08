@@ -1054,6 +1054,8 @@ class Ur implements En {
     "insightsCashFlow": "وقت کے ساتھ نقد بہاؤ",
     "insightsCashFlowHint":
         "ادائیگیاں منفی اخراجات، اپائنٹمنٹ اور رسید کی تاریخوں کے لحاظ سے گروپ شدہ",
+    "insightsCollectionsHint":
+        "اخراجات سے پہلے وصولیاں، ملاقات کی تاریخ کے مطابق",
     "insightsOutstanding": "واجب الادا رقوم",
     "insightsOutstandingHint": "منتخب مدت میں اپائنٹمنٹس کے غیر ادا شدہ چارجز",
     "insightsCumulative": "مجموعی",

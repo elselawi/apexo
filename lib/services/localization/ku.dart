@@ -1049,6 +1049,7 @@ class Ku implements En {
     "insightsNet": "ڕەوتی پووڵی پاک",
     "insightsCashFlow": "ڕەوتی پووڵ بە تێپەڕبوونی کات",
     "insightsCashFlowHint": "پارەدراوەکان کەمکردنەوەی خەرجییەکان، گرووپکراو بەپێی بەرواری کاتەکان و پسووڵەکان",
+    "insightsCollectionsHint": "پارە وەرگیراوەکان پێش خەرجییەکان، گرووپکراو بەپێی بەرواری کاتەکان",
     "insightsOutstanding": "باڵانسە نەدراوەکان",
     "insightsOutstandingHint": "کرێی نەدراوی کاتەکان لە ماوەی هەڵبژێردراودا",
     "insightsCumulative": "کەڵەکەبوو",

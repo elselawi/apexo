@@ -1064,6 +1064,7 @@ class Es implements En {
     "insightsNet": "Flujo de caja neto",
     "insightsCashFlow": "Flujo de caja a lo largo del tiempo",
     "insightsCashFlowHint": "Pagos menos gastos, agrupados por fechas de citas y recibos",
+    "insightsCollectionsHint": "Cobros antes de gastos, agrupados por fecha de cita",
     "insightsOutstanding": "Saldos pendientes",
     "insightsOutstandingHint": "Cargos de citas no pagados en el período seleccionado",
     "insightsCumulative": "Acumulado",

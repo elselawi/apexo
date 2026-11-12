@@ -1,10 +1,14 @@
 ### ____LATEST____
 
 - New Features & Improvements
-    - **Notes and expenses, only if you want them.** Both screens are now optional features in **Settings › Optional features**, next to AI services and follow-ups. A clinic that never used them no longer gets them in the navigation; a clinic that already has notes or expenses keeps seeing them, because an upgrade never hides records it already holds — and turning either off keeps the data, so switching it back on brings everything back.
+    - **Notes and expenses, only if you want them.** Both screens are now optional features in **Settings › Optional features**, next to AI services and follow-ups. A clinic that never used them no longer gets them in the navigation, on the dashboard or in the archive; a clinic that already has notes or expenses keeps seeing them, because an upgrade never hides records it already holds — and turning either off keeps the data, so switching it back on brings everything back.
     - **Faster sign-in.** Signing in no longer waits its turn: server checks, notification registration and every store's first sync now run alongside each other instead of one after another, and the sync no longer waits out its edit debounce. On a high-latency connection the network part of signing in drops from roughly 3.6 s to 1 s.
     - **Quiet setup instead of server talk.** The step that used to say "Updating server schema" — and ran on every admin start — now only runs when the server actually needs an update, and the app remembers the version it applied so later starts skip it completely. The remaining messages say "Checking your server" and "Finishing setup" rather than talking about collections and schema, and a fresh install no longer re-imports what it has just created.
     - **Windows that know where they belong.** A record's window — a patient's gallery or visits, a visit's labwork or chart, a supplier's orders — still floats on its own while no panel is open, which is what makes the app usable without a panel. Once a panel is on screen it no longer floats beside it: the record's own panel opens with the window you asked for in front, so two records are never shown as one floating window over the other.
+    - **Counts on the navigation.** The destinations with something waiting now say so: labwork a lab has not returned, today's visits, notes handed to you, money still owed on open orders and pending booking requests. The number leaves when there is nothing waiting, and stops at 99+ — with money rounded past a thousand — so the icons keep their shape.
+    - **The day's follow-ups, ready to send.** The follow-up band's copy action opens the day as one block per patient — name, the numbers to try and the note — in a box you can select and copy, so reception can paste the list into a message instead of reading names off the screen.
+    - **New visits start with the right team.** A visit created by someone who does not operate is now pre-filled with whoever last saw that patient, so booking at reception does not mean retyping the clinicians. Choosing the operators yourself is never overwritten by that guess.
+    - **A message from your server.** A hosted clinic can be told something about its own server — planned maintenance, a moved address — and the app shows it once after signing in. A message that must be read offers no way to close it; the rest can be dismissed. The lookup never delays or blocks a sign-in, and nothing appears when the server publishes nothing.
 
 - Reliability & Bug Fixes
     - **Safe staff logout.** Logging out during authentication, pending staff store activation, or sync prevents late credentials and activation callbacks from reopening the session.
@@ -20,6 +24,19 @@
     - **Awaited audio cleanup.** Transcription disposal waits for the recorder plugin to release its platform resources.
     - **Same-millisecond sync updates.** Remote rows sharing the saved timestamp are re-read, while pending local snapshots remain authoritative for that overlap so offline field clears are not undone.
     - **Protected service settings.** A failed settings read no longer leaves a Save action that can overwrite existing server values with defaults.
+    - **A phone sheet that stays with the keyboard.** A window's sheet on a phone now caps itself to the room above the keyboard and scrolls its editor, instead of letting the keys hide the field being typed into; a rotation, or a keyboard that resizes the screen, no longer closes the sheet that was opened.
+    - **A login form that fits the keyboard.** The sign-in form scrolls on a phone instead of overflowing behind the keyboard.
+    - **Read-only records scroll again.** While a visit is on screen the patient's record stays locked, but it can now be scrolled to what needs reading — it still takes no edits.
+    - **Removing a labwork order sticks.** Removing a visit's labwork order is written immediately, like the labworks screen's row delete, instead of waiting for the visit's Save — and it is only offered to someone who may edit the visit.
+    - **No surprise follow-up dates.** The patient's follow-up row no longer books a week ahead on a single click; it opens the day picker the visit panel uses, so the date is chosen rather than assumed.
+    - **Only the logins you manage.** Accounts created by fleet provisioning (`@managed.local`) are no longer listed as staff or offered as operators, so the team list holds only the people the clinic manages.
+
+- UI & UX Polish
+    - **A Windows 11 surface.** The app is drawn the way Windows 11 draws: the desktop wallpaper blurred and tinted behind the window on Windows 11, a painted equivalent everywhere else, a title bar that names the screen, a glass navigation pane, acrylic dialogs, menus and floating windows, hairline separators instead of heavy shadows, and form fields and combo boxes that line up at one height.
+    - **One action at a time.** While a visit is on screen in a record's panel, that panel's own Save and Delete step aside and only Close stays, so the button in front of you always writes the record whose band is showing.
+    - **Clearer chart names.** The patient's chart is titled *Initial Exam Chart* and a visit's chart *Appointment Operative Details*; the patient's dock button keeps the familiar *Dental Chart*.
+    - **One close button.** A floating window's header now carries the standard close button — minimizing a panel's window back to its dock, closing a standalone one with the usual discard prompt — instead of separate Minimize and Close controls.
+    - **A calmer visit timeline.** The selected visit now shows its number, the track begins at the first visit instead of trailing off to the left, and the hover card stays open while the pointer moves onto it.
 
 ### ____0.17.1____
 

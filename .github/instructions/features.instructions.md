@@ -44,6 +44,13 @@ A record carried beside another has no `open_*_panel.dart`: its opener is `open_
 - `canArchive` gates band and feature actions; `setArchived` enforces it again before writing.
 - A standalone editor backed by a draft passes `recordSession` to `WindowsManager.showStandalone`; close confirmation counts and saves the owner once across all its windows.
 
+## Optional features (notes, expenses, follow-ups)
+
+- Settings › optional features holds the app-wide switches: `notes_enabled__`, `expenses_enabl_` and `follow_ups_enab` ("1"/"0").
+- Notes and expenses never break an upgrade: `notesFeatureEnabled` / `expensesFeatureEnabled` (`lib/app/optional_features.dart`) resolve to an explicit choice first and, while the choice is unset (`""`), to "the store already holds a row". An explicit off wins over data, and nothing is deleted — the stores keep syncing so archive, insights and receipt scanning still read them.
+- Gates live at the entry points only: `_accessible()` in `routes.dart` (navbar, bottom bar, deep links, push actions), the dashboard `expensesDue` square, and the archive store filter. `AppRouter` falls back to the dashboard if the open route stops being offered.
+- The shell, bottom bar and settings screen watch `optionalFeatureStreams` so a switch flips the navigation live.
+
 ## Follow-ups (optional)
 
 - Off by default: `follow_ups_enab` ("1"/"0"). Every surface checks `followUpsEnabled`; `followUpsOn` and `applyFollowUpsForNewVisit` are inert while it is off.
@@ -55,6 +62,7 @@ A record carried beside another has no `open_*_panel.dart`: its opener is `open_
 - `applyFollowUpsForNewVisit` is the recall rule, called from `addAppointment` — the one path every new visit takes.
 - `followUpsOn(day)` is the day's inbox: promises falling that day for patients not already booked.
 - Every follow-up surface uses `kFollowUpAccent`; the patient's row is drawn through `Panel.carriedBandFooter`, directly under the band.
+- The band's copy button opens `FollowUpContactsDialog` (`follow_up_contacts.dart`) with `followUpContactsText`: one block per patient — name, numbers, note — drawn by `StyledSelectableText` (`canSave: false`), so the day can be pasted into a message instead of exported as a file.
 
 ## Panels
 
@@ -76,6 +84,8 @@ RowPanel(item: Patient.fromJson(patient.toJson()), store: patients, title: ...,
 `PanelWindow` fields that matter: `id` (a stable name, used by menus, dock and chips — never a list position), `title` (a localization **key**, translated on draw), `icon`, `body`, `subtitle` (read on build), `footer`, `headerActions`, `footerActions`, `editsRecord`, `onlyIfSaved`, `byDefault`, `attachedTo`, `replacementGroup`, `chipPreview`.
 
 Declare the windows once as an enum — `<feature>_windows.dart` (`PatientWindow`, `ExpenseWindow`) when a menu or other file reads it, else beside the opener (`AppointmentWindow`) — and expose the reachable ones (`patientWindows()`); let both the panel and its menu items read that list.
+
+A record's window stands on its own only while no panel is on screen (`PanelsManager.allowsStandaloneWindows`): with any panel open, the opener goes to the record's own panel with that window shown by default, so the app never floats one record's window beside another record's panel. Viewers with no panel of their own (photos, X-rays) keep opening standalone. Openers therefore take the record and the window, and decide between `WindowsManager.showStandalone` and the panel opener — never both.
 
 ## Screens
 
@@ -105,7 +115,7 @@ for (final window in patientWindows())
 
 ## Creating a record
 
-A new record is asked for in a sheet (`new_<record>_dialog.dart`) that collects the fields it cannot start without; the helper beside it (`addPatient`, `addAppointment`) stores the record, and only then is it opened — so `isNew` is false and nothing the user does can leave a draft behind. A sheet does not invent a date: it starts on the day or moment the caller came from, and a bare day takes the current time of day.
+A new record is asked for in a sheet (`new_<record>_dialog.dart`) that collects the fields it cannot start without; the helper beside it (`addPatient`, `addAppointment`) stores the record, and only then is it opened — so `isNew` is false and nothing the user does can leave a draft behind. A sheet does not invent a date: it starts on the day or moment the caller came from, and a bare day takes the current time of day. A visit's operators start as the creator when they operate or are limited to their own visits, and otherwise as whoever last saw the patient (`Appointments.lastOperatorsFor`) — a hand-picked operator is never replaced by that guess.
 
 ## Adding a persistent feature
 

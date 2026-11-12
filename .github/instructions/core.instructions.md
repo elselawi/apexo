@@ -85,7 +85,7 @@ final patients = Patients();
 
 There is no `list()` or `search()`: read `present.values` and filter in the feature.
 
-**Sync:** a mutation is debounced (`debounceMS`, 100 ms) into `_processChanges`, persisted locally as soon as that queued pass runs (no network needed), and pushed remotely only while `remote.isOnline`; offline rows and files are deferred and replayed later. One `SerialOperationQueue` owns writes, sync passes and attachments. Pulls use a fixed upper timestamp with `(updated, id)` keyset paging. Conflicts resolve by timestamp winner (no three-way baseline) and pending local edits win; realtime rows arrive through `RealtimeSubscription`.
+**Sync:** a mutation is debounced (`debounceMS`, 100 ms) into `_processChanges`, persisted locally as soon as that queued pass runs (no network needed), and pushed remotely only while `remote.isOnline`; offline rows and files are deferred and replayed later. `synchronize(immediate: true)` skips that debounce wait — the login sync uses it. One `SerialOperationQueue` owns writes, sync passes and attachments. Pulls use a fixed upper timestamp with `(updated, id)` keyset paging. Conflicts resolve by timestamp winner (no three-way baseline) and pending local edits win; realtime rows arrive through `RealtimeSubscription`.
 
 **Persistence:** each store gets Hive boxes `<name>-main` (document JSON by id) and `<name>-meta` (version, deferred timestamps). PocketBase keeps every store's rows in one `data` collection namespaced by its `store` column. Remote timestamps are `yyyy-MM-dd HH:mm:ss.SSSZ` (no `T`).
 

@@ -1,5 +1,11 @@
 ### ____LATEST____
 
+- New Features & Improvements
+    - **Notes and expenses, only if you want them.** Both screens are now optional features in **Settings › Optional features**, next to AI services and follow-ups. A clinic that never used them no longer gets them in the navigation; a clinic that already has notes or expenses keeps seeing them, because an upgrade never hides records it already holds — and turning either off keeps the data, so switching it back on brings everything back.
+    - **Faster sign-in.** Signing in no longer waits its turn: server checks, notification registration and every store's first sync now run alongside each other instead of one after another, and the sync no longer waits out its edit debounce. On a high-latency connection the network part of signing in drops from roughly 3.6 s to 1 s.
+    - **Quiet setup instead of server talk.** The step that used to say "Updating server schema" — and ran on every admin start — now only runs when the server actually needs an update, and the app remembers the version it applied so later starts skip it completely. The remaining messages say "Checking your server" and "Finishing setup" rather than talking about collections and schema, and a fresh install no longer re-imports what it has just created.
+    - **Windows that know where they belong.** A record's window — a patient's gallery or visits, a visit's labwork or chart, a supplier's orders — still floats on its own while no panel is open, which is what makes the app usable without a panel. Once a panel is on screen it no longer floats beside it: the record's own panel opens with the window you asked for in front, so two records are never shown as one floating window over the other.
+
 - Reliability & Bug Fixes
     - **Safe staff logout.** Logging out during authentication, pending staff store activation, or sync prevents late credentials and activation callbacks from reopening the session.
     - **Timely appointment caches.** Time-dependent appointment caches refresh when a visit time or day passes instead of remaining stale.

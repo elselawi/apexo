@@ -133,6 +133,7 @@ Relay: `https://apexo-notifications-relay.alisaleem.workers.dev`, endpoints `/pu
 | Reusing `activationGuid` as the push CLSID | Different identifiers |
 | `getToken(vapidKey: …)` on native | `vapidKey` is web-only |
 | `getToken()` on iOS/macOS before an APNs token | Throws — `waitForAPNSToken()` first, `onTokenRefresh` catches late tokens |
+| Migrating to `register()`/`onRegistered` | They hand out the FID, not an FCM token; the relay sends to tokens, so keep the deprecated `getToken()`/`onTokenRefresh` until it supports direct-send |
 | Expecting a Mac notification while the app is closed | macOS gets a silent push; iOS gets an alert |
 | `putDevice` fire-and-forget | It returns `true` only on `200 ok` |
 | Packaging with `msix:create` after patching | Regenerates and drops the push contract |

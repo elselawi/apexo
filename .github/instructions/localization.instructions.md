@@ -13,7 +13,7 @@ Custom dictionary localization — **not** `gen-l10n`/ARB. Ten locales: `en`, `a
 | `<code>.dart` | One per locale, `implements En` |
 | `locale.dart` | Runtime: `locale.s` (active `En`), `locale.isRtl`, `txt(key)`, the `Txt` widget, the `list` whose order defines `localSettings.selectedLocale` |
 | `intl_data.dart` | `intl` number/date symbols for locales `intl` lacks (`ku`) |
-| `flutter_delegates.dart` | `appLocalizationsDelegates` — Flutter framework delegates for locales Flutter lacks (`ku`) |
+| `flutter_delegates.dart` | `appLocalizationsDelegates` — Kurdish data for Flutter's and the decoupled `material_ui`/`cupertino_ui` Material/Cupertino localizations, plus Flutter's own data for every other locale |
 | `verify.dart` | CLI audit: key parity across locales, unused keys, dynamic `txt()` calls |
 
 ## Adding a string
@@ -52,7 +52,7 @@ Txt(txt("openPatientRecord").replaceAll("{name}", patient.title))
 1. Create `<code>.dart` with `class Xx implements En` (`$direction`, `$name`, `$code`, full `dictionary`).
 2. Register it in `locale.dart`'s `list` — appending keeps existing stored indices valid.
 3. If `intl` lacks the locale, register symbols in `intl_data.dart` (`ensureCustomIntlLocalesInitialized()` in `main.dart`) and add `initializeDateFormatting(code)`.
-4. If Flutter lacks the locale, add its delegates in `flutter_delegates.dart` (a `WidgetsLocalizations` with `textDirection` is what makes the app RTL; Material/Cupertino can point at the closest supported language).
+4. If Flutter lacks the locale, add its delegates in `flutter_delegates.dart` (a `WidgetsLocalizations` with `textDirection` is what makes the app RTL). `FluentApp` mixes two Material implementations (`flutter/material.dart` for the app's own widgets and `material_ui` inside `fluent_ui`), so a custom locale needs a delegate for each type: Flutter's `MaterialLocalizations`/`CupertinoLocalizations` and `material_ui`/`cupertino_ui`'s. Point them at the closest supported language.
 
 ## Common mistakes
 

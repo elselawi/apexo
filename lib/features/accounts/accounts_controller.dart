@@ -21,6 +21,17 @@ class _Accounts extends ObservablePersistingObject {
   final updating = ObservableState(Map<String, bool>.from({}));
   final deleting = ObservableState(Map<String, bool>.from({}));
 
+  static const _fleetManagedEmailSuffix = "@managed.local";
+
+  List<RecordModel> _withoutFleetManagedAccounts(List<RecordModel> records) {
+    return records
+        .where((record) => !record
+            .getStringValue("email")
+            .toLowerCase()
+            .endsWith(_fleetManagedEmailSuffix))
+        .toList();
+  }
+
   String _collName(bool isAdmin) {
     return isAdmin ? "_superusers" : "users";
   }
@@ -132,8 +143,9 @@ class _Accounts extends ObservablePersistingObject {
     }
     loading(true);
     try {
-      list(
-          await login.pb!.collection(profilesViewCollectionName).getFullList());
+      list(_withoutFleetManagedAccounts(await login.pb!
+          .collection(profilesViewCollectionName)
+          .getFullList()));
     } catch (e, s) {
       login.askForLoginAgain(e);
       logger("Error when getting full list of accounts service: $e", s);
@@ -170,9 +182,10 @@ class _Accounts extends ObservablePersistingObject {
 
   @override
   void fromJson(Map<String, dynamic> json) {
-    list(List<Map<String, dynamic>>.from(json["list"] as List<dynamic>)
-        .map((e) => RecordModel.fromJson(e))
-        .toList());
+    list(_withoutFleetManagedAccounts(
+        List<Map<String, dynamic>>.from(json["list"] as List<dynamic>)
+            .map((e) => RecordModel.fromJson(e))
+            .toList()));
   }
 
   @override

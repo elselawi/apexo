@@ -791,13 +791,19 @@ class Store<G extends Model> {
   }
 
   /// Syncs the local database with the remote database
-  Future<List<SyncResult>> synchronize() {
-    return _syncTask ??= _runSynchronization(_persistenceSession);
+  ///
+  /// [immediate] skips the debounce delay that coalesces rapid calls, for work
+  /// that must start as soon as it is requested (e.g. the login sync).
+  Future<List<SyncResult>> synchronize({bool immediate = false}) {
+    return _syncTask ??= _runSynchronization(_persistenceSession, immediate);
   }
 
-  Future<List<SyncResult>> _runSynchronization(int session) async {
+  Future<List<SyncResult>> _runSynchronization(
+      int session, bool immediate) async {
     try {
-      await Future<void>.delayed(Duration(milliseconds: debounceMS));
+      if (!immediate) {
+        await Future<void>.delayed(Duration(milliseconds: debounceMS));
+      }
       final operation = _persistence.run(() => _syncRequest(session));
       final result = await operation;
       if (session == _persistenceSession) lastRes = result;

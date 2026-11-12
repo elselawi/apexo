@@ -174,7 +174,9 @@ class SaveRemote {
           sort: "-updated",
           perPage: 1,
           filter: 'store="$storeName"',
-          fields: "updated");
+          fields: "updated",
+          // Only the newest row is needed; the total count is wasted work.
+          skipTotal: true);
       if (result.items.isEmpty) {
         return 0;
       }

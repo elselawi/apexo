@@ -12,6 +12,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/network.dart';
+import 'package:apexo/services/server_status.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/encode.dart';
 import 'package:apexo/services/notifications/core_notifications_initializer.dart';
@@ -40,6 +41,12 @@ class _LoginService extends ObservablePersistingObject {
   String adminCollectionId = "__UNDEFINED__";
   String pushNotificationsToken = "";
   bool didAskForLoginAgain = false;
+
+  /// The schema version this device applied to [schemaServer]. Persisted with
+  /// the session because it is what keeps the admin login from re-importing the
+  /// server schema on every start; a different server resets the hint.
+  String schemaServer = "";
+  int schemaVersionApplied = 0;
 
   // Tracks logout only: sync/reconnect callbacks stop when the user logs out.
   int _logoutRevision = 0;
@@ -305,26 +312,36 @@ class _LoginService extends ObservablePersistingObject {
           url = inputURL;
         }
 
-        // create database if it doesn't exist
+        // Device identification only needs the fresh credentials, so it overlaps
+        // the collection probes instead of waiting for them.
+        final identifyingDevice = Messaging.identifyDevice().then<void>(
+          (_) {},
+          onError: (Object e, StackTrace s) =>
+              logger("Could not initialize notifications: $e", s, 2),
+        );
+
+        // The probes only report what exists; they are independent, so they run
+        // together and verification costs one round trip instead of four.
+        final Set<String> missingCollections;
         try {
-          try {
-            loading("Verifying collections");
-            await pb!
-                .collection(dataCollectionName)
-                .getList(page: 1, perPage: 1);
-            if (stale()) return;
-            await pb!
-                .collection(publicCollectionName)
-                .getList(page: 1, perPage: 1);
-            if (stale()) return;
-          } on ClientException catch (e) {
-            if (e.statusCode != 404) rethrow;
-            if (stale()) return;
+          loading("Checking your server");
+          missingCollections = await _missingCollections(pb!);
+        } on _CollectionProbeFailure catch (e) {
+          throw Exception(_serverCollections.contains(e.collection)
+              ? "Error while creating the collection for the first time: ${e.error}"
+              : "Error while creating the profile collections: ${e.error}");
+        }
+        if (stale()) return;
+
+        // create database if it doesn't exist
+        var createdServerCollections = false;
+        try {
+          if (_serverCollections.any(missingCollections.contains)) {
             launch.isFirstLaunch(true);
             if (isAdmin) {
-              loading("Creating collections for the first time");
+              loading("Setting up your server");
               await initializePocketbase(pb!);
-              if (stale()) return;
+              createdServerCollections = true;
             } else {
               logger(
                 "ERROR: The first login must be done by an admin user. Please contact the admin to create the database.",
@@ -336,26 +353,16 @@ class _LoginService extends ObservablePersistingObject {
           throw Exception(
               "Error while creating the collection for the first time: $e");
         }
+        if (stale()) return;
 
         // create profiles if it doesn't exist
+        var createdProfiles = false;
         try {
-          try {
-            loading("Verifying profiles");
-            await pb!
-                .collection(profilesCollectionName)
-                .getList(page: 1, perPage: 1);
-            if (stale()) return;
-            await pb!
-                .collection(profilesViewCollectionName)
-                .getList(page: 1, perPage: 1);
-            if (stale()) return;
-          } on ClientException catch (e) {
-            if (e.statusCode != 404) rethrow;
-            if (stale()) return;
+          if (_profileCollections.any(missingCollections.contains)) {
             if (isAdmin) {
-              loading("Creating profiles collections");
+              loading("Setting up your team");
               await initializeProfiles(pb!);
-              if (stale()) return;
+              createdProfiles = true;
             } else {
               logger(
                 "ERROR: The profiles must be created with a logged-in admin, NOT a regular user!",
@@ -366,27 +373,37 @@ class _LoginService extends ObservablePersistingObject {
         } catch (e) {
           throw Exception("Error while creating the profile collections: $e");
         }
+        if (stale()) return;
 
         // Ships schema/rule updates to existing clinics: pure upsert that never
         // deletes, and a failure never blocks login.
         try {
           if (isAdmin) {
-            loading("Updating server schema");
-            await reconcileSchema(pb!, clinicServer: url);
+            if (createdServerCollections && createdProfiles) {
+              // Nothing to reconcile: the imports above are the current
+              // definitions, so record the version instead of re-importing.
+              await markSchemaApplied(url);
+            } else {
+              await reconcileSchema(
+                pb!,
+                clinicServer: url,
+                // Known from the last admin login on this device; skips both
+                // local reads and the server round trips when nothing changed.
+                appliedVersion: schemaServer == url ? schemaVersionApplied : 0,
+                onWork: () => loading("Finishing setup"),
+              );
+            }
             if (stale()) return;
+            schemaServer = url;
+            schemaVersionApplied = schemaVersion;
           }
         } catch (e, s) {
           logger("Schema reconcile failed (continuing login): $e", s);
         }
 
         // notifications relay
-        loading("Initializing notifications");
-        try {
-          await Messaging.identifyDevice();
-          if (stale()) return;
-        } catch (e, s) {
-          logger("Could not initialize notifications: $e", s, 2);
-        }
+        await identifyingDevice;
+        if (stale()) return;
       } catch (e, s) {
         if (stale()) return;
         askForLoginAgain(e);
@@ -422,20 +439,31 @@ class _LoginService extends ObservablePersistingObject {
     // Init online or offline so deferred pushes have a box when identifyDevice is skipped.
     deferredPush.init(inputURL);
 
-    for (var callback in activators.values) {
+    // Each activator opens its local storage first, then returns the remote
+    // stage. Local loads stay ordered; the remote stages are independent syncs
+    // and run together instead of queueing one behind the other.
+    final remoteStages = <Future<void> Function()>[];
+    for (final callback in activators.values) {
       if (stale()) return;
       try {
         final secondStage = await callback();
         if (stale()) return;
-        if (online && launch.isDemo == false) await secondStage();
-        if (stale()) return;
         notifyAndPersist(); // this would persist the data to the disk so we don't have to login again
+        if (online && launch.isDemo == false) remoteStages.add(secondStage);
       } catch (e, s) {
         if (stale()) return;
         logger("Error during running activators: $e", s);
       }
     }
 
+    if (stale()) return;
+    await Future.wait([
+      for (final stage in remoteStages)
+        Future<void>.sync(stage).catchError((Object e, StackTrace s) {
+          if (stale()) return;
+          logger("Error during running activators: $e", s);
+        }),
+    ]);
     if (stale()) return;
     didAskForLoginAgain = false;
     launch.open(Open.staff);
@@ -462,6 +490,10 @@ class _LoginService extends ObservablePersistingObject {
     // set `isFirstLaunch`; this session-start announcement is the second trigger.
     SessionEvents.started();
     if (stale()) return;
+    if (online && launch.isDemo == false) {
+      // A server may have something to announce; the login never waits for it.
+      unawaited(serverStatus.show(url, isCurrent: () => !stale()));
+    }
     return loginCtrl.finishedLoginProcess();
   }
 
@@ -480,6 +512,9 @@ class _LoginService extends ObservablePersistingObject {
         : savedPermissions;
     adminCollectionId =
         json["adminCollectionId"] as String? ?? adminCollectionId;
+    schemaServer = json["schemaServer"] as String? ?? schemaServer;
+    schemaVersionApplied =
+        json["schemaVersionApplied"] as int? ?? schemaVersionApplied;
     if (pushNotificationsToken.isEmpty) {
       pushNotificationsToken =
           json["pushNotificationsToken"] as String? ?? pushNotificationsToken;
@@ -514,8 +549,48 @@ class _LoginService extends ObservablePersistingObject {
     json["savedPermission"] = jsonEncode(savedPermissions);
     json["adminCollectionId"] = adminCollectionId;
     json["pushNotificationsToken"] = pushNotificationsToken;
+    json["schemaServer"] = schemaServer;
+    json["schemaVersionApplied"] = schemaVersionApplied;
     return json;
   }
+}
+
+/// The collections a login must find before the app can work.
+const _serverCollections = [dataCollectionName, publicCollectionName];
+const _profileCollections = [
+  profilesCollectionName,
+  profilesViewCollectionName,
+];
+
+/// A probe that failed for a reason other than a missing collection.
+class _CollectionProbeFailure implements Exception {
+  _CollectionProbeFailure(this.collection, this.error);
+  final String collection;
+  final Object error;
+}
+
+/// The collections the server answered 404 for, probed concurrently: a missing
+/// collection is a normal first-run state, anything else aborts the login with
+/// the failing collection named so the caller keeps its own error message.
+Future<Set<String>> _missingCollections(PocketBase client) async {
+  final names = [..._serverCollections, ..._profileCollections];
+  final probes = await Future.wait(names.map((name) async {
+    try {
+      await client
+          .collection(name)
+          .getList(page: 1, perPage: 1, skipTotal: true, fields: 'id');
+      return (collection: name, missing: false);
+    } catch (e) {
+      if (e is ClientException && e.statusCode == 404) {
+        return (collection: name, missing: true);
+      }
+      throw _CollectionProbeFailure(name, e);
+    }
+  }));
+  return {
+    for (final probe in probes)
+      if (probe.missing) probe.collection,
+  };
 }
 
 final login = _LoginService("main-state");

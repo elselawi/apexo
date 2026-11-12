@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/language_picker.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -191,7 +192,6 @@ class _LoginScreenState extends State<LoginScreen> {
         passwordCtrl.text,
         false,
       ),
-      style: greyButtonStyle,
       child: ButtonContent(
         FluentIcons.virtual_network,
         txt("proceedOffline"),
@@ -260,7 +260,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       await flyoutFocusFix(context);
       unawaited(_qrFlyoutController.showFlyout(builder: (ctx) {
-        return MenuFlyout(
+        return AppMenuFlyout(
           items: [
             if (suppGallery)
               MenuFlyoutItem(
@@ -272,7 +272,7 @@ class _LoginScreenState extends State<LoginScreen> {
             if (suppCamera)
               MenuFlyoutItem(
                 text: Txt(txt("camera")),
-                leading: const Icon(FluentIcons.camera),
+                leading: const Icon(WindowsIcons.camera),
                 onPressed: () => PatientSide.fromQR(
                     ImagePicker().pickImage(source: ImageSource.camera)),
               ),
@@ -293,28 +293,39 @@ class _LoginScreenState extends State<LoginScreen> {
       child: StreamBuilder(
           stream: loginCtrl.loadingIndicator.stream,
           builder: (context, _) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ...fields
-                    .map((field) => [field, const SizedBox(height: 5)])
-                    .expand((e) => e),
-                if (loginCtrl.loadingIndicator().isNotEmpty)
-                  _buildLoadingIndicator()
-                else
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: actions
-                          .map((e) => [e, const SizedBox(width: 5)])
-                          .expand((e) => e)
-                          .toList(),
-                    ),
+            final children = <Widget>[
+              ...fields
+                  .map((field) => [field, const SizedBox(height: 5)])
+                  .expand((e) => e),
+              if (loginCtrl.loadingIndicator().isNotEmpty)
+                _buildLoadingIndicator()
+              else
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: actions
+                        .map((e) => [e, const SizedBox(width: 5)])
+                        .expand((e) => e)
+                        .toList(),
                   ),
-              ],
+                ),
+            ];
+            return LayoutBuilder(
+              builder: (context, constraints) => SingleChildScrollView(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                      minHeight: constraints.maxHeight.isFinite
+                          ? constraints.maxHeight
+                          : 0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: children,
+                  ),
+                ),
+              ),
             );
           }),
     );

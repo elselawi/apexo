@@ -82,7 +82,9 @@ class StoreSessionBinding<G extends Model> {
       return () async {
         if (!isCurrent()) return;
         loginCtrl.loadingIndicator(loadingMessage);
-        await store.synchronize();
+        // Login syncs run alongside every other store's, so waiting out the
+        // mutation debounce only delays the session for no benefit.
+        await store.synchronize(immediate: true);
         if (!isCurrent()) return;
         callbacks.register(networkActions.syncCallbacks, name, syncAction ?? store.synchronize);
         final remote = store.remote;

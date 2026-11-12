@@ -5,6 +5,8 @@ export 'package:apexo/services/perm.dart';
 
 const shorteningServer = "https://p.apexo.app";
 
+const serverStatusOrigin = "https://servers.apexo.app";
+
 const String alphabet = "abcdefghijklmnopqrstuvwxyz0123456789";
 const String dataCollectionName = "data";
 const String publicCollectionName = "public";

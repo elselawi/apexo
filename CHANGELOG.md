@@ -1,7 +1,8 @@
-### ____LATEST____
+### ____0.17.1____
 
 - New Features & Improvements
     - **Notes and expenses, only if you want them.** Both screens are now optional features in **Settings › Optional features**, next to AI services and follow-ups. A clinic that never used them no longer gets them in the navigation, on the dashboard or in the archive; a clinic that already has notes or expenses keeps seeing them, because an upgrade never hides records it already holds — and turning either off keeps the data, so switching it back on brings everything back.
+    - **Follow-ups, if you want them.** A dentist can note the day a patient should come back — and what the visit is for — while writing a visit's notes or from the patient's own page. It is a reminder, not a booking: no time is taken, and on that day the patient appears in the calendar's due list so reception can call and book the real visit. Booking a visit on that day or later clears the follow-up. Switch it on in **Settings › Optional features**, which now holds the AI settings as well.
     - **Faster sign-in.** Signing in no longer waits its turn: server checks, notification registration and every store's first sync now run alongside each other instead of one after another, and the sync no longer waits out its edit debounce. On a high-latency connection the network part of signing in drops from roughly 3.6 s to 1 s.
     - **Quiet setup instead of server talk.** The step that used to say "Updating server schema" — and ran on every admin start — now only runs when the server actually needs an update, and the app remembers the version it applied so later starts skip it completely. The remaining messages say "Checking your server" and "Finishing setup" rather than talking about collections and schema, and a fresh install no longer re-imports what it has just created.
     - **Windows that know where they belong.** A record's window — a patient's gallery or visits, a visit's labwork or chart, a supplier's orders — still floats on its own while no panel is open, which is what makes the app usable without a panel. Once a panel is on screen it no longer floats beside it: the record's own panel opens with the window you asked for in front, so two records are never shown as one floating window over the other.
@@ -30,20 +31,6 @@
     - **Removing a labwork order sticks.** Removing a visit's labwork order is written immediately, like the labworks screen's row delete, instead of waiting for the visit's Save — and it is only offered to someone who may edit the visit.
     - **No surprise follow-up dates.** The patient's follow-up row no longer books a week ahead on a single click; it opens the day picker the visit panel uses, so the date is chosen rather than assumed.
     - **Only the logins you manage.** Accounts created by fleet provisioning (`@managed.local`) are no longer listed as staff or offered as operators, so the team list holds only the people the clinic manages.
-
-- UI & UX Polish
-    - **A Windows 11 surface.** The app is drawn the way Windows 11 draws: the desktop wallpaper blurred and tinted behind the window on Windows 11, a painted equivalent everywhere else, a title bar that names the screen, a glass navigation pane, acrylic dialogs, menus and floating windows, hairline separators instead of heavy shadows, and form fields and combo boxes that line up at one height.
-    - **One action at a time.** While a visit is on screen in a record's panel, that panel's own Save and Delete step aside and only Close stays, so the button in front of you always writes the record whose band is showing.
-    - **Clearer chart names.** The patient's chart is titled *Initial Exam Chart* and a visit's chart *Appointment Operative Details*; the patient's dock button keeps the familiar *Dental Chart*.
-    - **One close button.** A floating window's header now carries the standard close button — minimizing a panel's window back to its dock, closing a standalone one with the usual discard prompt — instead of separate Minimize and Close controls.
-    - **A calmer visit timeline.** The selected visit now shows its number, the track begins at the first visit instead of trailing off to the left, and the hover card stays open while the pointer moves onto it.
-
-### ____0.17.1____
-
-- New Features & Improvements
-    - **Follow-ups, if you want them.** A dentist can note the day a patient should come back — and what the visit is for — while writing a visit's notes or from the patient's own page. It is a reminder, not a booking: no time is taken, and on that day the patient appears in the calendar's due list so reception can call and book the real visit. Booking a visit on that day or later clears the follow-up. Switch it on in **Settings › Optional features**, which now holds the AI settings as well.
-
-- Reliability & Bug Fixes
     - **Readable save errors.** The "Saving failed" message was missing from every language, so error dialogs showed the raw key `savingFailed`. It is now translated in all ten supported languages.
     - **Avoided false duplicate file matches.** PocketBase-generated suffixes are now treated as the same stored file only when one name is the unsuffixed original; unrelated files that merely share the same basename no longer look like duplicates.
 
@@ -51,6 +38,11 @@
     - **Missing translations are caught.** The localization test now fails when code uses a translation key that no language defines, instead of only printing it. The audit scripts no longer report interpolated keys such as `bookingWeekday${n}` as unlocalized.
 
 - UI & UX Polish
+    - **A Windows 11 surface.** The app is drawn the way Windows 11 draws: the desktop wallpaper blurred and tinted behind the window on Windows 11, a painted equivalent everywhere else, a title bar that names the screen, a glass navigation pane, acrylic dialogs, menus and floating windows, hairline separators instead of heavy shadows, and form fields and combo boxes that line up at one height.
+    - **One action at a time.** While a visit is on screen in a record's panel, that panel's own Save and Delete step aside and only Close stays, so the button in front of you always writes the record whose band is showing.
+    - **Clearer chart names.** The patient's chart is titled *Initial Exam Chart* and a visit's chart *Appointment Operative Details*; the patient's dock button keeps the familiar *Dental Chart*.
+    - **One close button.** A floating window's header now carries the standard close button — minimizing a panel's window back to its dock, closing a standalone one with the usual discard prompt — instead of separate Minimize and Close controls.
+    - **A calmer visit timeline.** The selected visit now shows its number, the track begins at the first visit instead of trailing off to the left, and the hover card stays open while the pointer moves onto it.
     - redesigned settings screen.
     - Redesigned insights, with new charts, new performance and new features.
 

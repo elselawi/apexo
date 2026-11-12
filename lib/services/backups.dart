@@ -70,23 +70,21 @@ class _Backups {
   }
 
   Future<void> pickAndUpload() async {
-    final filePickerRes = await FilePicker.pickFiles(
-      allowMultiple: false,
+    final file = await FilePicker.pickFile(
       allowedExtensions: ["zip"],
-      withReadStream: true,
       type: FileType.custom,
     );
-    if (filePickerRes == null) {
+    if (file == null) {
       return;
     }
-    if (filePickerRes.files.isEmpty) {
+    final length = file.lengthSync() ?? await file.length();
+    if (length == null) {
       return;
     }
-    final file = filePickerRes.files.first;
     final multipartFile = MultipartFile(
       "file",
-      file.readStream!,
-      file.size,
+      file.readAsByteStream(),
+      length,
       filename:
           "uploaded-${DateTime.now().millisecondsSinceEpoch}-${file.name}",
       contentType: MediaType("application", "zip"),

@@ -94,6 +94,11 @@ class FirebaseMessagingService {
   Future<void> _handlePushNotificationsToken() async {
     // Subscribed before fetching: FCM also emits the first token on this stream,
     // and one arriving while APNs still registers must not be missed.
+    //
+    // firebase_messaging 17 deprecates token access in favour of the Firebase
+    // installation id (`register()`/`onRegistered`), which the relay cannot
+    // address yet, so the token stays until the relay supports direct-send.
+    // ignore: deprecated_member_use
     FirebaseMessaging.instance.onTokenRefresh.listen((newFCMToken) {
       if (newFCMToken.isEmpty) return;
       final previousToken = login.pushNotificationsToken;
@@ -119,6 +124,7 @@ class FirebaseMessagingService {
     // and the native plugins ignore it.
     final String? token;
     try {
+      // ignore: deprecated_member_use
       token = await FirebaseMessaging.instance.getToken();
     } catch (error) {
       logger('Could not read the FCM token: $error', StackTrace.current, 2);

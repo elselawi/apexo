@@ -478,7 +478,8 @@ void _ensureComNamespace(XmlElement package) {
   final hasCom = package.attributes.any((attribute) =>
       attribute.name.prefix == 'xmlns' && attribute.name.local == 'com');
   if (!hasCom) {
-    package.attributes.add(XmlAttribute(XmlName('xmlns:com'), comNamespace));
+    package.attributes.add(XmlAttribute(
+        const XmlName.parts('com', prefix: 'xmlns'), comNamespace));
   }
 
   final ignorable = package.attributes
@@ -493,8 +494,8 @@ void _ensureComNamespace(XmlElement package) {
     if (ignorable != null) {
       ignorable.value = names.join(' ');
     } else {
-      package.attributes
-          .add(XmlAttribute(XmlName('IgnorableNamespaces'), names.join(' ')));
+      package.attributes.add(XmlAttribute(
+          const XmlName.parts('IgnorableNamespaces'), names.join(' ')));
     }
   }
 }
@@ -504,7 +505,7 @@ void _ensureRuntimeDependency(XmlElement package) {
       .where((element) => element.name.local == 'Dependencies')
       .firstOrNull;
   if (dependencies == null) {
-    dependencies = XmlElement(XmlName('Dependencies'));
+    dependencies = XmlElement(const XmlName.parts('Dependencies'));
     package.children.add(dependencies);
   }
   _ensureRuntimeDependencyIn(dependencies);
@@ -558,10 +559,12 @@ void _ensureRuntimeDependencyIn(XmlElement dependencies) {
     return;
   }
 
-  dependencies.children.add(XmlElement(XmlName('PackageDependency'), [
-    XmlAttribute(XmlName('Name'), runtimeDependencyName),
-    XmlAttribute(XmlName('MinVersion'), runtimeDependencyMinVersion),
-    XmlAttribute(XmlName('Publisher'), runtimeDependencyPublisher),
+  dependencies.children
+      .add(XmlElement(const XmlName.parts('PackageDependency'), [
+    XmlAttribute(const XmlName.parts('Name'), runtimeDependencyName),
+    XmlAttribute(
+        const XmlName.parts('MinVersion'), runtimeDependencyMinVersion),
+    XmlAttribute(const XmlName.parts('Publisher'), runtimeDependencyPublisher),
   ]));
 }
 
@@ -670,7 +673,7 @@ XmlElement _ensureExtensions(XmlElement application) {
   if (existing != null) {
     return existing;
   }
-  final created = XmlElement(XmlName('Extensions'));
+  final created = XmlElement(const XmlName.parts('Extensions'));
   application.children.add(created);
   return created;
 }
@@ -737,29 +740,31 @@ void _patchPushActivator({
 
   var comServer = servers.isEmpty ? null : servers.first.parent;
   if (comServer == null) {
-    final extension = XmlElement(XmlName('com:Extension'), [
-      XmlAttribute(XmlName('Category'), 'windows.comServer'),
+    final extension =
+        XmlElement(const XmlName.parts('Extension', prefix: 'com'), [
+      XmlAttribute(const XmlName.parts('Category'), 'windows.comServer'),
     ]);
-    comServer = XmlElement(XmlName('com:ComServer'));
+    comServer = XmlElement(const XmlName.parts('ComServer', prefix: 'com'));
     extension.children.add(comServer);
     extensions.children.add(extension);
   }
 
-  final server = XmlElement(XmlName('com:ExeServer'), [
-    XmlAttribute(XmlName('Executable'), executable),
+  final server = XmlElement(const XmlName.parts('ExeServer', prefix: 'com'), [
+    XmlAttribute(const XmlName.parts('Executable'), executable),
     XmlAttribute(
-      XmlName('DisplayName'),
+      const XmlName.parts('DisplayName'),
       _attribute(application, 'DisplayName') ?? 'Apexo',
     ),
-    XmlAttribute(XmlName('Arguments'), pushActivationArguments),
+    XmlAttribute(const XmlName.parts('Arguments'), pushActivationArguments),
   ]);
   server.children.add(_pushClass(appId));
   comServer.children.add(server);
 }
 
-XmlElement _pushClass(String appId) => XmlElement(XmlName('com:Class'), [
-      XmlAttribute(XmlName('Id'), appId),
-      XmlAttribute(XmlName('DisplayName'), 'Windows App SDK Push'),
+XmlElement _pushClass(String appId) =>
+    XmlElement(const XmlName.parts('Class', prefix: 'com'), [
+      XmlAttribute(const XmlName.parts('Id'), appId),
+      XmlAttribute(const XmlName.parts('DisplayName'), 'Windows App SDK Push'),
     ]);
 
 Iterable<XmlElement> _comServers(XmlElement application) sync* {

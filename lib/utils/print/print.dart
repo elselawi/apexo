@@ -25,7 +25,7 @@ Future<void> printing(BuildContext context, String header, pw.Widget content,
               // Title
               pw.Text(
                 header,
-                style: pw.TextStyle(
+                style: const pw.TextStyle(
                   fontSize: 16,
                   fontWeight: pw.FontWeight.bold,
                 ),

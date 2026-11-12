@@ -10,12 +10,14 @@ Future<String?> saveFileUtility({
 }) async {
   String? outputFilePath;
   try {
-    outputFilePath = await FilePicker.saveFile(
+    final saved = await FilePicker.saveFile(
       dialogTitle: 'Save Photo',
       fileName: fileName,
       bytes: bytes,
-      lockParentWindow: true,
     );
+    outputFilePath = saved == null
+        ? null
+        : (saved.scheme == 'file' ? saved.toFilePath() : saved.toString());
     if (bContext.mounted && outputFilePath != null) {
       unawaited(displayInfoBar(
         bContext,

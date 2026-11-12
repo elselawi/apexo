@@ -450,6 +450,7 @@ class _FakePrintingPlatform extends Mock
     bool usePrinterSettings,
     OutputType outputType,
     bool forceCustomPrintPaper,
+    bool windowsModernDialog,
   ) async {
     calls++;
     pdf = await onLayout(format);

@@ -8,6 +8,7 @@ import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/notifications/static_notifications.dart';
 import 'package:apexo/services/patient_side.dart';
+import 'package:apexo/services/backdrop.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../../services/login.dart';
@@ -151,6 +152,9 @@ class _NetworkActions {
                   ? ThemeMode.light
                   : ThemeMode.dark;
           localSettings.notifyAndPersist();
+          unawaited(Backdrop.setDark(
+            localSettings.selectedTheme == ThemeMode.dark,
+          ));
         },
         animate: false,
         activeColor: Colors.transparent,

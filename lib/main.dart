@@ -5,6 +5,8 @@ import 'package:apexo/core/reactive/observable_base.dart';
 import 'package:apexo/features/appointments/appointment_sessions.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/services/file_links.dart';
+import 'package:apexo/services/backdrop.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/session_events.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
@@ -46,6 +48,15 @@ void main() async {
 
   // initialize stores
   initializeStores();
+
+  // The window is Mica on Windows; Dart paints the stand-in anywhere else, so
+  // this has to settle before the first frame.
+  await Backdrop.initialize(
+    dark: localSettings.selectedTheme == ThemeMode.dark,
+  );
+  unawaited(localSettings.ready.then((_) => Backdrop.setDark(
+        localSettings.selectedTheme == ThemeMode.dark,
+      )));
 
   initializeBooking();
 

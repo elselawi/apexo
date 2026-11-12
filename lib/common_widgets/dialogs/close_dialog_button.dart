@@ -1,4 +1,3 @@
-import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -11,8 +10,7 @@ class CloseButtonInDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FilledButton(
-      style: greyButtonStyle,
+    return Button(
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [

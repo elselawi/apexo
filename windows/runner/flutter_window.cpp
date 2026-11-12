@@ -2,6 +2,7 @@
 
 #include <optional>
 
+#include "backdrop.h"
 #include "flutter/generated_plugin_registrant.h"
 #include "push_notifications.h"
 
@@ -27,6 +28,41 @@ bool FlutterWindow::OnCreate() {
   }
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
+
+  // DWM composes the backdrop before the first frame; a refusal here is what
+  // tells Dart to paint its own stand-in material instead.
+  const bool mica = apexo::ApplyMicaBackdrop(GetHandle(), /*dark=*/false);
+
+  backdrop_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "apexo/backdrop",
+          &flutter::StandardMethodCodec::GetInstance());
+  backdrop_channel_->SetMethodCallHandler(
+      [this, mica](const flutter::MethodCall<flutter::EncodableValue>& call,
+                   std::unique_ptr<
+                       flutter::MethodResult<flutter::EncodableValue>>
+                       result) {
+        if (call.method_name() == "isNativeMica") {
+          result->Success(flutter::EncodableValue(mica));
+          return;
+        }
+        if (call.method_name() == "setDark") {
+          bool dark = false;
+          if (const auto* arguments =
+                  std::get_if<flutter::EncodableMap>(call.arguments())) {
+            const auto found = arguments->find(flutter::EncodableValue("dark"));
+            if (found != arguments->end()) {
+              if (const auto* value = std::get_if<bool>(&found->second)) {
+                dark = *value;
+              }
+            }
+          }
+          apexo::SetBackdropDark(GetHandle(), dark);
+          result->Success();
+          return;
+        }
+        result->NotImplemented();
+      });
 
   apexo::PushNotifications& push = apexo::PushNotifications::Instance();
   push.Attach(flutter_controller_->engine()->messenger());
@@ -60,6 +96,7 @@ void FlutterWindow::OnDestroy() {
   if (flutter_controller_) {
     push.Shutdown();
     push.SetWindow(nullptr);
+    backdrop_channel_ = nullptr;
     flutter_controller_ = nullptr;
   }
 

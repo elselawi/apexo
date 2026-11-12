@@ -1,14 +1,15 @@
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-const greyButtonStyle = ButtonStyle(
-  backgroundColor: WidgetStatePropertyAll(Colors.grey),
-  foregroundColor: WidgetStatePropertyAll(Colors.white),
-);
-
+/// A button painted in one flat colour, for the rare action that must not look
+/// like the WinUI standard button. Otherwise prefer [Button], [FilledButton] and
+/// [IconButton]: their own styles are already the WinUI ones.
 ButtonStyle filledButtonStyle(Color color) => ButtonStyle(
       backgroundColor: WidgetStatePropertyAll(color),
       foregroundColor: const WidgetStatePropertyAll(Colors.white),
+      shape: WidgetStatePropertyAll(
+        RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+      ),
     );
 
 class ButtonContent extends StatelessWidget {

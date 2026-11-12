@@ -1,4 +1,5 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -17,18 +18,17 @@ class ScreenCommandBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final materials = FluentMaterials.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            offset: const Offset(0.0, 6.0),
-            blurRadius: 30.0,
-            spreadRadius: 5.0,
-            color: Colors.grey.withAlpha(50),
-          )
-        ],
-        color: FluentTheme.of(context).menuColor,
+        color: materials.glassTint,
+        border: Border(
+          bottom: BorderSide(
+            color: materials.divider,
+            width: FluentMaterials.hairlineWidth,
+          ),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -51,28 +51,26 @@ class ScreenCommandBar extends StatelessWidget {
   }
 }
 
-BoxDecoration topBarDecoration(BuildContext context, Color color) {
+BoxDecoration topBarDecoration(BuildContext context) {
   return BoxDecoration(
-      border: BorderDirectional(
-        bottom: BorderSide(
-            color:
-                FluentTheme.of(context).inactiveColor.withValues(alpha: 0.1)),
+    gradient: LinearGradient(colors: [
+      FluentMaterials.of(context).glassTint.withAlpha(0),
+      FluentMaterials.of(context).glassTint,
+    ], begin: AlignmentGeometry.topCenter, end: AlignmentGeometry.bottomCenter),
+    border: BorderDirectional(
+      bottom: BorderSide(
+        color: FluentMaterials.of(context).divider,
+        width: FluentMaterials.hairlineWidth,
       ),
-      gradient: LinearGradient(
-        colors: [
-          Colors.transparent,
-          color.withAlpha(30),
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      ));
+    ),
+  );
 }
 
 Border listDividerBorder(BuildContext context) {
   return Border(
     bottom: BorderSide(
-      color: FluentTheme.of(context).inactiveColor.withValues(alpha: 0.1),
-      width: 1,
+      color: FluentMaterials.of(context).divider,
+      width: FluentMaterials.hairlineWidth,
     ),
   );
 }
@@ -88,34 +86,41 @@ class TopSearch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final materials = FluentMaterials.of(context);
     return Semantics(
       key: WK.listSearch,
       container: true,
       textField: true,
       child: CupertinoTextField(
         decoration: BoxDecoration(
-            color: Colors.transparent,
-            border: Border.all(color: Colors.transparent)),
+          border: Border.all(color: materials.stroke),
+          color: materials.glassTint,
+          borderRadius: BorderRadius.circular(50),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         placeholder: txt("searchPlaceholder"),
-        placeholderStyle: TextStyle(
-            fontSize: 18,
-            color: FluentTheme.of(context).inactiveColor.withAlpha(140)),
-        prefix: const Text(
-          "🔍",
-          style: TextStyle(fontSize: 18),
+        prefix: Padding(
+          padding: const EdgeInsetsDirectional.only(start: 10, end: 6),
+          child: Icon(
+            WindowsIcons.search,
+            color: materials.textSecondary,
+          ),
         ),
         controller: controller,
         onChanged: (text) => setState(() {}),
         suffix: controller.text.isNotEmpty
-            ? IconButton(
-                icon: const Icon(
-                  WindowsIcons.clear,
-                  size: 20,
-                ),
-                onPressed: () {
-                  controller.clear();
-                  setState(() {});
-                })
+            ? Padding(
+                padding: const EdgeInsetsDirectional.only(end: 5),
+                child: IconButton(
+                    icon: const Icon(
+                      WindowsIcons.clear,
+                      size: 14,
+                    ),
+                    onPressed: () {
+                      controller.clear();
+                      setState(() {});
+                    }),
+              )
             : null,
       ),
     );

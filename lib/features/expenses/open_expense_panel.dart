@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/ui/workspace/delegated_panel.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
@@ -35,12 +36,13 @@ const String expenseSummaryWindowId = 'summary';
 Future<String?> openExpenses(
     List<Expense> orders, String supplierName, String? supplierId,
     [bool? singleArchived, ExpenseWindow? window]) async {
-  final itemId = supplierId ?? supplierName;
-  // An open panel owns this supplier's windows: a second editor would give the
-  // same orders two drafts, and whichever saved last would win.
-  final panelIsOpen =
-      PanelsManager.active().any((panel) => panel.itemId == itemId);
-  if (!panelIsOpen && window != null && window != ExpenseWindow.order) {
+  // A named window opens in the supplier's own panel, shown by default, whenever
+  // a panel is on screen: a second editor would be a second draft, and beside
+  // another record's panel a floating one is a second surface. Only with no panel
+  // does it stand on its own.
+  if (PanelsManager.allowsStandaloneWindows &&
+      window != null &&
+      window != ExpenseWindow.order) {
     _showOrdersWindow(orders, supplierId, window, supplierName: supplierName);
     return null;
   }
@@ -105,8 +107,7 @@ Future<String?> _openSupplierPanel(
     accent: PanelAccents.orders,
     unicodeSymbol: "📁",
     icon: WindowsIcons.folder,
-    recordTitle: () async =>
-        _supplierNameOf(supplierId, supplierName),
+    recordTitle: () async => _supplierNameOf(supplierId, supplierName),
     liveTitle: () => _supplierNameOf(supplierId, supplierName),
     archiveButtonReplacement: singleArchived == true
         ? DeleteButton(
@@ -331,9 +332,6 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
               if (widget.singleArchived != true)
                 Container(
                   decoration: BoxDecoration(
-                    color: FluentTheme.of(context)
-                        .resources
-                        .solidBackgroundFillColorBase,
                     border: Border(
                       bottom: BorderSide(
                           color: FluentTheme.of(context)
@@ -363,7 +361,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                                   await flyoutFocusFix(context);
                                   unawaited(pickSupplierForAdditionFlyout
                                       .showFlyout(builder: (ctx) {
-                                    return MenuFlyout(
+                                    return AppMenuFlyout(
                                       items: expenses.suppliers
                                           .map((e) => MenuFlyoutItem(
                                                 text: Text(e.supplierName),
@@ -404,8 +402,7 @@ class _SupplierDetailsState extends State<_SupplierDetails> {
                             order: order,
                             key: ValueKey(order.id),
                             justCreated: order.id == justCreatedId,
-                            onSaved: () =>
-                                widget.onOrderSaved?.call(order),
+                            onSaved: () => widget.onOrderSaved?.call(order),
                           );
                         },
                       ),

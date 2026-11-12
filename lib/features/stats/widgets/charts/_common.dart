@@ -32,18 +32,30 @@ class ChartEmptyState extends StatelessWidget {
   const ChartEmptyState({super.key});
 
   @override
-  Widget build(BuildContext context) => Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Icon(FluentIcons.chart,
-              size: 28, color: FluentTheme.of(context).inactiveColor),
-          const SizedBox(height: 12),
-          Txt(txt('insightsNoData')),
-          const SizedBox(height: 4),
-          Txt(txt('insightsNoDataHint'),
-              textAlign: TextAlign.center,
-              style: FluentTheme.of(context).typography.caption),
-        ]),
-      );
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    return LayoutBuilder(
+      builder: (context, constraints) => Center(
+        // A narrow card can leave the chart slot shorter than the empty state,
+        // so the icon and hint step aside before the label is scaled down.
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            if (constraints.maxHeight >= 96) ...[
+              Icon(FluentIcons.chart, size: 28, color: theme.inactiveColor),
+              const SizedBox(height: 12),
+            ],
+            Txt(txt('insightsNoData')),
+            if (constraints.maxHeight >= 96) ...[
+              const SizedBox(height: 4),
+              Txt(txt('insightsNoDataHint'),
+                  textAlign: TextAlign.center, style: theme.typography.caption),
+            ],
+          ]),
+        ),
+      ),
+    );
+  }
 }
 
 FlTitlesData titles(List<String> labels, BuildContext context) {

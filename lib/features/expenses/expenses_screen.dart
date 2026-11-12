@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -78,7 +80,7 @@ class _SuppliersListState extends State<SuppliersList> {
             ),
             LayoutBuilder(
               builder: (context, constraints) => Container(
-                decoration: topBarDecoration(context, Colors.grey),
+                decoration: topBarDecoration(context),
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(8),
                   scrollDirection: Axis.horizontal,
@@ -173,7 +175,7 @@ class _SuppliersListState extends State<SuppliersList> {
 
                 await flyoutFocusFix(context);
                 unawaited(_scanFlyout.showFlyout(
-                    builder: (ctx) => MenuFlyout(
+                    builder: (ctx) => AppMenuFlyout(
                           items: [
                             if (suppGallery)
                               MenuFlyoutItem(
@@ -185,7 +187,7 @@ class _SuppliersListState extends State<SuppliersList> {
                             if (suppCamera)
                               MenuFlyoutItem(
                                 text: Txt(txt("camera")),
-                                leading: const Icon(FluentIcons.camera),
+                                leading: const Icon(WindowsIcons.camera),
                                 onPressed: () =>
                                     _scanReceipt(context, ImageSource.camera),
                               ),
@@ -298,8 +300,12 @@ class _SupplierListTileState extends State<SupplierListTile> {
         margin: EdgeInsets.zero,
         contentPadding: const EdgeInsetsGeometry.all(8),
         shape: listDividerBorder(context),
-        tileColor: WidgetStatePropertyAll(
-            FluentTheme.of(context).resources.solidBackgroundFillColorBase),
+        tileColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.hovered)) {
+            return FluentMaterials.of(context).hover;
+          }
+          return Colors.transparent;
+        }),
         leading: _buildContextMenuButton(context),
         trailing: _DuePaymentAmount(due: due),
         title: _buildSupplierName(orders, captionStyle),
@@ -338,7 +344,7 @@ class _SupplierListTileState extends State<SupplierListTile> {
           onPressed: () async {
             await flyoutFocusFix(context);
             unawaited(menuController.showFlyout(builder: (context) {
-              return MenuFlyout(
+              return AppMenuFlyout(
                 items: _menuItems(menuController),
               );
             }));

@@ -206,11 +206,11 @@ class _PendingImportCardState extends State<_PendingImportCard> {
       shape: listDividerBorder(context),
       tileColor: WidgetStateColor.resolveWith((states) {
         if (widget.selected) {
-          return Colors.blue.withAlpha(20);
+          return FluentMaterials.of(context).selected;
         } else if (states.contains(WidgetState.hovered)) {
-          return theme.resources.controlAltFillColorTertiary;
+          return FluentMaterials.of(context).hover;
         }
-        return theme.resources.solidBackgroundFillColorBase;
+        return Colors.transparent;
       }),
       title: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -257,8 +257,8 @@ class _PendingImportCardState extends State<_PendingImportCard> {
                   Expander(
                       headerShape: (_) => Border.all(color: Colors.transparent),
                       contentPadding: EdgeInsets.zero,
-                      headerBackgroundColor: WidgetStatePropertyAll(
-                          theme.resources.solidBackgroundFillColorBase),
+                      headerBackgroundColor: WidgetStateColor.resolveWith(
+                          (_) => theme.resources.solidBackgroundFillColorBase),
                       header: Row(
                         spacing: 5,
                         children: [

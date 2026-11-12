@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
@@ -87,7 +88,7 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
         ),
         Builder(builder: (context) {
           return Container(
-            decoration: topBarDecoration(context, Colors.grey),
+            decoration: topBarDecoration(context),
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(8),
               scrollDirection: Axis.horizontal,
@@ -188,8 +189,8 @@ class _NotesKanBanBoardState extends State<NotesKanBanBoard> {
     );
   }
 
-  ComboBox<String> _buildAccountsFilter() {
-    return ComboBox<String>(
+  AppComboBox<String> _buildAccountsFilter() {
+    return AppComboBox<String>(
       style: const TextStyle(overflow: TextOverflow.ellipsis),
       items: [
         ComboBoxItem<String>(

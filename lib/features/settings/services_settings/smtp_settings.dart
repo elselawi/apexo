@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
@@ -7,6 +8,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
@@ -252,7 +254,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           children: [
                             Txt(txt("smtp_host")),
                             const SizedBox(height: 5),
-                            TextBox(
+                            CupertinoTextField(
                               key: WK.serviceField('smtp_host'),
                               controller: hostController,
                               placeholder: "smtp.example.com",
@@ -265,7 +267,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           children: [
                             Txt(txt("smtp_port")),
                             const SizedBox(height: 5),
-                            TextBox(
+                            CupertinoTextField(
                               key: WK.serviceField('smtp_port'),
                               controller: portController,
                               placeholder: "587",
@@ -282,7 +284,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                             ValueListenableBuilder<bool>(
                               valueListenable: tlsEnabled,
                               builder: (context, value, _) {
-                                return ComboBox<String>(
+                                return AppComboBox<String>(
                                   value: value ? "always" : "auto",
                                   isExpanded: true,
                                   items: [
@@ -314,7 +316,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                         children: [
                           Txt(txt("smtp_username")),
                           const SizedBox(height: 5),
-                          TextBox(
+                          CupertinoTextField(
                             controller: usernameController,
                             placeholder: "user@example.com",
                           ),
@@ -329,7 +331,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                           ValueListenableBuilder<bool>(
                             valueListenable: showPassword,
                             builder: (context, show, _) {
-                              return TextBox(
+                              return CupertinoTextField(
                                 key: WK.serviceField('smtp_password'),
                                 controller: passwordController,
                                 placeholder: txt("leaveBlankToKeepUnchanged"),
@@ -375,7 +377,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                         children: [
                           Txt(txt("smtp_senderName")),
                           const SizedBox(height: 5),
-                          TextBox(
+                          CupertinoTextField(
                             controller: senderNameController,
                             placeholder: "My Clinic",
                           ),
@@ -387,7 +389,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                         children: [
                           Txt(txt("smtp_senderEmail")),
                           const SizedBox(height: 5),
-                          TextBox(
+                          CupertinoTextField(
                             controller: senderEmailController,
                             placeholder: "noreply@example.com",
                           ),
@@ -398,7 +400,7 @@ class _SmtpSettingsState extends State<SmtpSettings> {
                     const SizedBox(height: 15),
                     Txt(txt("smtp_localName")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: localNameController,
                       placeholder: "mine.apexo.app",
                     ),

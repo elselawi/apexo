@@ -9,7 +9,7 @@ import 'package:apexo/utils/hijri_utils.dart';
 import 'package:apexo/utils/jalali_utils.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/material.dart' show showDateRangePicker;
+import 'package:flutter/material.dart' show DateTimeRange, showDateRangePicker;
 import 'package:table_calendar/table_calendar.dart';
 
 enum StatsInterval { days, weeks, months, quarters, years }
@@ -45,7 +45,7 @@ class _ChartsController {
     return chartsCtrl.interval().name;
   }
 
-  void _nullifyCache(_) {
+  void _nullifyCache(Object? _) {
     _filteredAppointments = null;
     _filteredReceipts = null;
   }

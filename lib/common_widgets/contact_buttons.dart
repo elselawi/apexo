@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
@@ -193,7 +194,7 @@ class PhoneNumberButtonState extends State<PhoneNumberButton> {
         dismissOnPointerMoveAway: false,
         dismissWithEsc: true,
         builder: (ctx) {
-          return MenuFlyout(
+          return AppMenuFlyout(
               items: singlePhoneNumber
                   ? [
                       MenuFlyoutItem(

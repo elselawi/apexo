@@ -48,7 +48,7 @@ class _PatientPickerDialogState extends State<_PatientPickerDialog> {
       constraints: const BoxConstraints(maxWidth: 550, maxHeight: 550),
       content: Column(
         children: [
-          TextBox(
+          CupertinoTextField(
             placeholder: txt("dicomSearchPatient"),
             onChanged: _search,
             autofocus: true,

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
@@ -1083,7 +1084,7 @@ class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
         onPressed: () async {
           await flyoutFocusFix(context);
           unawaited(_assigningFlyoutCtrl.showFlyout(
-              builder: (context) => MenuFlyout(items: _assigneeItems())));
+              builder: (context) => AppMenuFlyout(items: _assigneeItems())));
         },
       ),
     );

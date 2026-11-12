@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../services/login.dart';
@@ -20,7 +21,7 @@ class CurrentAccount extends StatelessWidget {
         decoration: BoxDecoration(
             border: BoxBorder.fromLTRB(
                 bottom: BorderSide(
-                    color: FluentTheme.of(context).inactiveBackgroundColor))),
+                    color: FluentMaterials.of(context).divider))),
         padding: const EdgeInsets.all(8.0),
         child: Row(
           mainAxisSize: MainAxisSize.max,

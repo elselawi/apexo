@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
@@ -10,7 +11,7 @@ class LanguagePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ComboBox<String>(
+    return AppComboBox<String>(
       key: WK.loginLangComboBox,
       value: localSettings.selectedLocale.toString(),
       items: locale.list

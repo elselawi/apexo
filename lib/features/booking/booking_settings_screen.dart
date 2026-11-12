@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/features/booking/booking_api.dart';
 import 'package:apexo/features/booking/booking_clinic_service.dart';
@@ -763,7 +764,7 @@ class _BookingSettingsCardState extends State<BookingSettingsCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ComboBox<String>(
+            AppComboBox<String>(
               isExpanded: true,
               value: selected,
               items: [

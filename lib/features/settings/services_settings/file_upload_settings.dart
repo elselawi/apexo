@@ -4,6 +4,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import '../applies_to_indicator.dart';
 import '../settings_card.dart';
@@ -136,7 +137,7 @@ class _FileUploadSettingsState extends State<FileUploadSettings> {
         children: [
           Semantics(
             label: txt("file_upload_max_size"),
-            child: TextBox(
+            child: CupertinoTextField(
               key: WK.serviceField('file_upload_maxSize'),
               controller: _maxSizeController,
               placeholder: "15",

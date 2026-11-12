@@ -1,8 +1,13 @@
 import 'dart:async';
+import 'package:apexo/app/nav_badges.dart';
+import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
+import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -14,7 +19,7 @@ class BottomNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final resources = FluentTheme.of(context).resources;
+    final materials = FluentMaterials.of(context);
     return Positioned(
       key: WK.bottomNav,
       bottom: 0,
@@ -22,88 +27,80 @@ class BottomNavBar extends StatelessWidget {
       width: MediaQuery.of(context).size.width,
       child: Container(
         decoration: BoxDecoration(
-          color: resources.solidBackgroundFillColorSecondary,
-          boxShadow: [
-            BoxShadow(
-              offset: const Offset(0, -2),
-              blurRadius: 12,
-              color: resources.smokeFillColorDefault,
-            ),
-          ],
+          color: materials.acrylicBar,
           border: Border(
             top: BorderSide(
-              color: resources.dividerStrokeColorDefault,
-              width: 0.5,
+              color: materials.divider,
+              width: FluentMaterials.hairlineWidth,
             ),
           ),
         ),
-        child: StreamBuilder(
-          stream: routes.currentRoute.stream,
-          builder: (context, snapshot) {
-            // Booking appears only once discovery finds a clinic, which can
-            // happen after the shell is already on screen.
-            return StreamBuilder(
-              stream: booking.ready.stream,
-              builder: (context, _) => LayoutBuilder(
-                builder: (context, constraints) {
-                  final availableWidth = constraints.maxWidth;
-                  final offered = routes.visibleRoutes;
-                  final int totalRoutes = offered.length;
+        child: MStreamBuilder<dynamic>(
+          streams: [
+            routes.currentRoute.stream,
+            // Booking appears only once discovery finds a clinic, and an
+            // optional feature once its setting syncs; either can land late.
+            booking.ready.stream,
+            ...optionalFeatureStreams,
+          ],
+          builder: (context, _) => LayoutBuilder(
+            builder: (context, constraints) {
+              final availableWidth = constraints.maxWidth;
+              final offered = routes.visibleRoutes;
+              final int totalRoutes = offered.length;
 
-                  // Make it more compact to fit slightly more items
-                  const double minItemWidth = 52.0;
-                  final int maxVisibleItems =
-                      (availableWidth / minItemWidth).floor();
+              // Make it more compact to fit slightly more items
+              const double minItemWidth = 52.0;
+              final int maxVisibleItems =
+                  (availableWidth / minItemWidth).floor();
 
-                  var visibleRoutes = offered;
-                  var overflowRoutes = <AppRoute>[];
-                  bool showMore = false;
+              var visibleRoutes = offered;
+              var overflowRoutes = <AppRoute>[];
+              bool showMore = false;
 
-                  if (maxVisibleItems < totalRoutes) {
-                    showMore = true;
-                    int visibleCount =
-                        maxVisibleItems - 1; // Leave space for 'More'
-                    if (visibleCount < 1) visibleCount = 1; // Sanity check
+              if (maxVisibleItems < totalRoutes) {
+                showMore = true;
+                int visibleCount =
+                    maxVisibleItems - 1; // Leave space for 'More'
+                if (visibleCount < 1) visibleCount = 1; // Sanity check
 
-                    visibleRoutes = offered.sublist(0, visibleCount);
-                    overflowRoutes = offered.sublist(visibleCount);
-                  }
+                visibleRoutes = offered.sublist(0, visibleCount);
+                overflowRoutes = offered.sublist(visibleCount);
+              }
 
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      ...visibleRoutes.map((r) => Expanded(
-                            child: BottomNavBarButton(
-                              key: WK.bottomNavButton(r.id),
-                              route: r,
-                              active: r == routes.currentRoute(),
-                            ),
-                          )),
-                      if (showMore)
-                        Container(
-                          width: 1,
-                          height:
-                              24, // Smaller height to look like a clean vertical divider
-                          margin: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 16),
-                          color: FluentTheme.of(context)
-                              .resources
-                              .dividerStrokeColorDefault
-                              .withValues(alpha: 0.1),
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ...visibleRoutes.map((r) => Expanded(
+                        child: BottomNavBarButton(
+                          key: WK.bottomNavButton(r.id),
+                          route: r,
+                          active: r == routes.currentRoute(),
                         ),
-                      if (showMore)
-                        Expanded(
-                          child: BottomNavBarMoreButton(
-                            overflowRoutes: overflowRoutes,
-                          ),
-                        ),
-                    ],
-                  );
-                },
-              ),
-            );
-          },
+                      )),
+                  if (showMore)
+                    Container(
+                      width: 1,
+                      height:
+                          24, // Smaller height to look like a clean vertical divider
+                      margin: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 16),
+                      color: FluentTheme.of(context)
+                          .resources
+                          .dividerStrokeColorDefault
+                          .withValues(alpha: 0.1),
+                    ),
+                  if (showMore)
+                    Expanded(
+                      child: BottomNavBarMoreButton(
+                        overflowRoutes: overflowRoutes,
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
         ),
       ),
     );
@@ -122,9 +119,10 @@ class BottomNavBarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final color = active
-        ? Colors.blue
-        : (theme.typography.body?.color?.withValues(alpha: 0.6) ?? Colors.grey);
+    final materials = FluentMaterials.of(context);
+    final accent = theme.accentColor.normal;
+    final color = active ? accent : materials.textSecondary;
+    final badge = navBadgeFor(route);
 
     return HoverButton(
       onPressed: () => routes.navigate(route),
@@ -132,15 +130,13 @@ class BottomNavBarButton extends StatelessWidget {
         final isHovered = states.isHovered;
 
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOutQuint,
+          duration: theme.fastAnimationDuration,
+          curve: theme.animationCurve,
           decoration: BoxDecoration(
             color: active
-                ? Colors.blue.withValues(alpha: 0.08) // Indicative active pill
-                : (isHovered
-                    ? theme.resources.subtleFillColorSecondary
-                    : Colors.transparent),
-            borderRadius: BorderRadius.circular(8),
+                ? accent.withValues(alpha: 0.1) // Indicative active pill
+                : (isHovered ? materials.hover : Colors.transparent),
+            borderRadius: FluentMaterials.controlRadius,
           ),
           margin: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
           padding: const EdgeInsets.symmetric(vertical: 4.0),
@@ -152,10 +148,21 @@ class BottomNavBarButton extends StatelessWidget {
                 scale: states.isPressed ? 0.9 : (active ? 1.1 : 1.0),
                 duration: const Duration(milliseconds: 250),
                 curve: Curves.easeOutBack,
-                child: Icon(
-                  route.icon,
-                  color: color,
-                  size: 20,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      route.icon,
+                      color: color,
+                      size: 20,
+                    ),
+                    if (badge != null)
+                      PositionedDirectional(
+                        top: -8,
+                        end: -14,
+                        child: badge,
+                      ),
+                  ],
                 ),
               ),
               const SizedBox(height: 4),
@@ -208,8 +215,8 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
     final isActive =
         widget.overflowRoutes.any((r) => r == routes.currentRoute());
     final color = isActive
-        ? Colors.blue
-        : (theme.typography.body?.color?.withValues(alpha: .6) ?? Colors.grey);
+        ? theme.accentColor.normal
+        : FluentMaterials.of(context).textSecondary;
 
     return FlyoutTarget(
       controller: bottomNavFlyoutController,
@@ -223,7 +230,7 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
             ),
             barrierColor: Colors.transparent,
             builder: (context) {
-              return MenuFlyout(
+              return AppMenuFlyout(
                 items: widget.overflowRoutes.map((r) {
                   final isItemActive = r == routes.currentRoute();
                   return MenuFlyoutItem(
@@ -231,14 +238,15 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
                       r.navbarTitle,
                       style: TextStyle(
                         fontWeight:
-                            isItemActive ? FontWeight.bold : FontWeight.normal,
-                        color: isItemActive ? Colors.blue : null,
+                            isItemActive ? FontWeight.w600 : FontWeight.normal,
+                        color: isItemActive ? theme.accentColor.normal : null,
                       ),
                     ),
                     leading: Icon(
                       r.icon,
-                      color: isItemActive ? Colors.blue : null,
+                      color: isItemActive ? theme.accentColor.normal : null,
                     ),
+                    trailing: navBadgeFor(r),
                     onPressed: () {
                       routes.navigate(r);
                       Flyout.of(context).close();
@@ -253,15 +261,15 @@ class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
           final isHovered = states.isHovered;
 
           return AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeOutQuint,
+            duration: theme.fastAnimationDuration,
+            curve: theme.animationCurve,
             decoration: BoxDecoration(
               color: isActive
-                  ? Colors.blue.withValues(alpha: 0.08)
+                  ? theme.accentColor.normal.withValues(alpha: 0.1)
                   : (isHovered
-                      ? theme.resources.subtleFillColorSecondary
+                      ? FluentMaterials.of(context).hover
                       : Colors.transparent),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: FluentMaterials.controlRadius,
             ),
             margin: const EdgeInsets.symmetric(horizontal: 2.0, vertical: 4.0),
             padding: const EdgeInsets.symmetric(vertical: 4.0),

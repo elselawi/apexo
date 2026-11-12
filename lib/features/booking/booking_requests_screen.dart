@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
@@ -10,6 +11,7 @@ import 'package:apexo/features/booking/booking_request_details.dart';
 import 'package:apexo/features/booking/booking_schedule.dart';
 import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/open_external.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -69,10 +71,11 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
       builder: (context, _) {
         final theme = FluentTheme.of(context);
         if (!booking.available) {
-          return _notice(theme, FluentIcons.globe, txt("bookingUnavailable"));
+          return _notice(theme, WindowsIcons.globe, txt("bookingUnavailable"));
         }
         if (!booking.ready()) {
-          return _notice(theme, FluentIcons.globe, txt("bookingNotConfigured"));
+          return _notice(
+              theme, WindowsIcons.globe, txt("bookingNotConfigured"));
         }
         final requests = _visible(booking.requests.items());
         return Column(
@@ -129,18 +132,11 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
             ),
       otherButtons: [
         if (clinic != null)
-          compact
-              ? IconButton(
-                  icon: const Icon(FluentIcons.open_in_new_window),
-                  onPressed: () =>
-                      unawaited(openExternal(Uri.parse(clinic.publicUrl))),
-                )
-              : IconButton(
-                  icon: ButtonContent(
-                      FluentIcons.open_in_new_window, txt("open")),
-                  onPressed: () =>
-                      unawaited(openExternal(Uri.parse(clinic.publicUrl))),
-                ),
+          IconButton(
+            icon: ButtonContent(WindowsIcons.open_in_new_window, txt("open")),
+            onPressed: () =>
+                unawaited(openExternal(Uri.parse(clinic.publicUrl))),
+          ),
       ],
       farItems: [
         Tooltip(
@@ -148,7 +144,9 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: (pending == 0 ? theme.inactiveColor : theme.accentColor)
+              color: (pending == 0
+                      ? theme.inactiveColor
+                      : FluentMaterials.of(context).glassTint)
                   .withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -158,7 +156,7 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
                   : (compact
                       ? "$pending"
                       : "$pending ${txt("bookingPendingCount")}"),
-              style: theme.typography.caption,
+              style: theme.typography.bodyStrong?.copyWith(fontSize: 13),
             ),
           ),
         ),
@@ -170,7 +168,7 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
     final lastPull = booking.requests.lastSuccessfulAt();
     return Container(
       width: double.infinity,
-      decoration: topBarDecoration(context, Colors.grey),
+      decoration: topBarDecoration(context),
       padding: const EdgeInsetsDirectional.only(
         start: 8,
         end: 8,
@@ -184,7 +182,7 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
           spacing: 5,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ComboBox<String>(
+            AppComboBox<String>(
               value: booking.requests.filter(),
               placeholder: Txt(txt("filter")),
               items: [
@@ -253,8 +251,18 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
   }
 
   Widget _buildRow(FluentThemeData theme, BookingRequest request) {
-    final canSchedule = canScheduleBooking && request.isPending && !request.isExpired;
+    final canSchedule =
+        canScheduleBooking && request.isPending && !request.isExpired;
     final compact = MediaQuery.sizeOf(context).width < 700;
+    final nameText = SizedBox(
+      width: 190,
+      child: Text(
+        request.name,
+        style: theme.typography.bodyStrong,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
     return ContextMenuRegion(
       items: (context, controller) => [
         MenuFlyoutItem(
@@ -280,92 +288,78 @@ class _BookingRequestsScreenState extends State<BookingRequestsScreen> {
         ),
         tileColor: WidgetStateColor.resolveWith((states) {
           if (states.contains(WidgetState.hovered)) {
-            return theme.resources.controlAltFillColorTertiary;
+            return FluentMaterials.of(context).hover;
           }
-          return theme.resources.solidBackgroundFillColorBase;
+          return Colors.transparent;
         }),
         onPressed: () => unawaited(openBookingRequestPanel(context, request)),
         title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           spacing: 5,
           children: [
-            const Divider(size: 65, direction: Axis.vertical),
             _avatar(theme, request),
             const SizedBox(width: 8),
-            Expanded(
-              child: Row(
-                spacing: 5,
-                children: [
-                  Flexible(
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 190),
-                      child: Text(
-                        request.name,
-                        style: theme.typography.bodyStrong,
-                        overflow: TextOverflow.ellipsis,
+            // Fixed-width name column; only the middle content flexes, so the
+            // trailing actions stay pinned to the row end.
+            if (compact) Flexible(child: nameText) else nameText,
+            if (!compact)
+              Expanded(
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _cell(
+                        theme,
+                        WindowsIcons.phone,
+                        txt("phone"),
+                        request.phone,
+                        150,
+                        ltr: true,
                       ),
-                    ),
+                      _cell(
+                        theme,
+                        WindowsIcons.calendar,
+                        txt("bookingPreference"),
+                        bookingPreferenceLabel(request),
+                        220,
+                      ),
+                      _cell(
+                        theme,
+                        WindowsIcons.date_time,
+                        txt("bookingSubmitted"),
+                        bookingSubmittedLabel(request.createdAt),
+                        175,
+                      ),
+                      _cell(
+                        theme,
+                        WindowsIcons.tag,
+                        txt("bookingReference"),
+                        request.reference,
+                        120,
+                        ltr: true,
+                      ),
+                    ],
                   ),
-                  if (!compact)
-                    Expanded(
-                      child: SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _cell(
-                              theme,
-                              FluentIcons.phone,
-                              txt("phone"),
-                              request.phone,
-                              150,
-                              ltr: true,
-                            ),
-                            _cell(
-                              theme,
-                              FluentIcons.calendar,
-                              txt("bookingPreference"),
-                              bookingPreferenceLabel(request),
-                              220,
-                            ),
-                            _cell(
-                              theme,
-                              FluentIcons.date_time,
-                              txt("bookingSubmitted"),
-                              bookingSubmittedLabel(request.createdAt),
-                              175,
-                            ),
-                            _cell(
-                              theme,
-                              FluentIcons.tag,
-                              txt("bookingReference"),
-                              request.reference,
-                              120,
-                              ltr: true,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    const Spacer(),
-                  if (canSchedule && !compact)
-                    Tooltip(
-                      message: txt("bookingSchedule"),
-                      child: IconButton(
-                        icon: const Icon(FluentIcons.calendar, size: 14),
-                        onPressed: () =>
-                            unawaited(scheduleBookingRequest(context, request)),
-                      ),
-                    ),
-                  _statusChip(theme, request),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Directionality.of(context) == TextDirection.rtl
-                        ? FluentIcons.chevron_left
-                        : FluentIcons.chevron_right,
-                    size: 12,
-                  ),
-                ],
+                ),
+              )
+            else
+              const Spacer(),
+            if (canSchedule && !compact)
+              Tooltip(
+                message: txt("bookingSchedule"),
+                child: IconButton(
+                  icon: const Icon(WindowsIcons.calendar, size: 14),
+                  onPressed: () =>
+                      unawaited(scheduleBookingRequest(context, request)),
+                ),
               ),
+            _statusChip(theme, request),
+            const SizedBox(width: 6),
+            Icon(
+              Directionality.of(context) == TextDirection.rtl
+                  ? WindowsIcons.chevron_left
+                  : WindowsIcons.chevron_right,
+              size: 12,
             ),
           ],
         ),

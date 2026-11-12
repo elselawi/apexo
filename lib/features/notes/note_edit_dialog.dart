@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
@@ -97,7 +98,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
               crossAxisAlignment: CrossAxisAlignment.start,
               spacing: 10,
               children: [
-                ComboBox<String>(
+                AppComboBox<String>(
                   value: selectedColumnID.isEmpty ? '' : selectedColumnID,
                   items: [
                     ComboBoxItem(value: '', child: Txt(txt("uncategorized"))),

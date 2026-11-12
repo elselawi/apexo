@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -86,7 +87,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                 ),
               ),
               Container(
-                decoration: topBarDecoration(context, Colors.grey),
+                decoration: topBarDecoration(context),
                 padding: const EdgeInsets.all(8),
                 child: Row(
                   spacing: 10,
@@ -156,11 +157,13 @@ class _AccountsScreenState extends State<AccountsScreen> {
                                 contentPadding: const EdgeInsets.all(10),
                                 margin: EdgeInsets.zero,
                                 shape: listDividerBorder(context),
-                                tileColor: WidgetStatePropertyAll(
-                                  FluentTheme.of(context)
-                                      .resources
-                                      .solidBackgroundFillColorBase,
-                                ),
+                                tileColor:
+                                    WidgetStateColor.resolveWith((states) {
+                                  if (states.contains(WidgetState.hovered)) {
+                                    return FluentMaterials.of(context).hover;
+                                  }
+                                  return Colors.transparent;
+                                }),
                                 leading: Icon(isAdmin
                                     ? FluentIcons.contact_lock
                                     : FluentIcons.contact),

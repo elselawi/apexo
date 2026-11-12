@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/ui/workspace/delegated_panel.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
@@ -186,7 +187,7 @@ class _SingleLabworkPanelBodyState extends State<_SingleLabworkPanelBody> {
                   },
                 )
               else
-                ComboBox<String>(
+                AppComboBox<String>(
                   key: WK.fieldLabworkAppointment,
                   items: (selectedPatient!.allAppointments.toList()
                         ..sort((a, b) => a.date.compareTo(b.date)))

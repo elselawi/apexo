@@ -7,6 +7,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
 import '../settings_card.dart';
@@ -180,7 +181,7 @@ class _S3SettingsState extends State<S3Settings> {
                     const SizedBox(height: 15),
                     Txt(txt("s3_endpoint")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       key: WK.serviceField('s3_endpoint'),
                       controller: endpointController,
                       placeholder: "https://s3.amazonaws.com",
@@ -193,7 +194,7 @@ class _S3SettingsState extends State<S3Settings> {
                         children: [
                           Txt(txt("s3_bucket")),
                           const SizedBox(height: 5),
-                          TextBox(
+                          CupertinoTextField(
                             key: WK.serviceField('s3_bucket'),
                             controller: bucketController,
                             placeholder: "my-bucket",
@@ -206,7 +207,7 @@ class _S3SettingsState extends State<S3Settings> {
                         children: [
                           Txt(txt("s3_region")),
                           const SizedBox(height: 5),
-                          TextBox(
+                          CupertinoTextField(
                             key: WK.serviceField('s3_region'),
                             controller: regionController,
                             placeholder: "us-east-1",
@@ -222,7 +223,7 @@ class _S3SettingsState extends State<S3Settings> {
                         children: [
                           Txt(txt("s3_accessKey")),
                           const SizedBox(height: 5),
-                          TextBox(
+                          CupertinoTextField(
                             key: WK.serviceField('s3_accessKey'),
                             controller: accessKeyController,
                             placeholder: "AKIA...",
@@ -238,7 +239,7 @@ class _S3SettingsState extends State<S3Settings> {
                           ValueListenableBuilder<bool>(
                             valueListenable: showSecretKey,
                             builder: (context, show, _) {
-                              return TextBox(
+                              return CupertinoTextField(
                                 key: WK.serviceField('s3_secretKey'),
                                 controller: secretKeyController,
                                 placeholder: txt("leaveBlankToKeepUnchanged"),

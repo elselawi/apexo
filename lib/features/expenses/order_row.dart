@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_combo_box.dart';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -9,6 +11,7 @@ import 'package:apexo/common_widgets/small_label.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/ai_services/receipt_scanner.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -119,22 +122,13 @@ class OrderRowState extends State<OrderRow>
 
     final card = Container(
       decoration: BoxDecoration(
-        borderRadius: const BorderRadius.all(Radius.circular(5)),
-        color: FluentTheme.of(context).micaBackgroundColor,
-        boxShadow: const [
-          BoxShadow(
-            offset: Offset(0.0, 8.0),
-            blurRadius: 17.0,
-            spreadRadius: 2.0,
-            color: Color.fromARGB(14, 0, 0, 0),
-          ),
-          BoxShadow(
-            offset: Offset(0.0, 5.0),
-            blurRadius: 22.0,
-            spreadRadius: 4.0,
-            color: Color(0x1F000000),
-          ),
-        ],
+        borderRadius: FluentMaterials.surfaceRadius,
+        color: FluentMaterials.of(context).card,
+        border: Border.all(
+          color: FluentMaterials.of(context).hairline,
+          width: FluentMaterials.hairlineWidth,
+        ),
+        boxShadow: FluentMaterials.of(context).windowShadowInactive,
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -330,7 +324,7 @@ class OrderRowState extends State<OrderRow>
   }
 
   Widget _comboBoxSupplier() {
-    return ComboBox<String>(
+    return AppComboBox<String>(
       value: widget.order.supplierId,
       onChanged: (newValue) {
         setState(() {
@@ -712,7 +706,7 @@ class OrderRowState extends State<OrderRow>
             if (inProgress) return;
             await flyoutFocusFix(context);
             unawaited(moreOptionsCtrl.showFlyout<void>(builder: (context) {
-              return MenuFlyout(
+              return AppMenuFlyout(
                 items: [
                   MenuFlyoutItem(
                     text: Txt(widget.order.processed

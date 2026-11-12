@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 
 import 'package:apexo/common_widgets/adaptive_hover_widget.dart';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/import_photos_dialog.dart';
@@ -206,7 +207,7 @@ class _GridGalleryState extends State<GridGallery>
     final src = cfg.acceptedSources;
     await flyoutFocusFix(context);
     unawaited(_uploadFlyoutCtrl.showFlyout(
-      builder: (ctx) => MenuFlyout(
+      builder: (ctx) => AppMenuFlyout(
         items: [
           if (src.contains(UploadSource.camera) &&
               ImagePicker().supportsImageSource(ImageSource.camera))
@@ -308,12 +309,12 @@ class _GridGalleryState extends State<GridGallery>
   Future<void> _uploadFiles() async {
     final cfg = widget.uploadConfig;
     if (cfg == null) return;
-    final res = await FilePicker.pickFiles(allowMultiple: true);
-    if (res == null || res.files.isEmpty || !mounted) return;
+    final res = await FilePicker.pickFiles();
+    if (res.isEmpty || !mounted) return;
 
     await _runUpload(cfg, () async {
       final names = <String>[];
-      for (final file in res.files) {
+      for (final file in res) {
         if (file.path == null) continue;
         final name = await handleNewImage(
           rowID: widget.rowId,
@@ -536,7 +537,6 @@ class _GridGalleryState extends State<GridGallery>
 
   Widget _buildEmptyState() {
     return Container(
-      width: widget.rowWidth,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
@@ -555,7 +555,6 @@ class _GridGalleryState extends State<GridGallery>
             Flexible(
               child: Txt(
                 txt("noFiles"),
-                style: FluentTheme.of(context).typography.caption,
               ),
             ),
           ],
@@ -600,4 +599,3 @@ class _GridGalleryState extends State<GridGallery>
 }
 
 // ─── Entrance animation wrapper ───────────────────────────────────────────
-

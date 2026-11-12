@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'package:apexo/common_widgets/dialogs/changelog_dialog.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 /// Use this widget to display the logo and name of your app
 class AppLogo extends StatefulWidget {
-  const AppLogo({super.key});
+  const AppLogo({super.key, this.compact = false});
+
+  /// Pane-header size: a smaller mark, with the name and version still beside it.
+  final bool compact;
 
   @override
   State<AppLogo> createState() => _AppLogoState();
@@ -38,18 +42,18 @@ class _AppLogoState extends State<AppLogo> {
 
   @override
   Widget build(BuildContext context) {
-    final textStyle = TextStyle(
-        color: (FluentTheme.of(context).iconTheme.color ?? Colors.grey)
-            .withValues(alpha: 0.4),
-        fontSize: 12);
-    final versionStyle = textStyle.copyWith(
+    final theme = FluentTheme.of(context);
+    final materials = FluentMaterials.of(context);
+    final versionStyle = theme.typography.caption?.copyWith(
+      color: materials.textTertiary,
       decoration: TextDecoration.underline,
       decorationStyle: TextDecorationStyle.dotted,
+      decorationColor: materials.textTertiary,
     );
     return Center(
       key: WK.appLogo,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(8),
         child: GestureDetector(
           onTap: _onVersionTap,
           // The logo also sits in the navigation pane header, which can be
@@ -57,14 +61,18 @@ class _AppLogoState extends State<AppLogo> {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Row(
+              spacing: 8,
               children: [
                 Image.asset(
                   "assets/app_icon.png",
-                  height: 50,
+                  height: widget.compact ? 24 : 50,
                 ),
-                const SizedBox(width: 5),
-                Text("Apexo", style: textStyle),
-                const SizedBox(width: 5),
+                Text(
+                  "Apexo",
+                  style: theme.typography.bodyStrong?.copyWith(
+                    color: materials.textSecondary,
+                  ),
+                ),
                 Text(version, style: versionStyle),
               ],
             ),

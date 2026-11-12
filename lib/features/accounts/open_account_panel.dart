@@ -1,5 +1,6 @@
 import 'package:apexo/app/data/application_store_effects.dart';
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/panel_accent.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
@@ -429,7 +430,7 @@ class _PermissionSelectorState extends State<PermissionSelector> {
           onPressed: () async {
             await flyoutFocusFix(context);
             unawaited(_flyoutCtrl.showFlyout(builder: (ctx) {
-              return MenuFlyout(items: [
+              return AppMenuFlyout(items: [
                 MenuFlyoutItem(
                   leading: const Icon(FluentIcons.settings, size: 16),
                   text: Txt(widget.title),

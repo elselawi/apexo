@@ -2,6 +2,7 @@ import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/features/booking/booking_labels.dart';
 import 'package:apexo/features/booking/booking_models.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 /// Seven day rows of editable intervals plus the closed-date list. Validation
@@ -190,7 +191,7 @@ class _OpeningHoursEditorState extends State<OpeningHoursEditor> {
                     children: [
                       SizedBox(
                         width: 90,
-                        child: TextBox(
+                        child: CupertinoTextField(
                           enabled: widget.enabled,
                           placeholder: "09:00",
                           controller: _controllerFor(
@@ -206,7 +207,7 @@ class _OpeningHoursEditorState extends State<OpeningHoursEditor> {
                       const SizedBox(width: 6),
                       SizedBox(
                         width: 90,
-                        child: TextBox(
+                        child: CupertinoTextField(
                           enabled: widget.enabled,
                           placeholder: "17:00",
                           controller: _controllerFor(
@@ -250,8 +251,7 @@ String bookingHoursSummary(BookingWeeklyHours hours, {String? startDay}) {
   for (final day in bookingWeekdaysForDisplay(startDay)) {
     final intervals = hours[day];
     if (intervals.isEmpty) continue;
-    parts.add(
-        "${txt("bookingWeekdayShort${bookingWeekdayNumber(day)}")} "
+    parts.add("${txt("bookingWeekdayShort${bookingWeekdayNumber(day)}")} "
         "${intervals.map((interval) => "${interval[0]}–${interval[1]}").join(", ")}");
   }
   return parts.isEmpty ? txt("bookingClosed") : parts.join(" · ");

@@ -5,6 +5,7 @@ import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
 import '../settings_card.dart';
@@ -162,7 +163,7 @@ class _AuthSettingsState extends State<AuthSettings> {
                   children: [
                     Txt(txt("auth_users_duration")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _usersDurationController,
                       placeholder: "14",
                       keyboardType: TextInputType.number,
@@ -176,7 +177,7 @@ class _AuthSettingsState extends State<AuthSettings> {
                   children: [
                     Txt(txt("auth_superusers_duration")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _superusersDurationController,
                       placeholder: "14",
                       keyboardType: TextInputType.number,

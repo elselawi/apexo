@@ -80,7 +80,7 @@ class _LinkedPatientsState extends State<_LinkedPatients> {
               child: Row(
                 children: [
                   Expanded(
-                    child: TextBox(
+                    child: CupertinoTextField(
                       controller: _searchController,
                       onChanged: (value) => setState(() => _query = value),
                       placeholder: txt('dicomSearchLinkedPatients'),
@@ -287,9 +287,9 @@ class _DirectoryButtonState extends State<_DirectoryButton> {
   @override
   Widget build(BuildContext context) {
     final watchDirs = dicomCtrl.watchDirs;
-    return Button(
+    return IconButton(
       onPressed: _openManageDirsDialog,
-      child: Row(
+      icon: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           const Icon(WindowsIcons.folder, size: 14),

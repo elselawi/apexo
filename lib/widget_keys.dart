@@ -78,6 +78,9 @@ class WK {
   static Key bottomNavButton(String identifier) =>
       Key("bottomNavButton-$identifier");
 
+  /// The count/amount pill a nav destination shows beside its label.
+  static Key navBadge(String identifier) => Key("navBadge-$identifier");
+
   static const backButton = Key("backButton");
   static const appLogo = Key("appLogo");
   static const currentAccountSection = Key("currentAccountSection");
@@ -148,6 +151,10 @@ class WK {
   static const followUpsBandToggle = Key("followUpsBandToggle");
   static const followUpsOverdueDivider = Key("followUpsOverdueDivider");
 
+  /// The day's names, numbers and notes, as text the clinic can select or copy.
+  static const followUpsCopyContacts = Key("followUpsCopyContacts");
+  static const followUpContactsText = Key("followUpContactsText");
+
   static const patientFollowUpBar = Key("patientFollowUpBar");
   static const patientFollowUpSet = Key("patientFollowUpSet");
 
@@ -202,7 +209,6 @@ class WK {
   static const panelMinimize = Key("panelMinimize");
 
   static Key windowToggle(String id) => Key("windowToggle-$id");
-  static Key windowMinimize(String id) => Key("windowMinimize-$id");
 
   static const visitBand = Key("visitBand");
 
@@ -210,11 +216,9 @@ class WK {
   static const visitContent = Key("visitContent");
   static const visitState = Key("visitState");
   static const visitSave = Key("visitSave");
-  static const visitMenu = Key("visitMenu");
   static const visitDetach = Key("visitDetach");
   static const visitMarkedCompleted = Key("visitMarkedCompleted");
   static const visitUnsavedCount = Key("visitUnsavedCount");
-  static const visitMenuDone = Key("visitMenuDone");
 
   /// The band footer's "move to the visit that still has unsaved work" action.
   static const visitMoveToVisit = Key("visitMoveToVisit");
@@ -232,8 +236,6 @@ class WK {
 
   /// The visit scope bar's "new visit" button — beside the visits it joins.
   static const chartAddAppointment = Key("chartAddAppointment");
-
-  static const chartAllAppointments = Key("chartAllAppointments");
 
   /// One attachment chip; [owner] names the frame it is drawn on, since a visit
   /// and its patient both offer a `gallery`.

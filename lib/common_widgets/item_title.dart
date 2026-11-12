@@ -3,10 +3,12 @@ import 'package:apexo/common_widgets/notation.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/que.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/material.dart' show CircleAvatar;
 import '../core/model.dart';
 
 /// The title's first whole character: taking a substring would split an emoji's
@@ -190,7 +192,10 @@ class _ItemAvatarState extends State<ItemAvatar> {
                 ? Icon(WindowsIcons.delete, size: widget.radius)
                 : snapshot.data == null
                     ? widget.icon == null
-                        ? Txt(initialOf(item))
+                        // The avatar's colour is the record's, not the theme's,
+                        // so the initial stays white in both themes.
+                        ? Txt(initialOf(item),
+                            style: const TextStyle(color: Colors.white))
                         : Icon(widget.icon, size: widget.radius)
                     : null,
           );
@@ -278,22 +283,14 @@ class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
             : null,
         child: Container(
             margin: EdgeInsetsDirectional.only(end: widget.endMargin),
-            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 5),
+            padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 6),
             decoration: BoxDecoration(
                 border: Border.all(
-                    color: color.withAlpha(120),
+                    color: color.withValues(alpha: 0.35),
                     style: BorderStyle.solid,
-                    width: 1),
-                borderRadius: BorderRadius.circular(8),
-                color: color.withAlpha(120),
-                boxShadow: [
-                  BoxShadow(
-                    offset: const Offset(0.0, 0),
-                    blurRadius: 15.0,
-                    spreadRadius: 3.0,
-                    color: color.withAlpha(70),
-                  )
-                ]),
+                    width: FluentMaterials.hairlineWidth),
+                borderRadius: FluentMaterials.controlRadius,
+                color: color.withValues(alpha: 0.16)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

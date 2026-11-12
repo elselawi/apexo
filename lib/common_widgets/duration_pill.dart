@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -40,7 +41,7 @@ class _DurationPillState extends State<DurationPill> {
         onTap: widget.disabled
             ? null
             : () => unawaited(_durationFlyout.showFlyout<void>(
-                  builder: (ctx) => MenuFlyout(
+                  builder: (ctx) => AppMenuFlyout(
                     items: [
                       MenuFlyoutItem(
                         text: Text(txt("duration"),
@@ -78,15 +79,6 @@ class _DurationPillState extends State<DurationPill> {
             decoration: BoxDecoration(
               color: widget.color.withValues(alpha: 0.7),
               borderRadius: BorderRadius.circular(50),
-              boxShadow: [
-                BoxShadow(
-                  color: FluentTheme.of(context)
-                      .shadowColor
-                      .withValues(alpha: 0.2),
-                  blurRadius: 5,
-                  offset: const Offset(0, 1),
-                )
-              ],
             ),
             child: Row(
               spacing: 5,

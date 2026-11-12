@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/common_widgets/show_more_bar.dart';
@@ -213,8 +214,8 @@ class _LabworksTableState extends State<LabworksTable> {
             child: HoverButton(
               onPressed: () {
                 if (canEditLabwork(apt) == false) return;
-                // open the labwork window on its own; the visit's panel buries
-                // it under the appointment.
+                // Ask for the order itself; with no panel on screen it stands on
+                // its own, and beside one the visit's panel takes it.
                 unawaited(openAppointmentWindowOnItsOwn(
                     apt, AppointmentWindow.labwork));
                 return;
@@ -225,12 +226,8 @@ class _LabworksTableState extends State<LabworksTable> {
                       const EdgeInsets.symmetric(horizontal: 7, vertical: 12),
                   decoration: BoxDecoration(
                     color: states.isHovered
-                        ? FluentTheme.of(context)
-                            .resources
-                            .subtleFillColorSecondary
-                        : FluentTheme.of(context)
-                            .resources
-                            .solidBackgroundFillColorBase,
+                        ? FluentMaterials.of(context).hover
+                        : Colors.transparent,
                     border: listDividerBorder(context),
                   ),
                   child: Row(
@@ -329,7 +326,7 @@ class _LabworksTableState extends State<LabworksTable> {
         horizontal: 0,
         vertical: 8,
       ),
-      decoration: topBarDecoration(context, Colors.grey),
+      decoration: topBarDecoration(context),
       child: Row(
         children: [
           const SizedBox(width: 15),

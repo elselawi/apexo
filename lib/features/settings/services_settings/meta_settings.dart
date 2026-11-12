@@ -5,6 +5,7 @@ import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 import 'responsive_row.dart';
 import '../applies_to_indicator.dart';
 import '../settings_card.dart';
@@ -148,7 +149,7 @@ class _MetaSettingsState extends State<MetaSettings> {
                   children: [
                     Txt(txt("meta_appName")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _appNameController,
                       placeholder: "My Clinic",
                     ),
@@ -160,7 +161,7 @@ class _MetaSettingsState extends State<MetaSettings> {
                   children: [
                     Txt(txt("meta_appUrl")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _appUrlController,
                       placeholder: "https://mine.apexo.app",
                     ),

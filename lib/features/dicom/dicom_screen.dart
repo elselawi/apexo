@@ -21,8 +21,10 @@ import 'package:apexo/services/dicom/dicom_importer.dart'
     show DicomPendingImport, DicomParsedFile, ImportPhase, ScanPhase;
 import 'package:apexo/services/dicom/dicom_io_service.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 
 part 'dicom_tables.dart';
 part 'dicom_import_widgets.dart';
@@ -183,7 +185,7 @@ class _DicomPageState extends State<_DicomPage> {
               bottom: 8.0,
             ),
             width: double.infinity,
-            decoration: topBarDecoration(context, Colors.grey),
+            decoration: topBarDecoration(context),
             child: Row(
               spacing: 5,
               children: [
@@ -236,7 +238,7 @@ class _DicomPageState extends State<_DicomPage> {
     return ScreenCommandBar(
       mainButton: _DirectoryButton(),
       farItems: [
-        Button(
+        IconButton(
             onPressed: () {
               unawaited(showDialog(
                   barrierDismissible: true,
@@ -277,7 +279,7 @@ class _DicomPageState extends State<_DicomPage> {
                     });
                   }));
             },
-            child: ButtonContent(FluentIcons.link, linkedTxt)),
+            icon: ButtonContent(FluentIcons.link, linkedTxt)),
       ],
       otherButtons: [
         if (_selected.isNotEmpty)
@@ -352,4 +354,3 @@ class _DicomPageState extends State<_DicomPage> {
     );
   }
 }
-

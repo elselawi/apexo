@@ -242,9 +242,9 @@ Tab _createExporterTab(
     required BuildContext context}) {
   final theme = FluentTheme.of(context);
   return Tab(
-    backgroundColor:
-        WidgetStatePropertyAll(isSelected ? Colors.black : Colors.transparent),
-    outlineColor: WidgetStatePropertyAll(
+    backgroundColor: WidgetStateColor.resolveWith(
+        (_) => isSelected ? Colors.black : Colors.transparent),
+    outlineColor: WidgetStateColor.resolveWith((_) =>
         isSelected ? theme.resources.cardStrokeColorDefault : Colors.red),
     icon: Icon(icon),
     text: Txt(txt(store.local!.name)),
@@ -368,11 +368,19 @@ class StyledSelectableText extends StatefulWidget {
     this.height = 150,
     this.width = double.infinity,
     this.storeName,
+    this.canSave = true,
+    this.textDirection,
   });
   final String text;
   final double height;
   final double width;
   final String? storeName;
+
+  /// Whether to offer saving the text as a CSV file; copying is always offered.
+  final bool canSave;
+
+  /// Defaults to LTR, which keeps exported rows of numbers and codes unswapped.
+  final TextDirection? textDirection;
 
   @override
   State<StyledSelectableText> createState() => _StyledSelectableTextState();
@@ -418,27 +426,35 @@ class _StyledSelectableTextState extends State<StyledSelectableText> {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            SelectableText(widget.text, textDirection: TextDirection.ltr),
+            SingleChildScrollView(
+              padding: const EdgeInsetsDirectional.only(bottom: 32),
+              child: SelectableText(
+                widget.text,
+                textDirection: widget.textDirection ?? TextDirection.ltr,
+              ),
+            ),
             PositionedDirectional(
               end: 0,
               bottom: 0,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    style: filledButtonStyle(Colors.grey),
-                    icon: Row(
-                      children: [
-                        const Icon(WindowsIcons.save),
-                        if (didSave) ...[
-                          const SizedBox(width: 5),
-                          const Icon(WindowsIcons.check_mark),
+                  if (widget.canSave) ...[
+                    IconButton(
+                      style: filledButtonStyle(Colors.grey),
+                      icon: Row(
+                        children: [
+                          const Icon(WindowsIcons.save),
+                          if (didSave) ...[
+                            const SizedBox(width: 5),
+                            const Icon(WindowsIcons.check_mark),
+                          ],
                         ],
-                      ],
+                      ),
+                      onPressed: _saveFile,
                     ),
-                    onPressed: _saveFile,
-                  ),
-                  const SizedBox(width: 5),
+                    const SizedBox(width: 5),
+                  ],
                   IconButton(
                     style: filledButtonStyle(Colors.grey),
                     icon: Row(

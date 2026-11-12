@@ -1,3 +1,4 @@
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class SettingsCard extends StatelessWidget {
@@ -26,23 +27,9 @@ class SettingsCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: theme.resources.cardBackgroundFillColorDefault,
+        color: FluentMaterials.of(context).card,
         border: Border.all(color: theme.resources.cardStrokeColorDefault),
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(
-                alpha: theme.brightness == Brightness.light ? 0.04 : 0.12),
-            offset: const Offset(0, 1),
-            blurRadius: 2,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(
-                alpha: theme.brightness == Brightness.light ? 0.05 : 0.16),
-            offset: const Offset(0, 3),
-            blurRadius: 10,
-          ),
-        ],
+        borderRadius: FluentMaterials.surfaceRadius,
       ),
       child: LayoutBuilder(builder: (context, constraints) {
         final inline = constraints.maxWidth >= 640;

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
@@ -349,8 +350,7 @@ class _DicomViewerState extends State<DicomScanViewer> {
         bytes: bytes,
         dialogTitle: 'Export DICOM as PNG',
         fileName: '$name.png',
-        type: FileType.custom,
-        allowedExtensions: ['png'],
+        mimeType: 'image/png',
       );
     } catch (e, s) {
       logger('Export PNG failed: $e', s);
@@ -396,7 +396,8 @@ class _DicomViewerState extends State<DicomScanViewer> {
     bool isSelected(DicomWindowPreset p) =>
         curCenter == p.center && curWidth == p.width;
     unawaited(_windowFlyoutCtrl.showFlyout<void>(
-      builder: (ctx) => MenuFlyout(items: _buildPresetItems(isSelected, ctx)),
+      builder: (ctx) =>
+          AppMenuFlyout(items: _buildPresetItems(isSelected, ctx)),
     ));
   }
 
@@ -421,7 +422,7 @@ class _DicomViewerState extends State<DicomScanViewer> {
   void _showColorFlyout() {
     final curMap = _controller?.colorMap;
     unawaited(_colorFlyoutCtrl.showFlyout<void>(
-      builder: (ctx) => MenuFlyout(
+      builder: (ctx) => AppMenuFlyout(
           items: DicomColorMap.values.map((map) {
         return MenuFlyoutItem(
           leading:
@@ -887,4 +888,3 @@ class _DicomViewerState extends State<DicomScanViewer> {
 }
 
 // ─── Viewer button (dark pill overlay style) ──────────────────────
-

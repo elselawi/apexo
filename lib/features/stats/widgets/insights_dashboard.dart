@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
@@ -480,7 +481,7 @@ class _InsightsDashboardState extends State<InsightsDashboard> {
         [txt('appointments')],
         dimensionLabel: txt(keys[pattern]),
         chart: StyledBarChart(labels: labels, yAxis: values),
-        controls: ComboBox<int>(
+        controls: AppComboBox<int>(
           value: pattern,
           items: [
             for (final (index, key) in keys.indexed)

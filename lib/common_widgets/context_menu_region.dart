@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -54,7 +55,7 @@ class _ContextMenuRegionState extends State<ContextMenuRegion> {
       ),
       // A context menu should not veil the screen it belongs to.
       barrierColor: Colors.transparent,
-      builder: (context) => MenuFlyout(
+      builder: (context) => AppMenuFlyout(
         items: widget.items(context, controller),
       ),
     ));

@@ -2,8 +2,11 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:apexo/app/app_context.dart';
+import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/navbar_widget.dart';
+import 'package:apexo/app/nav_badges.dart';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/ui/workspace/panel_screen.dart';
 import 'package:apexo/ui/workspace/panel_width.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
@@ -22,6 +25,9 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/ui/workspace/window_origin.dart';
 import 'package:apexo/ui/workspace/windows_layer.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
+import 'package:apexo/ui/design/app_theme.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/ui/design/mica_backdrop.dart';
 import 'package:apexo/features/network_actions/network_actions_widget.dart';
 import 'package:apexo/features/patient_side/patient_side_screen.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -46,6 +52,12 @@ final _bodyKeys = <AppRoute, GlobalKey>{};
 GlobalKey _bodyKeyFor(AppRoute route) =>
     _bodyKeys.putIfAbsent(route, () => GlobalObjectKey(route));
 
+/// App themes.
+///
+/// Both brightnesses come from one builder; see `ui/design/app_theme.dart`.
+FluentThemeData _fluentTheme({required bool dark}) =>
+    appTheme(brightness: dark ? Brightness.dark : Brightness.light);
+
 class ApexoApp extends StatelessWidget {
   const ApexoApp({super.key});
 
@@ -69,19 +81,19 @@ class ApexoApp extends StatelessWidget {
           return FluentApp(
             title: "Apexo",
             key: WK.fluentApp,
+            // The window itself is the backdrop; a root fill would cover it.
+            color: Colors.transparent,
             locale: Locale(locale.s.$code),
             localizationsDelegates: appLocalizationsDelegates,
-            theme: localSettings.selectedTheme == ThemeMode.dark
-                ? FluentThemeData.dark()
-                : FluentThemeData.light(),
+            theme: _fluentTheme(
+                dark: localSettings.selectedTheme == ThemeMode.dark),
             home: CupertinoTheme(
               data: localSettings.selectedTheme == ThemeMode.dark
                   ? const CupertinoThemeData(brightness: Brightness.dark)
                   : const CupertinoThemeData(brightness: Brightness.light),
               child: FluentTheme(
-                data: localSettings.selectedTheme == ThemeMode.dark
-                    ? FluentThemeData.dark()
-                    : FluentThemeData(),
+                data: _fluentTheme(
+                    dark: localSettings.selectedTheme == ThemeMode.dark),
                 child: MStreamBuilder(
                   streams: [
                     version.isOutdated.stream,
@@ -94,19 +106,17 @@ class ApexoApp extends StatelessWidget {
                   ],
                   builder: (BuildContext context, _) {
                     bContext = context;
-                    return SafeArea(
-                      top: false,
-                      left: false,
-                      right: false,
-                      bottom: !kIsWeb && Platform.isAndroid,
-                      child: ScaffoldPage(
-                        padding: EdgeInsets.zero,
-                        resizeToAvoidBottomInset: true,
-                        content: ColoredBox(
-                          color: FluentTheme.of(context)
-                              .resources
-                              .solidBackgroundFillColorBase,
-                          child: Stack(
+                    return MicaBackdrop(
+                      child: SafeArea(
+                        top: false,
+                        left: false,
+                        right: false,
+                        bottom: !kIsWeb && Platform.isAndroid,
+                        child: ScaffoldPage(
+                          padding: EdgeInsets.zero,
+                          backgroundColor: Colors.transparent,
+                          resizeToAvoidBottomInset: true,
+                          content: Stack(
                             fit: StackFit.expand,
                             children: [
                               buildAppLayout(),
@@ -186,6 +196,7 @@ class ApexoApp extends StatelessWidget {
         routes.currentRoute.stream,
         PanelsManager.active.stream,
         booking.ready.stream,
+        ...optionalFeatureStreams,
       ],
       key: WK.builder,
       builder: (context, _) => PopScope(
@@ -215,7 +226,7 @@ class ApexoApp extends StatelessWidget {
           final hideSidePanel =
               PanelsManager.active().isEmpty || launch.open() != Open.staff;
           return Container(
-            color: FluentTheme.of(context).menuColor,
+            color: Colors.transparent,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -225,7 +236,8 @@ class ApexoApp extends StatelessWidget {
                     constraints.maxWidth < kWindowsBreakpoint)
                   ModalBarrier(
                     color: FluentTheme.of(context)
-                        .menuColor
+                        .resources
+                        .smokeFillColorDefault
                         .withValues(alpha: 0.4),
                     onDismiss: () => PanelsManager.minimize(true),
                   ),
@@ -276,52 +288,53 @@ class ApexoApp extends StatelessWidget {
       width: (!hideSidePanel) && constraints.maxWidth >= kWindowsBreakpoint
           ? constraints.maxWidth - (panelWidth + 5)
           : constraints.maxWidth,
-      child: Container(
-        decoration: BoxDecoration(boxShadow: kElevationToShadow[6]),
-        child: NavigationView(
-          appBar: NavigationAppBar(
-            leading: (routes.canGoBack && launch.open() == Open.staff)
-                ? const BackButton()
-                : null,
-            automaticallyImplyLeading: false,
-            height: 40,
-            actions: const NetworkActions(key: WK.globalActions),
+      child: NavigationView(
+        titleBar: TitleBar(
+          isBackButtonVisible: routes.canGoBack && launch.open() == Open.staff,
+          backButton: const BackButton(),
+          height: 40,
+          // `TitleBar` keeps a 48 px drag region after `endHeader` for the
+          // window's caption buttons, which the OS draws here, so the actions
+          // go in the caption slot to stay flush with the edge.
+          captionControls: const NetworkActions(key: WK.globalActions),
+          // ignore: prefer_const_constructors
+          title: NavScreenTitle(),
+        ),
+        onDisplayModeChanged: (mode) {
+          if (mode == PaneDisplayMode.minimal &&
+              constraints.maxWidth < kWindowsBreakpoint) {
+            routes.showBottomNav(true);
+          } else {
+            routes.showBottomNav(false);
+          }
+        },
+        content: launch.open() == Open.login
             // ignore: prefer_const_constructors
-            title: NavScreenTitle(),
-          ),
-          onDisplayModeChanged: (mode) {
-            if (mode == PaneDisplayMode.minimal &&
-                constraints.maxWidth < kWindowsBreakpoint) {
-              routes.showBottomNav(true);
-            } else {
-              routes.showBottomNav(false);
-            }
-          },
-          content: launch.open() == Open.login
-              // ignore: prefer_const_constructors
-              ? LoginScreen()
-              : launch.open() == Open.patient
-                  ? const PatientSideScreen()
-                  : null,
-          pane: launch.open() == Open.staff
-              ? NavigationPane(
-                  header: const Column(
-                    children: [
-                      AppLogo(),
-                      CurrentAccount(),
-                    ],
-                  ),
-                  selected: routes.currentIndex,
-                  displayMode: PaneDisplayMode.auto,
-                  toggleable: false,
-                  // The pane swaps bodies by index, so each is pre-built and
-                  // keyed to keep its element and state across the swap.
-                  items: List<NavigationPaneItem>.from(routes.visibleRoutes.map(
-                    (route) => PaneItem(
-                      key: Key("${route.id}_screen_button"),
-                      icon: Icon(route.icon),
-                      body: KeyedSubtree(
-                        key: _bodyKeyFor(route),
+            ? LoginScreen()
+            : launch.open() == Open.patient
+                ? const PatientSideScreen()
+                : null,
+        pane: launch.open() == Open.staff
+            ? NavigationPane(
+                header: const Column(
+                  children: [
+                    AppLogo(compact: true),
+                    CurrentAccount(),
+                  ],
+                ),
+                selected: routes.currentIndex,
+                displayMode: PaneDisplayMode.auto,
+                toggleable: false,
+                // The pane swaps bodies by index, so each is pre-built and
+                // keyed to keep its element and state across the swap.
+                items: List<NavigationPaneItem>.from(routes.visibleRoutes.map(
+                  (route) => PaneItem(
+                    key: Key("${route.id}_screen_button"),
+                    icon: Icon(route.icon),
+                    infoBadge: navBadgeFor(route),
+                    body: KeyedSubtree(
+                      key: _bodyKeyFor(route),
+                      child: _ScreenLayer(
                         child: Padding(
                           padding: EdgeInsets.only(
                               bottom: (routes.showBottomNav() &&
@@ -331,13 +344,13 @@ class ApexoApp extends StatelessWidget {
                           child: route.buildScreen(),
                         ),
                       ),
-                      title: Txt(route.title),
-                      onTap: () => routes.navigate(route),
                     ),
-                  )),
-                )
-              : null,
-        ),
+                    title: Txt(route.title),
+                    onTap: () => routes.navigate(route),
+                  ),
+                )),
+              )
+            : null,
       ),
     );
   }
@@ -346,6 +359,7 @@ class ApexoApp extends StatelessWidget {
       BuildContext context, BoxConstraints constraints, bool hideSidePanel) {
     final minimized =
         PanelsManager.minimize() && constraints.maxWidth < kWindowsBreakpoint;
+    final fillsWidth = !minimized && constraints.maxWidth < 490;
     final hasKeyboard = MediaQuery.of(context).viewInsets.bottom > 0;
     final panelWidth = _activePanelWidth(constraints);
     return AnimatedPositioned(
@@ -363,7 +377,7 @@ class ApexoApp extends StatelessWidget {
       child: hideSidePanel
           ? const SizedBox()
           : SafeArea(
-              top: minimized ? false : true,
+              top: minimized ? false : !fillsWidth,
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 250),
                 switchInCurve: Curves.easeInCubic,
@@ -385,6 +399,31 @@ class ApexoApp extends StatelessWidget {
                 ),
               ),
             ),
+    );
+  }
+}
+
+/// The screen area of the shell: the translucent layer WinUI stacks on Mica,
+/// with the hairline that separates it from the pane.
+class _ScreenLayer extends StatelessWidget {
+  const _ScreenLayer({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final materials = FluentMaterials.of(context);
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: materials.layer,
+        border: BorderDirectional(
+          start: BorderSide(
+            color: materials.divider,
+            width: FluentMaterials.hairlineWidth,
+          ),
+        ),
+      ),
+      child: child,
     );
   }
 }
@@ -414,7 +453,7 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
           if (launch.open() != Open.staff) return;
           await flyoutFocusFix(context);
           unawaited(controller.showFlyout(builder: (ctx) {
-            return MenuFlyout(
+            return AppMenuFlyout(
               items: routes.visibleRoutes.map((route) {
                 return MenuFlyoutItem(
                   leading: Icon(route.icon),
@@ -429,42 +468,83 @@ class _NavScreenTitleState extends State<NavScreenTitle> {
             );
           }));
         },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(50),
-            color: launch.open() == Open.staff
-                ? Colors.white
-                : Colors.grey.withValues(alpha: 0.6),
-            border: Border.all(
-                color: FluentTheme.of(context).inactiveColor.withAlpha(40)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            spacing: 5,
-            children: [
+        child: _TitleButton(
+          icon: launch.open() == Open.staff
+              ? routes.currentRoute().icon
+              : WindowsIcons.lock,
+          label: launch.open() == Open.staff
+              ? routes.currentRoute().title
+              : launch.open() == Open.patient
+                  ? txt("patientSide")
+                  : txt("login"),
+          expandable: launch.open() == Open.staff,
+        ),
+      ),
+    );
+  }
+}
+
+/// The app's name in the title bar, the way WinUI draws a title: plain text,
+/// no pill, and a chevron where a menu is behind it.
+class _TitleButton extends StatefulWidget {
+  const _TitleButton({
+    required this.icon,
+    required this.label,
+    required this.expandable,
+  });
+
+  final IconData icon;
+
+  /// A localization key; translated here, at draw time.
+  final String label;
+
+  final bool expandable;
+
+  @override
+  State<_TitleButton> createState() => _TitleButtonState();
+}
+
+class _TitleButtonState extends State<_TitleButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final materials = FluentMaterials.of(context);
+    return MouseRegion(
+      cursor: widget.expandable ? SystemMouseCursors.click : MouseCursor.defer,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: AnimatedContainer(
+        duration: theme.fastAnimationDuration,
+        curve: theme.animationCurve,
+        padding: const EdgeInsetsDirectional.fromSTEB(8, 3, 10, 3),
+        decoration: BoxDecoration(
+          color: _hovered && widget.expandable
+              ? materials.hover
+              : Colors.transparent,
+          borderRadius: FluentMaterials.controlRadius,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: 6,
+          children: [
+            Icon(
+              widget.icon,
+              size: 14,
+              color: materials.textSecondary,
+            ),
+            Txt(
+              widget.label,
+              style: theme.typography.bodyStrong?.copyWith(fontSize: 13),
+            ),
+            if (widget.expandable)
               Icon(
-                launch.open() == Open.staff
-                    ? routes.currentRoute().icon
-                    : WindowsIcons.lock,
-                color: Colors.grey,
+                FluentIcons.chevron_down,
+                size: 10,
+                color: materials.textTertiary,
               ),
-              launch.open() == Open.staff
-                  ? Txt(
-                      routes.currentRoute().title,
-                      style: const TextStyle(color: Colors.grey),
-                    )
-                  : launch.open() == Open.patient
-                      ? Txt(
-                          txt("patientSide"),
-                          style: const TextStyle(color: Colors.grey),
-                        )
-                      : Txt(
-                          txt("login"),
-                          style: const TextStyle(color: Colors.grey),
-                        )
-            ],
-          ),
+          ],
         ),
       ),
     );

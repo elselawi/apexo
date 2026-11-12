@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
@@ -7,6 +8,7 @@ import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
+import 'package:flutter/cupertino.dart';
 import 'backup_file_tile.dart';
 import 'package:apexo/common_widgets/transitions/border.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -262,7 +264,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
             const SizedBox(height: 5),
             ResponsiveRow(
               children: [
-                ComboBox<String>(
+                AppComboBox<String>(
                   key: WK.serviceField('backups_cron'),
                   isExpanded: true,
                   value: _cronController.text.isEmpty
@@ -281,7 +283,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                     setState(() {});
                   },
                 ),
-                TextBox(
+                CupertinoTextField(
                   controller: _cronController,
                   enabled: false,
                   placeholder: "0 0 * * *",
@@ -296,7 +298,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                 children: [
                   Txt(txt("backups_max_keep")),
                   const SizedBox(height: 5),
-                  TextBox(
+                  CupertinoTextField(
                     key: WK.serviceField('backups_maxKeep'),
                     controller: _maxKeepController,
                     placeholder: "5",
@@ -331,7 +333,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
               const SizedBox(height: 15),
               Txt(txt("s3_endpoint")),
               const SizedBox(height: 5),
-              TextBox(
+              CupertinoTextField(
                 key: WK.serviceField('backups_s3_endpoint'),
                 controller: _endpointController,
                 placeholder: "https://s3.amazonaws.com",
@@ -344,7 +346,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   children: [
                     Txt(txt("s3_bucket")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _bucketController,
                       placeholder: "my-backups",
                     ),
@@ -356,7 +358,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   children: [
                     Txt(txt("s3_region")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _regionController,
                       placeholder: "auto",
                     ),
@@ -371,7 +373,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                   children: [
                     Txt(txt("s3_accessKey")),
                     const SizedBox(height: 5),
-                    TextBox(
+                    CupertinoTextField(
                       controller: _accessKeyController,
                       placeholder: "AKIA...",
                     ),
@@ -386,7 +388,7 @@ class _BackupsSettingsState extends State<BackupsSettings> {
                     ValueListenableBuilder<bool>(
                       valueListenable: _showSecretKey,
                       builder: (context, show, _) {
-                        return TextBox(
+                        return CupertinoTextField(
                           controller: _secretKeyController,
                           placeholder: txt("leaveBlankToKeepUnchanged"),
                           obscureText: !show,

@@ -70,7 +70,7 @@ class _PatientSideScreenState extends State<PatientSideScreen> {
               const SizedBox(width: 8),
               _TabChip(
                 label: txt("gallery"),
-                icon: FluentIcons.camera,
+                icon: WindowsIcons.camera,
                 selected: _selectedTab == 1,
                 onTap: () => setState(() => _selectedTab = 1),
               ),
@@ -872,7 +872,7 @@ class _AppointmentCardState extends State<_AppointmentCard> {
                                 Row(
                                   children: [
                                     Icon(
-                                      FluentIcons.camera,
+                                      WindowsIcons.camera,
                                       size: 13,
                                       color: theme.accentColor,
                                     ),
@@ -981,7 +981,7 @@ class _PhotoGallery extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              FluentIcons.camera,
+              WindowsIcons.camera,
               size: 48,
               color: theme.resources.textFillColorTertiary,
             ),

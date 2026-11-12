@@ -18,6 +18,7 @@ import 'package:apexo/common_widgets/grid_gallery.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
@@ -146,22 +147,13 @@ class AppointmentCard extends StatelessWidget {
               Expanded(
                 child: Container(
                   decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.all(Radius.circular(5)),
-                      color: FluentTheme.of(context).micaBackgroundColor,
-                      boxShadow: const [
-                        BoxShadow(
-                          offset: Offset(0.0, 8.0),
-                          blurRadius: 17.0,
-                          spreadRadius: 2.0,
-                          color: Color.fromARGB(14, 0, 0, 0),
-                        ),
-                        BoxShadow(
-                          offset: Offset(0.0, 5.0),
-                          blurRadius: 22.0,
-                          spreadRadius: 4.0,
-                          color: Color(0x1F000000),
-                        ),
-                      ]),
+                      borderRadius: FluentMaterials.surfaceRadius,
+                      color: FluentMaterials.of(context).card,
+                      border: Border.all(
+                        color: FluentMaterials.of(context).hairline,
+                        width: FluentMaterials.hairlineWidth,
+                      ),
+                      boxShadow: FluentMaterials.of(context).windowShadow),
                   child: Container(
                     decoration:
                         showLeftBorder ? _coloredHandleDecoration(color) : null,
@@ -229,8 +221,10 @@ class AppointmentCard extends StatelessWidget {
                                 size: 43,
                                 drawings: appointment.drawings,
                                 onSaveDrawing: (img, drawing) =>
-                                    appointmentCommand(appointment.id,
-                                        (draft) => draft.drawings[img] = drawing),
+                                    appointmentCommand(
+                                        appointment.id,
+                                        (draft) =>
+                                            draft.drawings[img] = drawing),
                                 onTapClip: () {
                                   _open(AppointmentWindow.gallery);
                                 },
@@ -272,7 +266,7 @@ class AppointmentCard extends StatelessWidget {
                                   }
                                 },
                               ),
-                              FluentIcons.camera,
+                              WindowsIcons.camera,
                               color,
                               context,
                               onOpen:

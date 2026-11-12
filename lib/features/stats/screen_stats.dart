@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
@@ -31,7 +32,7 @@ class StatsScreen extends StatelessWidget {
                   FluentTheme.of(context).inactiveColor.withValues(alpha: 0.5)),
           icons: _icons),
       Container(
-        decoration: topBarDecoration(context, Colors.grey),
+        decoration: topBarDecoration(context),
         child: Padding(
           padding: const EdgeInsets.only(top: 0, bottom: 10, left: 8, right: 8),
           child: StreamBuilder(
@@ -96,7 +97,7 @@ class StatsScreen extends StatelessWidget {
     return StreamBuilder(
         stream: chartsCtrl.filterByOperatorID.stream,
         builder: (context, snapshot) {
-          return ComboBox<String>(
+          return AppComboBox<String>(
             style: const TextStyle(overflow: TextOverflow.ellipsis),
             items: [
               ComboBoxItem<String>(

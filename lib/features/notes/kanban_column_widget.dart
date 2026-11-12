@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/features/notes/column_edit_dialog.dart';
 import 'package:apexo/features/notes/note_edit_dialog.dart';
@@ -214,9 +215,9 @@ class _KanbanColumnState extends State<KanbanColumn> {
                       icon: const Icon(WindowsIcons.more),
                       onPressed: () async {
                         await flyoutFocusFix(context);
-                        unawaited(moreMenuFlyout.showFlyout<void>(
-                            builder: (context) {
-                          return MenuFlyout(
+                        unawaited(
+                            moreMenuFlyout.showFlyout<void>(builder: (context) {
+                          return AppMenuFlyout(
                             items: [
                               MenuFlyoutItem(
                                 text: Text(txt("edit")),

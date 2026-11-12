@@ -3,11 +3,15 @@ library;
 
 import 'package:apexo/common_widgets/date_time_picker.dart';
 import 'package:apexo/common_widgets/duration_pill.dart';
+import 'package:apexo/common_widgets/operators_picker.dart';
+import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/new_appointment_dialog.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/services/login.dart';
+import 'package:apexo/services/perm.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -314,5 +318,100 @@ void main() {
       ),
       findsWidgets,
     );
+  });
+
+  group('operator guess for a creator who does not operate', () {
+    late List<int> previousPermissions;
+
+    setUp(() {
+      previousPermissions = login.savedPermissions;
+      login.savedPermissions = Perm.zeroes;
+    });
+
+    tearDown(() => login.savedPermissions = previousPermissions);
+
+    /// A finished visit of [patient] operated by [operatorID].
+    void previousVisit(String operatorID) {
+      appointments.set(testAppointment(
+        id: 'previous-visit',
+        patientID: patient.id,
+        operatorsIDs: [operatorID],
+        date: DateTime.now().subtract(const Duration(days: 10)),
+        isDone: true,
+      ));
+    }
+
+    testWidgets('the sheet starts with the last visit\'s operator',
+        (tester) async {
+      previousVisit('op-previous');
+
+      Appointment? created;
+      await openSheet(
+        tester,
+        patientID: patient.id,
+        onSave: (appointment) => created = appointment,
+      );
+
+      await tester.tap(find.byKey(WK.btnCreateAppointment));
+      await tester.pumpAndSettle();
+
+      expect(created!.operatorsIDs, ['op-previous']);
+    });
+
+    testWidgets('picking the patient guesses their last visit\'s operator',
+        (tester) async {
+      previousVisit('op-previous');
+
+      Appointment? created;
+      await openSheet(tester, onSave: (appointment) => created = appointment);
+
+      tester
+          .widget<PatientPicker>(find.byType(PatientPicker))
+          .onChanged(patient.id);
+      await tester.pump();
+
+      await tester.tap(find.byKey(WK.btnCreateAppointment));
+      await tester.pumpAndSettle();
+
+      expect(created!.operatorsIDs, ['op-previous']);
+    });
+
+    testWidgets('a patient with no earlier visit leaves the operators empty',
+        (tester) async {
+      Appointment? created;
+      await openSheet(
+        tester,
+        patientID: patient.id,
+        onSave: (appointment) => created = appointment,
+      );
+
+      await tester.tap(find.byKey(WK.btnCreateAppointment));
+      await tester.pumpAndSettle();
+
+      expect(created!.operatorsIDs, isEmpty);
+    });
+
+    testWidgets('an operator picked by hand survives a patient change',
+        (tester) async {
+      previousVisit('op-previous');
+
+      Appointment? created;
+      await openSheet(tester, onSave: (appointment) => created = appointment);
+
+      tester
+          .widget<OperatorsPicker>(find.byType(OperatorsPicker))
+          .onChanged(['op-handpicked']);
+      await tester.pump();
+
+      tester
+          .widget<PatientPicker>(find.byType(PatientPicker))
+          .onChanged(patient.id);
+      await tester.pump();
+
+      await tester.tap(find.byKey(WK.btnCreateAppointment));
+      await tester.pumpAndSettle();
+
+      expect(created!.operatorsIDs, ['op-handpicked']);
+    });
   });
 }

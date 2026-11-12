@@ -14,11 +14,12 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_screen.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:flutter/material.dart' show CircleAvatar;
 import '../../../helpers/model_factory.dart';
 import '../../../helpers/pump_app.dart';
 
@@ -159,7 +160,7 @@ void main() {
           matching: find.text(txt(key)),
         );
     // One item per patient window, then the ways to reach the patient.
-    expect(item("dentalChart"), findsWidgets);
+    expect(item(kDentalChartDockTitleKey), findsWidgets);
     expect(item("patientDetails"), findsWidgets);
     expect(item("patientPage"), findsWidgets);
     expect(item("sendEmail"), findsWidgets);

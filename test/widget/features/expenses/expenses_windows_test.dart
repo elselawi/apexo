@@ -328,6 +328,33 @@ void main() {
     expect(find.byKey(WK.windowClose), findsOneWidget);
   });
 
+  testWidgets('a supplier row opens its panel once a panel is open',
+      (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final other = supplierOrders('supplier-elsewhere');
+    final orders = supplierOrders('supplier-beside');
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    // Another supplier's panel is on screen.
+    unawaited(openExpenses(other, 'Acme Supplies', 'supplier-elsewhere'));
+    await tester.pumpAndSettle();
+    expect(PanelsManager.active(), hasLength(1));
+
+    unawaited(openExpenses(
+        orders, 'Acme Supplies', 'supplier-beside', null, ExpenseWindow.due));
+    await tester.pumpAndSettle();
+
+    expect(
+      WindowsManager.open(),
+      isEmpty,
+      reason: 'a panel is on screen, so the orders join their supplier there',
+    );
+    final panel = PanelsManager.active()
+        .firstWhere((panel) => panel.itemId == 'supplier-beside');
+    expect(panel.initialWindow, ExpenseWindow.due.id,
+        reason: 'the window the row asked for opens by default');
+  });
+
   testWidgets('a standalone orders window steps aside for its panel',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));

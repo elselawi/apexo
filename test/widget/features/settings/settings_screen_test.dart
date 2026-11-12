@@ -3,6 +3,7 @@ library;
 
 import 'dart:convert';
 
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/features/settings/services_settings/auth_settings.dart';
 import 'package:apexo/features/settings/services_settings/backups_settings.dart';
 import 'package:apexo/features/settings/services_settings/file_upload_settings.dart';
@@ -10,6 +11,9 @@ import 'package:apexo/features/settings/services_settings/meta_settings.dart';
 import 'package:apexo/features/settings/services_settings/s3_settings.dart';
 import 'package:apexo/features/settings/services_settings/smtp_settings.dart';
 import 'package:apexo/features/settings/services_settings/backup_file_tile.dart';
+import 'package:apexo/features/expenses/expenses_store.dart';
+import 'package:apexo/features/notes/notes_store.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/backups.dart';
 import 'package:pocketbase/pocketbase.dart';
 import 'package:apexo/features/settings/settings_screen.dart';
@@ -21,9 +25,15 @@ import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart' show CupertinoTextField;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/pump_app.dart';
+import '../../../helpers/model_factory.dart';
+
+SettingsItem itemOf(WidgetTester tester, String identifier) =>
+    tester.widget<SettingsItem>(find.byWidgetPredicate(
+        (widget) => widget is SettingsItem && widget.identifier == identifier));
 
 void main() {
   late String savedToken;
@@ -134,14 +144,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(clinic);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextBox>(field).controller!.text, 'unsaved');
+    expect(
+        tester.widget<CupertinoTextField>(field).controller!.text, 'unsaved');
 
     tester.view.physicalSize = const Size(360, 800);
     await tester.pumpAndSettle();
-    expect(tester.widget<TextBox>(field).controller!.text, 'unsaved');
+    expect(
+        tester.widget<CupertinoTextField>(field).controller!.text, 'unsaved');
     expect(
         tester
-            .widget<ComboBox<SettingsSection>>(
+            .widget<AppComboBox<SettingsSection>>(
                 find.byKey(const ValueKey('settings_category_picker')))
             .value,
         SettingsSection.clinic);
@@ -180,6 +192,8 @@ void main() {
     expect(settingsSectionFor('audioTranscriptionLocale'),
         SettingsSection.optional);
     expect(settingsSectionFor('follow_ups_enab'), SettingsSection.optional);
+    expect(settingsSectionFor('notes_enabled__'), SettingsSection.optional);
+    expect(settingsSectionFor('expenses_enabl_'), SettingsSection.optional);
 
     await tester.tap(find.byKey(const ValueKey('settings_category_optional')));
     await tester.pumpAndSettle();
@@ -188,6 +202,10 @@ void main() {
     expect(find.byKey(WK.settingsItem('ai_services_ena')), findsOneWidget);
     expect(find.byKey(WK.settingsItem('follow_ups_enab')), findsOneWidget,
         reason: 'follow-ups are switched on here, with the AI services');
+    expect(find.byKey(WK.settingsItem('notes_enabled__')), findsOneWidget,
+        reason: 'the notes board is an optional feature too');
+    expect(find.byKey(WK.settingsItem('expenses_enabl_')), findsOneWidget,
+        reason: 'expenses are an optional feature too');
     final followUps = tester.widget<SettingsItem>(find.byWidgetPredicate(
       (widget) =>
           widget is SettingsItem && widget.identifier == 'follow_ups_enab',
@@ -197,6 +215,70 @@ void main() {
     expect(find.text(txt('followUpsHintTitle')), findsNothing);
     expect(find.text(txt('followUpsHint')), findsWidgets,
         reason: 'the setting hint explains follow-ups without an info bar');
+  });
+
+  testWidgets('an optional feature is off until a clinic asks for it',
+      (tester) async {
+    login.adminCollectionId = 'test-admin';
+    login.token = 'x.${base64Encode(utf8.encode('test-admin'))}.x';
+    globalSettings.notesFeatureChoice = '';
+    globalSettings.expensesFeatureChoice = '';
+    notes.observableMap.clear();
+    notes.hasContent(false);
+    expenses.observableMap.clear();
+    expenses.hasContent(false);
+    addTearDown(() {
+      globalSettings.notesFeatureChoice = '';
+      globalSettings.expensesFeatureChoice = '';
+      notes.observableMap.clear();
+      notes.hasContent(false);
+      expenses.observableMap.clear();
+      expenses.hasContent(false);
+    });
+    await size(tester, const Size(1400, 900));
+    await pumpApexoApp(tester, const SettingsScreen());
+    await tester.tap(find.byKey(const ValueKey('settings_category_optional')));
+    await tester.pumpAndSettle();
+
+    expect(itemOf(tester, 'notes_enabled__').initValue, '0',
+        reason: 'a clinic that never used the board does not get it offered');
+    expect(itemOf(tester, 'expenses_enabl_').initValue, '0');
+  });
+
+  testWidgets('existing records keep an optional feature switched on',
+      (tester) async {
+    login.adminCollectionId = 'test-admin';
+    login.token = 'x.${base64Encode(utf8.encode('test-admin'))}.x';
+    globalSettings.notesFeatureChoice = '';
+    globalSettings.expensesFeatureChoice = '';
+    notes.observableMap.clear();
+    expenses.observableMap.clear();
+    notes.set(testNote(id: 'n1'));
+    expenses.set(testExpense(id: 'e1'));
+    addTearDown(() {
+      globalSettings.notesFeatureChoice = '';
+      globalSettings.expensesFeatureChoice = '';
+      notes.observableMap.clear();
+      expenses.observableMap.clear();
+    });
+    await size(tester, const Size(1400, 900));
+    await pumpApexoApp(tester, const SettingsScreen());
+    await tester.tap(find.byKey(const ValueKey('settings_category_optional')));
+    await tester.pumpAndSettle();
+
+    expect(itemOf(tester, 'notes_enabled__').initValue, '1',
+        reason: 'records made before the feature became optional keep it on');
+    expect(itemOf(tester, 'expenses_enabl_').initValue, '1');
+
+    globalSettings.notesFeatureChoice = '0';
+    // Not `const`: a new instance forces the whole screen to rebuild rather
+    // than relying on the settled frame before the expectation.
+    // ignore: prefer_const_constructors
+    await pumpApexoApp(tester, SettingsScreen());
+    await tester.tap(find.byKey(const ValueKey('settings_category_optional')));
+    await tester.pumpAndSettle();
+    expect(itemOf(tester, 'notes_enabled__').initValue, '0',
+        reason: 'an explicit off wins, even once the feature has data');
   });
 
   for (final width in [360.0, 1400.0]) {
@@ -381,9 +463,13 @@ void main() {
           )
           .first);
       final decoration = container.decoration! as BoxDecoration;
-      expect(decoration.boxShadow, isNotEmpty);
-      expect(decoration.boxShadow!.every((shadow) => shadow.blurRadius > 0),
-          isTrue);
+      // Depth is a translucent fill and a hairline stroke, not a shadow.
+      expect(decoration.boxShadow, isNull);
+      expect(decoration.color, isNotNull);
+      expect(decoration.color!.a, lessThan(1.0));
+      final border = decoration.border! as Border;
+      expect(border.top.width, greaterThan(0));
+      expect(border.top.color.a, greaterThan(0));
       expect(tester.takeException(), isNull);
     });
   }
@@ -419,7 +505,7 @@ void main() {
           theme: rtl ? ThemeMode.dark : ThemeMode.light,
         );
         expect(find.byType(Expander), findsNothing);
-        expect(find.byType(TextBox), findsWidgets);
+        expect(find.byType(CupertinoTextField), findsWidgets);
         expect(tester.takeException(), isNull);
       });
     }

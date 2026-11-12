@@ -108,14 +108,60 @@ void main() {
   testWidgets("points its row chevron along the reading order", (tester) async {
     await size(tester, const Size(1200, 800));
     await pumpApexoApp(tester, const BookingRequestsScreen());
-    expect(find.byIcon(FluentIcons.chevron_right), findsWidgets);
-    expect(find.byIcon(FluentIcons.chevron_left), findsNothing);
+    expect(find.byIcon(WindowsIcons.chevron_right), findsWidgets);
+    expect(find.byIcon(WindowsIcons.chevron_left), findsNothing);
 
     await tester.pumpWidget(const SizedBox());
     await pumpApexoApp(tester, const BookingRequestsScreen(),
         direction: TextDirection.rtl);
-    expect(find.byIcon(FluentIcons.chevron_left), findsWidgets);
-    expect(find.byIcon(FluentIcons.chevron_right), findsNothing);
+    expect(find.byIcon(WindowsIcons.chevron_left), findsWidgets);
+    expect(find.byIcon(WindowsIcons.chevron_right), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("pins the row actions to the end at every width", (tester) async {
+    booking.requests.items([
+      request(name: "Al"),
+      request(id: "r2", name: "Omar Saleh"),
+    ]);
+    // Wide (full table) and phone (compact) layouts must both end at the
+    // tile edge instead of leaving slack after the chevron.
+    for (final width in [1400.0, 360.0]) {
+      await tester.pumpWidget(const SizedBox());
+      await size(tester, Size(width, 800));
+      await pumpApexoApp(tester, const BookingRequestsScreen());
+
+      final rows = find.byType(ListTile);
+      expect(rows, findsNWidgets(2));
+      for (var index = 0; index < 2; index++) {
+        final tile = tester.getRect(rows.at(index));
+        final chevron = tester.getRect(
+          find.descendant(
+            of: rows.at(index),
+            matching: find.byIcon(WindowsIcons.chevron_right),
+          ),
+        );
+        expect(chevron.right, moreOrLessEquals(tile.right - 10, epsilon: 0.5));
+      }
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets("gives the patient name a fixed width and ellipsizes it",
+      (tester) async {
+    const longName = "Abdulrahman Mohammed Al-Samarrai";
+    booking.requests.items([
+      request(name: "Al"),
+      request(id: "r2", name: longName),
+    ]);
+    await size(tester, const Size(1400, 900));
+    await pumpApexoApp(tester, const BookingRequestsScreen());
+
+    expect(tester.getSize(find.text("Al")).width, 190);
+    expect(tester.getSize(find.text(longName)).width, 190);
+    final label = tester.widget<Text>(find.text(longName));
+    expect(label.maxLines, 1);
+    expect(label.overflow, TextOverflow.ellipsis);
     expect(tester.takeException(), isNull);
   });
 

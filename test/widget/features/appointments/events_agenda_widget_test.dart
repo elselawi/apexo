@@ -92,7 +92,7 @@ void main() {
     expect(item("markAsDone"), findsWidgets);
     // The visit's patient: their whole history, and their record.
     expect(item("allAppointments"), findsWidgets);
-    expect(item("treatments"), findsWidgets);
+    expect(item("appointmentOperativeDetails"), findsWidgets);
     expect(
       item(txt("openPatientRecord").replaceAll("{name}", "Menu Patient")),
       findsWidgets,

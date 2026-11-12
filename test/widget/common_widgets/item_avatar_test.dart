@@ -11,7 +11,7 @@ import 'package:apexo/services/perm.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:flutter/material.dart' show CircleAvatar;
 import '../../helpers/model_factory.dart';
 import '../../helpers/pump_app.dart';
 
@@ -44,6 +44,25 @@ void main() {
     await pumpApexoApp(tester, Center(child: ItemAvatar(item: patient)));
     expect(patient.title, isEmpty);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the initial stays white in both themes', (tester) async {
+    final patient = testPatient(name: 'Ahmed');
+    for (final theme in [ThemeMode.light, ThemeMode.dark]) {
+      await pumpApexoApp(
+        tester,
+        Center(child: ItemAvatar(item: patient)),
+        theme: theme,
+      );
+      final textFinder = find.descendant(
+        of: find.byType(CircleAvatar),
+        matching: find.byType(Text),
+      );
+      final text = tester.widget<Text>(textFinder);
+      final inherited = DefaultTextStyle.of(tester.element(textFinder)).style;
+      expect(text.data, 'A');
+      expect(inherited.merge(text.style).color, Colors.white, reason: '$theme');
+    }
   });
 
   testWidgets(

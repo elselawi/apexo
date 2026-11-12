@@ -6,7 +6,7 @@ void main() {
   /// The app's own shape: the pane's selection is a prop the caller changes.
   Widget shell(int selected) {
     return NavigationView(
-      appBar: const NavigationAppBar(height: 40),
+      titleBar: const TitleBar(height: 40),
       pane: NavigationPane(
         selected: selected,
         displayMode: PaneDisplayMode.auto,

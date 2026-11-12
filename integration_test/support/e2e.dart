@@ -5,7 +5,7 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/features/login/login_controller.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart'
-    show localSettings;
+    show globalSettings, localSettings;
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/version.dart';
 import 'package:apexo/services/changelog.dart';
@@ -334,6 +334,17 @@ abstract final class E2E {
     // runs at login" instead of returning rows.
     await dismissStartupDialogs(tester, waitForAppTimer: false);
     await waitForDatabase(tester);
+
+    // Notes and expenses are optional features; this suite exercises both, so
+    // every signed-in session switches them on instead of depending on the test
+    // clinic already holding rows for them.
+    if (globalSettings.notesFeatureChoice != '1') {
+      globalSettings.notesFeatureChoice = '1';
+    }
+    if (globalSettings.expensesFeatureChoice != '1') {
+      globalSettings.expensesFeatureChoice = '1';
+    }
+    await settle(tester, frames: 2);
   }
 
   /// Pumps until the app's stores have a persistence session.

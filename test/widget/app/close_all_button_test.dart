@@ -236,7 +236,7 @@ void main() {
     );
   });
 
-  testWidgets('wears the Close buttons\' grey and white in either theme',
+  testWidgets('takes the accent in either theme, with readable text',
       (tester) async {
     PanelsManager.active([panel(dirty: false)]);
 
@@ -244,13 +244,26 @@ void main() {
       await pumpButton(tester, theme: themeMode);
       await tester.pumpAndSettle();
 
-      final style =
-          tester.widget<Button>(find.byKey(WK.closeAllWindows)).style!;
-      expect(style.backgroundColor!.resolve({}), Colors.grey,
-          reason:
-              '${themeMode.name}: the button left the Close buttons\' grey');
-      expect(style.foregroundColor!.resolve({}), Colors.white,
-          reason: '${themeMode.name}: its label must read on that grey');
+      final context = tester.element(find.byKey(WK.closeAllWindows));
+      final theme = FluentTheme.of(context);
+      final button =
+          tester.widget<FilledButton>(find.byKey(WK.closeAllWindows));
+      expect(button.style?.backgroundColor, isNull,
+          reason: '${themeMode.name}: the accent comes from the theme, not '
+              'a hard-coded colour');
+      expect(
+        FilledButton.backgroundColor(theme, {}),
+        theme.accentColor.defaultBrushFor(themeMode == ThemeMode.dark
+            ? Brightness.dark
+            : Brightness.light),
+        reason: '${themeMode.name}: the one command in the workspace is the '
+            'accent action',
+      );
+      expect(
+        FilledButton.foregroundColor(theme, {}),
+        theme.resources.textOnAccentFillColorPrimary,
+        reason: '${themeMode.name}: its label must read on that accent',
+      );
     }
   });
 

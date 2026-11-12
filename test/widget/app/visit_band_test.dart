@@ -33,7 +33,11 @@ void main() {
     WindowsManager.closeAll();
   });
 
-  Panel hostPanel({Widget? footer}) => DelegatedPanel(
+  Panel hostPanel({
+    Widget? footer,
+    Future<void> Function(bool archived)? onSetArchived,
+  }) =>
+      DelegatedPanel(
         itemId: 'patient-1',
         singularName: 'patient',
         unicodeSymbol: '👤',
@@ -45,6 +49,7 @@ void main() {
         workspaceWindows: const ['chart', 'appointments'],
         checkUnsavedChanges: () => false,
         onSave: () async => const ['patient-1'],
+        onSetArchived: onSetArchived,
         opensWithWindows: false,
         windows: [
           const PanelWindow(
@@ -130,6 +135,31 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('a dock button keeps its own name while the window is titled',
+      (tester) async {
+    await pumpApexoApp(
+      tester,
+      WindowDock(
+        windows: const [
+          PanelWindow(
+            id: 'chart',
+            title: 'initialExamChart',
+            dockTitle: 'dentalChart',
+            icon: FluentIcons.teeth,
+            body: SizedBox.shrink(),
+          ),
+        ],
+        isOpen: (_) => false,
+        enabled: (_) => true,
+        onToggle: (_) {},
+      ),
+    );
+
+    expect(find.text(txt('dentalChart')), findsWidgets);
+    expect(find.text(txt('initialExamChart')), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('a visit draws its own band, its own form and its own Save',
       (tester) async {
     final panel = hostPanel();
@@ -145,9 +175,9 @@ void main() {
     // The footer carries the record's actions, not the identity line.
     expect(find.byKey(WK.visitDetach), findsOneWidget);
     expect(find.byKey(WK.visitDelete), findsOneWidget);
-    expect(find.byKey(WK.visitMenu), findsOneWidget);
-    // Two Saves, each saying which record it writes.
-    expect(find.text(txt('savePatient')), findsWidgets);
+    // One Save, saying which record it writes: the panel's is put away while
+    // its band is open.
+    expect(find.text(txt('savePatient')), findsNothing);
     expect(find.text(txt('saveVisit')), findsWidgets);
     // With attachments and header buttons, the workspaces row is the only dock.
     expect(find.byType(WindowDock), findsOneWidget);
@@ -190,6 +220,70 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('the read-only record body scrolls but takes no taps',
+      (tester) async {
+    var tapped = 0;
+    final panel = DelegatedPanel(
+      itemId: 'patient-1',
+      singularName: 'patient',
+      unicodeSymbol: '👤',
+      icon: WindowsIcons.contact,
+      saveLabel: 'savePatient',
+      carriedDraftWindowId: 'chart',
+      checkUnsavedChanges: () => false,
+      onSave: () async => const ['patient-1'],
+      opensWithWindows: false,
+      windows: [
+        PanelWindow(
+          id: 'details',
+          title: 'details',
+          icon: WindowsIcons.contact,
+          body: Column(
+            children: [
+              GestureDetector(
+                key: const ValueKey('readOnlyField'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => tapped++,
+                child: const SizedBox(height: 60, width: double.infinity),
+              ),
+              const SizedBox(height: 1200),
+            ],
+          ),
+        ),
+      ],
+    );
+    panel.attach(visit());
+    await pumpShell(tester, panel);
+
+    expect(find.byKey(WK.patientReadOnly), findsOneWidget);
+    final field = find.byKey(const ValueKey('readOnlyField'));
+    // The blocker sits inside the scroll view, so the scrollable ancestor keeps
+    // receiving the drags the blocker would otherwise swallow.
+    expect(
+      find.descendant(
+        of: find.byType(SingleChildScrollView),
+        matching:
+            find.ancestor(of: field, matching: find.byType(AbsorbPointer)),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.ancestor(of: field, matching: find.byType(SingleChildScrollView)),
+      findsOneWidget,
+    );
+
+    await tester.tapAt(tester.getCenter(field));
+    await tester.pumpAndSettle();
+    expect(tapped, 0, reason: 'the read-only body still takes no taps');
+
+    final before = tester.getTopLeft(field).dy;
+    await tester.dragFrom(tester.getCenter(field), const Offset(0, -200));
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(field).dy, lessThan(before - 100),
+        reason: 'the read-only body scrolls under a drag');
+    expect(tester.takeException(), isNull);
+  });
+
   for (final allowed in [false, true]) {
     testWidgets('visit band archive capability is $allowed', (tester) async {
       final panel = hostPanel();
@@ -221,6 +315,45 @@ void main() {
 
     expect(panel.attached, same(next));
     expect(session.archived, isTrue);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a visit band leaves only Close in the panel\'s footer',
+      (tester) async {
+    final panel = hostPanel(onSetArchived: (_) async {});
+    await pumpShell(tester, panel);
+    expect(find.byKey(WK.panelArchive), findsOneWidget);
+    expect(find.byKey(WK.panelSave), findsOneWidget);
+
+    panel.attach(visit());
+    await tester.pumpAndSettle();
+    expect(find.byKey(WK.panelArchive), findsNothing,
+        reason: 'the band\'s visit cannot outlive the record it belongs to');
+    expect(find.byKey(WK.panelSave), findsNothing,
+        reason: 'the band saves its own record; the panel does not');
+    expect(find.byKey(WK.panelClose), findsOneWidget);
+
+    panel.detach();
+    await tester.pumpAndSettle();
+    expect(find.byKey(WK.panelArchive), findsOneWidget);
+    expect(find.byKey(WK.panelSave), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the band\'s delete reads red', (tester) async {
+    final panel = hostPanel(onSetArchived: (_) async {});
+    panel.attach(visit());
+    await pumpShell(tester, panel);
+
+    final theme = FluentTheme.of(tester.element(find.byKey(WK.visitDelete)));
+    final colour = DefaultTextStyle.of(tester.element(
+      find.descendant(
+        of: find.byKey(WK.visitDelete),
+        matching: find.text(txt('delete')).first,
+      ),
+    )).style.color;
+    expect(colour, theme.resources.systemFillColorCritical,
+        reason: 'the visit\'s delete is destructive, and says so');
     expect(tester.takeException(), isNull);
   });
 

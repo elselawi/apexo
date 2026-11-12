@@ -640,7 +640,7 @@ Future<void> _runFlow(
               });
               await step('patient:chart-close:$run', () async {
                 await driver.runUnsynchronized(() => _bounded(
-                    driver.tap(find.byValueKey('windowMinimize-dentalChart'))));
+                    driver.tap(find.byValueKey('windowHeaderClose'))));
                 await quiet(1000);
               });
               await step('patient:panel-close:$run', () async {
@@ -678,7 +678,7 @@ Future<void> _runFlow(
                   await quiet(2000);
                 });
                 await _bounded(
-                    driver.waitFor(find.byValueKey('chartAllAppointments')));
+                    driver.waitFor(find.byValueKey('windowHeaderClose')));
                 await step('visit:chart-close:$run', () async {
                   await driver.runUnsynchronized(() =>
                       _bounded(driver.tap(find.byValueKey('visitDetach'))));

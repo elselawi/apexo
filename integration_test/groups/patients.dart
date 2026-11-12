@@ -6,6 +6,7 @@ import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart' show CircleAvatar;
 import '../support/e2e.dart';
 import '../support/store_ext.dart';
 import '../support/fixtures.dart';

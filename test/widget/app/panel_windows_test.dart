@@ -334,7 +334,7 @@ void main() {
     expect(panel.workspace.isOpen(PatientWindow.dentalChart.id), isTrue);
   });
 
-  testWidgets('a window of another patient still opens on its own',
+  testWidgets('a window of another patient opens in that patient\'s panel',
       (tester) async {
     final open = Patient.fromJson({
       'id': 'windows-open-patient',
@@ -344,6 +344,7 @@ void main() {
       'id': 'windows-asked-patient',
       'title': 'Asked Patient',
     });
+    patients.setAll([open, asked]);
 
     await pumpApexoApp(tester, const SizedBox.shrink());
     unawaited(openPatient(open));
@@ -352,9 +353,27 @@ void main() {
     unawaited(openPatient(asked, PatientWindow.dentalChart));
     await tester.pumpAndSettle();
 
-    expect(PanelsManager.active().single.itemId, open.id);
-    expect(WindowsManager.open(), hasLength(1));
-    expect(WindowsManager.open().single.scope, 'patient:${asked.id}');
+    expect(
+      WindowsManager.open(),
+      isEmpty,
+      reason: 'a panel is on screen, so a record window joins its record there',
+    );
+    expect(PanelsManager.active(), hasLength(2),
+        reason: 'the patient already open keeps its own panel');
+    final panel =
+        PanelsManager.active().firstWhere((panel) => panel.itemId == asked.id);
+
+    // The layer plans the panel the opener just added; its plan opens the window
+    // the caller asked for.
+    await pumpApexoApp(
+      tester,
+      const Stack(children: [WindowsLayer(visible: true, screenWidth: 1600)]),
+    );
+    await tester.pumpAndSettle();
+
+    expect(panel.workspace.isOpen(PatientWindow.dentalChart.id), isTrue,
+        reason: 'the asked-for window opens by default in the new panel');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the patient record can open without its windows',
@@ -724,6 +743,49 @@ void main() {
     final floating = WindowsManager.open().single;
     expect(floating.window.id, AppointmentWindow.labwork.id);
     expect(floating.window.id, isNot(AppointmentWindow.dentalChart.id));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a labwork order joins the visit panel once a panel is open',
+      (tester) async {
+    tester.view.physicalSize = const Size(1600, 1000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final patient = testPatient(id: 'labwork-panel-patient', name: 'Lab Panel');
+    final other = testPatient(id: 'labwork-other-patient', name: 'Other Panel');
+    patients.setAll([patient, other]);
+    final visit = testAppointment(
+      id: 'labwork-panel-visit',
+      patientID: patient.id,
+      hasLabwork: true,
+      labName: 'Acme Dental Lab',
+      labworkNotes: 'Zirconia crown',
+    );
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    // Another record's panel is on screen.
+    unawaited(openPatient(other));
+    await tester.pumpAndSettle();
+    expect(PanelsManager.active(), hasLength(1));
+
+    // The labwork row still asks for the order, but beside a panel it belongs in
+    // the visit's own panel instead of floating over someone else's record.
+    await openAppointmentWindowOnItsOwn(visit, AppointmentWindow.labwork);
+    await tester.pumpAndSettle();
+
+    expect(WindowsManager.open(), isEmpty,
+        reason: 'the visit panel holds the order now');
+    final panel = PanelsManager.active()
+        .firstWhere((panel) => panel.itemId == patient.id);
+    expect(panel.attached?.itemId, visit.id);
+    expect(
+      panel.workspace.isOpen(AppointmentWindow.labwork.id, slot: kAttachedSlot),
+      isTrue,
+      reason: 'the window the row asked for is the one shown',
+    );
     expect(tester.takeException(), isNull);
   });
 }

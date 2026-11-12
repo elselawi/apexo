@@ -1,4 +1,5 @@
 import 'package:apexo/features/appointments/visit_scope_bar.dart';
+import 'package:apexo/services/localization/flutter_delegates.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/material.dart' as material;
 import 'package:flutter_test/flutter_test.dart';
@@ -15,6 +16,7 @@ Future<void> pumpApexoApp(
   debugPauseScopeRipple = !scopeRipple;
   await tester.pumpWidget(
     FluentApp(
+      localizationsDelegates: appLocalizationsDelegates,
       home: material.Directionality(
         textDirection: direction,
         child: FluentTheme(

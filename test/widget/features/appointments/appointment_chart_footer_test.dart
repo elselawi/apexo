@@ -137,10 +137,12 @@ void main() {
         ),
       );
 
-      await tester.enterText(find.descendant(
-        of: find.byKey(field),
-        matching: find.byType(EditableText),
-      ), '10');
+      await tester.enterText(
+          find.descendant(
+            of: find.byKey(field),
+            matching: find.byType(EditableText),
+          ),
+          '10');
 
       expect(session.hasUnsavedChanges(), isTrue);
       expect(session.item.isDone, isTrue);
@@ -171,10 +173,12 @@ void main() {
       );
       expect(tester.takeException(), isNull);
 
-      await tester.enterText(find.descendant(
-        of: find.byKey(WK.fieldAppointmentPreOpNotes),
-        matching: find.byType(EditableText),
-      ), 'First note');
+      await tester.enterText(
+          find.descendant(
+            of: find.byKey(WK.fieldAppointmentPreOpNotes),
+            matching: find.byType(EditableText),
+          ),
+          'First note');
 
       expect(session.hasUnsavedChanges(), isTrue);
       expect(session.item.preOpNotes, 'First note');
@@ -202,10 +206,12 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.descendant(
-      of: find.byKey(WK.fieldLabworkOrderNotes),
-      matching: find.byType(EditableText),
-    ), 'Review margins');
+    await tester.enterText(
+        find.descendant(
+          of: find.byKey(WK.fieldLabworkOrderNotes),
+          matching: find.byType(EditableText),
+        ),
+        'Review margins');
 
     expect(session.hasUnsavedChanges(), isTrue);
     expect(session.item.labworkNotes, 'Review margins');
@@ -343,7 +349,10 @@ void main() {
       return DentalHistoryData(
           teeth: {'26': 'crown'}, teethExtraNotes: {'26': 'Review crown'});
     });
-    final button = action!(session) as AudioRecorderButton;
+    // The action wraps the button so only the button takes the click.
+    final actionWidget = action!(session);
+    final button =
+        (actionWidget as Row).children.whereType<AudioRecorderButton>().single;
     await button.onRecordingComplete([1, 2, 3], 'audio/m4a');
     expect(session.teeth, {'11': 'filling', '26': 'crown'});
     expect(session.extraNotes['26'], 'Review crown');

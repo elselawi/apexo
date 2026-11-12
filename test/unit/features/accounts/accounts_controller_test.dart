@@ -1,6 +1,8 @@
 @Tags(['serial'])
 library;
 
+import 'dart:convert';
+
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/services/login.dart';
@@ -104,6 +106,30 @@ void main() {
       }
     });
 
+    test('fromJson hides fleet-managed accounts from the cached list', () {
+      final previous = accounts.toJson();
+      try {
+        accounts.fromJson({
+          'list': [
+            {
+              'id': 'admin',
+              'type': 'admin',
+              'email': 'admin@example.com',
+            },
+            {
+              'id': 'fleet',
+              'type': 'admin',
+              'email': 'ops@Managed.Local',
+            },
+          ],
+        });
+
+        expect(accounts.list().map((record) => record.id), ['admin']);
+      } finally {
+        accounts.fromJson(previous);
+      }
+    });
+
     test('reloadFromRemote exits cleanly without authenticated PocketBase',
         () async {
       final oldPb = login.pb;
@@ -117,6 +143,77 @@ void main() {
       login.pb = oldPb;
       login.token = oldToken;
     });
+  });
+
+  test('reloadFromRemote hides fleet-managed accounts', () async {
+    final oldPb = login.pb;
+    final oldToken = login.token;
+    final oldList = accounts.list();
+    final payload = base64Url.encode(utf8.encode(jsonEncode({
+      'exp':
+          DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
+              1000,
+    })));
+    final token = 'header.$payload.signature';
+    final client = MockClient((request) async {
+      if (request.method == 'GET' &&
+          request.url.path.endsWith('/profiles_view/records')) {
+        return http.Response(
+          jsonEncode({
+            'page': 1,
+            'perPage': 500,
+            'totalItems': 3,
+            'totalPages': 1,
+            'items': [
+              {
+                'id': 'admin',
+                'type': 'admin',
+                'email': 'admin@example.com',
+                'name': 'Admin',
+              },
+              {
+                'id': 'fleet',
+                'type': 'admin',
+                'email': 'fleet@managed.local',
+                'name': 'Fleet',
+              },
+              {
+                'id': 'user',
+                'type': 'user',
+                'email': 'user@example.com',
+                'name': 'User',
+              },
+            ],
+          }),
+          200,
+          headers: const {'content-type': 'application/json'},
+        );
+      }
+      return http.Response(
+        '{"code":404,"message":"not found"}',
+        404,
+        headers: const {'content-type': 'application/json'},
+      );
+    });
+
+    try {
+      login.pb = PocketBase(
+        'https://accounts.test',
+        httpClientFactory: () => client,
+      )..authStore.save(token, null);
+      login.token = token;
+
+      await accounts.reloadFromRemote();
+
+      expect(accounts.list().map((record) => record.id), ['admin', 'user']);
+      expect(accounts.loaded(), isTrue);
+      expect(accounts.loading(), isFalse);
+    } finally {
+      login.pb = oldPb;
+      login.token = oldToken;
+      accounts.list(oldList);
+      client.close();
+    }
   });
 
   test('profile lookup server errors do not create another profile', () async {

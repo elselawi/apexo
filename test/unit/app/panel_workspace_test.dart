@@ -338,6 +338,19 @@ void main() {
       expect(workspace.open, ['operative']);
     });
 
+    test('a phone keeps the sheet the user opened when the screen re-plans',
+        () {
+      final workspace = PanelWorkspace()
+        ..applyPlan(planOf(const [], compact: true));
+      workspace.toggle('operative', slot: kAttachedSlot);
+
+      // A rotation or the keyboard: the screen changed, not the user's choice.
+      workspace.applyPlan(planOf(const [], compact: true));
+
+      expect(workspace.open, ['operative'],
+          reason: 'a plan that names no window has no window to take away');
+    });
+
     test('opening from the dock moves the row over to make room by width', () {
       // 350 + 12 + 960 = 1322 of 1550; a third 350 doesn't fit, so the
       // window at the row's far end gives way.

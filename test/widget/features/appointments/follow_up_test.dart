@@ -11,10 +11,13 @@ import 'package:apexo/features/appointments/events_agenda_widget.dart';
 import 'package:apexo/features/appointments/events_timeline_widget.dart';
 import 'package:apexo/features/appointments/follow_up_band.dart';
 import 'package:apexo/features/appointments/follow_up_card.dart';
+import 'package:apexo/features/appointments/follow_up_contacts.dart';
 import 'package:apexo/features/appointments/follow_up_field.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/new_appointment_dialog.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/dialogs/export_patients_dialog.dart'
+    show StyledSelectableText;
 import 'package:apexo/features/patients/patient_follow_up_bar.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
@@ -829,6 +832,16 @@ void main() {
     await tester.tap(find.byKey(WK.followUpSummarySet));
     await tester.pumpAndSettle();
 
+    expect(patients.get('history-patient')!.followUpDay, isNull,
+        reason: 'opening the card offers the presets, it picks none of them');
+    expect(find.byKey(WK.fieldAppointmentFollowUpDate), findsOneWidget,
+        reason: 'the opened card is the same field the patient panel uses');
+
+    await tester.tap(find.byKey(WK.followUpPreset('1w')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(WK.followUpSave));
+    await tester.pumpAndSettle();
+
     expect(patients.get('history-patient')!.followUpDay,
         kFollowUpPresets.first.from(DateTime.now()));
     expect(find.byKey(WK.followUpRemove), findsOneWidget);
@@ -1127,5 +1140,88 @@ void main() {
     expect(find.text('Something else'), findsNothing,
         reason: 'the row goes back to the promise the store holds');
     expect(find.text('Review the crown'), findsOneWidget);
+  });
+
+  test('the contacts text is one block per patient', () {
+    final withNote = testPatient(
+        id: 'text-with-note',
+        name: 'First Patient',
+        phone: '+9647701234567')
+      ..followUpNote = 'Bring the X-ray';
+    final withoutNote =
+        testPatient(id: 'text-without-note', name: 'Second Patient', phone: '');
+
+    final text = followUpContactsText([
+      FollowUpDue(patient: withNote, date: DateTime(2026, 3, 20)),
+      FollowUpDue(patient: withoutNote, date: DateTime(2026, 3, 20)),
+    ]);
+
+    expect(
+      text,
+      'First Patient\n'
+      '${withNote.phone.first.toInternationalFormat()}\n'
+      'Bring the X-ray\n'
+      '\n'
+      'Second Patient',
+      reason: 'a name, the numbers to try, and what the call is about',
+    );
+  });
+
+  testWidgets('the band hands the day\'s contacts out as copyable text',
+      (tester) async {
+    final patient = testPatient(
+      id: 'contacts-patient',
+      name: 'Contacts Patient',
+      phone: '+9647701234567',
+    );
+    patients.set(patient);
+    setFollowUp(patient.id, dayOnly(DateTime.now()), note: 'Bring the X-ray');
+    final saved = patients.get(patient.id)!;
+
+    await pumpApexoApp(
+      tester,
+      Center(
+        child: SizedBox(
+          width: 700,
+          child: FollowUpBand(
+            followUps: [
+              FollowUpDue(patient: saved, date: DateTime(2026, 3, 20)),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(WK.followUpsCopyContacts), findsOneWidget,
+        reason: 'the folded band offers the list too');
+
+    await tester.tap(find.byKey(WK.followUpsBandToggle));
+    await tester.pumpAndSettle();
+    expect(find.byKey(WK.followUpsCopyContacts), findsOneWidget,
+        reason: 'the sheet keeps the list within reach');
+
+    await tester.tap(find.byKey(WK.followUpsCopyContacts));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FollowUpContactsDialog), findsOneWidget);
+    final box = tester
+        .widget<StyledSelectableText>(find.byKey(WK.followUpContactsText));
+    expect(box.text, contains('Contacts Patient'));
+    expect(box.text, contains(saved.phone.first.toInternationalFormat()));
+    expect(box.text, contains('Bring the X-ray'));
+    expect(box.canSave, isFalse,
+        reason: 'the contacts are copied, not saved as a file');
+
+    await tester.tap(
+      find
+          .descendant(
+            of: find.byType(FollowUpContactsDialog),
+            matching: find.byIcon(WindowsIcons.cancel),
+          )
+          .first,
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(FollowUpContactsDialog), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 }

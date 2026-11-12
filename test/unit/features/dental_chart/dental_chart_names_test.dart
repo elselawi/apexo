@@ -22,19 +22,27 @@ void main() {
     expect(record.title, isNot(visit.title));
   });
 
-  test('each panel\'s dock names the chart as the chart itself does', () {
+  test('the patient dock keeps the chart name while the window says what it is',
+      () {
     final patientChart = patientWindows()
         .firstWhere((window) => window.id == kDentalChartWindowId);
     final visitChart = appointmentWindows(appointment)
         .firstWhere((window) => window.id == kDentalChartWindowId);
+    final recordWindow = dentalChartWindow(patientDentalChart(patient));
 
-    expect(patientChart.titleKey, kDentalChartTitleKey);
+    expect(patientChart.titleKey, kDentalChartDockTitleKey);
+    expect(recordWindow.dockTitle, kDentalChartDockTitleKey);
+    expect(recordWindow.title, kDentalChartTitleKey);
     expect(visitChart.titleKey, kTreatmentsTitleKey);
   });
 
-  test('both names are in the dictionary', () {
+  test('all names are in the dictionary', () {
     final dictionary = En().dictionary;
     expect(dictionary, contains(kDentalChartTitleKey));
+    expect(dictionary, contains(kDentalChartDockTitleKey));
     expect(dictionary, contains(kTreatmentsTitleKey));
+    expect(dictionary[kDentalChartTitleKey], 'Initial Exam Chart');
+    expect(dictionary[kDentalChartDockTitleKey], 'Dental Chart');
+    expect(dictionary[kTreatmentsTitleKey], 'Appointment Operative Details');
   });
 }

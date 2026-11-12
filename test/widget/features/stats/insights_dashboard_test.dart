@@ -3,6 +3,7 @@ library;
 
 import 'dart:ui' show PointerDeviceKind;
 
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -408,7 +409,7 @@ void main() {
     await tester.ensureVisible(find.text(txt('insightsPatterns')).first);
     await tester.tap(find.text(txt('insightsPatterns')).first);
     await tester.pumpAndSettle();
-    expect(find.byType(ComboBox<int>), findsOneWidget);
+    expect(find.byType(AppComboBox<int>), findsOneWidget);
     await tester.ensureVisible(find.text(txt('insightsPatients')).first);
     await tester.tap(find.text(txt('insightsPatients')).first);
     await tester.pumpAndSettle();
@@ -427,7 +428,7 @@ void main() {
     final expectedLengths = [24, 7, 31, 12];
     for (var index = 0; index < expectedLengths.length; index++) {
       tester
-          .widget<ComboBox<int>>(find.byType(ComboBox<int>))
+          .widget<AppComboBox<int>>(find.byType(AppComboBox<int>))
           .onChanged!(index);
       await tester.pumpAndSettle();
       final card = tester

@@ -11,7 +11,8 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/notifications/notification_session.dart';
 import 'package:apexo/services/notifications/push_platform.dart';
 import 'package:apexo/services/network.dart';
-import 'package:apexo/services/perm.dart';
+import 'package:apexo/services/server_status.dart';
+import 'package:apexo/utils/constants.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -31,6 +32,9 @@ void main() {
   late Map<String, Future<Future<void> Function()> Function()>
       originalActivators;
   late List<void Function()> originalLogoutCallbacks;
+  late Future<http.Response> Function(Uri) originalStatusGet;
+  late String originalSchemaServer;
+  late int originalSchemaVersionApplied;
 
   setUp(() {
     originalPerms = List<int>.from(login.savedPermissions);
@@ -43,10 +47,15 @@ void main() {
     originalPocketBase = login.pb;
     originalOpen = launch.open();
     originalOnline = network.isOnline();
+    originalSchemaServer = login.schemaServer;
+    originalSchemaVersionApplied = login.schemaVersionApplied;
     originalActivators =
         Map<String, Future<Future<void> Function()> Function()>.from(
             login.activators);
     originalLogoutCallbacks = List<void Function()>.from(onLogoutCallbacks);
+    originalStatusGet = serverStatus.get;
+    // The status lookup is fire-and-forget after login; keep the suite offline.
+    serverStatus.get = (_) async => http.Response('', 404);
   });
 
   tearDown(() {
@@ -57,6 +66,8 @@ void main() {
     login.email = originalEmail;
     login.didAskForLoginAgain = originalDidAskForLoginAgain;
     login.pushNotificationsToken = originalPushToken;
+    login.schemaServer = originalSchemaServer;
+    login.schemaVersionApplied = originalSchemaVersionApplied;
     login.pb = originalPocketBase;
     launch.open(originalOpen);
     network.isOnline(originalOnline);
@@ -66,6 +77,7 @@ void main() {
     onLogoutCallbacks
       ..clear()
       ..addAll(originalLogoutCallbacks);
+    serverStatus.get = originalStatusGet;
   });
 
   group('Login service — observable defaults', () {
@@ -273,13 +285,18 @@ void main() {
 
       Future<void> checkFailure(String failingPath) async {
         var failureReturned = false;
-        var probesContinued = false;
+        final schemaWrites = <String>[];
         final client = MockClient((request) async {
           http.Response response(Object body, [int status = 200]) =>
               http.Response(jsonEncode(body), status,
                   headers: const {'content-type': 'application/json'});
 
           final path = request.url.path;
+          if (request.method != 'GET' &&
+              !path.contains('/auth-') &&
+              (path.contains('/collections') || path.contains('/settings'))) {
+            schemaWrites.add('${request.method} $path');
+          }
           if (path.endsWith('/_superusers/auth-refresh')) {
             return response({'code': 401, 'message': 'unauthorized'}, 401);
           }
@@ -299,12 +316,6 @@ void main() {
             failureReturned = true;
             return response({'code': 503, 'message': 'unavailable'}, 503);
           }
-          if (failureReturned &&
-              request.method == 'GET' &&
-              (path.endsWith('/profiles/records') ||
-                  path.endsWith('/profiles_view/records'))) {
-            probesContinued = true;
-          }
           return response({
             'page': 1,
             'perPage': 1,
@@ -322,13 +333,17 @@ void main() {
           ..url = 'https://clinic.test'
           ..token = '';
         login.activators.clear();
+        launch.isFirstLaunch(false);
         launch.open(Open.staff);
 
         try {
           await login.activate('https://clinic.test', [token], true);
 
           expect(failureReturned, isTrue, reason: failingPath);
-          expect(probesContinued, isFalse, reason: failingPath);
+          // A failed probe must not be read as "the server is empty": nothing is
+          // created and the app keeps waiting for the server to come back.
+          expect(schemaWrites, isEmpty, reason: failingPath);
+          expect(launch.isFirstLaunch(), isFalse, reason: failingPath);
           expect(loginCtrl.loginError(), isNotEmpty, reason: failingPath);
         } finally {
           client.close();
@@ -349,6 +364,136 @@ void main() {
         notificationSessions.invalidate();
       }
     });
+
+    /// An admin session whose server replies with the minimal answers a login
+    /// needs, recording every request it receives.
+    Future<({MockClient client, List<String> calls, String token})>
+        adminLogin() async {
+      final calls = <String>[];
+      final expiration =
+          DateTime.now().add(const Duration(hours: 1)).millisecondsSinceEpoch ~/
+              1000;
+      final payload = base64Url
+          .encode(utf8.encode(jsonEncode({
+            'exp': expiration,
+            'collectionId': 'admin-collection',
+          })))
+          .replaceAll('=', '');
+      final adminToken = 'header.$payload.signature';
+      final client = MockClient((request) async {
+        http.Response response(Object body, [int status = 200]) =>
+            http.Response(jsonEncode(body), status,
+                headers: const {'content-type': 'application/json'});
+        final path = request.url.path;
+        calls.add('${request.method} $path');
+        if (path.endsWith('/_superusers/auth-refresh')) {
+          return response({
+            'token': adminToken,
+            'record': {
+              'id': 'admin-id',
+              'collectionId': 'admin-collection',
+              'collectionName': '_superusers',
+              'email': 'admin@example.com',
+            },
+          });
+        }
+        if (request.method == 'GET' && path.endsWith('/api/collections')) {
+          final items = [
+            for (final name in [
+              dataCollectionName,
+              publicCollectionName,
+              profilesCollectionName,
+              profilesViewCollectionName,
+              'users',
+            ])
+              {
+                'id': 'collection-${name.padRight(9, 'x')}',
+                'name': name,
+                if (name == 'users')
+                  'createRule': '@request.auth.collectionName = "_superusers"',
+              },
+          ];
+          return response({
+            'page': 1,
+            'perPage': 200,
+            'totalItems': items.length,
+            'totalPages': 1,
+            'items': items,
+          });
+        }
+        if (request.method == 'PUT' &&
+            path.endsWith('/api/collections/import')) {
+          return http.Response('', 204);
+        }
+        return response({
+          'page': 1,
+          'perPage': 1,
+          'totalItems': 0,
+          'totalPages': 0,
+          'items': <Object>[],
+        });
+      });
+      login
+        ..pb =
+            PocketBase('https://clinic.test', httpClientFactory: () => client)
+        ..url = 'https://clinic.test'
+        ..token = '';
+      login.activators.clear();
+      launch.open(Open.staff);
+      return (client: client, calls: calls, token: adminToken);
+    }
+
+    Future<void> adminActivation({required int appliedVersion}) async {
+      final originalPushPlatformResolver = PushPlatform.resolve;
+      PushPlatform.resolve = () => PushPlatform.wns;
+      final server = await adminLogin();
+      login
+        ..schemaServer = 'https://clinic.test'
+        ..schemaVersionApplied = appliedVersion;
+      try {
+        await login.activate('https://clinic.test', [server.token], true);
+
+        // Collection *definitions*, unlike the record probes a login runs.
+        List<String> schemaRequests() => server.calls
+            .where((c) =>
+                c.endsWith('/api/collections') ||
+                c.endsWith('/api/collections/import') ||
+                c.endsWith('/api/collections/users'))
+            .toList();
+
+        if (appliedVersion >= schemaVersion) {
+          expect(schemaRequests(), isEmpty,
+              reason: 'a known version must not touch the server schema');
+        } else {
+          expect(
+              schemaRequests(),
+              [
+                'GET /api/collections',
+                'PUT /api/collections/import',
+              ],
+              reason:
+                  'the users rule already matches, so it is not re-written');
+          expect(login.schemaServer, 'https://clinic.test');
+          expect(login.schemaVersionApplied, schemaVersion);
+
+          // The next login must find the marker and stay off the server.
+          final before = schemaRequests().length;
+          await login.activate('https://clinic.test', [server.token], true);
+          expect(schemaRequests().skip(before), isEmpty);
+        }
+        expect(loginCtrl.loginError(), isEmpty);
+      } finally {
+        server.client.close();
+        notificationSessions.invalidate();
+        PushPlatform.resolve = originalPushPlatformResolver;
+      }
+    }
+
+    test('admin login skips the schema step once the version is recorded',
+        () => adminActivation(appliedVersion: schemaVersion));
+
+    test('admin login reconciles a stale version once and records it',
+        () => adminActivation(appliedVersion: 0));
   });
 
   group('Login service — logout during activation', () {
@@ -430,7 +575,7 @@ void main() {
       return client;
     }
 
-    test('online activation keeps its client and runs both stages in order',
+    test('online activation keeps its client and loads locally before syncing',
         () async {
       final client = configureOnline();
       final pocketBase = login.pb;
@@ -444,8 +589,35 @@ void main() {
       try {
         await login.activate(login.url, [login.token], true);
         expect(login.pb, same(pocketBase));
-        expect(calls,
-            ['first-local', 'first-remote', 'second-local', 'second-remote']);
+        expect(calls, [
+          'first-local',
+          'second-local',
+          'first-remote',
+          'second-remote',
+        ]);
+        expect(launch.open(), Open.staff);
+      } finally {
+        client.close();
+      }
+    });
+
+    test('online activation runs remote stages concurrently', () async {
+      final client = configureOnline();
+      var started = 0;
+      final bothStarted = Completer<void>();
+      Future<void> Function() stage() => () async {
+            if (++started == 2 && !bothStarted.isCompleted) {
+              bothStarted.complete();
+            }
+            // Finishes only once the other stage started, so it can only pass
+            // when both stages are in flight at the same time.
+            await bothStarted.future;
+          };
+      login.activators['first'] = () async => stage();
+      login.activators['second'] = () async => stage();
+      try {
+        await login.activate(login.url, [login.token], true);
+        expect(started, 2);
         expect(launch.open(), Open.staff);
       } finally {
         client.close();
@@ -538,27 +710,21 @@ void main() {
       }
     });
 
-    test('logout during remote stage skips later activators and publication',
-        () async {
+    test('logout during remote stage prevents publication', () async {
       final client = configureOnline();
       final entered = Completer<void>();
       final release = Completer<void>();
-      var laterRuns = 0;
       login.activators['first'] = () async => () async {
             entered.complete();
             await release.future;
           };
-      login.activators['later'] = () async {
-        laterRuns++;
-        return () async {};
-      };
+      login.activators['later'] = () async => () async {};
       try {
         final activation = login.activate(login.url, [login.token], true);
         await entered.future;
         login.logout();
         release.complete();
         await activation;
-        expect(laterRuns, 0);
         expect(launch.open(), Open.login);
         expect(login.token, isEmpty);
         expect(notificationSessions.phase, NotificationSessionPhase.absent);

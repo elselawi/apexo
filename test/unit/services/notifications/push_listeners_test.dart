@@ -9,6 +9,7 @@ import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/core/synchronization/push_data.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/notes/notes_store.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/notifications/listeners.dart';
@@ -55,6 +56,8 @@ void main() {
   late String originalPatientID;
   late Future<void> Function(String?, String?, String?) originalSink;
   late Future<void> Function()? originalPromote;
+  late String originalNotesChoice;
+  late String originalExpensesChoice;
   late bool promoted;
   late List<String?> shown;
 
@@ -83,6 +86,11 @@ void main() {
     login.savedPermissions = Perm.full;
     network.isOnline(false);
     patientSide.patientID = '';
+    // Notes and expenses are optional features; navigation tests open both.
+    originalNotesChoice = globalSettings.notesFeatureChoice;
+    originalExpensesChoice = globalSettings.expensesFeatureChoice;
+    globalSettings.notesFeatureChoice = '1';
+    globalSettings.expensesFeatureChoice = '1';
     routes.reset();
     staticNotifications.clear();
     resetStaticNotificationDedupe();
@@ -104,6 +112,8 @@ void main() {
     login.savedPermissions = originalPermissions;
     network.isOnline(originalOnline);
     patientSide.patientID = originalPatientID;
+    globalSettings.notesFeatureChoice = originalNotesChoice;
+    globalSettings.expensesFeatureChoice = originalExpensesChoice;
     PushListeners.showLocalNotification = originalSink;
     PushListeners.promoteWindowsInstanceIfApplicable = originalPromote;
     notificationSessions.invalidate();

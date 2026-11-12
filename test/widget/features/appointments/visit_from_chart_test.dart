@@ -211,8 +211,10 @@ void main() {
       isTrue,
     );
 
-    // The chart's title carries the record's whole list of visits.
-    await tester.tap(find.byKey(WK.chartAllAppointments));
+    // The list belongs to the patient, so the panel's dock opens it; the chart
+    // it was showing steps aside and keeps its draft.
+    await tester.tap(
+        find.byKey(WK.workspaceWindowToggle(PatientWindow.appointments.id)));
     await tester.pumpAndSettle();
     expect(panel.workspace.isOpen(PatientWindow.appointments.id), isTrue,
         reason: 'the window the user asked for is the one on screen');

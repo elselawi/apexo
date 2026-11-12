@@ -258,5 +258,92 @@ void main() {
       appointments.observableMap.clear();
       expect(appointments.labs, isEmpty);
     });
+
+    test('lastOperatorsFor takes the latest earlier visit that names one', () {
+      final now = DateTime(2030, 5, 10, 12);
+      final store = Appointments(now: () => now);
+      store.setAll([
+        testAppointment(
+          id: 'older',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 1, 9),
+          operatorsIDs: ['op-old'],
+        ),
+        testAppointment(
+          id: 'latest',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 9, 9),
+          operatorsIDs: ['op-new'],
+        ),
+        testAppointment(
+          id: 'other-patient',
+          patientID: 'other',
+          date: DateTime(2030, 5, 9, 10),
+          operatorsIDs: ['op-other'],
+        ),
+        testAppointment(
+          id: 'upcoming',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 11, 9),
+          operatorsIDs: ['op-future'],
+        ),
+      ]);
+
+      expect(store.lastOperatorsFor('patient'), ['op-new']);
+    });
+
+    test('lastOperatorsFor skips archived visits and ones naming no operator',
+        () {
+      final now = DateTime(2030, 5, 10, 12);
+      final store = Appointments(now: () => now);
+      store.setAll([
+        testAppointment(
+          id: 'doctorless',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 9, 9),
+        ),
+        testAppointment(
+          id: 'archived',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 8, 9),
+          operatorsIDs: ['op-archived'],
+          archived: true,
+        ),
+        testAppointment(
+          id: 'seen',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 1, 9),
+          operatorsIDs: ['op-seen'],
+        ),
+      ]);
+
+      expect(store.lastOperatorsFor('patient'), ['op-seen']);
+      expect(store.lastOperatorsFor('never-seen'), isEmpty);
+    });
+
+    test('lastOperatorsFor honours an explicit cut-off', () {
+      final now = DateTime(2030, 5, 10, 12);
+      final store = Appointments(now: () => now);
+      store.setAll([
+        testAppointment(
+          id: 'morning',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 10, 9),
+          operatorsIDs: ['op-morning'],
+        ),
+        testAppointment(
+          id: 'evening',
+          patientID: 'patient',
+          date: DateTime(2030, 5, 10, 15),
+          operatorsIDs: ['op-evening'],
+        ),
+      ]);
+
+      expect(store.lastOperatorsFor('patient'), ['op-morning']);
+      expect(
+        store.lastOperatorsFor('patient', before: DateTime(2030, 5, 10, 16)),
+        ['op-evening'],
+      );
+    });
   });
 }

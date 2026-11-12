@@ -171,6 +171,19 @@ void main() {
           final scroll = tester.widget<SingleChildScrollView>(
               find.byKey(const ValueKey('scope-visit-scroll')));
           expect(scroll.controller!.hasClients, isTrue);
+          // The ripple reaches above the bar, so the scroller itself stays open.
+          expect(scroll.clipBehavior, Clip.none,
+              reason: 'the selected ripple can overflow above the track');
+          // The bar's own clip closes only the side edges, so scrolled dots do
+          // not paint over the initial exam stop or the add button.
+          final clipFinder = find.byKey(const ValueKey('scope-timeline-clip'));
+          final clipSize = tester.getSize(clipFinder);
+          final clip =
+              tester.widget<ClipRect>(clipFinder).clipper!.getClip(clipSize);
+          expect(clip.left, 0);
+          expect(clip.right, clipSize.width);
+          expect(clip.top, lessThan(0));
+          expect(clip.bottom, greaterThan(clipSize.height));
           expect(scroll.controller!.position.maxScrollExtent > 0,
               visitCount == 30);
           expect(tester.getTopLeft(track).dy, tester.getTopLeft(origin).dy);
@@ -247,6 +260,53 @@ void main() {
     expect(tester.takeException(), isNull);
 
     // Leave no ticker running behind the test.
+    debugPauseScopeRipple = true;
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets('sides clip when the timeline scrolls, the ripple keeps its top',
+      (tester) async {
+    final patient = testPatient(id: 'side-clip-patient');
+    patients.set(patient);
+    late Appointment newest;
+    for (var i = 0; i < 30; i++) {
+      newest = testAppointment(
+        id: 'side-clip-visit-$i',
+        patientID: patient.id,
+        date: DateTime(2026, 1, i + 1),
+      );
+      appointments.set(newest);
+    }
+
+    await pumpApexoApp(
+      tester,
+      Center(
+        child: SizedBox(
+          width: 400,
+          child: VisitScopeBar(
+            patient: patient,
+            session: chartFor(patient, 'appointment:${newest.id}'),
+          ),
+        ),
+      ),
+      scopeRipple: true,
+    );
+    await tester.pump(const Duration(milliseconds: 600));
+
+    final viewport = find.byKey(const ValueKey('scope-timeline-clip'));
+    final viewportRect = tester.getRect(viewport);
+    expect(viewportRect.height, 40);
+    // The ring grows past the bar on purpose, so no ancestor may cut it there.
+    expect(tester.getRect(ring(newest.id)).top, lessThan(viewportRect.top));
+    // Only the sides are closed, stopping scrolled dots at the neighbouring stops.
+    final clipRect =
+        tester.widget<ClipRect>(viewport).clipper!.getClip(viewportRect.size);
+    expect(clipRect.left, 0);
+    expect(clipRect.right, viewportRect.width);
+    expect(clipRect.top, lessThan(0));
+    expect(clipRect.bottom, greaterThan(viewportRect.height));
+    expect(tester.takeException(), isNull);
+
     debugPauseScopeRipple = true;
     await tester.pumpWidget(const SizedBox.shrink());
   });

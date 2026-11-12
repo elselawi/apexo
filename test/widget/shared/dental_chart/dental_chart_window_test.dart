@@ -5,6 +5,7 @@ import 'dart:async';
 
 import 'package:apexo/app/app_context.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/duration_pill.dart';
 import 'package:apexo/common_widgets/live_transcribing_textfield.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -121,6 +122,13 @@ void main() {
         title: 'patientDetails',
         icon: FluentIcons.medication_admin,
         body: SizedBox(height: 40, child: Text(id)),
+      );
+
+  /// Putting a panel-backed window away is its header close: the panel keeps
+  /// the draft, so nothing is asked and nothing is lost.
+  Finder putAway(String id) => find.descendant(
+        of: find.byKey(ValueKey('window-card-$id')),
+        matching: find.byKey(WK.windowHeaderClose),
       );
 
   /// A window taller than the space a window opened low on the screen used to get.
@@ -410,6 +418,9 @@ void main() {
     expect(find.byKey(WK.btnAddLabwork), findsOneWidget);
     expect(find.byKey(WK.btnRemoveLabwork), findsNothing,
         reason: 'the footer offers nothing to remove once the order is gone');
+    expect(appointments.get(appointment.id)!.hasLabwork, isFalse,
+        reason: 'the removal is written at once, not by the visit\'s Save');
+    // The visit is not left waiting on a Save that has nothing to write.
     await tester.tap(labworkSave());
     await tester.pumpAndSettle();
     expect(appointments.get(appointment.id)!.hasLabwork, isFalse);
@@ -1107,7 +1118,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('window-card-b')), findsOneWidget);
 
-    await tester.tap(find.byKey(WK.windowMinimize('b')));
+    await tester.tap(putAway('b'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('window-card-b')), findsNothing);
     expect(find.byKey(WK.windowToggle('b')), findsOneWidget);
@@ -1138,8 +1149,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('window-card-b')), findsOneWidget);
 
-    // The window carries the minimize that puts it away.
-    await tester.tap(find.byKey(WK.windowMinimize('b')));
+    // The window carries the close that puts it away.
+    await tester.tap(putAway('b'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('window-card-b')), findsNothing);
     expect(tester.takeException(), isNull);
@@ -1250,7 +1261,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Re-opened while still folding away, it must come back fully visible.
-    await tester.tap(find.byKey(WK.windowMinimize('b')));
+    await tester.tap(putAway('b'));
     await tester.pump(const Duration(milliseconds: 40));
     await tester.tap(find.byKey(WK.windowToggle('b')));
     await tester.pumpAndSettle();
@@ -2254,9 +2265,9 @@ void main() {
     visitSession.changed();
     bContext = tester.element(find.byType(VisitScopeBar));
     final panel = PanelsManager.active().single;
-    // Minimizing is not a discard: the draft stays in the visit's session, so
-    // the band's chip closes it without a question.
-    await tester.tap(find.byKey(WK.windowMinimize(kDentalChartWindowId)));
+    // Putting the chart away is not a discard: the draft stays in the visit's
+    // session, so its own close button puts it away without a question.
+    await tester.tap(putAway(kDentalChartWindowId));
     await tester.pumpAndSettle();
     expect(find.text(txt('sureClosePanel')), findsNothing);
     expect(panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
@@ -2430,13 +2441,14 @@ void main() {
           reason: '${entry.key} starts on the edge the date starts on');
     }
     // The date takes the room the time and duration leave it, so a date that
-    // fits is not ellipsized.
+    // fits is not ellipsized and the fields fill the band edge to edge.
     expect(date.width, greaterThan(118),
         reason: 'the date is not pinned to a width smaller than the row');
-    expect(
-      rectOf(find.byKey(WK.fieldAppointmentTime)).left,
-      greaterThan(date.right),
-    );
+    final time = rectOf(find.byKey(WK.fieldAppointmentTime));
+    expect(time.left, greaterThanOrEqualTo(date.right - 0.01),
+        reason: 'the time follows the date rather than sitting over it');
+    expect(rectOf(find.byType(DurationPill)).right, closeTo(notes.right, 0.01),
+        reason: 'the duration closes the row on the edge the notes end on');
     // One height for the fields of the form, so the band reads as one set.
     expect(operators.height, date.height);
     expect(tester.takeException(), isNull);
@@ -2605,7 +2617,7 @@ void main() {
     });
   }
 
-  testWidgets('the visit chart title opens the patient\'s whole list of visits',
+  testWidgets('the panel dock opens the patient\'s whole list of visits',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));
     final patient = testPatient(id: 'all-visits-patient');
@@ -2620,22 +2632,15 @@ void main() {
     await pumpShell(tester, panel, 1600);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(WK.chartAllAppointments), findsOneWidget,
-        reason: 'the chart title carries the list, beside minimize');
-
-    await tester.tap(find.byKey(WK.chartAllAppointments));
+    // The list belongs to the patient, so the panel's own dock opens it, not
+    // the chart's title.
+    await tester.tap(
+        find.byKey(WK.workspaceWindowToggle(PatientWindow.appointments.id)));
     await tester.pumpAndSettle();
-    // The title leads to the patient's whole list of visits, not to the current visit.
     expect(
       panel.workspace.isOpen(PatientWindow.appointments.id),
       isTrue,
-      reason: 'the chart title leads to the list of every visit',
-    );
-    expect(
-      panel.workspace.isOpen(kDentalChartWindowId, slot: kAttachedSlot),
-      isFalse,
-      reason: 'at this width the list and the chart do not both fit, so the '
-          'list has the row and the chart steps aside, keeping its draft',
+      reason: 'the dock opens the patient\'s whole list of visits',
     );
     expect(WindowsManager.open(), isEmpty);
     expect(tester.takeException(), isNull);
@@ -2908,7 +2913,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('the plan chart keeps the all-visits action on its title',
+  testWidgets('the plan panel\'s dock opens the patient\'s visits',
       (tester) async {
     setViewport(tester, const Size(1600, 1000));
     final patient = testPatient(id: 'plan-action-patient');
@@ -2922,11 +2927,11 @@ void main() {
     await pumpShell(tester, panel, 1600);
     await tester.pumpAndSettle();
 
-    expect(find.byKey(WK.chartAllAppointments), findsOneWidget,
-        reason: 'the plan tab and the visit chart answer the same question');
-    await tester.tap(find.byKey(WK.chartAllAppointments));
+    await tester.tap(
+        find.byKey(WK.workspaceWindowToggle(PatientWindow.appointments.id)));
     await tester.pumpAndSettle();
-    expect(panel.workspace.isOpen(PatientWindow.appointments.id), isTrue);
+    expect(panel.workspace.isOpen(PatientWindow.appointments.id), isTrue,
+        reason: 'the plan and the visit chart answer through the same dock');
     expect(tester.takeException(), isNull);
   });
 
@@ -3354,6 +3359,12 @@ void main() {
       ),
       findsWidgets,
     );
+
+    // The pointer must be able to leave the dot for the card itself.
+    await mouse.moveTo(tester.getCenter(hoverCard));
+    await tester.pumpAndSettle();
+    expect(hoverCard, findsOneWidget,
+        reason: 'the hover card stays while the pointer is on it');
 
     await mouse.moveTo(const Offset(5, 5));
     await tester.pumpAndSettle();

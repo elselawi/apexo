@@ -8,6 +8,7 @@ import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart' show CupertinoTextField;
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../../helpers/pump_app.dart';
@@ -145,7 +146,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(
-        tester.widget<TextBox>(field).controller!.text,
+        tester.widget<CupertinoTextField>(field).controller!.text,
         'CHF',
       );
       expect(_button('currency', txt('save')), findsNothing);
@@ -182,15 +183,15 @@ void main() {
       final field = find.byKey(const Key('currency_text_field'));
       rebuild(() => initial = 'CHF');
       await tester.pumpAndSettle();
-      expect(tester.widget<TextBox>(field).controller!.text, 'CHF');
+      expect(tester.widget<CupertinoTextField>(field).controller!.text, 'CHF');
       await tester.enterText(field, 'USD');
       rebuild(() => initial = 'GBP');
       await tester.pumpAndSettle();
-      expect(tester.widget<TextBox>(field).controller!.text, 'USD');
+      expect(tester.widget<CupertinoTextField>(field).controller!.text, 'USD');
       expect(_button('currency', txt('save')), findsOneWidget);
       await tester.tap(_button('currency', txt('cancel')));
       await tester.pumpAndSettle();
-      expect(tester.widget<TextBox>(field).controller!.text, 'GBP');
+      expect(tester.widget<CupertinoTextField>(field).controller!.text, 'GBP');
       expect(_button('currency', txt('save')), findsNothing);
     });
 

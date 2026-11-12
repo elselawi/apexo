@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// reports an overflow of 261px.
 Widget countsRow(BuildContext context) {
   return Container(
-    decoration: topBarDecoration(context, Colors.grey),
+    decoration: topBarDecoration(context),
     padding: const EdgeInsets.all(8),
     child: Wrap(
       spacing: 20,

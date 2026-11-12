@@ -61,7 +61,9 @@ void main() {
   testWidgets("Kurdish overrides leave other locales to Flutter",
       (tester) async {
     expect(
-      appLocalizationsDelegates.where((d) => d.isSupported(const Locale("en"))),
+      appLocalizationsDelegates
+          .where((d) => d.toString().startsWith("Ku"))
+          .where((d) => d.isSupported(const Locale("en"))),
       isEmpty,
     );
 

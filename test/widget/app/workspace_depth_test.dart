@@ -2,6 +2,8 @@
 library;
 
 import 'package:apexo/app/navbar_widget.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/ui/design/mica_backdrop.dart';
 import 'package:apexo/ui/workspace/delegated_panel.dart';
 import 'package:apexo/ui/workspace/floating_window.dart';
 import 'package:apexo/ui/workspace/panel_screen.dart';
@@ -10,21 +12,45 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/window_shell.dart';
 import 'package:apexo/ui/workspace/windows_layer.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../helpers/pump_app.dart';
 
+/// The first box in [host] that paints its own shadow — a panel's frame.
 BoxDecoration frameOf(WidgetTester tester, Finder host) {
-  final frame = find.descendant(
-    of: host,
-    matching: find.byWidgetPredicate((widget) {
-      if (widget is! Container) return false;
-      final decoration = widget.decoration;
-      return decoration is BoxDecoration &&
-          (decoration.boxShadow?.isNotEmpty ?? false);
-    }),
+  final frame = find
+      .descendant(
+        of: host,
+        matching: find.byWidgetPredicate((widget) =>
+            widget is Container &&
+            widget.decoration is BoxDecoration &&
+            ((widget.decoration! as BoxDecoration).boxShadow?.isNotEmpty ??
+                false)),
+      )
+      .first;
+  return tester.widget<Container>(frame).decoration! as BoxDecoration;
+}
+
+/// A window's acrylic surface, which is a [AcrylicSurface] rather than a plain
+/// box: the frame and the fill are painted by different widgets.
+AcrylicSurface surfaceOf(WidgetTester tester, Finder host) {
+  return tester.widget<AcrylicSurface>(
+    find.descendant(of: host, matching: find.byType(AcrylicSurface)).first,
   );
+}
+
+/// The decoration of the first box in [host], shadow or not.
+BoxDecoration decorationOf(WidgetTester tester, Finder host) {
+  final frame = find
+      .descendant(
+        of: host,
+        matching: find.byWidgetPredicate(
+          (widget) => widget is Container && widget.decoration is BoxDecoration,
+        ),
+      )
+      .first;
   return tester.widget<Container>(frame).decoration! as BoxDecoration;
 }
 
@@ -64,7 +90,7 @@ void main() {
         tester,
         Stack(children: [
           Row(children: [
-            Expanded(child: PanelScreen(panel: panel)),
+            Expanded(child: PanelScreen(panel: panel, layoutWidth: 1600)),
             const Expanded(
               child: WindowShell(
                 icon: FluentIcons.photo,
@@ -78,33 +104,75 @@ void main() {
         theme: mode,
       );
 
-      final resources = FluentTheme.of(
+      final materials = FluentMaterials.of(
         tester.element(find.byType(WindowShell)),
-      ).resources;
+      );
       final panelFrame = frameOf(tester, find.byType(PanelScreen));
-      final windowFrame = frameOf(tester, find.byType(WindowShell));
-      final navFrame = frameOf(tester, find.byType(BottomNavBar));
-      expect(panelFrame.color, resources.solidBackgroundFillColorSecondary);
-      final editorSurface = tester.widget<ColoredBox>(find
-          .ancestor(
-            of: find.text('Panel editor'),
-            matching: find.byType(ColoredBox),
-          )
-          .first);
-      expect(editorSurface.color, panelFrame.color);
-      expect(panelFrame.color!.computeLuminance(),
-          lessThan(resources.solidBackgroundFillColorBase.computeLuminance()));
-      expect(windowFrame.color, resources.solidBackgroundFillColorBase);
-      expect(navFrame.color, resources.solidBackgroundFillColorSecondary);
-      for (final frame in [panelFrame, windowFrame, navFrame]) {
-        expect(frame.color!.a, 1,
-            reason: 'editors below must not show through');
-        expect(frame.boxShadow!.first.color, resources.smokeFillColorDefault);
-      }
-      if (mode == ThemeMode.dark) {
-        expect(windowFrame.color!.computeLuminance(),
-            greaterThan(panelFrame.color!.computeLuminance()));
-      }
+      final windowSurface = surfaceOf(tester, find.byType(WindowShell));
+      final navFrame = decorationOf(tester, find.byType(BottomNavBar));
+      expect(panelFrame.color, materials.layer,
+          reason: 'a panel is the screen layer: Mica reads through it');
+      expect(windowSurface.color, materials.acrylic,
+          reason: 'a floating window is acrylic, denser than the layer');
+      expect(navFrame.color, materials.acrylicBar,
+          reason: 'the phone bar is glass, not a solid strip');
+      expect(materials.layer.a, lessThan(0.6),
+          reason: 'the screen layer must let the window material through');
+      expect(windowSurface.color!.a, greaterThan(0.85),
+          reason: 'editors behind a window must not make its text unreadable');
+      expect(windowSurface.shadows!.first.blurRadius,
+          greaterThan(panelFrame.boxShadow!.first.blurRadius),
+          reason: 'the window floats above the panel, so it casts further');
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets(
+        'a phone panel is opaque so the app bar cannot read through in '
+        '${mode.name} mode', (tester) async {
+      final panel = DelegatedPanel(
+        itemId: 'phone-panel',
+        singularName: 'patient',
+        unicodeSymbol: 'P',
+        icon: FluentIcons.contact,
+        newTitle: 'Phone panel',
+        checkUnsavedChanges: () => false,
+        onSave: () async => ['phone-panel'],
+        showBottomControls: false,
+        windows: const [
+          PanelWindow(
+            id: 'details',
+            title: 'Details',
+            icon: FluentIcons.contact,
+            body: Text('Panel editor'),
+          ),
+        ],
+      );
+      await pumpApexoApp(
+        tester,
+        Stack(children: [PanelScreen(panel: panel, layoutWidth: 390)]),
+        theme: mode,
+      );
+
+      final materials = FluentMaterials.of(
+        tester.element(find.byType(PanelScreen)),
+      );
+      final panelFrame = frameOf(tester, find.byType(PanelScreen));
+      expect(panelFrame.color, materials.layerOpaque,
+          reason: 'below the breakpoint the panel covers the app bar, so it '
+              'must hide it rather than tint it');
+      expect(panelFrame.color!.a, 1.0,
+          reason: 'nothing behind a full-screen panel may read through');
+
+      // The shell leaves the status bar over a full-width panel: the surface
+      // covers it, and the header steps below it.
+      tester.view.padding = const FakeViewPadding(top: 26);
+      addTearDown(tester.view.resetPadding);
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byType(PanelScreen)).dy, 0,
+          reason: 'the panel surface runs to the top edge');
+      expect(tester.getTopLeft(find.byKey(WK.panelClose)).dy,
+          greaterThanOrEqualTo(26),
+          reason: 'the panel header starts below the status bar');
       expect(tester.takeException(), isNull);
     });
 
@@ -179,21 +247,24 @@ void main() {
 
       expect(active('First'), isFalse);
       expect(active('Second'), isTrue);
-      final backFrame = frameOf(tester, shell('First'));
-      final frontFrame = frameOf(tester, shell('Second'));
-      final resources = FluentTheme.of(tester.element(shell('First'))).resources;
-      expect(backFrame.color, resources.solidBackgroundFillColorSecondary);
-      expect(frontFrame.color, resources.solidBackgroundFillColorBase);
-      expect(frontFrame.boxShadow!.first.blurRadius,
-          greaterThan(backFrame.boxShadow!.first.blurRadius));
-      expect(frontFrame.border, isNot(backFrame.border));
+      final materials = FluentMaterials.of(tester.element(shell('First')));
+      final backSurface = surfaceOf(tester, shell('First'));
+      final frontSurface = surfaceOf(tester, shell('Second'));
+      expect(backSurface.color, materials.card,
+          reason: 'a window behind another steps back to a plain layer');
+      expect(frontSurface.color, materials.acrylic,
+          reason: 'the front window is the one holding the acrylic');
+      expect(frontSurface.shadows!.first.blurRadius,
+          greaterThan(backSurface.shadows!.first.blurRadius));
+      expect(frontSurface.borderColor, backSurface.borderColor,
+          reason: 'all window surfaces share the same raised-edge stroke');
 
       await tester.tap(find.text('Editor First'));
       await tester.pumpAndSettle();
       expect(active('First'), isTrue);
       expect(active('Second'), isFalse);
-      expect(frameOf(tester, shell('First')).color, frontFrame.color);
-      expect(frameOf(tester, shell('Second')).color, backFrame.color);
+      expect(surfaceOf(tester, shell('First')).color, frontSurface.color);
+      expect(surfaceOf(tester, shell('Second')).color, backSurface.color);
 
       WindowsManager.close(first);
       await tester.pump();

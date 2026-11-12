@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:apexo/common_widgets/app_combo_box.dart';
+import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/item_title.dart';
@@ -21,6 +23,7 @@ import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -132,6 +135,12 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     return login.perm(permissionIndex).some || login.isAdmin;
   }
 
+  /// Archived records of an optional feature stay viewable — that is how they
+  /// can be restored — only while the feature itself is offered.
+  bool get _canAccessNotes => _canAccess(Perm.notes) && notesFeatureEnabled;
+  bool get _canAccessExpenses =>
+      _canAccess(Perm.expenses) && expensesFeatureEnabled;
+
   bool _matchesSearch(String text) {
     if (_searchController.text.isEmpty) return true;
     return text.toLowerCase().contains(_searchController.text.toLowerCase());
@@ -162,8 +171,8 @@ class _ArchivedPageState extends State<_ArchivedPage> {
     if (_canAccess(Perm.appointments)) {
       keys.addAll(_collect("appointments", appointments));
     }
-    if (_canAccess(Perm.expenses)) keys.addAll(_collect("expenses", expenses));
-    if (_canAccess(Perm.notes)) keys.addAll(_collect("notes", notes));
+    if (_canAccessExpenses) keys.addAll(_collect("expenses", expenses));
+    if (_canAccessNotes) keys.addAll(_collect("notes", notes));
 
     keys.sort((a, b) => a[2].compareTo(b[2]) * _sortDirection);
     return keys;
@@ -305,7 +314,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         ),
         Container(
           width: double.infinity,
-          decoration: topBarDecoration(context, Colors.grey),
+          decoration: topBarDecoration(context),
           padding: const EdgeInsets.all(8),
           child: Row(
             spacing: 5,
@@ -374,7 +383,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         ]),
       ));
     }
-    if (_canAccess(Perm.expenses)) {
+    if (_canAccessExpenses) {
       items.add(ComboBoxItem(
         value: "expenses",
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
@@ -383,7 +392,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         ]),
       ));
     }
-    if (_canAccess(Perm.notes)) {
+    if (_canAccessNotes) {
       items.add(ComboBoxItem(
         value: "notes",
         child: Row(mainAxisSize: MainAxisSize.min, spacing: 4, children: [
@@ -393,7 +402,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
       ));
     }
 
-    return ComboBox<String?>(
+    return AppComboBox<String?>(
       value: _activeStore,
       onChanged: (v) {
         _activeStore = v;
@@ -484,14 +493,11 @@ class _ArchivedPageState extends State<_ArchivedPage> {
         shape: listDividerBorder(context),
         tileColor: WidgetStateColor.resolveWith((states) {
           if (_selected.contains(row.item.id)) {
-            return Colors.blue.withAlpha(20);
+            return FluentMaterials.of(context).selected;
+          } else if (states.contains(WidgetState.hovered)) {
+            return FluentMaterials.of(context).hover;
           }
-          if (states.contains(WidgetState.hovered)) {
-            return FluentTheme.of(context)
-                .resources
-                .controlAltFillColorTertiary;
-          }
-          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
+          return Colors.transparent;
         }),
         contentPadding: const EdgeInsetsDirectional.only(
             top: 0, bottom: 0, start: 4, end: 4),
@@ -505,6 +511,7 @@ class _ArchivedPageState extends State<_ArchivedPage> {
             fontSize: 13,
             icon: row.storeIcon,
             archivedStyling: false,
+            predefinedColor: FluentMaterials.of(context).glassTint,
           ),
         ),
         subtitle: Text(

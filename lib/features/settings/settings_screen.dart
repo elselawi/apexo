@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/features/settings/settings_card.dart';
 import 'package:apexo/features/settings/settings_section.dart';
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/dialogs/dialog_styling.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/core/reactive/observable.dart';
@@ -23,6 +25,7 @@ import 'package:apexo/services/network.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'settings_model.dart';
 import 'settings_stores.dart';
@@ -52,6 +55,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         localSettings.stream,
         locale.selected.stream,
         network.isOnline.stream,
+        // The notes and expenses switches show the resolved state, which also
+        // depends on whether those stores already hold anything.
+        notes.hasContent.stream,
+        expenses.hasContent.stream,
       ],
       builder: (context, _) {
         final theme = FluentTheme.of(context);
@@ -120,7 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             if (!wide) ...[
-                              ComboBox<SettingsSection>(
+                              AppComboBox<SettingsSection>(
                                 key: const ValueKey('settings_category_picker'),
                                 isExpanded: true,
                                 value: selected,
@@ -458,6 +465,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
             apply: (newVal) => globalSettings.set(
                 Setting.fromJson({"id": "follow_ups_enab", "value": newVal})),
           ),
+        if (login.isAdmin)
+          SettingsItem(
+            title: txt("notesFeature"),
+            identifier: "notes_enabled__",
+            description: txt("notesFeatureHint"),
+            icon: WindowsIcons.quick_note,
+            inputType: InputType.dropDown,
+            scope: Scope.app,
+            options: [
+              ComboBoxItem(value: "1", child: Txt(txt("on"))),
+              ComboBoxItem(value: "0", child: Txt(txt("off"))),
+            ],
+            initValue: notesFeatureEnabled ? "1" : "0",
+            apply: (newVal) => globalSettings.notesFeatureChoice = newVal,
+          ),
+        if (login.isAdmin)
+          SettingsItem(
+            title: txt("expensesFeature"),
+            identifier: "expenses_enabl_",
+            description: txt("expensesFeatureHint"),
+            icon: FluentIcons.receipt_processing,
+            inputType: InputType.dropDown,
+            scope: Scope.app,
+            options: [
+              ComboBoxItem(value: "1", child: Txt(txt("on"))),
+              ComboBoxItem(value: "0", child: Txt(txt("off"))),
+            ],
+            initValue: expensesFeatureEnabled ? "1" : "0",
+            apply: (newVal) => globalSettings.expensesFeatureChoice = newVal,
+          ),
         if (network.isOnline())
           SettingsItem(
             title: txt("cacheReset"),
@@ -622,7 +659,7 @@ class SettingsItemState extends State<SettingsItem> {
               children: [
                 if (widget.inputType == InputType.text ||
                     widget.inputType == InputType.multiline)
-                  TextBox(
+                  CupertinoTextField(
                     key: Key("${widget.identifier}_text_field"),
                     controller: _controller,
                     onChanged: (_) => setState(() {}),
@@ -631,7 +668,7 @@ class SettingsItemState extends State<SettingsItem> {
                     placeholder: widget.title,
                   )
                 else if (widget.inputType == InputType.dropDown)
-                  ComboBox<String>(
+                  AppComboBox<String>(
                     key: Key("${widget.identifier}_combo"),
                     isExpanded: true,
                     items: widget.options,

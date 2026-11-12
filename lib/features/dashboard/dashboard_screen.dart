@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/routing/routes.dart';
 import 'package:apexo/common_widgets/current_account.dart';
@@ -23,6 +24,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/services/network.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -51,71 +53,43 @@ class DashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      final height = constraints.maxHeight - 218;
-      return MStreamBuilder(
-          streams: [
-            appointments.observableMap.stream,
-            patients.observableMap.stream,
-            expenses.observableMap.stream,
-            booking.ready.stream,
-            booking.requests.pending.stream,
-            booking.requests.connected.stream,
-            booking.requests.items.stream,
-            booking.requests.lastSuccessfulAt.stream,
-          ],
-          builder: (context, asyncSnapshot) {
-            return Column(
-              key: WK.dashboardScreen,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _builCommandBar(context),
-                _buildTopSquares(),
-                Container(
-                  height: 36,
-                  decoration: topBarDecoration(context, Colors.grey),
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Txt(
-                          DF.full(DateTime.now()),
-                          style: const TextStyle(fontSize: 14),
-                        ),
-                      ],
-                    ),
+    return MStreamBuilder(
+        streams: [
+          appointments.observableMap.stream,
+          patients.observableMap.stream,
+          expenses.observableMap.stream,
+          booking.ready.stream,
+          booking.requests.pending.stream,
+          booking.requests.connected.stream,
+          booking.requests.items.stream,
+          booking.requests.lastSuccessfulAt.stream,
+        ],
+        builder: (context, asyncSnapshot) {
+          return Column(
+            key: WK.dashboardScreen,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _builCommandBar(context),
+              _buildTopSquares(context),
+              Container(
+                height: 36,
+                decoration: topBarDecoration(context),
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Txt(
+                        DF.full(DateTime.now()),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
                   ),
                 ),
-                SizedBox(
-                  width: constraints.maxWidth,
-                  height: height,
-                  child: ListView(scrollDirection: Axis.horizontal, children: [
-                    if (booking.ready())
-                      _buildDashboardList(
-                        context: context,
-                        id: 'bookingRequests',
-                        icon: WindowsIcons.calendar,
-                        onPressed: () => routes.navigate(AppRoute.booking),
-                        height: height,
-                        title:
-                            "${txt("bookingInbox")} (${booking.requests.connected() ? "${booking.requests.pending()}" : "—"})",
-                        items: booking.requests.cache
-                            .forFilter("pending")
-                            .where((request) => !request.isExpired)
-                            .take(20)
-                            .map((request) => ListTile(
-                                  contentPadding: EdgeInsets.zero,
-                                  onPressed: () => unawaited(
-                                      openBookingRequestPanel(
-                                          context, request)),
-                                  title: Text(request.name,
-                                      overflow: TextOverflow.ellipsis),
-                                  subtitle: Text(
-                                      bookingPreferenceLabel(request),
-                                      overflow: TextOverflow.ellipsis),
-                                ))
-                            .toList(),
-                      ),
+              ),
+              Expanded(
+                child: LayoutBuilder(builder: (context, listConstraints) {
+                  final height = listConstraints.maxHeight;
+                  return ListView(scrollDirection: Axis.horizontal, children: [
                     if (login.perm(Perm.patients).some &&
                         login.perm(Perm.appointments).some)
                       _buildDashboardList(
@@ -173,8 +147,10 @@ class DashboardScreen extends StatelessWidget {
                         title: "${txt("labworks")} (${txt("due")})",
                         items: labworks.due
                             .map((e) => ListTile(
-                                  // One row is one order: open its labwork window,
-                                  // not the patient's record, which would bury it.
+                                  // One row is one order: open its labwork window
+                                  // rather than the patient's record, which would
+                                  // bury it. Beside an open panel the visit's panel
+                                  // takes it.
                                   onPressed: () => unawaited(
                                       openAppointmentWindowOnItsOwn(
                                           e, AppointmentWindow.labwork)),
@@ -210,7 +186,34 @@ class DashboardScreen extends StatelessWidget {
                           );
                         }).toList(),
                       ),
-                    if (login.perm(Perm.expenses).some)
+                    if (booking.ready())
+                      _buildDashboardList(
+                        context: context,
+                        id: 'bookingRequests',
+                        icon: WindowsIcons.calendar,
+                        onPressed: () => routes.navigate(AppRoute.booking),
+                        height: height,
+                        title:
+                            "${txt("bookingInbox")} (${booking.requests.connected() ? "${booking.requests.pending()}" : "—"})",
+                        items: booking.requests.cache
+                            .forFilter("pending")
+                            .where((request) => !request.isExpired)
+                            .take(20)
+                            .map((request) => ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  onPressed: () => unawaited(
+                                      openBookingRequestPanel(
+                                          context, request)),
+                                  title: Text(request.name,
+                                      overflow: TextOverflow.ellipsis),
+                                  subtitle: Text(
+                                      bookingPreferenceLabel(request),
+                                      overflow: TextOverflow.ellipsis),
+                                ))
+                            .toList(),
+                      ),
+                    if (login.perm(Perm.expenses).some &&
+                        expensesFeatureEnabled)
                       _buildDashboardList(
                         context: context,
                         id: 'expensesDue',
@@ -243,12 +246,12 @@ class DashboardScreen extends StatelessWidget {
                                 ))
                             .toList(),
                       ),
-                  ]),
-                ),
-              ],
-            );
-          });
-    });
+                  ]);
+                }),
+              ),
+            ],
+          );
+        });
   }
 
   Container _buildDashboardList({
@@ -267,11 +270,8 @@ class DashboardScreen extends StatelessWidget {
       width: colWidth,
       height: 100,
       decoration: BoxDecoration(
-        color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
         border: BorderDirectional(
-          end: BorderSide(
-              color:
-                  FluentTheme.of(context).inactiveColor.withValues(alpha: 0.2)),
+          end: BorderSide(color: FluentMaterials.of(context).divider),
         ),
       ),
       child: Column(
@@ -341,17 +341,14 @@ class DashboardScreen extends StatelessWidget {
           ),
           Txt(
             mode,
-            style: FluentTheme.of(context)
-                .typography
-                .caption!
-                .copyWith(color: Colors.blue, fontWeight: FontWeight.bold),
+            style: FluentTheme.of(context).typography.bodyStrong!,
           ),
         ],
       ),
     );
   }
 
-  SingleChildScrollView _buildTopSquares() {
+  SingleChildScrollView _buildTopSquares(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Padding(
@@ -360,24 +357,24 @@ class DashboardScreen extends StatelessWidget {
           children: [
             if (login.perm(Perm.appointments).some)
               dashboardSquare(
+                context,
                 'appointmentsToday',
-                Colors.purple,
                 FluentIcons.goto_today,
                 dashboardCtrl.todayAppointments.length.toString(),
                 txt("appointmentsToday"),
               ),
             if (login.perm(Perm.patients).some)
               dashboardSquare(
+                context,
                 'newPatientsToday',
-                Colors.blue,
                 FluentIcons.people,
                 dashboardCtrl.newPatientsToday.length.toString(),
                 txt("newPatientsToday"),
               ),
             if (login.perm(Perm.revenue).read)
               dashboardSquare(
+                context,
                 'paymentsToday',
-                Colors.teal,
                 WindowsIcons.payment_card,
                 "${dashboardCtrl.paymentsToday.toStringAsFixed(2)} ${currency()}",
                 txt("paymentsMadeToday"),
@@ -389,24 +386,23 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Padding dashboardSquare(String id, AccentColor color, IconData icon,
-      String title, String subtitle,
-      [bool isMoney = false]) {
+  Padding dashboardSquare(
+    BuildContext context,
+    String id,
+    IconData icon,
+    String title,
+    String subtitle, [
+    bool isMoney = false,
+  ]) {
     return Padding(
       key: WK.dashboardSquare(id),
       padding: const EdgeInsets.all(8.0),
       child: Container(
         decoration: BoxDecoration(
-            color: color.withAlpha(50),
+            color: FluentMaterials.of(context).glassTint,
             borderRadius: BorderRadius.circular(5),
-            boxShadow: [
-              BoxShadow(
-                offset: const Offset(0.0, 6.0),
-                blurRadius: 15.0,
-                spreadRadius: 5.0,
-                color: color.withAlpha(50),
-              )
-            ]),
+            border: Border.all(
+                color: FluentMaterials.of(context).glassTint.withAlpha(16))),
         width: 300,
         child: Column(
           children: [
@@ -416,7 +412,6 @@ class DashboardScreen extends StatelessWidget {
                 children: [
                   Icon(
                     icon,
-                    color: color,
                   ),
                   ...const [
                     SizedBox(width: 10),
@@ -430,27 +425,24 @@ class DashboardScreen extends StatelessWidget {
                         MoneyDisplay(
                           key: WK.dashboardCount(id),
                           title,
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: color.dark,
                           ),
                         )
                       else
                         Text(
                           title,
                           key: WK.dashboardCount(id),
-                          style: TextStyle(
+                          style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
-                            color: color.dark,
                           ),
                         ),
                       Txt(
                         subtitle,
-                        style: TextStyle(
+                        style: const TextStyle(
                             fontSize: 13,
-                            color: color.light,
                             fontStyle: FontStyle.italic,
                             letterSpacing: 0.6),
                       ),

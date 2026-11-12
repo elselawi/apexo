@@ -1,5 +1,6 @@
 import 'package:apexo/app/data/application_store_effects.dart';
 import 'package:apexo/app/data/store_session_binding.dart';
+import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/utils/demo_generator.dart';
 import '../network_actions/network_actions_controller.dart';
@@ -21,7 +22,15 @@ class Expenses extends Store<Expense> {
           onSyncEnd: () {
             networkActions.isSyncing(networkActions.isSyncing() - 1);
           },
-        );
+        ) {
+    // Registered here, not in `init`, so the flag is right from the first row
+    // whether or not the store was ever initialised.
+    observableMap.observe((_) => _refreshHasContent());
+  }
+
+  /// Whether the store holds anything at all. Expenses is an optional feature:
+  /// it stays reachable while it has data, even without a setting.
+  final hasContent = ObservableState(false);
 
   late final _session = StoreSessionBinding<Expense>(
     store: this, name: _storeName,
@@ -34,8 +43,14 @@ class Expenses extends Store<Expense> {
     super.init();
     _session.install();
     observableMap.observe((_) => nullifyExpensesCache());
+    _refreshHasContent();
+  }
 
-
+  /// Notifies only when emptiness flips, so the shell is not rebuilt on every
+  /// expense edit.
+  void _refreshHasContent() {
+    final present = observableMap.docs.isNotEmpty;
+    if (hasContent() != present) hasContent(present);
   }
 
   void nullifyExpensesCache() {
@@ -85,11 +100,14 @@ class Expenses extends Store<Expense> {
   }
 
   double? _cachedTotalDue;
-  double get totalDue {
-    return _cachedTotalDue ??= present.values
-        .where((x) => x.isOrder && x.processed == false)
-        .fold<double>(0, (sum, o) => sum + (o.cost - o.paidAmount));
-  }
+
+  /// Still owed on open orders, read straight from the store: the caches are
+  /// dropped asynchronously, which is a frame too late for the nav badge.
+  double get outstandingDue => present.values
+      .where((x) => x.isOrder && x.processed == false)
+      .fold<double>(0, (sum, o) => sum + (o.cost - o.paidAmount));
+
+  double get totalDue => _cachedTotalDue ??= outstandingDue;
 
   Map<String, List<Expense>>? _cachedOrdersPerSupplier;
   Map<String, List<Expense>> get ordersPerSupplier {

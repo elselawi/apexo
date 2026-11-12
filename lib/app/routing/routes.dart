@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/core/reactive/observable.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
@@ -19,6 +20,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 bool _accessible(AppRoute route) {
   if (route.windowsOnly && !DicomController.isSupported) return false;
   if (route == AppRoute.booking) return booking.ready();
+  if (!_featureOffered(route)) return false;
   if (route.adminOnly) return login.isAdmin;
   final int? requiredPerm = route.perm;
   if (requiredPerm != null) {
@@ -27,9 +29,25 @@ bool _accessible(AppRoute route) {
   return true;
 }
 
+/// Notes and expenses are optional features; every other route is always
+/// offered.
+bool _featureOffered(AppRoute route) => switch (route) {
+      AppRoute.notes => notesFeatureEnabled,
+      AppRoute.expenses => expensesFeatureEnabled,
+      _ => true,
+    };
+
 /// Panels are not routes: they float above them and `PanelsManager` owns their
 /// stack.
 class AppRouter {
+  AppRouter() {
+    // Turning an optional feature off — here or on another device that syncs —
+    // must not leave the shell showing a screen it no longer offers.
+    globalSettings.observableMap.observe((_) => dropInaccessibleRoute());
+    notes.hasContent.observe((_) => dropInaccessibleRoute());
+    expenses.hasContent.observe((_) => dropInaccessibleRoute());
+  }
+
   /// Stored as a route, not an index into the filtered list, so permissions
   /// changing cannot make it drift.
   final currentRoute = ObservableState<AppRoute>(AppRoute.dashboard);
@@ -43,6 +61,12 @@ class AppRouter {
         for (final route in AppRoute.values)
           if (_accessible(route)) route
       ];
+
+  void dropInaccessibleRoute() {
+    if (_accessible(currentRoute())) return;
+    currentRoute(AppRoute.dashboard);
+    _history.clear();
+  }
 
   /// Falls back to the first route if permissions changed while it was open.
   int get currentIndex {

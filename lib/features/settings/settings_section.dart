@@ -30,7 +30,9 @@ SettingsSection settingsSectionFor(String identifier) => switch (identifier) {
         SettingsSection.calendar,
       'ai_services_ena' ||
       'audioTranscriptionLocale' ||
-      'follow_ups_enab' =>
+      'follow_ups_enab' ||
+      'notes_enabled__' ||
+      'expenses_enabl_' =>
         SettingsSection.optional,
       'cacheReset' ||
       'file_upload_settings' ||

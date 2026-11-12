@@ -24,10 +24,18 @@ class Notes extends Store<Note> {
           onSyncEnd: () {
             networkActions.isSyncing(networkActions.isSyncing() - 1);
           },
-        );
+        ) {
+    // Registered here, not in `init`, so the flag is right from the first row
+    // whether or not the store was ever initialised.
+    observableMap.observe((_) => _refreshHasContent());
+  }
   // Parent-to-children index for faster childInstances lookup
   final Map<String, List<String>> _parentToChildren = {};
   bool _indexBuilt = false;
+
+  /// Whether the board holds anything at all. The notes screen is an optional
+  /// feature: it stays reachable while it has data, even without a setting.
+  final hasContent = ObservableState(false);
 
   late final _session = StoreSessionBinding<Note>(
     store: this, name: _storeName,
@@ -44,8 +52,14 @@ class Notes extends Store<Note> {
     observableMap.observe((_) {
       _rebuildIndex();
     });
+    _refreshHasContent();
+  }
 
-
+  /// Notifies only when emptiness flips, so the shell is not rebuilt on every
+  /// note edit.
+  void _refreshHasContent() {
+    final present = observableMap.docs.isNotEmpty;
+    if (hasContent() != present) hasContent(present);
   }
 
   List<Note> get columns {
@@ -70,6 +84,16 @@ class Notes extends Store<Note> {
   final showIncoming = ObservableState(false);
   final filterByAccountId = ObservableState("");
   final sortDirection = ObservableState(1);
+
+  /// New work handed to the signed-in account and not finished yet.
+  int get incomingCount {
+    final accountID = login.currentAccountID;
+    if (accountID.isEmpty) return 0;
+    return present.values
+        .where((note) =>
+            note.isNote && !note.done && note.assignedTo == accountID)
+        .length;
+  }
 
   Map<String, Note> get filtered {
     if (login.perm(Perm.notes).none && !login.isAdmin) {

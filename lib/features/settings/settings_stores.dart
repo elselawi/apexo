@@ -48,6 +48,18 @@ class GlobalSettings extends Store<Setting> {
   set followUpsEnabled(bool enabled) => set(Setting.fromJson(
       {"id": "follow_ups_enab", "value": enabled ? "1" : "0"}));
 
+  /// Raw optional-feature choice: `""` (never set), `"1"` (on) or `"0"` (off).
+  /// While it is `""` the feature stays visible if it already holds data, so
+  /// clinics that used it before it became optional never lose their screen.
+  /// Resolved by `notesFeatureEnabled` / `expensesFeatureEnabled`.
+  String get notesFeatureChoice => get("notes_enabled__").value;
+  set notesFeatureChoice(String choice) =>
+      set(Setting.fromJson({"id": "notes_enabled__", "value": choice}));
+
+  String get expensesFeatureChoice => get("expenses_enabl_").value;
+  set expensesFeatureChoice(String choice) =>
+      set(Setting.fromJson({"id": "expenses_enabl_", "value": choice}));
+
   // Windows-only: `;`-separated directories where the Xray software stores
   // `.dcm` files. Empty string = not configured.
   String get dicomWatchDir => get("dicom_watch_dir").value;

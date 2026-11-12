@@ -302,6 +302,7 @@ class It implements En {
     "followUpPresetWeeks": "{count} settimane",
     "followUpPresetMonths": "{count} mesi",
     "followUpContactHint": "Fai clic per i contatti",
+    "followUpContacts": "Contatti dei controlli",
     "daysAway": "Tra {count} giorni",
     "tomorrow": "Domani",
 
@@ -393,9 +394,11 @@ class It implements En {
     "printQR": "Stampa codice QR",
     "dentalNotes": "Note odontoiatriche",
     "dentalChart": "Odontogramma",
+    "initialExamChart": "Odontogramma dell'esame iniziale",
     "initialExam": "Esame iniziale",
     "newestVisit": "Ultima visita",
     "treatments": "Trattamenti",
+    "appointmentOperativeDetails": "Dettagli operativi dell'appuntamento",
     "toothHistory": "Storico del dente",
     "toothPatientHistory": "Storico dentale del paziente",
     "toothAppointmentNotes": "Note dell'appuntamento",
@@ -1028,6 +1031,12 @@ class It implements En {
     "followUpsHintTitle": "Come usare i controlli",
     "followUpsHint": "Un controllo è una data di ritorno annotata nella scheda del paziente, con una nota facoltativa. Non è un appuntamento prenotato: nessun orario è riservato o concordato con il paziente. Quel giorno, cerca il paziente nell'elenco dei controlli in sospeso del calendario e chiamalo per prenotare una visita. Il controllo si cancella automaticamente quando prenoti una visita per quella data o una successiva.",
     "followUps_desc": "Annota quando i pazienti devono tornare e chi chiamare per prenotare una visita.",
+    "notesFeature": "Bacheca delle note",
+    "notesFeatureHint":
+        "Una bacheca condivisa di note e attività. Resta fuori dalla navigazione finché la tua clinica non la attiva, e rimane visibile per le cliniche che hanno già note al suo interno.",
+    "expensesFeature": "Spese",
+    "expensesFeatureHint":
+        "Fornitori, ordini, ricevute e scansione delle ricevute. Resta fuori dalla navigazione finché la tua clinica non la attiva, e rimane visibile per le cliniche che registrano già spese.",
     "ai_services": "Servizi IA",
     "ai_services_desc":
         "Abilita o disabilita le funzionalità basate sull'IA come la scansione delle ricevute, le note vocali e l'estrazione dello storico dentale.",

@@ -12,7 +12,8 @@ class Ar implements En {
     "bookingSubtitle": "صفحة عامة يطلب فيها المرضى موعدًا.",
     "bookingUnavailable": "الحجز عبر الإنترنت غير متاح في هذا الإصدار.",
     "bookingNotConfigured": "لم تُطالب هذه العيادة بصفحة حجز بعد.",
-    "bookingClaimExplainer": "اطلب عنوانًا عامًا لهذه العيادة. سيرى المرضى ساعات العمل ويرسلون طلبًا، ولا يُحجز أي موعد تلقائيًا. يتطلب ذلك حساب مدير وخادم PocketBase عامًا عبر HTTPS.",
+    "bookingClaimExplainer":
+        "اطلب عنوانًا عامًا لهذه العيادة. سيرى المرضى ساعات العمل ويرسلون طلبًا، ولا يُحجز أي موعد تلقائيًا. يتطلب ذلك حساب مدير وخادم PocketBase عامًا عبر HTTPS.",
     "bookingHandle": "المعرّف العام",
     "bookingWelcome": "نص الترحيب",
     "bookingTimeZone": "المنطقة الزمنية",
@@ -20,16 +21,19 @@ class Ar implements En {
     "bookingClaimAction": "اطلب صفحة الحجز",
     "bookingClaimed": "تم طلب صفحة الحجز. أضف ساعات العمل ثم فعّل الاستقبال.",
     "bookingRecoverAction": "استعادة الوصول",
-    "bookingRecoverBody": "يستبدل هذا المفتاحين بإثبات جديد منشور من هذا الخادم. يبقى المعرّف والإعدادات وأي تعليق دون تغيير.",
+    "bookingRecoverBody":
+        "يستبدل هذا المفتاحين بإثبات جديد منشور من هذا الخادم. يبقى المعرّف والإعدادات وأي تعليق دون تغيير.",
     "bookingReplaceKey": "استبدال المفتاح",
-    "bookingReplaceKeyBody": "يُستبدل المفتاحان، وتتوقف الأجهزة التي تستخدم المفاتيح القديمة فورًا.",
+    "bookingReplaceKeyBody":
+        "يُستبدل المفتاحان، وتتوقف الأجهزة التي تستخدم المفاتيح القديمة فورًا.",
     "bookingCopied": "تم النسخ",
     "bookingCopy": "نسخ",
     "bookingEnabledToggle": "استقبال طلبات الحجز",
     "bookingOpeningHours": "ساعات العمل",
     "bookingClosedDates": "أيام الإغلاق",
     "bookingClosed": "مغلق",
-    "bookingHoursInvalid": "ساعات العمل غير صالحة. استخدم صيغة 24 ساعة HH:MM، البداية قبل النهاية، دون تداخل.",
+    "bookingHoursInvalid":
+        "ساعات العمل غير صالحة. استخدم صيغة 24 ساعة HH:MM، البداية قبل النهاية، دون تداخل.",
     "bookingSchedule": "جدولة",
     "bookingDecline": "رفض",
     "bookingDeclineConfirm": "رفض هذا الطلب؟",
@@ -44,12 +48,14 @@ class Ar implements En {
     "bookingSortOldest": "الأقدم أولاً",
     "bookingProfile": "التفاصيل العامة",
     "bookingDeleteAction": "حذف صفحة الحجز",
-    "bookingDeleteBody": "سيؤدي هذا إلى حذف الصفحة العامة وكل طلب حجز تحتويه والمفاتيح التي تصل إليها نهائيًا. تُمسح طلبات المرضى ويصبح العنوان متاحًا للجميع. لا يمكن التراجع عن هذا الإجراء.",
+    "bookingDeleteBody":
+        "سيؤدي هذا إلى حذف الصفحة العامة وكل طلب حجز تحتويه والمفاتيح التي تصل إليها نهائيًا. تُمسح طلبات المرضى ويصبح العنوان متاحًا للجميع. لا يمكن التراجع عن هذا الإجراء.",
     "bookingDeleteDone": "تم حذف صفحة الحجز.",
     "bookingEmptyPending": "لا توجد طلبات قيد الانتظار",
     "bookingPendingCount": "قيد الانتظار",
     "bookingKeyRevoked": "تم إلغاء مفتاح الحجز. اطلب من المدير استبداله.",
-    "bookingDisconnected": "انقطع الاتصال بخدمة الحجز. تُعرض آخر الطلبات المعروفة.",
+    "bookingDisconnected":
+        "انقطع الاتصال بخدمة الحجز. تُعرض آخر الطلبات المعروفة.",
     "bookingStale": "هذه القائمة أقدم من 30 دقيقة.",
     "bookingPreference": "الوقت المفضل",
     "bookingCandidateDates": "التواريخ المرشحة",
@@ -57,15 +63,18 @@ class Ar implements En {
     "bookingReference": "المرجع",
     "bookingSuggestedPatient": "مريض بهذا الرقم",
     "bookingSubmitted": "أُرسل",
-    "bookingExpiredBody": "انتهت صلاحية هذا التفضيل. اطلب تاريخًا جديدًا بدل جدولته.",
+    "bookingExpiredBody":
+        "انتهت صلاحية هذا التفضيل. اطلب تاريخًا جديدًا بدل جدولته.",
     "bookingSaved": "تم الحفظ.",
     "bookingSaveFailed": "تعذّر الحفظ. حاول مرة أخرى.",
     "bookingSchemaMissing": "مجموعات الحجز مفقودة أو قديمة.",
     "bookingSchemaRepaired": "تم إصلاح مجموعات الحجز.",
     "bookingRepairSchema": "تحديث مخطط الخادم",
-    "bookingBatchDisabled": "واجهة الدفعات في الخادم معطلة، وهي مطلوبة لجدولة الطلبات.",
+    "bookingBatchDisabled":
+        "واجهة الدفعات في الخادم معطلة، وهي مطلوبة لجدولة الطلبات.",
     "bookingRepairBatch": "تمكين واجهة الدفعات",
-    "bookingInvalidHandle": "استخدم 3-63 حرفًا لاتينيًا صغيرًا أو أرقامًا أو شرطة مفردة.",
+    "bookingInvalidHandle":
+        "استخدم 3-63 حرفًا لاتينيًا صغيرًا أو أرقامًا أو شرطة مفردة.",
     "bookingInvalidFields": "راجع الحقول المحددة.",
     "bookingHandleTaken": "هذا المعرّف مستخدم. اختر غيره.",
     "bookingRateLimited": "محاولات كثيرة. انتظر ثم حاول مرة أخرى.",
@@ -73,7 +82,8 @@ class Ar implements En {
     "bookingKeyConflict": "تغيّرت المفاتيح على جهاز آخر. أعد التحميل وحاول.",
     "bookingEnrollmentDisabled": "التسجيل العام معطّل في خدمة الحجز.",
     "bookingSetupRequiresAdmin": "سجّل الدخول كمدير لإعداد الحجز عبر الإنترنت.",
-    "bookingUnsupportedServer": "لا يمكن لهذا الخادم التسجيل: يلزم أصل HTTPS عام دون مسار بادئة.",
+    "bookingUnsupportedServer":
+        "لا يمكن لهذا الخادم التسجيل: يلزم أصل HTTPS عام دون مسار بادئة.",
     "bookingFieldName": "أدخل الاسم العام للعيادة.",
     "bookingFieldPhone": "أدخل رقم هاتف دولي يبدأ بـ +.",
     "bookingFieldAddress": "اجعل العنوان أقل من 300 حرف.",
@@ -102,22 +112,29 @@ class Ar implements En {
     "bookingWeekdayShort6": "السبت",
     "bookingWeekdayShort7": "الأحد",
     "bookingSchedulePatientTitle": "لمن هذا الموعد؟",
-    "bookingScheduleHint": "اختر مريضًا موجودًا أو أنشئ واحدًا من الطلب. لا يُدمج أي شيء تلقائيًا.",
+    "bookingScheduleHint":
+        "اختر مريضًا موجودًا أو أنشئ واحدًا من الطلب. لا يُدمج أي شيء تلقائيًا.",
     "bookingSuggestedTime": "الوقت المقترح",
     "bookingDeviceTime": "يظهر على جهازك",
-    "bookingManualTimeRequired": "لم يُعثر على وقت متاح ضمن ساعات العمل الحالية. اختر التاريخ والوقت يدويًا.",
+    "bookingManualTimeRequired":
+        "لم يُعثر على وقت متاح ضمن ساعات العمل الحالية. اختر التاريخ والوقت يدويًا.",
     "bookingContinue": "متابعة",
     "bookingRefreshFailed": "تعذّر تحديث الطلب",
-    "bookingRefreshFailedBody": "خدمة الحجز غير متاحة. يمكنك الجدولة بالطريقة المعتادة، لكن لا يمكن ربط هذا الطلب الآن.",
+    "bookingRefreshFailedBody":
+        "خدمة الحجز غير متاحة. يمكنك الجدولة بالطريقة المعتادة، لكن لا يمكن ربط هذا الطلب الآن.",
     "bookingRequestGone": "هذا الطلب لم يعد متاحًا",
-    "bookingRequestGoneBody": "تمت معالجته أو رفضه أو انتهت صلاحيته. تحديث الصندوق يعرض حالته الحالية.",
+    "bookingRequestGoneBody":
+        "تمت معالجته أو رفضه أو انتهت صلاحيته. تحديث الصندوق يعرض حالته الحالية.",
     "bookingSaveNotConfirmed": "لم يُؤكد حفظ الموعد",
-    "bookingSaveNotConfirmedBody": "لم يؤكد PocketBase الموعد، لذلك لم يتغير صندوق الطلبات. حاول مرة أخرى.",
+    "bookingSaveNotConfirmedBody":
+        "لم يؤكد PocketBase الموعد، لذلك لم يتغير صندوق الطلبات. حاول مرة أخرى.",
     "bookingAppointmentSaved": "تم حفظ الموعد",
     "bookingHandledBody": "تم تعليم الطلب كمعالج.",
-    "bookingInboxUpdatePending": "تم حفظ الموعد؛ تحديث الصندوق معلّق وسيُعاد في هذه الجلسة.",
+    "bookingInboxUpdatePending":
+        "تم حفظ الموعد؛ تحديث الصندوق معلّق وسيُعاد في هذه الجلسة.",
     "bookingStateConflict": "سُجّل قرار آخر أولًا",
-    "bookingStateConflictBody": "يُحفظ الموعد الذي أُنشئ. حدّث الصندوق وطابق الطلب يدويًا؛ لم يُنشأ أي تكرار.",
+    "bookingStateConflictBody":
+        "يُحفظ الموعد الذي أُنشئ. حدّث الصندوق وطابق الطلب يدويًا؛ لم يُنشأ أي تكرار.",
     "settingsPreferences": "التفضيلات",
     "settingsClinic": "العيادة",
     "settingsStorage": "البيانات والتخزين",
@@ -139,16 +156,21 @@ class Ar implements En {
     "close": "غلق",
     "closeAllWindows": "إغلاق جميع النوافذ",
     "workspaceUnsavedCount": "{count} عناصر بها تغييرات غير محفوظة",
-    "workspaceClosePrompt": "هل تريد حفظ التغييرات قبل إغلاق مساحة العمل؟ يؤدي التجاهل إلى إغلاق كل شيء دون حفظ العناصر المدرجة أدناه.",
+    "workspaceClosePrompt":
+        "هل تريد حفظ التغييرات قبل إغلاق مساحة العمل؟ يؤدي التجاهل إلى إغلاق كل شيء دون حفظ العناصر المدرجة أدناه.",
     "workspaceSaveAndClose": "حفظ الكل وإغلاق",
     "workspaceDiscardAndClose": "تجاهل الكل وإغلاق",
     "workspaceSaving": "جارٍ حفظ التغييرات…",
     "workspaceSaveItemAndClose": "حفظ وإغلاق",
     "workspaceIgnoreItemAndClose": "تجاهل التعديلات وإغلاق",
-    "workspaceResolveVisitsFirst": "احفظ تعديلات الزيارات التابعة لهذه اللوحة أو تجاهلها قبل إغلاقها.",
-    "workspaceSaveFailed": "تعذر حفظ {name}. لم يُغلق أي شيء. اختر إلغاء لمراجعته. تبقى التغييرات المحفوظة سابقًا محفوظة.",
-    "workspaceStillUnsaved": "ما زالت بعض العناصر تحتوي على تغييرات غير محفوظة. لم يُغلق أي شيء. اختر إلغاء لمراجعتها.",
-    "workspaceChanged": "تغيرت مساحة العمل. لم يُغلق أي شيء. اختر إلغاء وحاول مجددًا.",
+    "workspaceResolveVisitsFirst":
+        "احفظ تعديلات الزيارات التابعة لهذه اللوحة أو تجاهلها قبل إغلاقها.",
+    "workspaceSaveFailed":
+        "تعذر حفظ {name}. لم يُغلق أي شيء. اختر إلغاء لمراجعته. تبقى التغييرات المحفوظة سابقًا محفوظة.",
+    "workspaceStillUnsaved":
+        "ما زالت بعض العناصر تحتوي على تغييرات غير محفوظة. لم يُغلق أي شيء. اختر إلغاء لمراجعتها.",
+    "workspaceChanged":
+        "تغيرت مساحة العمل. لم يُغلق أي شيء. اختر إلغاء وحاول مجددًا.",
     "minimize": "تصغير",
     "openRecord": "فتح السجل",
     "openPatientRecord": "فتح سجل {name}",
@@ -294,6 +316,7 @@ class Ar implements En {
     "followUpPresetWeeks": "{count} أسابيع",
     "followUpPresetMonths": "{count} أشهر",
     "followUpContactHint": "اضغط لعرض بيانات الاتصال",
+    "followUpContacts": "بيانات اتصال المتابعات",
     "daysAway": "بعد {count} يومًا",
     "tomorrow": "غدًا",
 
@@ -382,9 +405,11 @@ class Ar implements En {
     "printQR": "طباعة الرمز",
     "dentalNotes": "الملاحظات السنية",
     "dentalChart": "المخطط السني",
+    "initialExamChart": "مخطط الفحص الأولي",
     "initialExam": "الفحص الأولي",
     "newestVisit": "أحدث زيارة",
     "treatments": "العلاجات",
+    "appointmentOperativeDetails": "تفاصيل عملية الموعد",
     "toothHistory": "تاريخ السن",
     "toothPatientHistory": "التاريخ السني للمريض",
     "toothAppointmentNotes": "ملاحظات المواعيد",
@@ -994,8 +1019,16 @@ class Ar implements En {
     "optionalFeatures": "ميزات اختيارية",
     "followUps": "المتابعات",
     "followUpsHintTitle": "كيف تستخدم المتابعات؟",
-    "followUpsHint": "المتابعة تاريخ يُسجّل في ملف المريض لعودته إلى العيادة، مع ملاحظة اختيارية. ليست موعدًا محجوزًا: لا يُحجز وقت، ولم يُتفق مع المريض على موعد بعد. في ذلك اليوم يظهر اسمه في قائمة المتابعات المستحقة في الرزنامة: اتصل به واحجز له موعدًا. تُمسح المتابعة تلقائيًا عند حجز موعد لذلك التاريخ أو بعده.",
-    "followUps_desc": "سجّل متى ينبغي أن يعود المريض، واعرف بمن تتصل لحجز موعد.",
+    "followUpsHint":
+        "المتابعة تاريخ يُسجّل في ملف المريض لعودته إلى العيادة، مع ملاحظة اختيارية. ليست موعدًا محجوزًا: لا يُحجز وقت، ولم يُتفق مع المريض على موعد بعد. في ذلك اليوم يظهر اسمه في قائمة المتابعات المستحقة في الرزنامة: اتصل به واحجز له موعدًا. تُمسح المتابعة تلقائيًا عند حجز موعد لذلك التاريخ أو بعده.",
+    "followUps_desc":
+        "سجّل متى ينبغي أن يعود المريض، واعرف بمن تتصل لحجز موعد.",
+    "notesFeature": "لوحة الملاحظات",
+    "notesFeatureHint":
+        "لوحة مشتركة للملاحظات والمهام. تبقى خارج قائمة التنقل حتى تُفعّلها العيادة، وتظل ظاهرة للعيادات التي لديها ملاحظات عليها بالفعل.",
+    "expensesFeature": "المصروفات",
+    "expensesFeatureHint":
+        "الموردون وأوامر الشراء والإيصالات ومسح الإيصالات. تبقى خارج قائمة التنقل حتى تُفعّلها العيادة، وتظل ظاهرة للعيادات التي تسجّل مصروفات بالفعل.",
     "ai_services": "الخدمات الذكية",
     "ai_services_desc":
         "تفعيل أو تعطيل الميزات المدعومة بالذكاء الاصطناعي مثل مسح الفواتير والملاحظات الصوتية واستخراج تاريخ الأسنان.",
@@ -1036,8 +1069,10 @@ class Ar implements En {
     "insightsCompletion": "معدل الإكمال",
     "insightsNet": "صافي التدفق النقدي",
     "insightsCashFlow": "التدفق النقدي عبر الزمن",
-    "insightsCashFlowHint": "المدفوعات ناقص المصروفات، مجمّعة حسب تواريخ المواعيد والإيصالات",
-    "insightsCollectionsHint": "التحصيلات قبل المصروفات، مجمّعة حسب تاريخ المواعيد",
+    "insightsCashFlowHint":
+        "المدفوعات ناقص المصروفات، مجمّعة حسب تواريخ المواعيد والإيصالات",
+    "insightsCollectionsHint":
+        "التحصيلات قبل المصروفات، مجمّعة حسب تاريخ المواعيد",
     "insightsOutstanding": "الأرصدة المستحقة",
     "insightsOutstandingHint": "رسوم المواعيد غير المدفوعة في الفترة المحددة",
     "insightsCumulative": "تراكمي",
@@ -1065,15 +1100,18 @@ class Ar implements En {
     "insightsScheduledHours": "الساعات المجدولة",
     "insightsCompletedHours": "الساعات المكتملة",
     "insightsPatientVisits": "زيارات المرضى الجدد مقابل العائدين",
-    "insightsPatientVisitsHint": "زيارات المرضى المعروفين، مصنفة حسب أول موعد مسجل لهم",
+    "insightsPatientVisitsHint":
+        "زيارات المرضى المعروفين، مصنفة حسب أول موعد مسجل لهم",
     "insightsNewVisits": "الزيارات الأولى",
     "insightsReturningVisits": "زيارات العودة",
     "insightsCompletedValue": "العلاج المكتمل: الرسوم مقابل التحصيلات",
-    "insightsCompletedValueHint": "الرسوم والمدفوعات المسجلة للمواعيد المكتملة، مجمعة حسب تاريخ الزيارة",
+    "insightsCompletedValueHint":
+        "الرسوم والمدفوعات المسجلة للمواعيد المكتملة، مجمعة حسب تاريخ الزيارة",
     "insightsCharges": "الرسوم",
     "insightsCollections": "التحصيلات",
     "insightsDebtAge": "العلاج المكتمل غير المدفوع حسب المدة المنقضية",
-    "insightsDebtAgeHint": "رسوم المواعيد المكتملة غير المدفوعة حسب عدد الأيام منذ الزيارة، ضمن النطاق المحدد",
+    "insightsDebtAgeHint":
+        "رسوم المواعيد المكتملة غير المدفوعة حسب عدد الأيام منذ الزيارة، ضمن النطاق المحدد",
     "insightsAge": "الأيام منذ الزيارة",
     "insightsAge30": "0–30 يومًا",
     "insightsAge60": "31–60 يومًا",

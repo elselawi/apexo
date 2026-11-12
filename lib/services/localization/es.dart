@@ -299,6 +299,7 @@ class Es implements En {
     "followUpPresetWeeks": "{count} semanas",
     "followUpPresetMonths": "{count} meses",
     "followUpContactHint": "Haz clic para ver los datos de contacto",
+    "followUpContacts": "Contactos de las revisiones",
     "daysAway": "Dentro de {count} días",
     "tomorrow": "Mañana",
 
@@ -390,9 +391,11 @@ class Es implements En {
     "telegram": "Telegram",
     "dentalNotes": "Notas dentales",
     "dentalChart": "Odontograma",
+    "initialExamChart": "Odontograma del examen inicial",
     "initialExam": "Examen inicial",
     "newestVisit": "Última visita",
     "treatments": "Tratamientos",
+    "appointmentOperativeDetails": "Detalles operativos de la cita",
     "toothHistory": "Historial del diente",
     "toothPatientHistory": "Historia dental del paciente",
     "toothAppointmentNotes": "Notas de las citas",
@@ -1023,6 +1026,12 @@ class Es implements En {
     "followUpsHintTitle": "Cómo usar las revisiones",
     "followUpsHint": "La revisión guarda una fecha de regreso en la ficha del paciente, con una nota opcional. No es una cita reservada: no se reserva ninguna hora ni se ha acordado con el paciente. Ese día, busque al paciente en la lista de revisiones pendientes del calendario y llámele para reservar una visita. La revisión se borra automáticamente al reservar una visita para esa fecha o una posterior.",
     "followUps_desc": "Anote cuándo debe volver cada paciente y a quién llamar para reservar una visita.",
+    "notesFeature": "Tablero de notas",
+    "notesFeatureHint":
+        "Un tablero compartido de notas y tareas. Permanece fuera de la navegación hasta que tu clínica lo active, y sigue visible en las clínicas que ya tienen notas en él.",
+    "expensesFeature": "Gastos",
+    "expensesFeatureHint":
+        "Proveedores, pedidos, recibos y escaneo de recibos. Permanece fuera de la navegación hasta que tu clínica lo active, y sigue visible en las clínicas que ya registran gastos.",
     "ai_services": "Servicios de IA",
     "ai_services_desc":
         "Activar o desactivar funciones impulsadas por IA como escaneo de recibos, notas de voz y extracción de historial dental.",

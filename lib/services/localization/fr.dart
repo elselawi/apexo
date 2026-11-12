@@ -297,6 +297,7 @@ class Fr implements En {
     "followUpPresetWeeks": "{count} semaines",
     "followUpPresetMonths": "{count} mois",
     "followUpContactHint": "Cliquez pour les coordonnées",
+    "followUpContacts": "Contacts des contrôles",
     "daysAway": "Dans {count} jours",
     "tomorrow": "Demain",
 
@@ -388,9 +389,11 @@ class Fr implements En {
     "printQR": "Imprimer le code QR",
     "dentalNotes": "Notes dentaires",
     "dentalChart": "Schéma dentaire",
+    "initialExamChart": "Schéma de l'examen initial",
     "initialExam": "Examen initial",
     "newestVisit": "Visite la plus récente",
     "treatments": "Traitements",
+    "appointmentOperativeDetails": "Détails de l'intervention du rendez-vous",
     "toothHistory": "Historique de la dent",
     "toothPatientHistory": "Historique dentaire du patient",
     "toothAppointmentNotes": "Notes de rendez-vous",
@@ -1024,6 +1027,12 @@ class Fr implements En {
     "followUpsHintTitle": "Comment utiliser les contrôles",
     "followUpsHint": "Un contrôle est une date de retour notée dans le dossier du patient, avec une note facultative. Ce n'est pas un rendez-vous réservé : aucun créneau n'est réservé ni convenu avec le patient. Ce jour-là, retrouvez le patient dans la liste des contrôles à venir de l'agenda et appelez-le pour réserver une visite. Le contrôle s'efface automatiquement dès qu'une visite est réservée pour cette date ou une date ultérieure.",
     "followUps_desc": "Notez quand les patients doivent revenir et qui appeler pour réserver une visite.",
+    "notesFeature": "Tableau de notes",
+    "notesFeatureHint":
+        "Un tableau partagé de notes et de tâches. Il reste hors de la navigation jusqu'à ce que votre clinique l'active, et reste visible pour les cliniques qui y ont déjà des notes.",
+    "expensesFeature": "Dépenses",
+    "expensesFeatureHint":
+        "Fournisseurs, bons de commande, reçus et numérisation de reçus. Il reste hors de la navigation jusqu'à ce que votre clinique l'active, et reste visible pour les cliniques qui enregistrent déjà des dépenses.",
     "ai_services": "Services d'IA",
     "ai_services_desc":
         "Activez ou désactivez les fonctionnalités basées sur l'IA telles que la numérisation de reçus, les notes vocales et l'extraction de l'historique dentaire.",

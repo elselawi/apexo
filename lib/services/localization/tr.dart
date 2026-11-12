@@ -302,6 +302,7 @@ class Tr implements En {
     "followUpPresetWeeks": "{count} hafta",
     "followUpPresetMonths": "{count} ay",
     "followUpContactHint": "İletişim bilgileri için tıklayın",
+    "followUpContacts": "Kontrol kişileri",
     "daysAway": "{count} gün sonra",
     "tomorrow": "Yarın",
 
@@ -392,9 +393,11 @@ class Tr implements En {
     "printQR": "QR Kodunu Yazdır",
     "dentalNotes": "Diş Notları",
     "dentalChart": "Diş Şeması",
+    "initialExamChart": "İlk Muayene Şeması",
     "initialExam": "İlk Muayene",
     "newestVisit": "En yeni ziyaret",
     "treatments": "Tedaviler",
+    "appointmentOperativeDetails": "Randevu İşlem Detayları",
     "toothHistory": "Diş geçmişi",
     "toothPatientHistory": "Hasta diş geçmişi",
     "toothAppointmentNotes": "Randevu notları",
@@ -1012,6 +1015,12 @@ class Tr implements En {
     "followUpsHintTitle": "Kontroller nasıl kullanılır?",
     "followUpsHint": "Kontrol, hastanın kaydına eklenen geri dönüş tarihidir; isterseniz kısa bir not da ekleyebilirsiniz. Alınmış bir randevu değildir: saat ayrılmaz ve hastayla henüz anlaşılmamıştır. O gün hastayı takvimdeki bekleyen kontroller listesinde bulun, arayın ve randevu alın. O tarih veya sonrası için randevu alındığında kontrol otomatik olarak silinir.",
     "followUps_desc": "Hastaların ne zaman geri gelmesi gerektiğini ve randevu için kimi arayacağınızı kaydedin.",
+    "notesFeature": "Not panosu",
+    "notesFeatureHint":
+        "Notlar ve görevler için ortak bir pano. Kliniğiniz açana kadar gezintide görünmez; panosunda zaten not bulunan kliniklerde görünmeye devam eder.",
+    "expensesFeature": "Giderler",
+    "expensesFeatureHint":
+        "Tedarikçiler, siparişler, fişler ve fiş tarama. Kliniğiniz açana kadar gezintide görünmez; zaten gider kaydeden kliniklerde görünmeye devam eder.",
     "ai_services": "Yapay Zeka Hizmetleri",
     "ai_services_desc":
         "Fiş tarama, sesli notlar ve diş geçmişi çıkarma gibi yapay zeka destekli özellikleri etkinleştirin veya devre dışı bırakın.",

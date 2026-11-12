@@ -297,6 +297,7 @@ class En {
     "followUpPresetWeeks": "{count} weeks",
     "followUpPresetMonths": "{count} months",
     "followUpContactHint": "Click for contact details",
+    "followUpContacts": "Follow-up contacts",
     "daysAway": "{count} days away",
     "tomorrow": "Tomorrow",
 
@@ -387,9 +388,11 @@ class En {
     "printQR": "Print QR Code",
     "dentalNotes": "Dental Notes",
     "dentalChart": "Dental Chart",
+    "initialExamChart": "Initial Exam Chart",
     "initialExam": "Initial Exam",
     "newestVisit": "Newest visit",
     "treatments": "Treatments",
+    "appointmentOperativeDetails": "Appointment Operative Details",
     "toothHistory": "Tooth history",
     "toothPatientHistory": "Patient dental history",
     "toothAppointmentNotes": "Appointment notes",
@@ -1005,6 +1008,12 @@ class En {
     "followUpsHintTitle": "How follow-ups work",
     "followUpsHint": "A follow-up is a return date in the patient's record, with an optional note. It is not a booked appointment: no time is reserved or agreed with the patient. On that day, find the patient in the calendar's due list, call and book a visit. Booking a visit for that date or later clears the follow-up automatically.",
     "followUps_desc": "Record when patients should come back and who to call to book a visit.",
+    "notesFeature": "Notes board",
+    "notesFeatureHint":
+        "A shared board of notes and tasks. It stays out of the navigation until your clinic switches it on, and stays visible for clinics that already keep notes on it.",
+    "expensesFeature": "Expenses",
+    "expensesFeatureHint":
+        "Suppliers, purchase orders, receipts and receipt scanning. It stays out of the navigation until your clinic switches it on, and stays visible for clinics that already record expenses.",
     "ai_services": "AI Services",
     "ai_services_desc":
         "Enable or disable AI-powered features such as receipt scanning, voice notes, and dental history extraction.",

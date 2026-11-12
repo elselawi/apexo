@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/item_title.dart';
 import 'package:apexo/features/appointments/follow_up_card.dart';
+import 'package:apexo/features/appointments/follow_up_contacts.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -141,6 +142,7 @@ class _FollowUpBandState extends State<FollowUpBand> {
               ),
             ),
           ),
+          _copyContactsButton(context, [...onDay, ...overdue]),
         ],
       ),
     );
@@ -224,6 +226,19 @@ class _FollowUpBandState extends State<FollowUpBand> {
     );
   }
 
+  /// The same people as text — who to call, their numbers and their notes.
+  Widget _copyContactsButton(BuildContext context, List<FollowUpDue> contacts) {
+    return Tooltip(
+      message: txt('followUpContactHint'),
+      child: IconButton(
+        key: WK.followUpsCopyContacts,
+        style: darkIconButtonStyle(context),
+        onPressed: () => unawaited(showFollowUpContacts(context, contacts)),
+        icon: const Icon(WindowsIcons.copy, size: 13),
+      ),
+    );
+  }
+
   Widget _sheet(
     BuildContext context,
     List<FollowUpDue> onDay,
@@ -236,7 +251,13 @@ class _FollowUpBandState extends State<FollowUpBand> {
       children: [
         Padding(
           padding: const EdgeInsetsDirectional.fromSTEB(9, 5, 9, 5),
-          child: _header(context),
+          child: Row(
+            children: [
+              _header(context),
+              const Spacer(),
+              _copyContactsButton(context, [...onDay, ...overdue]),
+            ],
+          ),
         ),
         Container(height: 1, color: accent.withValues(alpha: 0.18)),
         ConstrainedBox(

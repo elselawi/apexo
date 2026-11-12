@@ -50,6 +50,9 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
   late final Appointment _draft;
   final TextEditingController _notes = TextEditingController();
 
+  /// Set once the crew picks operators themselves; a guess never overwrites it.
+  bool _operatorsPicked = false;
+
   /// Accounts limited to their own visits start out assigned to themselves.
   bool get _assignsItself =>
       login.perm(Perm.patients).exact(1) ||
@@ -68,6 +71,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
         (from == null ? DateTime.now() : _atCurrentTime(from));
     _draft.preOpNotes = widget.initialPreOpNotes;
     _notes.text = _draft.preOpNotes;
+    _guessOperators(widget.patientID);
   }
 
   @override
@@ -107,10 +111,26 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
     setState(() => _draft.duration = duration);
   }
 
+  /// A creator who does not operate books for whoever last saw the patient, so
+  /// the sheet starts with that operator instead of nobody.
+  void _guessOperators(String? patientID) {
+    if (_assignsItself || _operatorsPicked) return;
+    _draft.operatorsIDs = patientID == null || patientID.isEmpty
+        ? const []
+        : appointments.lastOperatorsFor(patientID, before: _draft.date);
+  }
+
+  void _pickPatient(String? id) {
+    setState(() {
+      _draft.patientID = id;
+      _guessOperators(id);
+    });
+  }
+
   Future<void> _addPatient() async {
     final patient = await addPatient(context);
     if (patient == null || !mounted) return;
-    setState(() => _draft.patientID = patient.id);
+    _pickPatient(patient.id);
   }
 
   void _save() {
@@ -167,8 +187,7 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                         fieldKey: WK.fieldNewAppointmentPatient,
                         tapOpensRecord: false,
                         value: _draft.patientID,
-                        onChanged: (id) =>
-                            setState(() => _draft.patientID = id),
+                        onChanged: _pickPatient,
                       ),
                     ),
                     if (_draft.patientID == null) ...[
@@ -205,7 +224,10 @@ class _NewAppointmentDialogState extends State<NewAppointmentDialog> {
                   label: "${txt("doctors")}:",
                   child: OperatorsPicker(
                     value: _draft.operatorsIDs,
-                    onChanged: (ids) => _draft.operatorsIDs = ids,
+                    onChanged: (ids) {
+                      _operatorsPicked = true;
+                      _draft.operatorsIDs = ids;
+                    },
                   ),
                 ),
                 InfoLabel(

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
+import 'package:apexo/features/appointments/follow_up_field.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/patients/open_patient_panel.dart';
 import 'package:apexo/features/patients/patient_model.dart';
@@ -40,12 +41,12 @@ class FollowUpBadge extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(WindowsIcons.walk_solid, size: 10, color: tint),
+              Icon(WindowsIcons.walk_solid, size: 16, color: tint),
               const SizedBox(width: 4),
               Txt(
                 txt('followUp'),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: tint,
                 ),
@@ -54,18 +55,22 @@ class FollowUpBadge extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 5),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-          decoration: BoxDecoration(
-            color: theme.resources.controlAltFillColorTertiary,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            followUpRelativeLabel(date),
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w600,
-              color: overdue ? Colors.red : theme.typography.body?.color,
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.resources.controlAltFillColorTertiary,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: Text(
+              followUpRelativeLabel(date),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: overdue ? Colors.red : theme.typography.body?.color,
+              ),
             ),
           ),
         ),
@@ -229,11 +234,11 @@ class FollowUpCard extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(WindowsIcons.subscription_add, size: 13),
+                    const Icon(WindowsIcons.subscription_add, size: 16),
                     const SizedBox(width: 6),
                     Txt(
                       txt('bookFollowUp'),
-                      style: const TextStyle(fontSize: 11.5),
+                      style: const TextStyle(fontSize: 13),
                     ),
                   ],
                 ),
@@ -317,7 +322,7 @@ class _FollowUpCardTargetState extends State<FollowUpCardTarget> {
   }
 }
 
-class FollowUpSummaryCard extends StatelessWidget {
+class FollowUpSummaryCard extends StatefulWidget {
   const FollowUpSummaryCard({
     super.key,
     required this.patientID,
@@ -329,6 +334,20 @@ class FollowUpSummaryCard extends StatelessWidget {
   /// Booking action. The widget checks scheduling permission itself; a supplied
   /// callback grants no access.
   final VoidCallback? onBook;
+
+  @override
+  State<FollowUpSummaryCard> createState() => _FollowUpSummaryCardState();
+}
+
+class _FollowUpSummaryCardState extends State<FollowUpSummaryCard> {
+  /// The row opens into the shared field so the day is chosen, not assumed.
+  bool _expanded = false;
+
+  void _onChanged() {
+    if (!mounted) return;
+    // The card reads the stored promise again, so it can fold either way.
+    if (_expanded) setState(() => _expanded = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -344,56 +363,63 @@ class FollowUpSummaryCard extends StatelessWidget {
       builder: (context, _) {
         // An optional feature: no promise, no card.
         if (!followUpsEnabled) return const SizedBox.shrink();
-        final patient = patients.get(patientID);
+        final patient = patients.get(widget.patientID);
         if (patient == null) return const SizedBox.shrink();
         // A patient never seen has nothing to come back from.
         if (patient.doneAppointments.isEmpty) return const SizedBox.shrink();
         final date = patient.followUpDay;
+        final editable = login.perm(Perm.appointments).some;
         return Padding(
+          key: WK.followUpSummaryCard,
           padding: const EdgeInsetsDirectional.fromSTEB(10, 10, 12, 0),
-          child: Container(
-            key: WK.followUpSummaryCard,
-            padding: const EdgeInsetsDirectional.fromSTEB(8, 7, 6, 7),
-            decoration: BoxDecoration(
-              color: kFollowUpAccent.withValues(alpha: dark ? 0.13 : 0.055),
-              borderRadius: BorderRadius.circular(9),
-              border: Border.all(
-                color: kFollowUpAccent.withValues(
-                  alpha: date == null ? 0.20 : 0.40,
+          child: _expanded
+              ? FollowUpField(
+                  key: const ValueKey('summary-follow-up-open'),
+                  patientID: widget.patientID,
+                  // No visit to count from here, so presets run from today.
+                  anchor: DateTime.now(),
+                  enabled: editable,
+                  onCollapse: () => setState(() => _expanded = false),
+                  onChanged: _onChanged,
+                )
+              : Container(
+                  padding: const EdgeInsetsDirectional.fromSTEB(8, 7, 6, 7),
+                  decoration: BoxDecoration(
+                    color:
+                        kFollowUpAccent.withValues(alpha: dark ? 0.13 : 0.055),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: kFollowUpAccent.withValues(
+                        alpha: date == null ? 0.20 : 0.40,
+                      ),
+                    ),
+                  ),
+                  child: date == null
+                      ? _notPlanned(context, editable)
+                      : _planned(context, patient, date),
                 ),
-              ),
-            ),
-            child: date == null
-                ? _notPlanned(context, patient)
-                : _planned(context, patient, date),
-          ),
         );
       },
     );
   }
 
-  /// Nothing planned: the row says so, and offers the usual week in one click.
-  Widget _notPlanned(BuildContext context, Patient patient) {
+  /// Nothing planned: the row says so, and opens the way to pick a day.
+  Widget _notPlanned(BuildContext context, bool editable) {
     final theme = FluentTheme.of(context);
     const accent = kFollowUpAccent;
     return HoverButton(
       key: WK.followUpSummarySet,
-      onPressed: login.perm(Perm.appointments).some
-          ? () => setFollowUp(
-                patientID,
-                kFollowUpPresets.first.from(DateTime.now()),
-              )
-          : null,
+      onPressed: editable ? () => setState(() => _expanded = true) : null,
       builder: (context, states) {
         final hovered = states.contains(WidgetState.hovered);
         return Row(
           children: [
-            const Icon(WindowsIcons.walk_solid, size: 12, color: accent),
+            const Icon(WindowsIcons.walk_solid, size: 16, color: accent),
             const SizedBox(width: 7),
             Txt(
               txt('nextFollowUp'),
               style: const TextStyle(
-                fontSize: 10.5,
+                fontSize: 13,
                 fontWeight: FontWeight.w700,
                 color: accent,
               ),
@@ -402,15 +428,15 @@ class FollowUpSummaryCard extends StatelessWidget {
             Text(
               txt('notSelected'),
               style: theme.typography.caption?.copyWith(
-                fontSize: 10,
+                fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: hovered ? accent : theme.inactiveColor,
               ),
             ),
             const SizedBox(width: 4),
             Icon(
-              WindowsIcons.add,
-              size: 10,
+              WindowsIcons.chevron_down,
+              size: 16,
               color: accent.withValues(alpha: hovered ? 1 : 0.7),
             ),
           ],
@@ -421,7 +447,7 @@ class FollowUpSummaryCard extends StatelessWidget {
 
   Widget _planned(BuildContext context, Patient patient, DateTime date) {
     final theme = FluentTheme.of(context);
-    final onBook = login.perm(Perm.appointments).some ? this.onBook : null;
+    final onBook = login.perm(Perm.appointments).some ? widget.onBook : null;
     const accent = kFollowUpAccent;
     return Row(
       children: [
@@ -477,7 +503,7 @@ class FollowUpSummaryCard extends StatelessWidget {
             key: WK.followUpRemove,
             style: darkIconButtonStyle(context),
             onPressed: login.perm(Perm.appointments).some
-                ? () => setFollowUp(patientID, null)
+                ? () => setFollowUp(widget.patientID, null)
                 : null,
             icon: const Icon(WindowsIcons.delete, size: 13),
           ),

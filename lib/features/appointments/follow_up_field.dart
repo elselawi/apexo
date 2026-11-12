@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/date_time_picker.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/patients/patients_store.dart';
@@ -10,6 +11,7 @@ import 'package:apexo/features/settings/settings_stores.dart'
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
+import 'package:apexo/ui/workspace/unsaved_dot.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/cupertino.dart';
@@ -53,7 +55,7 @@ class FollowUpField extends StatefulWidget {
 class _FollowUpFieldState extends State<FollowUpField> {
   // Label style of a chip; [_longPresetsFit] measures the glyphs with it.
   static const _chipTextStyle = TextStyle(
-    fontSize: 10.5,
+    fontSize: 12,
     fontWeight: FontWeight.w700,
   );
 
@@ -303,55 +305,64 @@ class _FollowUpFieldState extends State<FollowUpField> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
+          Container(
             padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 8),
+            decoration: topBarDecoration(context),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisSize: MainAxisSize.max,
                   children: [
-                    const Icon(WindowsIcons.walk_solid,
-                        size: 11, color: accent),
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Txt(
-                        txt('nextFollowUp'),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.typography.caption?.copyWith(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.2,
-                          color: day != null ? accent : theme.inactiveColor,
-                        ),
-                      ),
-                    ),
-                    if (day != null) ...[
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Container(
-                          padding:
-                              const EdgeInsetsDirectional.fromSTEB(5, 1, 5, 1),
-                          decoration: BoxDecoration(
-                            color: accent.withValues(alpha: dark ? 0.22 : 0.12),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        if (_dirty) const UnsavedDot(),
+                        const Icon(WindowsIcons.walk_solid,
+                            size: 16, color: accent),
+                        const SizedBox(width: 5),
+                        Flexible(
                           child: Txt(
-                            followUpRelativeLabel(day),
+                            txt('nextFollowUp'),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              fontSize: 9,
-                              height: 1.25,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
                               color: accent,
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                    if (widget.onCollapse != null && _savedDay == null)
+                        if (day != null) ...[
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsetsDirectional.fromSTEB(
+                                  5, 1, 5, 1),
+                              decoration: BoxDecoration(
+                                color: accent.withValues(
+                                    alpha: dark ? 0.22 : 0.12),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Txt(
+                                followUpRelativeLabel(day),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (widget.onCollapse != null && _savedDay == null) ...[
                       Padding(
                         padding: const EdgeInsetsDirectional.only(start: 4),
                         child: Tooltip(
@@ -372,13 +383,14 @@ class _FollowUpFieldState extends State<FollowUpField> {
                               ),
                               child: Icon(
                                 FluentIcons.chevron_up,
-                                size: 9,
+                                size: 12,
                                 color: accent.withValues(alpha: 0.85),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                      )
+                    ],
                   ],
                 ),
                 const SizedBox(height: 5),
@@ -394,7 +406,7 @@ class _FollowUpFieldState extends State<FollowUpField> {
                         enabled: _enabled,
                         textAlignment: AlignmentDirectional.centerStart,
                         textStyle: TextStyle(
-                          fontSize: 11,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           color: dark ? Colors.white : accent,
                         ),
@@ -419,13 +431,6 @@ class _FollowUpFieldState extends State<FollowUpField> {
                         runSpacing: 4,
                         crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
-                          _chip(
-                            key: WK.fieldAppointmentFollowUpDate,
-                            label: txt('chooseFollowUpDate'),
-                            icon: WindowsIcons.calendar,
-                            onPressed:
-                                _enabled ? () => _pickDate(anchor) : null,
-                          ),
                           for (final preset in kFollowUpPresets)
                             Tooltip(
                               message: _dayLabel(preset.from(anchor)),
@@ -437,6 +442,13 @@ class _FollowUpFieldState extends State<FollowUpField> {
                                     : null,
                               ),
                             ),
+                          _chip(
+                            key: WK.fieldAppointmentFollowUpDate,
+                            label: txt('chooseFollowUpDate'),
+                            icon: WindowsIcons.calendar,
+                            onPressed:
+                                _enabled ? () => _pickDate(anchor) : null,
+                          ),
                         ],
                       );
                     },
@@ -491,14 +503,11 @@ class _FollowUpFieldState extends State<FollowUpField> {
       placeholder: txt('followUpNotePlaceholder'),
       padding: const EdgeInsetsDirectional.fromSTEB(8, 5, 8, 5),
       style: TextStyle(
-        fontSize: 11,
+        fontSize: 13,
         height: 1.35,
         color: theme.typography.body?.color,
       ),
-      placeholderStyle: TextStyle(
-        fontSize: 11,
-        color: theme.inactiveColor,
-      ),
+
       cursorColor: accent,
       prefix: const Padding(
         padding: EdgeInsetsDirectional.only(start: 8),
@@ -530,29 +539,29 @@ class _FollowUpFieldState extends State<FollowUpField> {
         runSpacing: 6,
         children: [
           if (removable)
-            Button(
+            IconButton(
               key: WK.clearFollowUp,
               onPressed: _enabled ? _clear : null,
-              child: ButtonContent(
+              icon: ButtonContent(
                 WindowsIcons.delete,
                 txt('delete'),
-                size: 11,
+                size: 13,
               ),
             ),
           if (dirty) ...[
-            Button(
+            IconButton(
               key: WK.followUpCancel,
               onPressed: _cancel,
-              child: ButtonContent(
+              icon: ButtonContent(
                 WindowsIcons.chrome_close,
                 txt('cancel'),
-                size: 11,
+                size: 13,
               ),
             ),
-            FilledButton(
+            IconButton(
               key: WK.followUpSave,
               onPressed: _enabled ? _save : null,
-              child: ButtonContent(WindowsIcons.save, txt('save'), size: 11),
+              icon: ButtonContent(WindowsIcons.save, txt('save'), size: 13),
             ),
           ],
         ],

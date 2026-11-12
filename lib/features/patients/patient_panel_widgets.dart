@@ -369,7 +369,7 @@ class _PatientDetailsState extends State<_PatientDetails> {
             child: InfoLabel(
               label: "${txt("gender")}:",
               isHeader: true,
-              child: ComboBox<int>(
+              child: AppComboBox<int>(
                 key: WK.fieldPatientGender,
                 isExpanded: true,
                 items: [

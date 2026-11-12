@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/contact_buttons.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
@@ -21,6 +22,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/patients/patients_store.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -171,7 +173,7 @@ class _PatientsPageState extends State<_PatientsPage> {
         ),
         Container(
           width: double.infinity,
-          decoration: topBarDecoration(context, Colors.grey),
+          decoration: topBarDecoration(context),
           padding: const EdgeInsetsDirectional.only(
             start: 8.0,
             end: 0,
@@ -303,13 +305,11 @@ class _PatientsPageState extends State<_PatientsPage> {
         shape: listDividerBorder(context),
         tileColor: WidgetStateColor.resolveWith((states) {
           if (selected.contains(patient.id)) {
-            return Colors.blue.withAlpha(20);
+            return FluentMaterials.of(context).selected;
           } else if (states.contains(WidgetState.hovered)) {
-            return FluentTheme.of(context)
-                .resources
-                .controlAltFillColorTertiary;
+            return FluentMaterials.of(context).hover;
           }
-          return FluentTheme.of(context).resources.solidBackgroundFillColorBase;
+          return Colors.transparent;
         }),
         title: buildSinglePatientTile(
           patient,
@@ -319,7 +319,7 @@ class _PatientsPageState extends State<_PatientsPage> {
           searchStringLowerCased,
         ),
         contentPadding: const EdgeInsetsDirectional.only(
-            top: 0, bottom: 5, start: 5, end: 0),
+            top: 0, bottom: 5, start: 0, end: 0),
       ),
     );
   }
@@ -459,8 +459,8 @@ class _PatientsPageState extends State<_PatientsPage> {
     );
   }
 
-  ComboBox<String> _buildTxFilter() {
-    return ComboBox<String>(
+  AppComboBox<String> _buildTxFilter() {
+    return AppComboBox<String>(
       onChanged: (treatment) {
         byTreatment = treatment;
         _updateItems();

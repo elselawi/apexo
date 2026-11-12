@@ -294,7 +294,7 @@ class WeekAgendaCalendarState<Item extends Appointment>
   // ─── Day title bar ─────────────────────────────────────────────────────
   Widget _buildDayTitleBar(List<Item> items) {
     return Container(
-      decoration: topBarDecoration(context, Colors.grey),
+      decoration: topBarDecoration(context),
       padding: const EdgeInsets.symmetric(horizontal: 10),
       height: 45,
       child: Row(

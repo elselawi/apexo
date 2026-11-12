@@ -338,7 +338,8 @@ class _VisitScopeBarState extends State<VisitScopeBar> {
         }
 
         final theme = FluentTheme.of(context);
-        final followUp = followUpsEnabled ? patientFollowUpDay(patient.id) : null;
+        final followUp =
+            followUpsEnabled ? patientFollowUpDay(patient.id) : null;
         final addLabel = visits.isEmpty ? txt('addAppointment') : txt('new');
         return SizedBox(
           height: 40,
@@ -579,6 +580,27 @@ TimelineLayout computeTimelineLayout({
     positions: positions,
     overflows: overflows,
   );
+}
+
+/// Closes the timeline's side edges so scrolled content cannot paint over the
+/// stops beside it, while leaving the vertical axis open for the selected dot's
+/// ripple, which reaches a few pixels above the bar.
+class _TimelineSideClip extends CustomClipper<Rect> {
+  const _TimelineSideClip();
+
+  // The bar is 40 px tall and the ripple reaches ~7 px up; this stays well clear.
+  static const double _openVertical = 64;
+
+  @override
+  Rect getClip(Size size) => Rect.fromLTRB(
+        0,
+        -_openVertical,
+        size.width,
+        size.height + _openVertical,
+      );
+
+  @override
+  bool shouldReclip(_TimelineSideClip oldClipper) => false;
 }
 
 class _EdgeTransparencyFade extends StatelessWidget {
@@ -886,31 +908,38 @@ class _VisitTimelineSliderState extends State<_VisitTimelineSlider> {
                 scroll.jumpTo(target);
               });
             },
-            child: _EdgeTransparencyFade(
-              key: const ValueKey('scope-timeline-fade'),
-              fadeStart: widget.fadeStart,
-              fadeEnd: widget.fadeEnd,
-              child: SingleChildScrollView(
-                key: const ValueKey('scope-visit-scroll'),
-                controller: widget.scroll,
-                reverse: true,
-                scrollDirection: Axis.horizontal,
-                physics: const NeverScrollableScrollPhysics(),
-                child: SizedBox(
-                  key: _canvasKey,
-                  child: _VisitTimelineCanvas(
-                    visits: widget.visits,
-                    layout: widget.layout,
-                    selectedIndex: selected,
-                    hoveredVisitId: _previewId ?? widget.hoveredVisitId,
-                    visitKeys: widget.visitKeys,
-                    switching: widget.switching,
-                    scrubbing: _previewId != null || _scrubbing,
-                    onSelectVisit: (index) {
-                      if (_previewId != null) _finish();
-                      widget.onSelectVisit(index);
-                    },
-                    onHoverVisit: widget.onHoverVisit,
+            child: ClipRect(
+              key: const ValueKey('scope-timeline-clip'),
+              clipper: const _TimelineSideClip(),
+              child: _EdgeTransparencyFade(
+                key: const ValueKey('scope-timeline-fade'),
+                fadeStart: widget.fadeStart,
+                fadeEnd: widget.fadeEnd,
+                child: SingleChildScrollView(
+                  key: const ValueKey('scope-visit-scroll'),
+                  controller: widget.scroll,
+                  reverse: true,
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  // The bar clips horizontally instead, so the ripple can still
+                  // paint above the track.
+                  clipBehavior: Clip.none,
+                  child: SizedBox(
+                    key: _canvasKey,
+                    child: _VisitTimelineCanvas(
+                      visits: widget.visits,
+                      layout: widget.layout,
+                      selectedIndex: selected,
+                      hoveredVisitId: _previewId ?? widget.hoveredVisitId,
+                      visitKeys: widget.visitKeys,
+                      switching: widget.switching,
+                      scrubbing: _previewId != null || _scrubbing,
+                      onSelectVisit: (index) {
+                        if (_previewId != null) _finish();
+                        widget.onSelectVisit(index);
+                      },
+                      onHoverVisit: widget.onHoverVisit,
+                    ),
                   ),
                 ),
               ),
@@ -1193,16 +1222,21 @@ class _TimelineTrackPainter extends CustomPainter {
       ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.round;
 
+    // The track starts at the first visit; nothing links it back to the
+    // initial exam stop.
     if (positions.length == 1) {
       final center = _resolveX(positions.first, size.width);
+      final tailEnd = _resolveX(size.width - 10, size.width);
       canvas.drawLine(
-        Offset(_resolveX(0, size.width), trackY),
-        Offset(_resolveX(size.width - 10, size.width), trackY),
+        Offset(center, trackY),
+        Offset(tailEnd, trackY),
         baseTrackPaint,
       );
+      final forward = tailEnd >= center ? 1.0 : -1.0;
       canvas.drawLine(
-        Offset(math.max(10, center - 28), trackY),
-        Offset(math.min(size.width - 10, center + 28), trackY),
+        Offset(center, trackY),
+        Offset(center + forward * math.min(28.0, (tailEnd - center).abs()),
+            trackY),
         Paint()
           ..color = accent.withValues(alpha: 0.65)
           ..strokeWidth = 2.5
@@ -1210,12 +1244,6 @@ class _TimelineTrackPainter extends CustomPainter {
       );
       return;
     }
-
-    canvas.drawLine(
-      Offset(_resolveX(0, size.width), trackY),
-      Offset(_resolveX(positions.first, size.width), trackY),
-      baseTrackPaint,
-    );
 
     final now = DateTime.now();
     for (var i = 0; i < positions.length - 1; i++) {
@@ -1313,6 +1341,12 @@ class _TimelineAppointmentDot extends StatefulWidget {
 class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
   final OverlayPortalController _portalController = OverlayPortalController();
 
+  // The card floats below the dot; the pointer must be able to move from one
+  // to the other without the card being dismissed.
+  bool _pointerOnDot = false;
+  bool _pointerOnCard = false;
+  bool _hoverSyncScheduled = false;
+
   // Keeps the ring visible without reaching the neighbouring dot.
   static const double _rippleSpread = 8.0;
 
@@ -1331,26 +1365,53 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
   @override
   void didUpdateWidget(covariant _TimelineAppointmentDot oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.scrubbing && !oldWidget.scrubbing) {
+      _pointerOnDot = false;
+      _pointerOnCard = false;
+    }
     if (widget.hovered != oldWidget.hovered) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        if (widget.hovered && !_portalController.isShowing) {
-          _portalController.show();
-        } else if (!widget.hovered && _portalController.isShowing) {
+        if (widget.hovered) {
+          if (!_portalController.isShowing) _portalController.show();
+        } else if (!_pointerOnDot &&
+            !_pointerOnCard &&
+            _portalController.isShowing) {
           _portalController.hide();
         }
       });
     }
   }
 
-  void _handleHover(bool isHovered) {
+  void _handleDotHover(bool isHovered) {
     if (widget.scrubbing) return;
-    if (isHovered && !_portalController.isShowing) {
-      _portalController.show();
-    } else if (!isHovered && _portalController.isShowing) {
-      _portalController.hide();
-    }
-    widget.onHoverChanged(isHovered);
+    _pointerOnDot = isHovered;
+    _scheduleHoverSync();
+  }
+
+  void _handleCardHover(bool isHovered) {
+    if (widget.scrubbing) return;
+    _pointerOnCard = isHovered;
+    _scheduleHoverSync();
+  }
+
+  /// The dot's exit and the card's enter are dispatched together for the same
+  /// pointer event, so deciding in a microtask lets the pointer cross over
+  /// without the card being dismissed in between.
+  void _scheduleHoverSync() {
+    if (_hoverSyncScheduled) return;
+    _hoverSyncScheduled = true;
+    scheduleMicrotask(() {
+      _hoverSyncScheduled = false;
+      if (!mounted) return;
+      if (_pointerOnDot || _pointerOnCard) {
+        if (!_portalController.isShowing) _portalController.show();
+        widget.onHoverChanged(true);
+      } else {
+        if (_portalController.isShowing) _portalController.hide();
+        widget.onHoverChanged(false);
+      }
+    });
   }
 
   @override
@@ -1365,7 +1426,7 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
         visit.isMissed ? Colors.red : PanelAccents.appointment;
 
     final double size = widget.selected
-        ? 15.0
+        ? 25
         : widget.hovered
             ? 13.5
             : (widget.isFirst || widget.isNewest)
@@ -1390,8 +1451,8 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
           cursor: widget.onPressed != null
               ? SystemMouseCursors.click
               : SystemMouseCursors.basic,
-          onEnter: (_) => _handleHover(true),
-          onExit: (_) => _handleHover(false),
+          onEnter: (_) => _handleDotHover(true),
+          onExit: (_) => _handleDotHover(false),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: widget.onPressed,
@@ -1459,12 +1520,14 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
                     ),
                     child: widget.selected
                         ? Center(
-                            child: Container(
-                              width: 4.5,
-                              height: 4.5,
-                              decoration: const BoxDecoration(
-                                shape: BoxShape.circle,
+                            child: Txt(
+                              widget.visitNumber.toString(),
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
                                 color: Colors.white,
+                                height: 1,
                               ),
                             ),
                           )
@@ -1514,7 +1577,7 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
     final dotBottomY = dotTopLeft.dy + widget.trackY + 12;
     final overlaySize = overlayBox.size;
 
-    const cardWidth = 300.0;
+    const cardWidth = 320.0;
     final left = (dotCenterX - cardWidth / 2)
         .clamp(
           8.0,
@@ -1525,14 +1588,17 @@ class _TimelineAppointmentDotState extends State<_TimelineAppointmentDot> {
         (dotCenterX - left).clamp(18.0, cardWidth - 18.0).toDouble();
     final top = math.min(
       dotBottomY,
-      math.max(8.0, overlaySize.height - 290.0),
+      math.max(8.0, overlaySize.height - 310.0),
     );
 
     return Positioned(
       left: left,
       top: top,
       width: cardWidth,
-      child: IgnorePointer(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.basic,
+        onEnter: (_) => _handleCardHover(true),
+        onExit: (_) => _handleCardHover(false),
         child: _TimelineVisitHoverCard(
           key: ValueKey('scope-hover-card-${widget.visit.id}'),
           visit: widget.visit,
@@ -1647,7 +1713,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                       child: Txt(
                         '${txt('appointment')} #$visitNumber/$totalVisits',
                         style: const TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: accent,
                         ),
@@ -1663,12 +1729,12 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(statusIcon, size: 9, color: statusColor),
+                          Icon(statusIcon, size: 10, color: statusColor),
                           const SizedBox(width: 3),
                           Txt(
                             statusLabel,
                             style: TextStyle(
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: statusColor,
                             ),
@@ -1687,7 +1753,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                         child: Txt(
                           txt('newestVisit'),
                           style: TextStyle(
-                            fontSize: 9.5,
+                            fontSize: 10.5,
                             fontWeight: FontWeight.w600,
                             color: theme.inactiveColor,
                           ),
@@ -1698,12 +1764,12 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(FluentIcons.clock,
-                            size: 10, color: theme.inactiveColor),
+                            size: 11, color: theme.inactiveColor),
                         const SizedBox(width: 3),
                         Txt(
                           '${visit.duration} ${txt('minutes')}',
                           style: TextStyle(
-                            fontSize: 10,
+                            fontSize: 11,
                             color: theme.inactiveColor,
                           ),
                         ),
@@ -1715,20 +1781,20 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                 // 2. Date & elapsed duration since previous visit
                 Txt(
                   DF.full(visit.date),
-                  style: theme.typography.bodyStrong?.copyWith(fontSize: 12.5),
+                  style: theme.typography.bodyStrong?.copyWith(fontSize: 13.5),
                 ),
                 if (previousVisit != null) ...[
                   const SizedBox(height: 2),
                   Row(
                     children: [
                       Icon(WindowsIcons.history,
-                          size: 10, color: theme.inactiveColor),
+                          size: 11, color: theme.inactiveColor),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Txt(
                           '${txt('after')} ${Patient.formatDuration(previousVisit!.date, visit.date)}',
                           style: TextStyle(
-                            fontSize: 10.5,
+                            fontSize: 11.5,
                             fontStyle: FontStyle.italic,
                             color: theme.inactiveColor,
                           ),
@@ -1752,7 +1818,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                   ),
                   _VerticalScrollFadeBox(
                     key: ValueKey('hover-card-scroll-${visit.id}'),
-                    maxHeight: 165,
+                    maxHeight: 180,
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1784,7 +1850,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                             title: txt('post-opNotes'),
                             child: Txt(
                               visit.postOpNotes,
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -1798,7 +1864,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                             title: txt('pre-opNotes'),
                             child: Txt(
                               visit.preOpNotes,
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -1810,7 +1876,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                             title: txt('doctors'),
                             child: Txt(
                               visit.operatorsNames,
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -1822,7 +1888,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                             title: txt('prescription'),
                             child: Txt(
                               visit.prescriptions.join(', '),
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -1839,7 +1905,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                                 if (visit.labworkNotes.isNotEmpty)
                                   visit.labworkNotes,
                               ].join(' · '),
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -1848,7 +1914,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                           const SizedBox(height: 5),
                           _hoverSectionRow(
                             context,
-                            icon: FluentIcons.camera,
+                            icon: WindowsIcons.camera,
                             title: txt('photos'),
                             child: Txt(
                               [
@@ -1857,7 +1923,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
                                 if (visit.viewableDcmImgs.isNotEmpty)
                                   '${txt('dcm')}: ${visit.viewableDcmImgs.length}',
                               ].join(' · '),
-                              style: const TextStyle(fontSize: 11),
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                         ],
@@ -1905,17 +1971,17 @@ class _TimelineVisitHoverCard extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.only(top: 2),
-          child: Icon(icon, size: 12, color: theme.inactiveColor),
+          child: Icon(icon, size: 13, color: theme.inactiveColor),
         ),
         const SizedBox(width: 5),
         SizedBox(
-          width: 68,
+          width: 74,
           child: Txt(
             title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: 11.5,
               fontWeight: FontWeight.w600,
               color: theme.inactiveColor,
             ),
@@ -1938,17 +2004,17 @@ class _TimelineVisitHoverCard extends StatelessWidget {
       runSpacing: 4,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Icon(FluentIcons.money, size: 13, color: payColor),
+        Icon(FluentIcons.money, size: 14, color: payColor),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Txt(
               '${txt('price')}: ',
-              style: TextStyle(fontSize: 10.5, color: theme.inactiveColor),
+              style: TextStyle(fontSize: 11.5, color: theme.inactiveColor),
             ),
             MoneyDisplay(
               '${visit.price.toStringAsFixed(2)} ${currency()}',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -1957,11 +2023,11 @@ class _TimelineVisitHoverCard extends StatelessWidget {
           children: [
             Txt(
               '${txt('paid')}: ',
-              style: TextStyle(fontSize: 10.5, color: theme.inactiveColor),
+              style: TextStyle(fontSize: 11.5, color: theme.inactiveColor),
             ),
             MoneyDisplay(
               '${visit.paid.toStringAsFixed(2)} ${currency()}',
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
             ),
           ],
         ),
@@ -1975,7 +2041,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
             child: Txt(
               '${txt(visit.overPaid ? 'overpaid' : 'underpaid')} ${visit.paymentDifference.toStringAsFixed(2)}',
               style: TextStyle(
-                fontSize: 9.5,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 color: payColor,
               ),
@@ -1991,7 +2057,7 @@ class _TimelineVisitHoverCard extends StatelessWidget {
             child: Txt(
               txt('fullyPaid'),
               style: TextStyle(
-                fontSize: 9.5,
+                fontSize: 10.5,
                 fontWeight: FontWeight.w700,
                 color: Colors.green,
               ),
@@ -2034,7 +2100,7 @@ class _HoverTreatmentChip extends StatelessWidget {
         runSpacing: 2,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Icon(icon, size: 12, color: color),
+          Icon(icon, size: 13, color: color),
           DentalNotation(iso: iso, withTooltip: false, color: color),
           if (hasTx)
             Txt(
@@ -2042,7 +2108,7 @@ class _HoverTreatmentChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 10.5,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -2052,7 +2118,7 @@ class _HoverTreatmentChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 10,
+                fontSize: 11,
                 fontStyle: FontStyle.italic,
                 color: FluentTheme.of(context).inactiveColor,
               ),
@@ -2380,17 +2446,6 @@ class _InitialExamStop extends StatelessWidget {
                         borderRadius: 12,
                       ),
                     ),
-                  const PositionedDirectional(
-                    start: 0,
-                    end: 0,
-                    top: 0,
-                    bottom: 0,
-                    child: FractionallySizedBox(
-                      widthFactor: 0.5,
-                      alignment: AlignmentDirectional.centerEnd,
-                      child: _InitialExamTrack(),
-                    ),
-                  ),
                   PositionedDirectional(
                     start: 4,
                     end: 4,

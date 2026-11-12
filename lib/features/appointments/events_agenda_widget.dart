@@ -19,6 +19,7 @@ import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:flutter/material.dart' show TimeOfDay;
@@ -145,163 +146,169 @@ class AppointmentCalendarTile<Item extends Appointment>
           controller: controller,
         ),
       ],
-      child: Container(
-        decoration: BoxDecoration(
-          color: FluentTheme.of(context).resources.solidBackgroundFillColorBase,
-        ),
-        child: ListTile(
-          key: ValueKey(item.id),
-          margin: EdgeInsets.zero,
-          shape: listDividerBorder(context),
-          tileColor: WidgetStateColor.resolveWith((states) {
-            if (item.isDone) {
-              return Colors.blue.withAlpha(10);
-            } else if (states.contains(WidgetState.hovered)) {
-              return FluentTheme.of(context)
-                  .resources
-                  .controlAltFillColorTertiary;
-            }
-            return FluentTheme.of(context)
-                .resources
-                .solidBackgroundFillColorBase;
-          }),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                children: [
-                  SizedBox(width: 165, child: ItemTitle(item: item)),
-                ],
-              ),
-              TreatmentLabels(
-                  labels: item.teeth.entries
-                      .toSet()
-                      .map((e) => TreatmentLabel(
-                          string: e.value,
-                          color: labelToColor(e.value),
-                          icon: labelToIcon(e.value),
-                          iso: e.key,
-                          extraNote: item.teethExtraNotes[e.key]))
-                      .toList()),
-            ],
-          ),
-          subtitle: hasInfo
-              ? AppointmentInfoLine(
-                  item: item,
-                  note: note,
-                  onOpenWindow: (window) => onSelect(item, window),
-                  iconSize: 18,
-                  // The chips above already say which teeth were treated.
-                  showDentalNotes: false,
-                )
-              : null,
-          leading: Row(children: [
-            PanelOpenBuilder(
-              itemId: item.id,
-              // A visit is not a panel: it is open when a panel is carrying it.
-              carries: (panel) => panel.attached?.itemId == item.id,
-              builder: (context, panelIndex) => panelIndex == null
-                  ? Transform.scale(
-                      scale: 1.25,
-                      child: Checkbox(
-                        style: CheckboxThemeData(
-                          icon: WindowsIcons.completed,
-                          uncheckedIconColor: WidgetStatePropertyAll(
-                              FluentTheme.of(context).inactiveColor),
-                        ),
-                        checked: item.isDone,
-                        onChanged: (checked) => appointmentCommand(
-                            item.id, (draft) => draft.isDone = checked == true),
-                      ),
-                    )
-                  : OpenInPanelButton(panelIndex: panelIndex),
+      child: ListTile(
+        key: ValueKey(item.id),
+        margin: EdgeInsets.zero,
+        shape: listDividerBorder(context),
+        tileColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.hovered)) {
+            return FluentMaterials.of(context).hover;
+          }
+          // A finished visit keeps a fill so a full day reads at a glance.
+          if (item.isDone) return FluentMaterials.of(context).selected;
+          return Colors.transparent;
+        }),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              children: [
+                SizedBox(width: 165, child: ItemTitle(item: item)),
+              ],
             ),
-            const SizedBox(width: 8),
+            TreatmentLabels(
+                labels: item.teeth.entries
+                    .toSet()
+                    .map((e) => TreatmentLabel(
+                        string: e.value,
+                        color: labelToColor(e.value),
+                        icon: labelToIcon(e.value),
+                        iso: e.key,
+                        extraNote: item.teethExtraNotes[e.key]))
+                    .toList()),
+          ],
+        ),
+        subtitle: hasInfo
+            ? AppointmentInfoLine(
+                item: item,
+                note: note,
+                onOpenWindow: (window) => onSelect(item, window),
+                iconSize: 18,
+                // The chips above already say which teeth were treated.
+                showDentalNotes: false,
+              )
+            : null,
+        leading: Row(children: [
+          PanelOpenBuilder(
+            itemId: item.id,
+            // A visit is not a panel: it is open when a panel is carrying it.
+            carries: (panel) => panel.attached?.itemId == item.id,
+            builder: (context, panelIndex) => panelIndex == null
+                ? Transform.scale(
+                    scale: 1.25,
+                    child: AppointmentDoneCheckbox(
+                      id: item.id,
+                      isDone: item.isDone,
+                    ),
+                  )
+                : OpenInPanelButton(panelIndex: panelIndex),
+          ),
+          const SizedBox(width: 8),
+          const Divider(direction: Axis.vertical, size: 40),
+        ]),
+        onPressed: () => onSelect(item, null),
+        trailing: Row(
+          children: [
             const Divider(direction: Axis.vertical, size: 40),
-          ]),
-          onPressed: () => onSelect(item, null),
-          trailing: Row(
-            children: [
-              const Divider(direction: Axis.vertical, size: 40),
-              const SizedBox(width: 5),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    spacing: 2,
-                    children: [
-                      if ((item.patient?.phonesString ?? '').isNotEmpty)
-                        PhoneNumberButton(phoneNumbers: item.patient!.phone),
-                      if ((item.patient?.email ?? '').isNotEmpty)
-                        EmailButton(email: item.patient!.email),
-                      if ((item.patient?.allAppointments ?? []).length > 1)
-                        Tooltip(
-                          message: txt("allAppointments"),
-                          child: IconButton(
-                            style: ButtonStyle(
-                              backgroundColor: WidgetStatePropertyAll(
-                                FluentTheme.of(context)
-                                    .inactiveColor
-                                    .withAlpha(30),
-                              ),
+            const SizedBox(width: 5),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  spacing: 2,
+                  children: [
+                    if ((item.patient?.phonesString ?? '').isNotEmpty)
+                      PhoneNumberButton(phoneNumbers: item.patient!.phone),
+                    if ((item.patient?.email ?? '').isNotEmpty)
+                      EmailButton(email: item.patient!.email),
+                    if ((item.patient?.allAppointments ?? []).length > 1)
+                      Tooltip(
+                        message: txt("allAppointments"),
+                        child: IconButton(
+                          style: ButtonStyle(
+                            backgroundColor: WidgetStatePropertyAll(
+                              FluentTheme.of(context)
+                                  .inactiveColor
+                                  .withAlpha(30),
                             ),
-                            onPressed: () => unawaited(openPatient(
-                                item.patient!, PatientWindow.appointments)),
-                            icon: const Icon(WindowsIcons.calendar),
                           ),
+                          onPressed: () => unawaited(openPatient(
+                              item.patient!, PatientWindow.appointments)),
+                          icon: const Icon(WindowsIcons.calendar),
                         ),
-                    ],
-                  ),
-                  PanelOpenBuilder(
-                    itemId: item.id,
-                    carries: (panel) => panel.attached?.itemId == item.id,
-                    builder: (context, panelIndex) => IconButton(
-                      onPressed: () async {
-                        if (panelIndex != null) {
-                          return PanelsManager.bringToFront(panelIndex);
-                        }
-                        final TimeOfDay? res = await showAppTimePicker(context,
-                            initialTime: TimeOfDay(
-                                hour: item.date.hour,
-                                minute: item.date.minute));
-                        if (res != null) {
-                          item.date = DateTime(item.date.year, item.date.month,
-                              item.date.day, res.hour, res.minute);
-                          onSetTime(item);
-                        }
-                      },
-                      icon: Row(
-                        children: [
-                          panelIndex == null
-                              ? const Icon(FluentIcons.clock)
-                              : const Icon(FluentIcons.open_in_new_tab),
-                          const SizedBox(width: 5),
-                          Txt(DF.timeOnly(item.date)),
-                        ],
                       ),
+                  ],
+                ),
+                PanelOpenBuilder(
+                  itemId: item.id,
+                  carries: (panel) => panel.attached?.itemId == item.id,
+                  builder: (context, panelIndex) => IconButton(
+                    onPressed: () async {
+                      if (panelIndex != null) {
+                        return PanelsManager.bringToFront(panelIndex);
+                      }
+                      final TimeOfDay? res = await showAppTimePicker(context,
+                          initialTime: TimeOfDay(
+                              hour: item.date.hour, minute: item.date.minute));
+                      if (res != null) {
+                        item.date = DateTime(item.date.year, item.date.month,
+                            item.date.day, res.hour, res.minute);
+                        onSetTime(item);
+                      }
+                    },
+                    icon: Row(
+                      children: [
+                        panelIndex == null
+                            ? const Icon(FluentIcons.clock)
+                            : const Icon(FluentIcons.open_in_new_tab),
+                        const SizedBox(width: 5),
+                        Txt(DF.timeOnly(item.date)),
+                      ],
                     ),
                   ),
-                  if (item.subtitleLine2.isNotEmpty)
-                    SizedBox(
-                        width: 75,
-                        child: Txt(
-                          item.subtitleLine2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 12),
-                        )),
-                  if (item.paid > 0 &&
-                      login.perm(Perm.revenue).read &&
-                      showPayments)
-                    MoneyDisplay(
-                      "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
-                      style: const TextStyle(fontSize: 12),
-                    )
-                ],
-              ),
-            ],
-          ),
+                ),
+                if (item.subtitleLine2.isNotEmpty)
+                  SizedBox(
+                      width: 75,
+                      child: Txt(
+                        item.subtitleLine2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 12),
+                      )),
+                if (item.paid > 0 &&
+                    login.perm(Perm.revenue).read &&
+                    showPayments)
+                  MoneyDisplay(
+                    "💵 ${item.paid.toStringAsFixed(2)} ${currency()}",
+                    style: const TextStyle(fontSize: 12),
+                  )
+              ],
+            ),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class AppointmentDoneCheckbox extends StatelessWidget {
+  const AppointmentDoneCheckbox(
+      {super.key, required this.id, required this.isDone});
+
+  final String id;
+  final bool isDone;
+
+  @override
+  Widget build(BuildContext context) {
+    return Checkbox(
+      style: CheckboxThemeData(
+        icon: WindowsIcons.completed,
+        uncheckedIconColor:
+            WidgetStatePropertyAll(FluentTheme.of(context).inactiveColor),
+      ),
+      checked: isDone,
+      onChanged: (checked) =>
+          appointmentCommand(id, (draft) => draft.isDone = checked == true),
     );
   }
 }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:apexo/app/app_context.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/audio_recorder.dart';
@@ -14,7 +15,6 @@ import 'package:apexo/common_widgets/money_display.dart';
 import 'package:apexo/common_widgets/operators_picker.dart';
 import 'package:apexo/common_widgets/patient_picker.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
-import 'package:apexo/common_widgets/visits_button.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/appointment_chart_footer.dart';
 import 'package:apexo/features/appointments/appointment_commands.dart';
@@ -60,7 +60,7 @@ enum AppointmentWindow {
   dentalChart(kDentalChartWindowId, kTreatmentsTitleKey, FluentIcons.teeth),
   operative('operative', "operativeDetails", FluentIcons.medical_care),
   labwork('labwork', "labwork", FluentIcons.manufacturing),
-  gallery('gallery', "gallery", FluentIcons.camera);
+  gallery('gallery', "gallery", WindowsIcons.camera);
 
   const AppointmentWindow(this.id, this.titleKey, this.icon);
 
@@ -168,7 +168,6 @@ PanelWindow _chartWindow(
   required bool attached,
 }) {
   final appointment = session.item;
-  final patient = appointment.patient;
   return dentalChartWindow(
     session.chart,
     saveLabel: 'saveVisit',
@@ -182,13 +181,7 @@ PanelWindow _chartWindow(
       session: session.chart,
       attached: attached,
     ),
-    actions: attached && patient != null
-        ? <Widget>[
-            PatientVisitsButton(
-              onPressed: () => unawaited(showPatientVisits(patient.id)),
-            ),
-          ]
-        : const <Widget>[],
+    actions: const <Widget>[],
     footerActions: [
       _DeleteVisitButton(key: WK.chartDeleteVisit, session: session),
     ],
@@ -248,7 +241,7 @@ class _DeleteVisitButton extends StatelessWidget {
         ],
       ),
       onConfirm: () => unawaited(_deleteVisit(session)),
-      style: _footerDeleteStyle,
+      style: _footerDeleteStyle(context),
       child: ButtonContent(WindowsIcons.delete, txt('deleteVisit')),
     );
   }
@@ -268,6 +261,10 @@ class _RemoveLabworkButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Removing writes the visit, so it needs the visit's write permission.
+    if (!canEditAppointments(appointment.operatorsIDs)) {
+      return const SizedBox.shrink();
+    }
     return ValueListenableBuilder<bool>(
       valueListenable: hasOrder,
       builder: (context, hasLabwork, _) {
@@ -286,9 +283,16 @@ class _RemoveLabworkButton extends StatelessWidget {
               Txt(appointment.patient?.title ?? ""),
             ],
           ),
-          // The body owns the change; this only flips the shared order state.
-          onConfirm: () => hasOrder.value = false,
-          style: _footerDeleteStyle,
+          // A removal is written at once, like the labworks screen's row delete:
+          // the visit's Save is for edits, not for making it stick.
+          onConfirm: () {
+            appointmentCommand(
+                appointment.id, (draft) => draft.hasLabwork = false);
+            // The body draws the order from this shared state, so it must be told
+            // too — the draft already carries the change.
+            hasOrder.value = false;
+          },
+          style: _footerDeleteStyle(context),
           child: ButtonContent(WindowsIcons.delete, txt('removeLabwork')),
         );
       },
@@ -296,11 +300,13 @@ class _RemoveLabworkButton extends StatelessWidget {
   }
 }
 
-final ButtonStyle _footerDeleteStyle = greyButtonStyle.copyWith(
-  textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-  backgroundColor: const WidgetStatePropertyAll(Colors.errorPrimaryColor),
-  foregroundColor: const WidgetStatePropertyAll(Colors.white),
-);
+/// Red says these remove the record itself, not merely close its window.
+ButtonStyle _footerDeleteStyle(BuildContext context) => ButtonStyle(
+      textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+      foregroundColor: WidgetStatePropertyAll(
+        FluentTheme.of(context).resources.systemFillColorCritical,
+      ),
+    );
 
 PanelWindow _galleryWindow(
   AppointmentSession session, {
@@ -754,7 +760,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
     }
   }
 
-  void _updateWhenTranscriptionOccurs(_) {
+  void _updateWhenTranscriptionOccurs(Object? _) {
     if (mounted) setState(_fillControllers);
   }
 
@@ -794,15 +800,18 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: const EdgeInsetsDirectional.fromSTEB(2, 2, 2, 2),
+        Container(
+          decoration: topBarDecoration(context),
+          padding:
+              const EdgeInsetsDirectional.symmetric(vertical: 3, horizontal: 7),
+          margin: const EdgeInsets.only(bottom: 5),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final roomy = constraints.maxWidth >= 480;
               return Row(
                 children: [
                   Icon(FluentIcons.medical_care,
-                      size: 12, color: theme.inactiveColor),
+                      size: 16, color: theme.inactiveColor),
                   const SizedBox(width: 5),
                   Expanded(
                     child: Txt(
@@ -810,7 +819,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.typography.bodyStrong?.copyWith(
-                        fontSize: 11,
+                        fontSize: 13,
                         color: theme.typography.body?.color,
                       ),
                     ),
@@ -819,7 +828,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
                     Tooltip(
                       message: txt('printPrescription'),
                       child: IconButton(
-                        icon: const Icon(FluentIcons.print, size: 13),
+                        icon: const Icon(WindowsIcons.print, size: 16),
                         onPressed: () {
                           unawaited(printingPrescription(
                             context,
@@ -831,6 +840,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
                         },
                       ),
                     ),
+                  const SizedBox(width: 5),
                   Tooltip(
                     message: txt('completed'),
                     child: Checkbox(
@@ -856,9 +866,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
                   if (roomy)
                     Padding(
                       padding: const EdgeInsetsDirectional.only(start: 4),
-                      child: Txt(txt('isDone'),
-                          style:
-                              theme.typography.caption?.copyWith(fontSize: 10)),
+                      child: Txt(txt('isDone')),
                     ),
                 ],
               );
@@ -1031,20 +1039,24 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
             },
           ),
         // Dictation needs both the AI setting and a network, and both are live.
-        MStreamBuilder<Object?>(
-          streams: [
-            network.isOnline.stream,
-            globalSettings.observableMap.stream,
+        Row(
+          children: [
+            MStreamBuilder<Object?>(
+              streams: [
+                network.isOnline.stream,
+                globalSettings.observableMap.stream,
+              ],
+              builder: (context, _) {
+                final voice = operativeVoiceAction(appointment,
+                    onEdited: widget.onEdited);
+                if (voice == null) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsetsDirectional.only(top: 2),
+                  child: voice,
+                );
+              },
+            ),
           ],
-          builder: (context, _) {
-            final voice = operativeVoiceAction(appointment,
-                onEdited: widget.onEdited);
-            if (voice == null) return const SizedBox.shrink();
-            return Padding(
-              padding: const EdgeInsetsDirectional.only(top: 2),
-              child: voice,
-            );
-          },
         ),
       ],
     );
@@ -1069,7 +1081,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
         padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
         child: Txt(
           label,
-          style: theme.typography.caption?.copyWith(
+          style: theme.typography.bodyStrong?.copyWith(
             color: theme.inactiveColor,
           ),
         ),
@@ -1122,7 +1134,7 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
   }
 
   /// Dictation filled the draft: re-read what it wrote.
-  void _readAgain(_) {
+  void _readAgain(Object? _) {
     if (mounted) setState(() => _notes.text = widget.appointment.preOpNotes);
   }
 
@@ -1134,10 +1146,14 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            // The date is the field that gives way: the time and duration keep
+            // their widths, so the row fits a narrow band without shrinking the
+            // type.
             Flexible(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 200),
+                constraints: const BoxConstraints(maxWidth: 150),
                 child: _field(
                   tooltip: txt('date'),
                   child: DateTimePicker(
@@ -1145,7 +1161,7 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
                     initValue: appointment.date,
                     showButton: false,
                     textAlignment: AlignmentDirectional.centerStart,
-                    textStyle: const TextStyle(fontSize: 11),
+                    textStyle: const TextStyle(fontSize: 12),
                     onChange: (d) => setState(() {
                       appointment.date = DateTime(
                         d.year,
@@ -1160,17 +1176,16 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
             _field(
               tooltip: txt('time'),
-              width: 78,
+              width: 85,
               child: DateTimePicker(
                 key: WK.fieldAppointmentTime,
                 initValue: appointment.date,
                 showButton: false,
                 pickTime: true,
                 textAlignment: AlignmentDirectional.centerStart,
-                textStyle: const TextStyle(fontSize: 11),
+                textStyle: const TextStyle(fontSize: 12),
                 onChange: (d) => setState(() {
                   appointment.date = DateTime(
                     appointment.date.year,
@@ -1183,7 +1198,6 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
                 }),
               ),
             ),
-            const SizedBox(width: 6),
             _field(
               tooltip: txt('duration'),
               child: DurationPill(
@@ -1214,9 +1228,9 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
           expands: false,
           maxLines: 3,
           // Dictation lives in the chart's post-op record, so no mic here.
-          micPlacement: MicPlacement.none,
+          micPlacement: MicPlacement.end,
           padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4),
-          style: const TextStyle(fontSize: 11),
+          style: const TextStyle(fontSize: 13),
           placeholder: "${txt("preOperativeNotes")}...",
           onChanged: (v) {
             setState(() => appointment.preOpNotes = v);
@@ -1384,14 +1398,13 @@ class _CompactOperatorsState extends State<_CompactOperators> {
             height: 34,
             child: Row(
               children: [
-                Icon(FluentIcons.medical, size: 12, color: theme.inactiveColor),
+                Icon(FluentIcons.medical, size: 16, color: theme.inactiveColor),
                 const SizedBox(width: 5),
                 Expanded(
                   child: Txt(
                     label,
                     overflow: TextOverflow.ellipsis,
-                    style: theme.typography.caption?.copyWith(
-                      fontSize: 11,
+                    style: TextStyle(
                       color: names.isEmpty ? theme.inactiveColor : null,
                     ),
                   ),

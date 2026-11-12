@@ -117,22 +117,21 @@ class _PatientFollowUpBarState extends State<PatientFollowUpBar> {
           ),
           child: Row(
             children: [
-              const Icon(WindowsIcons.walk_solid, size: 11, color: accent),
+              const Icon(WindowsIcons.walk_solid, size: 16, color: accent),
               const SizedBox(width: 6),
               Txt(
                 txt('nextFollowUp'),
                 style: const TextStyle(
-                  fontSize: 10,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
-                  letterSpacing: 0.2,
                   color: accent,
                 ),
               ),
               const Spacer(),
               Text(
                 followUp == null ? txt('notSet') : DF.allNumbers(followUp),
-                style: theme.typography.caption?.copyWith(
-                  fontSize: 9.5,
+                style: theme.typography.bodyStrong?.copyWith(
+                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                   color: followUp == null ? theme.inactiveColor : accent,
                 ),
@@ -141,7 +140,7 @@ class _PatientFollowUpBarState extends State<PatientFollowUpBar> {
                 const SizedBox(width: 4),
                 Icon(
                   FluentIcons.chevron_down,
-                  size: 9,
+                  size: 12,
                   color: accent.withValues(alpha: 0.8),
                 ),
               ],

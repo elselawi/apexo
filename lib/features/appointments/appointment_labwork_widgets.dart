@@ -19,7 +19,7 @@ class AppointmentLabworkSection extends StatefulWidget {
   /// Whether an order exists; this body and the window's footer sync both ways.
   final ValueNotifier<bool>? hasOrder;
 
-  /// Reports a draft change; adding or removing an order is saved like a typed field.
+  /// Reports a draft change; starting an order is saved like a typed field.
   final VoidCallback? onEdited;
 
   @override
@@ -57,7 +57,8 @@ class _AppointmentLabworkSectionState extends State<AppointmentLabworkSection> {
   /// The window's footer took the order away: the body shows what it says.
   void _orderChangedElsewhere() {
     final hasOrder = widget.hasOrder?.value ?? widget.appointment.hasLabwork;
-    if (hasOrder == widget.appointment.hasLabwork) return;
+    // Redraw even when the draft already carries the new state: the footer's
+    // removal writes through instead of passing through `_setHasLabwork`.
     setState(() => widget.appointment.hasLabwork = hasOrder);
     widget.onEdited?.call();
   }
@@ -76,13 +77,8 @@ class _AppointmentLabworkSectionState extends State<AppointmentLabworkSection> {
         onEdited: widget.onEdited,
       );
     }
-    return HyperlinkButton(
+    return Button(
       key: WK.btnAddLabwork,
-      style: ButtonStyle(
-        textStyle: WidgetStatePropertyAll(
-          FluentTheme.of(context).typography.caption,
-        ),
-      ),
       onPressed: () => _setHasLabwork(true),
       child: Row(
         mainAxisSize: MainAxisSize.max,
@@ -91,7 +87,8 @@ class _AppointmentLabworkSectionState extends State<AppointmentLabworkSection> {
         children: [
           const Icon(FluentIcons.manufacturing),
           const SizedBox(width: 15),
-          SizedBox(width: 200, child: Txt(txt("addLabwork"), softWrap: true)),
+          // The label is long in most locales: let it wrap instead of overflowing.
+          Flexible(child: Txt(txt("addLabwork"), softWrap: true)),
         ],
       ),
     );
@@ -131,7 +128,7 @@ class _LabWorkEditorState extends State<LabWorkEditor> {
     labOrderNotesController.text = widget.appointment.labworkNotes;
   }
 
-  void _updateWhenTranscriptionOccurs(_) {
+  void _updateWhenTranscriptionOccurs(Object? _) {
     if (mounted) {
       setState(_fillControllers);
     }

@@ -10,6 +10,7 @@ final class DentalChartSession {
   DentalChartSession({
     required this.id,
     required this.titleKey,
+    this.dockTitleKey,
     required this.subtitle,
     required this.type,
     required this.teeth,
@@ -34,6 +35,11 @@ final class DentalChartSession {
   /// Localization key for the window label; the host resolves it on build, so a
   /// language switch relabels an open chart.
   final String titleKey;
+
+  /// Localization key for the dock button when it names the chart differently
+  /// from the window (the patient's dock keeps "Dental Chart"); null means
+  /// [titleKey].
+  final String? dockTitleKey;
 
   /// The window's second line: whose chart this is, read on build so a rename
   /// stays current.

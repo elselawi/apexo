@@ -45,8 +45,10 @@ Future<void> openAppointment([
       preferBand: window == null || window == AppointmentWindow.details,
     );
 
-/// Opens one of [appointment]'s windows alone, with no patient panel behind it.
-/// The same session owns the draft, so the window's Save still writes the visit.
+/// Opens one of [appointment]'s windows where it belongs: standing on its own
+/// while no panel is on screen, and in the visit's own panel — that window shown
+/// by default — once one is. The same session owns the draft either way, so the
+/// window's Save still writes the visit.
 Future<void> openAppointmentWindowOnItsOwn(
   Appointment appointment,
   AppointmentWindow window,
@@ -54,12 +56,14 @@ Future<void> openAppointmentWindowOnItsOwn(
   // A window on its own still links back to its visit, but never to a patient
   // record this account may not see.
   final patient = patients.get(appointment.patientID ?? '');
+  final hidden = patient == null || patient.locked;
+  if (!hidden && !PanelsManager.allowsStandaloneWindows) {
+    return openAppointment(appointment, window);
+  }
   return _openStandaloneVisit(
     appointment,
     focus: window.id,
-    onOpenRecord: patient == null || patient.locked
-        ? null
-        : () => openAppointment(appointment),
+    onOpenRecord: hidden ? null : () => openAppointment(appointment),
   );
 }
 
@@ -83,9 +87,7 @@ Future<void> selectVisit(
     return;
   }
   await _openVisit(appointment,
-      focus: focus,
-      context: context,
-      preferBand: focus == null);
+      focus: focus, context: context, preferBand: focus == null);
 }
 
 /// Opens the visit a notification or deep link names. A missing id is reported
@@ -196,8 +198,9 @@ String? _defaultFocus(AppointmentSession session) =>
         ? AppointmentWindow.operative.id
         : null;
 
-/// The visit's windows with no patient panel behind them — a locked or missing
-/// patient. The window still saves the visit, but there is no patient dock.
+/// The visit's windows with no patient panel behind them: no panel is on screen,
+/// or the patient is locked or missing. The window still saves the visit, but
+/// there is no patient dock.
 Future<void> _openStandaloneVisit(
   Appointment appointment, {
   String? focus,

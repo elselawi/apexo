@@ -1,3 +1,4 @@
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
@@ -33,7 +34,7 @@ class CalendarScreen extends StatelessWidget {
           return WeekAgendaCalendar(
             items: appointments.filtered.values.toList(),
             actions: [
-              ComboBox<String>(
+              AppComboBox<String>(
                 style: const TextStyle(overflow: TextOverflow.ellipsis),
                 items: [
                   ComboBoxItem<String>(

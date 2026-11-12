@@ -66,7 +66,7 @@ class _VisitGalleryChipPreviewsState extends State<VisitGalleryChipPreviews> {
   List<String> get _namesNow => VisitGalleryChipPreviews._namesOf(
       VisitGalleryChipPreviews._live(widget.appointment));
 
-  void _onStoreChanged(_) {
+  void _onStoreChanged(Object? _) {
     if (!mounted) return;
     if (!listEquals(_namesNow, _names)) setState(_load);
   }

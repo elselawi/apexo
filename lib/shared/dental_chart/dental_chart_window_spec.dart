@@ -18,10 +18,14 @@ const double kDentalChartWindowMinHeight = 560.0;
 /// How tall a visit's chart may grow: enough for the arches and a long post-op note.
 const double kDentalChartWindowMaxHeight = 940.0;
 
-const String kDentalChartTitleKey = 'dentalChart';
+/// The patient's chart is the initial exam; the window says so.
+const String kDentalChartTitleKey = 'initialExamChart';
+
+/// The patient's dock keeps the chart's familiar name.
+const String kDentalChartDockTitleKey = 'dentalChart';
 
 /// A visit edits that visit's treatments, so it needs its own title key.
-const String kTreatmentsTitleKey = 'treatments';
+const String kTreatmentsTitleKey = 'appointmentOperativeDetails';
 
 /// The chart as a window. Its name comes from the session, not the caller, so a
 /// record's chart and a visit's chart cannot be mislabelled.
@@ -38,6 +42,7 @@ PanelWindow dentalChartWindow(
     PanelWindow(
       id: kDentalChartWindowId,
       title: session.titleKey,
+      dockTitle: session.dockTitleKey,
       icon: FluentIcons.teeth,
       subtitle: () => session.subtitle(),
       // Wider than the panel: the arches need the room.

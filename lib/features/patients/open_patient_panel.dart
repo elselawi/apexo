@@ -8,6 +8,7 @@ import 'package:apexo/ui/workspace/row_panel.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/floating_window.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
+import 'package:apexo/common_widgets/app_combo_box.dart';
 import 'package:apexo/common_widgets/appointments_list_footer.dart';
 import 'package:apexo/common_widgets/dental_chart_voice_action.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
@@ -36,7 +37,6 @@ import 'package:apexo/utils/print/print_link.dart';
 import 'package:apexo/common_widgets/appointment_card.dart';
 import 'package:apexo/common_widgets/qrlink.dart';
 import 'package:apexo/common_widgets/tag_input.dart';
-import 'package:apexo/common_widgets/visits_button.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/follow_up_card.dart';
 import 'package:apexo/features/appointments/follow_up_scheduling.dart';
@@ -64,12 +64,14 @@ Future<String?> openPatientPanel(Patient patient, {String? focus}) =>
 Future<String?> openPatient(
     [Patient? patient, PatientWindow? window, BuildContext? context]) async {
   final editingCopy = Patient.fromJson(patient?.toJson() ?? {});
-  // A window of an already-open record is that panel's window: a second
-  // editor would be a second draft, and whichever was saved last would win.
-  final panelIsOpen =
-      PanelsManager.active().any((panel) => panel.itemId == editingCopy.id);
-  // Only details means the whole record; other windows open on their own.
-  if (!panelIsOpen && window != null && window != PatientWindow.details) {
+  // A named window opens in the record's own panel, shown by default, whenever a
+  // panel is on screen: a second editor would be a second draft, and beside
+  // another record's panel a floating one is a second surface. Only with no panel
+  // does it stand on its own. Details *is* the record, so it always opens the
+  // panel.
+  if (PanelsManager.allowsStandaloneWindows &&
+      window != null &&
+      window != PatientWindow.details) {
     await _openPatientWindow(editingCopy, window);
     return null;
   }
@@ -78,21 +80,6 @@ Future<String?> openPatient(
     focus: window == PatientWindow.details ? null : window?.id,
     context: context,
   );
-}
-
-/// Shows the visits list in the patient's panel, where the row reflows to
-/// give it room over the chart when both do not fit.
-Future<void> showPatientVisits(String patientId) async {
-  final panel = PanelsManager.active()
-      .where((panel) => panel.itemId == patientId)
-      .firstOrNull;
-  if (panel != null) {
-    panel.showWindow(PatientWindow.appointments.id);
-    return;
-  }
-  final patient = patients.get(patientId);
-  if (patient == null) return;
-  await openPatient(patient, PatientWindow.appointments);
 }
 
 Future<String?> openPatientRecord(Patient patient) => _openPatientPanel(
@@ -222,13 +209,6 @@ Future<Panel> _ensurePatientPanel(
             ),
           PatientWindow.dentalChart => dentalChartWindow(
               chart,
-              actions: <Widget>[
-                if (patients.get(editingCopy.id) != null)
-                  PatientVisitsButton(
-                    onPressed: () =>
-                        unawaited(showPatientVisits(editingCopy.id)),
-                  ),
-              ],
             ),
           PatientWindow.appointments => PanelWindow(
               id: entry.id,
@@ -291,7 +271,8 @@ Future<Panel> _ensurePatientPanel(
   return PanelsManager.open(panel);
 }
 
-/// A patient's window shown on its own, with the Save/Close a panel would
+/// A patient's window shown on its own — only ever with no panel on screen, so
+/// nothing behind it competes for the record — with the Save/Close a panel would
 /// have provided.
 Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
   final scope = 'patient:${patient.id}';

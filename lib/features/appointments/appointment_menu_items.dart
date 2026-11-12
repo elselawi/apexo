@@ -44,8 +44,10 @@ List<MenuFlyoutItemBase> appointmentMenuItems({
         ),
         leading: Icon(window.icon),
         onPressed: () {
-          // From the calendar, labwork and gallery open standalone so the patient
-          // panel does not bury them; inside the record they stay in its panel.
+          // From the calendar, labwork and gallery ask to stand on their own, so
+          // the visit's panel does not bury them; with no panel on screen they do,
+          // and beside one the visit's panel takes them. Inside the record they
+          // stay in its panel.
           final standalone = menuContext == AppointmentMenuContext.calendar &&
               (window == AppointmentWindow.labwork ||
                   window == AppointmentWindow.gallery);

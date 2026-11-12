@@ -251,11 +251,11 @@ class Patient extends Model {
   List<PatientTableLabel> get tableLabels {
     _ensureAppointmentsRevision();
     if (_labels != null) return _labels!;
-    final List<PatientTableLabel> _ = [];
+    final labels = <PatientTableLabel>[];
 
     // age
     final age = DateTime.now().year - birth;
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       content: age.toString(),
       icon: FluentIcons.birthday_cake,
       title: txt("age"),
@@ -268,7 +268,7 @@ class Patient extends Model {
     // gender
     final genderSymbol =
         gender == 1 ? "👨 ${txt('male')}" : "👩 ${txt('female')}";
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       content: genderSymbol,
       icon: FluentIcons.info,
       title: txt("gender"),
@@ -279,7 +279,7 @@ class Patient extends Model {
     ));
 
     // phones
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       title: txt("phone"),
       content: phonesString.isEmpty ? txt("notSet") : phonesString,
       value: 0,
@@ -290,7 +290,7 @@ class Patient extends Model {
       color: phone.isEmpty ? Colors.orange : null,
     ));
 
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       title: txt("share"),
       content: txt("qrCode"),
       value: 0,
@@ -301,7 +301,7 @@ class Patient extends Model {
     ));
 
     // number of visits
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       icon: WindowsIcons.calendar_reply,
       title: txt("appointments"),
       searchableString: "${allAppointments.length}",
@@ -315,7 +315,7 @@ class Patient extends Model {
     final lastVisitContent = daysSinceLastAppointment == null
         ? txt("noVisits")
         : "$lastVisitDuration ${txt("daysAgo").split(" ").last}";
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       icon: WindowsIcons.calendar,
       title: txt("lastVisit"),
       searchableString: lastVisitContent,
@@ -330,7 +330,7 @@ class Patient extends Model {
         : overPaid
             ? "overpaid"
             : "fullyPaid");
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       icon: WindowsIcons.payment_card,
       color: overPaid
           ? Colors.blue
@@ -345,7 +345,7 @@ class Patient extends Model {
       window: PatientWindow.appointments,
     ));
 
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       icon: FluentIcons.warning,
       color: Colors.orange,
       content: "${outstandingPayments.toStringAsFixed(2)} ${currency()}",
@@ -357,7 +357,7 @@ class Patient extends Model {
       view: underPaid,
     ));
 
-    _.add(PatientTableLabel(
+    labels.add(PatientTableLabel(
       icon: FluentIcons.warning,
       color: Colors.blue,
       content: "${outstandingPayments.abs().toStringAsFixed(2)} ${currency()}",
@@ -370,7 +370,7 @@ class Patient extends Model {
     ));
 
     for (var tag in tags) {
-      _.add(PatientTableLabel(
+      labels.add(PatientTableLabel(
         content: tag,
         icon: FluentIcons.tag,
         title: txt("patientTags"),
@@ -381,7 +381,7 @@ class Patient extends Model {
       ));
     }
 
-    return _labels = _;
+    return _labels = labels;
   }
 
   static bool isValidEmail(String value) {
@@ -507,7 +507,9 @@ class Patient extends Model {
     /* 10 */ if (followUp != null) {
       json['followUp'] = (followUp.millisecondsSinceEpoch / 60000).round();
       // A note with no day would be a promise with nothing to keep.
-      /* 10b */ if (followUpNote.isNotEmpty) json['followUpNote'] = followUpNote;
+      /* 10b */ if (followUpNote.isNotEmpty) {
+        json['followUpNote'] = followUpNote;
+      }
     }
     return json;
   }

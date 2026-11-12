@@ -142,6 +142,28 @@ class Appointments extends Store<Appointment> {
         .toList();
   }
 
+  /// The operators of [patientID]'s latest appointment before [before], which
+  /// is who a new visit is most likely for. Archived appointments and ones that
+  /// name no operator are skipped; empty when nothing earlier has an operator.
+  List<String> lastOperatorsFor(String patientID, {DateTime? before}) {
+    final cutoff = before ?? _now();
+    Appointment? latest;
+    for (final appointment in observableMap.docs.values) {
+      if (appointment.patientID != patientID ||
+          appointment.archived == true ||
+          appointment.operatorsIDs.isEmpty ||
+          !appointment.date.isBefore(cutoff)) {
+        continue;
+      }
+      if (latest == null || appointment.date.isAfter(latest.date)) {
+        latest = appointment;
+      }
+    }
+    return latest == null
+        ? const <String>[]
+        : List<String>.of(latest.operatorsIDs);
+  }
+
   Map<String, Set<DateTime>>? _daysByPatientCache;
 
   /// Calendar days that already have a non-archived appointment, per patient id.
@@ -167,7 +189,7 @@ class Appointments extends Store<Appointment> {
     return _labs;
   }
 
-  void nullifyAppointmentsCache(_) {
+  void nullifyAppointmentsCache(Object? _) {
     _cacheBuiltAt = null;
     _cacheExpiresAt = null;
     _byPatientCache = null;

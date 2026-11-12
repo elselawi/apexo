@@ -12,7 +12,7 @@ enum AppointmentIndicator {
   dentalNotes(FluentIcons.teeth, "dentalNotes"),
   prescriptions(FluentIcons.pill, "prescription"),
   labwork(FluentIcons.manufacturing, "labworks"),
-  gallery(FluentIcons.camera, "gallery");
+  gallery(WindowsIcons.camera, "gallery");
 
   const AppointmentIndicator(this.icon, this.labelKey);
 
@@ -91,11 +91,14 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
 
   Color get _baseColor => widget.color ?? FluentTheme.of(context).accentColor;
 
-  Color get _inkColor => Color.lerp(
-        _baseColor,
-        FluentTheme.of(context).brightness.isDark ? Colors.white : Colors.black,
-        FluentTheme.of(context).brightness.isDark ? 0.55 : 0.28,
-      )!;
+  Color get _inkColor {
+    final isDark = FluentTheme.of(context).brightness == Brightness.dark;
+    return Color.lerp(
+      _baseColor,
+      isDark ? Colors.white : Colors.black,
+      isDark ? 0.55 : 0.28,
+    )!;
+  }
 
   ButtonStyle get _buttonStyle => ButtonStyle(
         padding: const WidgetStatePropertyAll(EdgeInsets.zero),
@@ -174,7 +177,7 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
   Widget _embeddedStrip(BuildContext context, List<_Badge> badges) {
     final theme = FluentTheme.of(context);
     final color = _baseColor;
-    final dark = theme.brightness.isDark;
+    final dark = theme.brightness == Brightness.dark;
     return Tooltip(
       triggerMode: TooltipTriggerMode.manual,
       style: _tooltipStyle,
@@ -401,8 +404,13 @@ class AppointmentInfoLine extends StatelessWidget {
       builder: (context, constraints) {
         final stripWidth = note.isEmpty
             ? constraints.maxWidth
-            : math.min(112.0, math.max(0.0,
-                constraints.maxWidth - math.min(64.0, constraints.maxWidth * 0.4) - 6));
+            : math.min(
+                112.0,
+                math.max(
+                    0.0,
+                    constraints.maxWidth -
+                        math.min(64.0, constraints.maxWidth * 0.4) -
+                        6));
         final strip = AppointmentIndicators(
           item: item,
           iconSize: iconSize,

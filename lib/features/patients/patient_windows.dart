@@ -8,13 +8,14 @@ enum PatientWindow {
   /// The patient's own details — the window that answers most questions.
   details('details', "patientDetails", FluentIcons.medication_admin),
 
-  dentalChart(kDentalChartWindowId, kDentalChartTitleKey, FluentIcons.teeth),
+  dentalChart(
+      kDentalChartWindowId, kDentalChartDockTitleKey, FluentIcons.teeth),
 
   /// The visits of this patient.
   appointments('appointments', "appointments", WindowsIcons.calendar),
 
   /// Every photo and X-ray of this patient, grouped by the visit holding it.
-  gallery('gallery', "gallery", FluentIcons.camera),
+  gallery('gallery', "gallery", WindowsIcons.camera),
 
   /// The shareable patient page.
   page('page', "patientPage", FluentIcons.q_r_code);

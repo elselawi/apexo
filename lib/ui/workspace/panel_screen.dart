@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:apexo/common_widgets/app_menu_flyout.dart';
+import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/ui/workspace/panel.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/record_session.dart';
 import 'package:apexo/ui/workspace/window_group.dart';
@@ -91,7 +94,10 @@ class _PanelScreenState extends State<PanelScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final resources = FluentTheme.of(context).resources;
+    final materials = FluentMaterials.of(context);
+    // Below the breakpoint the panel is an overlay that covers the screen, app
+    // bar included; a translucent fill would let the bar read through it.
+    final covering = widget.layoutWidth < kWindowsBreakpoint;
     return KeyboardListener(
       autofocus: true,
       focusNode: focusNode,
@@ -109,17 +115,13 @@ class _PanelScreenState extends State<PanelScreen> {
             : const EdgeInsetsDirectional.only(
                 top: 5, bottom: 5, start: 0, end: 5),
         decoration: BoxDecoration(
-          // Keep the large editing surface subdued beneath floating windows.
-          color: resources.solidBackgroundFillColorSecondary,
-          boxShadow: [
-            BoxShadow(
-              color: resources.smokeFillColorDefault,
-              offset: const Offset(0, 4),
-              blurRadius: 16,
-            ),
-          ],
-          border: Border.all(color: resources.surfaceStrokeColorDefault),
-          borderRadius: BorderRadius.circular(5),
+          color: covering ? materials.layerOpaque : materials.layer,
+          boxShadow: materials.windowShadowInactive,
+          border: Border.all(
+            color: materials.strongStroke,
+            width: FluentMaterials.hairlineWidth,
+          ),
+          borderRadius: FluentMaterials.surfaceRadius,
         ),
         child: MStreamBuilder(
             streams: [
@@ -130,10 +132,17 @@ class _PanelScreenState extends State<PanelScreen> {
               widget.panel.attachments.stream,
             ],
             builder: (context, snapshot) {
+              // Where the shell leaves the status bar over the panel — a page
+              // that runs to the top edge — the content starts below it.
+              final collapsed = PanelsManager.minimize() &&
+                  widget.layoutWidth < kWindowsBreakpoint;
+              final statusBar =
+                  collapsed ? 0.0 : MediaQuery.paddingOf(context).top;
               return Column(
                 key: Key(locale.selected().toString()),
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (statusBar > 0) SizedBox(height: statusBar),
                   _buildPanelHeader(),
                   if (PanelsManager.minimize() == false ||
                       widget.layoutWidth >= kWindowsBreakpoint) ...[
@@ -189,8 +198,18 @@ class _PanelScreenState extends State<PanelScreen> {
   Widget _buildPrimaryWindow() {
     final window = widget.panel.primaryWindow;
     if (window == null) return const SizedBox.shrink();
-    final body = window.body;
     final readOnly = widget.panel.attached != null;
+    // Blocking inside the scroll view keeps its scrollable ancestor hit-testable,
+    // so read-only content can still be scrolled but never edited.
+    final body = readOnly
+        ? AbsorbPointer(
+            child: Focus(
+              canRequestFocus: false,
+              descendantsAreFocusable: false,
+              child: window.body,
+            ),
+          )
+        : window.body;
     final editor = window.scrollable
         ? SingleChildScrollView(
             padding: EdgeInsets.all(window.padding),
@@ -206,21 +225,8 @@ class _PanelScreenState extends State<PanelScreen> {
         if (readOnly) _buildReadOnlyNotice(),
         Expanded(
           child: ColoredBox(
-            color: FluentTheme.of(context)
-                .resources
-                .solidBackgroundFillColorSecondary,
-            child: readOnly
-                ? Opacity(
-                    opacity: 0.55,
-                    child: AbsorbPointer(
-                      child: Focus(
-                        canRequestFocus: false,
-                        descendantsAreFocusable: false,
-                        child: editor,
-                      ),
-                    ),
-                  )
-                : editor,
+            color: Colors.transparent,
+            child: readOnly ? Opacity(opacity: 0.55, child: editor) : editor,
           ),
         ),
         if (window.footer != null) window.footer!,
@@ -233,27 +239,19 @@ class _PanelScreenState extends State<PanelScreen> {
     return Container(
       key: WK.patientReadOnly,
       width: double.infinity,
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4),
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(
-          _accent.withValues(alpha: 0.04),
-          theme.resources.solidBackgroundFillColorSecondary,
-        ),
-        border: Border(
-          bottom: BorderSide(color: theme.resources.dividerStrokeColorDefault),
-        ),
-      ),
+      padding: const EdgeInsetsDirectional.fromSTEB(8, 14, 8, 4),
+      decoration: topBarDecoration(context),
       child: Row(
         children: [
-          Icon(FluentIcons.lock, size: 11, color: theme.inactiveColor),
+          Icon(WindowsIcons.lock, size: 16, color: theme.inactiveColor),
           const SizedBox(width: 6),
           Expanded(
             child: Txt(
               txt('patientReadOnlyWhileVisit'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: theme.typography.caption?.copyWith(
-                fontSize: 10,
+              style: theme.typography.body?.copyWith(
+                fontSize: 12,
                 color: theme.inactiveColor,
               ),
             ),
@@ -394,12 +392,13 @@ class _PanelScreenState extends State<PanelScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 2.8, horizontal: 5),
         decoration: BoxDecoration(
-          color: Color.alphaBlend(
-            _accent.withValues(alpha: 0.10),
-            FluentTheme.of(context).resources.solidBackgroundFillColorSecondary,
+          color: FluentMaterials.of(context).selected,
+          border: Border(
+            bottom: BorderSide(
+              color: FluentMaterials.of(context).divider,
+              width: 1,
+            ),
           ),
-          border:
-              Border(bottom: BorderSide(color: _accent.withValues(alpha: 0.5))),
         ),
         child: StreamBuilder(
             stream: widget.panel.inProgress.stream,
@@ -534,16 +533,18 @@ class _PanelScreenState extends State<PanelScreen> {
 
   Widget _buildBottomControls() {
     return Container(
-      constraints: const BoxConstraints(minHeight: 50, minWidth: 350),
+      width: double.infinity,
+      constraints: const BoxConstraints(minHeight: 40, minWidth: 350),
       child: StreamBuilder(
           stream: widget.panel.inProgress.stream,
           builder: (context, snapshot) {
             return Container(
               decoration: BoxDecoration(
+                color: FluentMaterials.of(context).glassTint,
                 border: Border(
                     top: BorderSide(color: Colors.grey.withValues(alpha: 0.1))),
               ),
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+              padding: const EdgeInsets.symmetric(vertical: 6.5, horizontal: 5),
               child: widget.panel.inProgress()
                   ? const Center(child: ProgressBar())
                   // Wrap, not Row: long translations overflow the 350-pixel minimum,
@@ -556,7 +557,11 @@ class _PanelScreenState extends State<PanelScreen> {
                       children: [
                         if (widget.panel.additionalControls != null)
                           widget.panel.additionalControls!,
-                        if (widget.panel.showBottomControls) ...[
+                        // While the band's record is on screen it owns the work;
+                        // this record's Save and Delete would strand the visit,
+                        // so only Close stays.
+                        if (widget.panel.showBottomControls &&
+                            widget.panel.attached == null) ...[
                           if (isNew == false) _buildArchiveButton(),
                           _buildSaveButton(),
                         ],
@@ -577,12 +582,16 @@ class _PanelScreenState extends State<PanelScreen> {
             return IconButton(
               key: WK.panelClose,
               onPressed: closeOrConfirmCancel,
-              style: greyButtonStyle.copyWith(
+              style: ButtonStyle(
                 textStyle:
                     const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-                backgroundColor: widget.panel.hasUnsavedChanges()
-                    ? WidgetStatePropertyAll(Colors.orange)
-                    : const WidgetStatePropertyAll(Colors.grey),
+                foregroundColor: widget.panel.hasUnsavedChanges()
+                    ? WidgetStatePropertyAll(
+                        FluentTheme.of(context)
+                            .resources
+                            .systemFillColorCritical,
+                      )
+                    : null,
               ),
               icon: ButtonContent(
                 WindowsIcons.cancel,
@@ -600,30 +609,33 @@ class _PanelScreenState extends State<PanelScreen> {
           // This writes this panel's record only; a carried visit is saved by its
           // own Save. Save all is offered only by the close prompt.
           final hasChanges = widget.panel.hasPendingEdits;
-          return IconButton(
-            key: WK.panelSave,
-            onPressed: hasChanges
-                ? () async {
-                    try {
-                      await widget.panel.save();
-                    } catch (e, st) {
-                      logger('Saving "${widget.panel.itemId}" failed', st);
-                      showErrorMessage(e, "savingFailed");
-                      return;
-                    }
-                    if (!mounted) return;
-                    _syncPendingEdits();
-                    setState(() => isNew = widget.panel.isNew);
+          final content =
+              ButtonContent(WindowsIcons.save, txt(widget.panel.saveLabel));
+          final onPressed = hasChanges
+              ? () async {
+                  try {
+                    await widget.panel.save();
+                  } catch (e, st) {
+                    logger('Saving "${widget.panel.itemId}" failed', st);
+                    showErrorMessage(e, "savingFailed");
+                    return;
                   }
-                : null,
-            style: greyButtonStyle.copyWith(
-              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-              backgroundColor: WidgetStatePropertyAll(hasChanges
-                  ? Colors.blue
-                  : Colors.grey.withValues(alpha: 0.25)),
-            ),
-            icon: ButtonContent(WindowsIcons.save, txt(widget.panel.saveLabel)),
-          );
+                  if (!mounted) return;
+                  _syncPendingEdits();
+                  setState(() => isNew = widget.panel.isNew);
+                }
+              : null;
+          return hasChanges
+              ? FilledButton(
+                  key: WK.panelSave,
+                  onPressed: onPressed,
+                  child: content,
+                )
+              : Button(
+                  key: WK.panelSave,
+                  onPressed: onPressed,
+                  child: content,
+                );
         });
   }
 
@@ -631,7 +643,6 @@ class _PanelScreenState extends State<PanelScreen> {
     final isArchived = widget.panel.isArchived;
     final icon = isArchived ? WindowsIcons.undo : WindowsIcons.delete;
     final action = txt(isArchived ? "restore" : "delete");
-    final color = isArchived ? Colors.teal : Colors.grey;
     return widget.panel.archiveButtonReplacement ??
         DeleteButton(
           key: WK.panelArchive,
@@ -662,8 +673,10 @@ class _PanelScreenState extends State<PanelScreen> {
             _syncPendingEdits();
             setState(() {});
           },
-          style: greyButtonStyle.copyWith(
-            backgroundColor: WidgetStatePropertyAll(color),
+          style: ButtonStyle(
+            foregroundColor: WidgetStatePropertyAll(isArchived
+                ? FluentTheme.of(context).accentColor.normal
+                : FluentTheme.of(context).resources.systemFillColorCritical),
             textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
           ),
           child:
@@ -817,7 +830,7 @@ class _PanelScreenState extends State<PanelScreen> {
       barrierDismissible: widget.layoutWidth < kWindowsBreakpoint,
       dismissWithEsc: true,
       dismissOnPointerMoveAway: true,
-      builder: (context) => MenuFlyout(items: [
+      builder: (context) => AppMenuFlyout(items: [
         ...([...PanelsManager.active()]
               ..sort((a, b) => b.creationDate - a.creationDate))
             .map((panel) {

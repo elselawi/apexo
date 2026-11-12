@@ -6,6 +6,12 @@ abstract class PanelsManager {
 
   static final minimize = ObservableState(false);
 
+  /// Whether a record's window may stand on its own instead of opening in its
+  /// record's panel: only while no panel is on screen. Beside a panel a floating
+  /// record window is a second surface for one record, so the record's own panel
+  /// opens with that window shown by default.
+  static bool get allowsStandaloneWindows => active().isEmpty;
+
   /// Shows [panel], or focuses and returns the already-open panel that duplicates
   /// it.
   static Panel open(Panel panel) {

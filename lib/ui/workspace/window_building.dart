@@ -260,8 +260,15 @@ extension _WindowsAreaBuilding on _WindowsAreaState {
   }
 
   Widget _buildSheet(_WindowEntry entry) {
-    final viewPadding = MediaQuery.paddingOf(context);
-    final room = _room;
+    final media = MediaQuery.of(context);
+    final top = _safeArea(media).top + kWindowEdgeInset + _commandHeight;
+    // The keyboard takes away the sheet's lower room: cap the card to what is
+    // left above it, so its editor scrolls to the field under the keys instead
+    // of hiding it behind them.
+    final room = math.min(
+      _room,
+      math.max(0, media.size.height - media.viewInsets.bottom - top),
+    );
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -275,7 +282,7 @@ extension _WindowsAreaBuilding on _WindowsAreaState {
         PositionedDirectional(
           start: 8,
           end: 8,
-          top: viewPadding.top + kWindowEdgeInset + _commandHeight,
+          top: top,
           child: ConstrainedBox(
             constraints: BoxConstraints(
               maxHeight: math.min(room * 0.88, entry.model.maxHeight),
@@ -343,7 +350,6 @@ extension _WindowsAreaBuilding on _WindowsAreaState {
                   window: entry.window!,
                   active: active,
                   accent: entry.group?.accent,
-                  badge: entry.group?.glyph,
                   dirty: session.hasUnsavedChanges(),
                   // Saves the session's own record, never the panel's: a visit
                   // window must not write the patient.

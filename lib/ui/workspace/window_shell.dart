@@ -1,5 +1,9 @@
+import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/ui/design/mica_backdrop.dart';
 import 'package:apexo/ui/workspace/unsaved_dot.dart';
+import 'package:apexo/ui/workspace/window_close_button.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 /// The frame every floating window shares: header, editor, optional footer.
@@ -10,7 +14,6 @@ class WindowShell extends StatelessWidget {
     required this.title,
     required this.child,
     this.subtitle,
-    this.badge,
     this.actions = const <Widget>[],
     this.footer,
     this.padding = 10,
@@ -19,6 +22,10 @@ class WindowShell extends StatelessWidget {
     this.accent,
     this.active = true,
     this.onRaise,
+    this.onClose,
+    this.closeDirty = false,
+    this.closeHasChanges,
+    this.closeButtonKey,
     this.onDragUpdate,
   });
 
@@ -29,10 +36,6 @@ class WindowShell extends StatelessWidget {
 
   /// Whose window this is: the record's own name, over the window's label.
   final String? subtitle;
-
-  /// The glyph that marks the record's kind — 📅 for a visit, 👤 for a patient.
-  /// Two records share a row and their windows share labels ("Gallery").
-  final String? badge;
 
   /// Header buttons, drawn after the title, spaced apart.
   final List<Widget> actions;
@@ -57,6 +60,18 @@ class WindowShell extends StatelessWidget {
   /// Touching the window anywhere brings it in front of the others.
   final VoidCallback? onRaise;
 
+  /// The standard header close button; it may minimize a panel-backed window, or
+  /// fully close a standalone one.
+  final VoidCallback? onClose;
+
+  /// Whether the window's close action is currently dirty and should prompt.
+  final bool closeDirty;
+
+  /// Re-checks whether the draft is still dirty before closing.
+  final bool Function()? closeHasChanges;
+
+  final Key? closeButtonKey;
+
   /// Dragging the header moves the window; null where windows do not move (the
   /// phone sheet, a window in a test).
   final ValueChanged<Offset>? onDragUpdate;
@@ -78,38 +93,18 @@ class WindowShell extends StatelessWidget {
 
   Widget _buildFrame(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final resources = theme.resources;
-    final frame = Container(
-      decoration: BoxDecoration(
-        color: active
-            ? resources.solidBackgroundFillColorBase
-            : resources.solidBackgroundFillColorSecondary,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: active
-              ? resources.surfaceStrokeColorDefault
-              : resources.surfaceStrokeColorFlyout,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: resources.smokeFillColorDefault,
-            offset: Offset(0, active ? 8 : 2),
-            blurRadius: active ? 32 : 8,
-          ),
-          if (active)
-            BoxShadow(
-              color: resources.smokeFillColorDefault,
-              offset: const Offset(0, 2),
-              blurRadius: 6,
-            ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
+    final materials = FluentMaterials.of(context);
+    final frame = AcrylicSurface(
+      radius: FluentMaterials.radiusSurface,
+      blur: 20,
+      color: active ? materials.acrylic : materials.card,
+      borderColor: materials.strongStroke,
+      shadows: active ? materials.windowShadow : materials.windowShadowInactive,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _buildHeader(theme),
+          _buildHeader(theme, materials),
           Flexible(
             child: LayoutBuilder(
               builder: (context, constraints) => Column(
@@ -119,10 +114,13 @@ class WindowShell extends StatelessWidget {
                   Flexible(child: _buildBody()),
                   // The footer scrolls rather than overflowing a short window.
                   if (footer != null)
-                    ConstrainedBox(
-                      constraints:
-                          BoxConstraints(maxHeight: constraints.maxHeight),
-                      child: SingleChildScrollView(child: footer!),
+                    Container(
+                      color: materials.glassTint,
+                      child: ConstrainedBox(
+                        constraints:
+                            BoxConstraints(maxHeight: constraints.maxHeight),
+                        child: SingleChildScrollView(child: footer!),
+                      ),
                     ),
                 ],
               ),
@@ -156,25 +154,48 @@ class WindowShell extends StatelessWidget {
         },
       );
 
-  Widget _buildHeader(FluentThemeData theme) {
+  Widget _buildHeader(FluentThemeData theme, FluentMaterials materials) {
     final line = subtitle;
+    final headerActions = <Widget>[...actions];
+    if (onClose != null) {
+      headerActions.add(
+        Padding(
+          padding: const EdgeInsetsDirectional.only(start: 8),
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: WindowCloseButton(
+              key: closeButtonKey ?? WK.windowHeaderClose,
+              dirty: closeDirty,
+              hasChanges: closeHasChanges,
+              onClose: onClose!,
+              compact: true,
+            ),
+          ),
+        ),
+      );
+    }
     final header = Container(
-      padding: const EdgeInsetsDirectional.fromSTEB(12, 6, 6, 6),
+      padding: const EdgeInsetsDirectional.fromSTEB(12, 8, 6, 6),
       decoration: BoxDecoration(
-        color: active
-            ? theme.resources.subtleFillColorSecondary
-            : theme.resources.subtleFillColorTertiary,
+        color: materials.glassTint,
         border: Border(
           bottom: BorderSide(color: theme.resources.dividerStrokeColorDefault),
         ),
       ),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: accent ?? theme.accentColor),
-          if (badge != null) ...[
-            const SizedBox(width: 4),
-            Txt(badge!, style: const TextStyle(fontSize: 12)),
-          ],
+          Icon(icon, size: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Divider(
+              direction: Axis.vertical,
+              size: 20,
+              style: DividerThemeData(
+                  verticalMargin: const EdgeInsets.all(0),
+                  decoration: BoxDecoration(
+                      color: materials.strongStroke.withAlpha(70))),
+            ),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -210,13 +231,13 @@ class WindowShell extends StatelessWidget {
               ],
             ),
           ),
-          if (actions.isNotEmpty)
+          if (headerActions.isNotEmpty)
             Padding(
               padding: const EdgeInsetsDirectional.only(start: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: 6,
-                children: actions,
+                children: headerActions,
               ),
             ),
         ],

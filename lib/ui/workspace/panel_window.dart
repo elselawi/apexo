@@ -11,6 +11,7 @@ final class PanelWindow {
     required this.icon,
     required this.body,
     this.subtitle,
+    this.dockTitle,
     this.footer,
     this.padding = 10,
     this.onlyIfSaved = false,
@@ -63,6 +64,10 @@ final class PanelWindow {
 
   /// Localization key (translated on draw) or a plain title.
   final String title;
+
+  /// The name the dock button shows when it must differ from the window's own
+  /// [title] (the chart's dock keeps "Dental Chart"); null means [title].
+  final String? dockTitle;
 
   /// Second line under the title, read on build (a patient's name, a visit's date).
   final String Function()? subtitle;

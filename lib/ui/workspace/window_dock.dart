@@ -104,7 +104,7 @@ class _WindowButton extends StatelessWidget {
         const SizedBox(width: 8),
         Expanded(
           child: Txt(
-            txt(window.title),
+            txt(window.dockTitle ?? window.title),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.typography.bodyStrong?.copyWith(
@@ -184,7 +184,7 @@ class _WindowButton extends StatelessWidget {
             child: content,
           );
     return Tooltip(
-      message: txt(window.title),
+      message: txt(window.dockTitle ?? window.title),
       child: SizedBox(width: double.infinity, child: button),
     );
   }

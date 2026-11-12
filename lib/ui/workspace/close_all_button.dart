@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/ui/workspace/floating_window.dart';
 import 'package:apexo/ui/workspace/panel.dart';
@@ -159,6 +158,10 @@ class _CloseAllButtonState extends State<CloseAllButton>
     // Keep the command outside the panel, mirrored with the workspace in RTL.
     final edge = _margin + widget.panelWidth;
     final label = txt("closeAllWindows");
+    // The command strip is a fixed height, so give back the room that larger
+    // text takes instead of letting the button hang below it.
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
+    final verticalPadding = (12 - 4 * (textScale - 1)).clamp(6.0, 12.0);
     final floatingShadow = BoxShadow(
       color: theme.shadowColor.withValues(alpha: _hovered ? 0.26 : 0.2),
       offset: _hovered ? const Offset(2, 3) : const Offset(1, 1),
@@ -198,26 +201,20 @@ class _CloseAllButtonState extends State<CloseAllButton>
                           (widget.screenWidth - widget.panelWidth - _margin * 2)
                               .clamp(0, double.infinity),
                     ),
-                    child: Button(
+                    child: FilledButton(
                       key: WK.closeAllWindows,
                       onPressed: _saving || _dialogOpen ? null : _closeAll,
-                      style: greyButtonStyle.copyWith(
-                        padding: const WidgetStatePropertyAll(
+                      style: ButtonStyle(
+                        padding: WidgetStatePropertyAll(
                           EdgeInsetsDirectional.symmetric(
                             horizontal: 20,
-                            vertical: 12,
+                            vertical: verticalPadding,
                           ),
                         ),
                         iconSize: const WidgetStatePropertyAll(18),
                         textStyle: const WidgetStatePropertyAll(
                           TextStyle(fontSize: 15),
                         ),
-                        backgroundColor:
-                            WidgetStateProperty.resolveWith((states) {
-                          if (states.isPressed) return Colors.grey[140];
-                          if (states.isHovered) return Colors.grey[150];
-                          return Colors.grey;
-                        }),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -241,7 +238,9 @@ class _CloseAllButtonState extends State<CloseAllButton>
                                     vertical: 1,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: theme.accentColor,
+                                    color: theme.resources
+                                        .textOnAccentFillColorPrimary
+                                        .withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: ExcludeSemantics(

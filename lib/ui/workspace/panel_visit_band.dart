@@ -20,8 +20,6 @@ class _VisitBand extends StatefulWidget {
 }
 
 class _VisitBandState extends State<_VisitBand> {
-  final FlyoutController _menu = FlyoutController();
-
   Timer? _transientTimer;
   String? _transient;
   bool _wasDone = false;
@@ -35,7 +33,6 @@ class _VisitBandState extends State<_VisitBand> {
   @override
   void dispose() {
     _transientTimer?.cancel();
-    _menu.dispose();
     super.dispose();
   }
 
@@ -80,12 +77,10 @@ class _VisitBandState extends State<_VisitBand> {
       builder: (context, _) => StreamBuilder<bool>(
         stream: session.hasUnsavedChanges.stream,
         builder: (context, _) {
-          final theme = FluentTheme.of(context);
-          // Blend over the solid fill: Fluent's scaffold background is
-          // translucent acrylic, so a bubble painted on it would wash out.
+          final materials = FluentMaterials.of(context);
           final background = Color.alphaBlend(
-            accent.withValues(alpha: 0.055),
-            theme.resources.solidBackgroundFillColorSecondary,
+            accent.withValues(alpha: 0.06),
+            materials.card,
           );
           return Padding(
             padding: const EdgeInsetsDirectional.fromSTEB(8, 10, 8, 4),
@@ -97,20 +92,16 @@ class _VisitBandState extends State<_VisitBand> {
                   clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: background,
-                    borderRadius: BorderRadius.circular(9),
+                    borderRadius: FluentMaterials.surfaceRadius,
                     border: Border.all(
                       color: accent.withValues(alpha: 0.34),
+                      width: FluentMaterials.hairlineWidth,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: accent.withValues(alpha: 0.12),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 3,
-                        offset: const Offset(0, 1),
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -164,6 +155,7 @@ class _VisitBandState extends State<_VisitBand> {
     final session = widget.session;
     final theme = FluentTheme.of(context);
     final done = session.isDone;
+    final color = done ? Colors.green : Colors.orange;
     _noticeCompletion(done);
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 0),
@@ -176,7 +168,7 @@ class _VisitBandState extends State<_VisitBand> {
               session.bandLabel,
               overflow: TextOverflow.ellipsis,
               style: theme.typography.bodyStrong?.copyWith(
-                fontSize: 12,
+                fontSize: 13,
                 color: session.isArchived ? Colors.grey : null,
               ),
             ),
@@ -186,23 +178,32 @@ class _VisitBandState extends State<_VisitBand> {
             key: WK.visitState,
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: (done ? Colors.green : Colors.orange).withValues(
+              color: (color).withValues(
                 alpha: 0.14,
               ),
               borderRadius: BorderRadius.circular(3),
               border: Border.all(
-                color: (done ? Colors.green : Colors.orange).withValues(
+                color: (color).withValues(
                   alpha: 0.45,
                 ),
               ),
             ),
-            child: Txt(
-              txt(done ? 'completed' : 'pending'),
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: done ? Colors.green : Colors.orange,
-              ),
+            child: Row(
+              spacing: 5,
+              children: [
+                Icon(
+                  done ? WindowsIcons.check_mark : FluentIcons.hour_glass,
+                  color: color,
+                ),
+                Txt(
+                  txt(done ? 'completed' : 'pending'),
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -218,7 +219,7 @@ class _VisitBandState extends State<_VisitBand> {
             color: color.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(3),
           ),
-          child: Txt(label, style: TextStyle(fontSize: 10, color: color)),
+          child: Txt(label, style: TextStyle(fontSize: 12, color: color)),
         ),
       );
 
@@ -229,7 +230,7 @@ class _VisitBandState extends State<_VisitBand> {
       padding: const EdgeInsetsDirectional.fromSTEB(8, 2, 8, 0),
       child: Row(
         children: [
-          Icon(FluentIcons.check_mark, size: 11, color: Colors.green),
+          Icon(FluentIcons.check_mark, size: 20, color: Colors.green),
           const SizedBox(width: 4),
           Flexible(
             child: Txt(
@@ -237,7 +238,7 @@ class _VisitBandState extends State<_VisitBand> {
               key: WK.visitMarkedCompleted,
               overflow: TextOverflow.ellipsis,
               style: theme.typography.caption?.copyWith(
-                fontSize: 10,
+                fontSize: 13,
                 color: Colors.green,
               ),
             ),
@@ -304,7 +305,7 @@ class _VisitBandState extends State<_VisitBand> {
                         .replaceAll('{count}', '${widget.dirtyVisits}'),
                     key: WK.visitUnsavedCount,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 10, color: Colors.orange),
+                    style: TextStyle(fontSize: 12, color: Colors.orange),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -327,47 +328,44 @@ class _VisitBandState extends State<_VisitBand> {
             spacing: 6,
             runSpacing: 6,
             children: [
-              FlyoutTarget(
-                controller: _menu,
-                child: Tooltip(
-                  message: txt('more'),
-                  child: IconButton(
-                    key: WK.visitMenu,
-                    icon: const Icon(FluentIcons.more, size: 14),
-                    onPressed: _openMenu,
-                  ),
-                ),
-              ),
               Tooltip(
                 message: txt('detachKeepsDraft'),
-                child: Button(
+                child: IconButton(
                   key: WK.visitDetach,
                   onPressed: widget.panel.detach,
-                  child: ButtonContent(
-                    WindowsIcons.chrome_close,
+                  icon: ButtonContent(
+                    WindowsIcons.clear,
                     txt('close'),
-                    size: 11,
+                    size: 13,
                   ),
                 ),
               ),
               if (session.canArchive)
                 DeleteButton(
-                key: WK.visitDelete,
-                restorable: true,
-                actionText: actionText,
-                actionIcon: actionIcon,
-                preview: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  spacing: 5,
-                  children: [
-                    Txt(session.unicodeSymbol,
-                        style: const TextStyle(fontSize: 12)),
-                    Txt(session.displayTitle),
-                  ],
+                  key: WK.visitDelete,
+                  restorable: true,
+                  actionText: actionText,
+                  actionIcon: actionIcon,
+                  // Red says this removes the visit, not just closes the band.
+                  style: ButtonStyle(
+                    foregroundColor: WidgetStatePropertyAll(
+                      archived
+                          ? theme.accentColor.normal
+                          : theme.resources.systemFillColorCritical,
+                    ),
+                  ),
+                  preview: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    spacing: 5,
+                    children: [
+                      Txt(session.unicodeSymbol,
+                          style: const TextStyle(fontSize: 12)),
+                      Txt(session.displayTitle),
+                    ],
+                  ),
+                  onConfirm: () => unawaited(_archiveOrRestore(archived)),
+                  child: ButtonContent(actionIcon, actionText, size: 13),
                 ),
-                onConfirm: () => unawaited(_archiveOrRestore(archived)),
-                child: ButtonContent(actionIcon, actionText, size: 11),
-              ),
               if (dirty)
                 FilledButton(
                   key: WK.visitSave,
@@ -375,7 +373,7 @@ class _VisitBandState extends State<_VisitBand> {
                   child: ButtonContent(
                     WindowsIcons.save,
                     txt(session.saveLabel),
-                    size: 11,
+                    size: 13,
                   ),
                 ),
             ],
@@ -406,29 +404,6 @@ class _VisitBandState extends State<_VisitBand> {
     }
     // Deleting also detaches the visit; restoring leaves it open.
     if (!archived && identical(panel.attached, session)) panel.detach();
-  }
-
-  Future<void> _openMenu() async {
-    final session = widget.session;
-    await flyoutFocusFix(context);
-    if (!mounted) return;
-    unawaited(_menu.showFlyout<void>(
-      dismissWithEsc: true,
-      builder: (context) => MenuFlyout(items: [
-        MenuFlyoutItem(
-          key: WK.visitMenuDone,
-          // Goes through the session so the toggle edits the open draft.
-          text: Txt(txt(session.isDone ? 'markAsPending' : 'markAsDone')),
-          leading: Icon(
-            session.isDone ? FluentIcons.hour_glass : WindowsIcons.completed,
-          ),
-          onPressed: () {
-            session.markDone(!session.isDone);
-            setState(() {});
-          },
-        ),
-      ]),
-    ));
   }
 }
 

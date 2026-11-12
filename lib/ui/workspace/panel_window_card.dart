@@ -3,20 +3,16 @@ import 'dart:async';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/window_actions.dart';
 import 'package:apexo/ui/workspace/window_shell.dart';
-import 'package:apexo/common_widgets/button_styles.dart';
-import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-/// A floated panel window: the shared frame plus a minimize button. It goes back
-/// to the panel's dock and never outlives the panel, so it has no close.
+/// A floated panel window: the shared frame.
 class PanelWindowCard extends StatelessWidget {
   const PanelWindowCard({
     super.key,
     required this.window,
     required this.onMinimize,
     this.accent,
-    this.badge,
     this.dirty = false,
     this.active = true,
     this.onSave,
@@ -30,9 +26,6 @@ class PanelWindowCard extends StatelessWidget {
 
   /// The colour the record's kind is known by.
   final Color? accent;
-
-  /// The glyph that marks whose record this window edits — 📅 or 👤.
-  final String? badge;
 
   /// Whether the record behind this window has work that has not been stored.
   final bool dirty;
@@ -62,27 +55,10 @@ class PanelWindowCard extends StatelessWidget {
       subtitle: window.subtitle?.call(),
       accent: accent,
       active: active,
-      badge: badge,
       onRaise: onRaise,
+      onClose: onMinimize,
       onDragUpdate: onDragUpdate,
-      actions: [
-        ...window.headerActions,
-        Button(
-          key: WK.windowMinimize(window.id),
-          onPressed: onMinimize,
-          style: greyButtonStyle.copyWith(
-            padding: const WidgetStatePropertyAll(
-              EdgeInsetsDirectional.fromSTEB(8, 2, 10, 2),
-            ),
-            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 11)),
-          ),
-          child: ButtonContent(
-            WindowsIcons.chrome_minimize,
-            txt('minimize'),
-            size: 11,
-          ),
-        ),
-      ],
+      actions: [...window.headerActions],
       footer: save == null &&
               window.footer == null &&
               tray == null &&

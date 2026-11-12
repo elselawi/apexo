@@ -124,33 +124,22 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
       active: widget.active,
       dirty: _dirty,
       onRaise: widget.onRaise,
+      onClose: onClose,
+      closeDirty: _dirty,
+      closeHasChanges: widget.floating.hasChanges,
+      closeButtonKey: WK.windowHeaderClose,
       onDragUpdate: widget.onDragUpdate,
       actions: [
         if (widget.floating.onOpenRecord != null)
           Button(
             key: WK.windowOpenRecord,
             onPressed: () => unawaited(_openRecord()),
-            style: greyButtonStyle.copyWith(
-              padding: const WidgetStatePropertyAll(
-                EdgeInsetsDirectional.fromSTEB(8, 2, 10, 2),
-              ),
-              textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 12)),
-            ),
             child: ButtonContent(
               FluentIcons.open_in_new_tab,
               txt('openRecord'),
-              size: 14,
               // "Open in" points sideways, so mirror it in right-to-left.
               flipInRtl: true,
             ),
-          ),
-        if (onClose != null)
-          WindowCloseButton(
-            key: WK.windowHeaderClose,
-            dirty: _dirty,
-            hasChanges: widget.floating.hasChanges,
-            onClose: onClose,
-            compact: true,
           ),
       ],
       footer: Column(

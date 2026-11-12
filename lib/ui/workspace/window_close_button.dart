@@ -121,14 +121,15 @@ class _WindowCloseButtonState extends State<WindowCloseButton> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
     final label = widget.dirty ? txt('cancel') : txt('close');
     final button = IconButton(
       onPressed: _close,
-      style: greyButtonStyle.copyWith(
+      style: ButtonStyle(
         textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-        backgroundColor: WidgetStatePropertyAll(
-          widget.dirty ? Colors.orange : Colors.grey,
-        ),
+        foregroundColor: widget.dirty
+            ? WidgetStatePropertyAll(theme.resources.systemFillColorCritical)
+            : null,
       ),
       icon: widget.compact
           ? const Icon(WindowsIcons.chrome_close, size: 14)

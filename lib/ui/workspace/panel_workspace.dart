@@ -98,6 +98,12 @@ final class PanelWorkspace {
     _plan = plan;
     _compact = plan.compact;
     _capacity = plan.selected.length;
+    if (plan.compact && plan.selected.isEmpty) {
+      // A phone draws one window and the user is the one who opens it, so a
+      // plan that names none is only a remark about the screen (a rotation, the
+      // keyboard) and must not take the sheet they are using away.
+      return;
+    }
     final next = <String, Set<String>>{};
     for (final key in plan.selected) {
       (next[slotOfRowKey(key)] ??= <String>{}).add(windowIdOfRowKey(key));

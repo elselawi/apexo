@@ -69,6 +69,14 @@ class _WindowActionsState extends State<WindowActions> {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final dirty = widget.dirty;
+    // The accent is reserved for work that would otherwise be lost, so a clean
+    // window keeps the standard button.
+    final content = ButtonContent(
+      WindowsIcons.save,
+      txt(widget.saveLabel),
+      inProgress: _saving,
+    );
+    final onPressed = _saving ? null : _save;
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
       decoration: BoxDecoration(
@@ -84,24 +92,18 @@ class _WindowActionsState extends State<WindowActions> {
         children: [
           ...widget.extraActions,
           if (widget.savable)
-            IconButton(
-              key: WK.windowSave,
-              // Enabled even when the sample says clean: a save with nothing
-              // to write costs nothing, and a dead press looks broken.
-              onPressed: _saving ? null : _save,
-              style: greyButtonStyle.copyWith(
-                textStyle:
-                    const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-                backgroundColor: WidgetStatePropertyAll(
-                  dirty ? Colors.blue : Colors.grey.withValues(alpha: 0.25),
-                ),
+            if (dirty)
+              FilledButton(
+                key: WK.windowSave,
+                onPressed: onPressed,
+                child: content,
+              )
+            else
+              Button(
+                key: WK.windowSave,
+                onPressed: onPressed,
+                child: content,
               ),
-              icon: ButtonContent(
-                WindowsIcons.save,
-                txt(widget.saveLabel),
-                inProgress: _saving,
-              ),
-            ),
           WindowCloseButton(
             key: WK.windowClose,
             dirty: widget.confirmClose && dirty,

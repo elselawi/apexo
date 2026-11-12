@@ -31,6 +31,24 @@ part 'window_building.dart';
 const Duration _openDuration = Duration(milliseconds: 200);
 const Duration _closeDuration = Duration(milliseconds: 150);
 
+/// The screen's safe area as if no keyboard were up. [MediaQueryData.padding]
+/// gives the keys the bottom it covers, and a keyboard must not read as a
+/// screen with more room: that re-plans the row and takes windows away.
+EdgeInsets _safeArea(MediaQueryData media) {
+  final padding = media.padding;
+  final safe = media.viewPadding;
+  final insets = media.viewInsets;
+  // What the keyboard took, and no more than the safe area itself.
+  double edge(double padding, double safe, double inset) =>
+      padding + math.min(math.max(safe - padding, 0), inset);
+  return EdgeInsets.fromLTRB(
+    edge(padding.left, safe.left, insets.left),
+    edge(padding.top, safe.top, insets.top),
+    edge(padding.right, safe.right, insets.right),
+    edge(padding.bottom, safe.bottom, insets.bottom),
+  );
+}
+
 class WindowsLayer extends StatelessWidget {
   const WindowsLayer({
     super.key,
@@ -154,7 +172,6 @@ class _WindowsAreaState extends State<_WindowsArea> {
           label: () => attached.displayTitle,
           kind: attached.singularName,
           accent: attached.accent,
-          glyph: attached.unicodeSymbol,
           remembered: widget.defaults.of(attached.singularName, kAttachedSlot),
         ),
       WindowGroup(
@@ -167,7 +184,6 @@ class _WindowsAreaState extends State<_WindowsArea> {
         label: () => panel.displayTitle,
         kind: panel.singularName,
         accent: panel.accent,
-        glyph: panel.unicodeSymbol,
         remembered: widget.defaults.of(panel.singularName, kHostSlot),
       ),
     ];
@@ -225,7 +241,7 @@ class _WindowsAreaState extends State<_WindowsArea> {
   /// The grid uses the same command and safe-area insets as the drawn windows.
   double get _room {
     final size = MediaQuery.sizeOf(context);
-    final padding = MediaQuery.paddingOf(context);
+    final padding = _safeArea(MediaQuery.of(context));
     return math.max(
       0,
       size.height - padding.top - padding.bottom - _commandHeight,
@@ -574,7 +590,7 @@ class _WindowsAreaState extends State<_WindowsArea> {
   }
 
   _AreaMetrics get _metrics {
-    final viewPadding = MediaQuery.paddingOf(context);
+    final viewPadding = _safeArea(MediaQuery.of(context));
     final size = MediaQuery.sizeOf(context);
     final panelWidth = _panelWidth;
     // The panel sits on the trailing edge, so windows keep to whichever other

@@ -1,4 +1,5 @@
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -45,34 +46,39 @@ class WindowAttachments extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
+        color: FluentMaterials.of(context).glassTint.withAlpha(6),
         border: Border(
           top: BorderSide(color: theme.resources.dividerStrokeColorDefault),
         ),
       ),
-      child: Wrap(
-        spacing: 6,
-        runSpacing: 4,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          if (marker)
-            Tooltip(
-              message: txt('attachments'),
-              child: Icon(
-                FluentIcons.attach,
-                size: 12,
-                color: theme.inactiveColor,
+      child: SizedBox(
+        width: double.infinity,
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            if (marker)
+              Tooltip(
+                message: txt('attachments'),
+                child: Icon(
+                  WindowsIcons.attach,
+                  size: 16,
+                  color: theme.inactiveColor,
+                ),
               ),
-            ),
-          for (final window in windows)
-            _AttachmentChip(
-              key: keyForWindow?.call(window) ?? WK.attachmentToggle(window.id),
-              window: window,
-              open: isOpen(window),
-              enabled: enabled?.call(window) ?? true,
-              tint: tint,
-              onToggle: () => onToggle(window),
-            ),
-        ],
+            for (final window in windows)
+              _AttachmentChip(
+                key: keyForWindow?.call(window) ??
+                    WK.attachmentToggle(window.id),
+                window: window,
+                open: isOpen(window),
+                enabled: enabled?.call(window) ?? true,
+                tint: tint,
+                onToggle: () => onToggle(window),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -136,7 +142,7 @@ class _AttachmentChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(window.icon, size: 12, color: foreground),
+                Icon(window.icon, size: 15, color: foreground),
                 const SizedBox(width: 5),
                 if (preview != null) ...[
                   preview,
@@ -147,7 +153,7 @@ class _AttachmentChip extends StatelessWidget {
                     txt(window.title),
                     overflow: TextOverflow.ellipsis,
                     style: theme.typography.caption?.copyWith(
-                      fontSize: 11,
+                      fontSize: 12.5,
                       fontWeight: open ? FontWeight.w600 : FontWeight.w500,
                       color: foreground,
                     ),

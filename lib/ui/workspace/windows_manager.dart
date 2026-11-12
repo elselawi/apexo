@@ -117,6 +117,8 @@ abstract final class WindowsManager {
 
   /// Shows [window] standing on its own, with a Close that closes exactly it;
   /// [origin] defaults to the last tap, so it appears where it was asked for.
+  /// A record's window reaches this only while no panel is on screen — beside one
+  /// the record's own panel takes the window (`PanelsManager.allowsStandaloneWindows`).
   static FloatingWindow showStandalone(
     PanelWindow window, {
     String scope = '',

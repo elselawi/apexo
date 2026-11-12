@@ -32,7 +32,6 @@ final class WindowGroup {
     required this.label,
     required this.kind,
     this.accent,
-    this.glyph,
     this.remembered,
   });
 
@@ -56,9 +55,6 @@ final class WindowGroup {
 
   /// The colour the kind is known by.
   final Color? accent;
-
-  /// The glyph that marks the kind — 📅 for a visit, 👤 for a patient.
-  final String? glyph;
 
   /// Windows left open in this slot; null never chose, an empty list chose none.
   final List<String>? remembered;

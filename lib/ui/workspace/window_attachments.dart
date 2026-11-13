@@ -15,6 +15,7 @@ class WindowAttachments extends StatelessWidget {
     this.accent,
     this.keyForWindow,
     this.marker = true,
+    this.trailing,
     this.padding = const EdgeInsetsDirectional.fromSTEB(10, 6, 10, 6),
   });
 
@@ -37,6 +38,10 @@ class WindowAttachments extends StatelessWidget {
 
   final bool marker;
 
+  /// Drawn after the chips: an action that belongs to the same foot as the
+  /// record's attachments rather than to its fields.
+  final Widget? trailing;
+
   final EdgeInsetsGeometry padding;
 
   @override
@@ -53,29 +58,42 @@ class WindowAttachments extends StatelessWidget {
       ),
       child: SizedBox(
         width: double.infinity,
-        child: Wrap(
-          spacing: 6,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
+        child: Row(
           children: [
-            if (marker)
-              Tooltip(
-                message: txt('attachments'),
-                child: Icon(
-                  WindowsIcons.attach,
-                  size: 16,
-                  color: theme.inactiveColor,
-                ),
+            Expanded(
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  if (marker)
+                    Tooltip(
+                      message: txt('attachments'),
+                      child: Icon(
+                        WindowsIcons.attach,
+                        size: 16,
+                        color: theme.inactiveColor,
+                      ),
+                    ),
+                  for (final window in windows)
+                    _AttachmentChip(
+                      key: keyForWindow?.call(window) ??
+                          WK.attachmentToggle(window.id),
+                      window: window,
+                      open: isOpen(window),
+                      enabled: enabled?.call(window) ?? true,
+                      tint: tint,
+                      onToggle: () => onToggle(window),
+                    ),
+                ],
               ),
-            for (final window in windows)
-              _AttachmentChip(
-                key: keyForWindow?.call(window) ??
-                    WK.attachmentToggle(window.id),
-                window: window,
-                open: isOpen(window),
-                enabled: enabled?.call(window) ?? true,
-                tint: tint,
-                onToggle: () => onToggle(window),
+            ),
+            // Not an attachment: it keeps the end of the row, after the
+            // record's own editors.
+            if (trailing != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: 6),
+                child: trailing,
               ),
           ],
         ),

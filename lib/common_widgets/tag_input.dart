@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/scheduler.dart';
@@ -23,6 +24,7 @@ class TagInputWidget extends StatefulWidget {
     this.multiline = false,
     this.inactiveColor,
     this.enabled = true,
+    this.textStyle,
   });
   final List<TagInputItem> suggestions;
   final List<TagInputItem> initialValue;
@@ -35,13 +37,16 @@ class TagInputWidget extends StatefulWidget {
   final Color? inactiveColor;
   final bool enabled;
 
+  /// The typed text and the chips' labels; null keeps the theme's own size.
+  final TextStyle? textStyle;
+
   @override
   State<TagInputWidget> createState() => _TagInputWidgetState();
 }
 
 class _TagInputWidgetState extends State<TagInputWidget> {
   final TextEditingController _controller = TextEditingController();
-  final _hiddenTappedFlyoutController = FlyoutController();
+  final _hiddenTappedFlyoutController = AppFlyoutController();
   final autoSuggestBoxRef = GlobalKey<AutoSuggestBoxState<String>>();
   late FocusNode _focusNode;
   late List<TagInputItem> _tags;
@@ -426,6 +431,7 @@ class _TagInputWidgetState extends State<TagInputWidget> {
       controller: _controller,
       focusNode: _focusNode,
       placeholder: widget.placeholder,
+      style: widget.textStyle,
       key: autoSuggestBoxRef,
       trailingIcon: widget.enabled
           ? IconButton(
@@ -570,7 +576,9 @@ class _TagInputWidgetState extends State<TagInputWidget> {
               child: Txt(tag.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: tapable ? Colors.white : null)),
+                  style: widget.textStyle
+                          ?.copyWith(color: tapable ? Colors.white : null) ??
+                      (tapable ? const TextStyle(color: Colors.white) : null)),
             ),
             const SizedBox(width: 5),
             if (widget.enabled)

@@ -41,7 +41,9 @@ import 'package:apexo/ui/workspace/panel.dart';
 import 'package:apexo/ui/workspace/panel_window.dart';
 import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/ui/workspace/window_group.dart';
+import 'package:apexo/ui/workspace/windows_layout.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/utils/money_editing_controller.dart';
@@ -377,11 +379,23 @@ Future<void> showAppointmentUnavailable() async {
   );
 }
 
+/// The post-op notes and money fields on a phone: a step down from the theme's
+/// body size, and never below 11px — a phone's screen resolves small type, but
+/// it still has to be read.
+const double kOperativeFieldSmallSize = 12.0;
+
+/// The prescriptions' chips and their input on a phone.
+const double kOperativeTagSmallSize = 11.5;
+
 /// Post-op dictation button; what is dictated is merged into [appointment].
-Widget? operativeVoiceAction(Appointment appointment,
-    {VoidCallback? onEdited}) {
+Widget? operativeVoiceAction(
+  Appointment appointment, {
+  VoidCallback? onEdited,
+  bool compact = false,
+}) {
   if (!network.isOnline() || !globalSettings.aiServicesEnabled) return null;
   return AudioRecorderButton(
+    compact: compact,
     hint: txt("postOperativeVoiceAutoFillHint"),
     label: txt("voiceAutoFill"),
     onRecordingComplete: (bytes, mimeType) async {
@@ -679,6 +693,7 @@ class AppointmentOperativeForm extends StatefulWidget {
     super.key,
     this.followUpDraft,
     this.onEdited,
+    this.dictation = true,
   });
 
   final Appointment appointment;
@@ -689,6 +704,10 @@ class AppointmentOperativeForm extends StatefulWidget {
   /// Tells the session its draft changed, so Save and the band's unsaved mark
   /// update while the user types.
   final VoidCallback? onEdited;
+
+  /// Whether the dictation button sits under the fields. The chart's floating
+  /// card hosts it at the card's foot instead, beside the visit's tools.
+  final bool dictation;
 
   @override
   State<AppointmentOperativeForm> createState() =>
@@ -796,6 +815,16 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
     final theme = FluentTheme.of(context);
     final appointment = widget.appointment;
     final difference = _paymentDifference;
+    // A phone resolves small type and gives the post-op card the least room;
+    // its fields step down a size there, and nowhere else.
+    final size = MediaQuery.maybeOf(context)?.size;
+    final small = size != null && size.width < kWindowsBreakpoint;
+    final fieldStyle = small
+        ? theme.typography.body?.copyWith(fontSize: kOperativeFieldSmallSize)
+        : null;
+    final tagStyle = small
+        ? theme.typography.body?.copyWith(fontSize: kOperativeTagSmallSize)
+        : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -879,7 +908,10 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
               key: WK.fieldAppointmentPostOpNotes,
               controller: postOpNotesController,
               expands: false,
-              maxLines: 3,
+              // One line less when the card is shortest: the note still reads,
+              // and the fields under it stay on the card.
+              maxLines: small ? 2 : 3,
+              style: fieldStyle,
               padding: const EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4),
               placeholder: "${txt("postOperativeNotes")}...",
               onChanged: (v) => setState(() {
@@ -890,6 +922,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
             );
             final prescriptions = TagInputWidget(
               key: WK.fieldAppointmentPrescriptions,
+              textStyle: tagStyle,
               suggestions: appointments.allPrescriptions
                   .map((p) => TagInputItem(value: p, label: p))
                   .toList(),
@@ -907,7 +940,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
               strict: false,
               limit: 999,
               placeholder: "${txt("prescription")}...",
-              multiline: true,
+              multiline: false,
             );
             if (constraints.maxWidth < 620) {
               return Column(
@@ -940,6 +973,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
               controller: priceController,
               label: txt('price'),
               placeholder: txt('price'),
+              textStyle: fieldStyle,
               onChanged: (v) => setState(() {
                 appointment.price = moneyInputFormatter.parse(v);
                 if (didNotEditPaidYet) {
@@ -957,6 +991,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
               controller: paidController,
               label: txt('paid'),
               placeholder: txt('paid'),
+              textStyle: fieldStyle,
               onChanged: (v) => setState(() {
                 didNotEditPaidYet = false;
                 appointment.paid = moneyInputFormatter.parse(v);
@@ -1039,25 +1074,26 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
             },
           ),
         // Dictation needs both the AI setting and a network, and both are live.
-        Row(
-          children: [
-            MStreamBuilder<Object?>(
-              streams: [
-                network.isOnline.stream,
-                globalSettings.observableMap.stream,
-              ],
-              builder: (context, _) {
-                final voice = operativeVoiceAction(appointment,
-                    onEdited: widget.onEdited);
-                if (voice == null) return const SizedBox.shrink();
-                return Padding(
-                  padding: const EdgeInsetsDirectional.only(top: 2),
-                  child: voice,
-                );
-              },
-            ),
-          ],
-        ),
+        if (widget.dictation)
+          Row(
+            children: [
+              MStreamBuilder<Object?>(
+                streams: [
+                  network.isOnline.stream,
+                  globalSettings.observableMap.stream,
+                ],
+                builder: (context, _) {
+                  final voice = operativeVoiceAction(appointment,
+                      onEdited: widget.onEdited);
+                  if (voice == null) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsetsDirectional.only(top: 2),
+                    child: voice,
+                  );
+                },
+              ),
+            ],
+          ),
       ],
     );
   }
@@ -1069,6 +1105,7 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
     required String label,
     required String placeholder,
     required ValueChanged<String> onChanged,
+    TextStyle? textStyle,
   }) {
     final theme = FluentTheme.of(context);
     return CupertinoTextField(
@@ -1077,12 +1114,14 @@ class _AppointmentOperativeFormState extends State<AppointmentOperativeForm> {
       controller: controller,
       onChanged: onChanged,
       placeholder: placeholder,
+      style: textStyle,
       prefix: Padding(
         padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
         child: Txt(
           label,
           style: theme.typography.bodyStrong?.copyWith(
             color: theme.inactiveColor,
+            fontSize: textStyle?.fontSize,
           ),
         ),
       ),
@@ -1146,12 +1185,13 @@ class _AppointmentBandDetailsState extends State<AppointmentBandDetails> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Row(
+          spacing: 3,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // The date is the field that gives way: the time and duration keep
             // their widths, so the row fits a narrow band without shrinking the
             // type.
-            Flexible(
+            Expanded(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 150),
                 child: _field(
@@ -1348,7 +1388,7 @@ class _CompactOperators extends StatefulWidget {
 }
 
 class _CompactOperatorsState extends State<_CompactOperators> {
-  final FlyoutController _flyout = FlyoutController();
+  final FlyoutController _flyout = AppFlyoutController();
 
   @override
   void dispose() {

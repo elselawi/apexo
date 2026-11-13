@@ -202,6 +202,11 @@ class WK {
   static Key tooth(String iso, {required bool selected}) =>
       Key("tooth-iso-$iso-${selected ? "selected" : "not-selected"}");
 
+  /// The card floating over a narrow chart, and the cover that takes the first
+  /// tap on the teeth while a field on the card is being edited.
+  static const dentalChartOverlayCard = Key("dentalChartOverlayCard");
+  static const dentalChartOverlayBarrier = Key("dentalChartOverlayBarrier");
+
   /// The chrome every row panel shares.
   static const panelSave = Key("panelSave");
   static const panelClose = Key("panelClose");

@@ -35,14 +35,31 @@ class FluentMaterials {
   Color get micaBase =>
       dark ? const Color(0xFF1A1A1E) : const Color(0xFFF0F0F3);
 
-  Color get micaWashPrimary =>
-      dark ? const Color(0x245B9BD5) : const Color(0x2E7A9CC8);
+  /// The hues the stand-in material drifts, one per corner: cool at the top,
+  /// warm at the bottom. DWM gets these from the wallpaper; a phone or a
+  /// browser has no wallpaper to read, so the theme supplies a quiet set of its
+  /// own and the tint below keeps them a tint rather than a picture.
+  List<Color> get ambientWashes => dark
+      ? const [
+          Color(0xFF5B9BD5),
+          Color(0xFFA67CC8),
+          Color(0xFF4FA98F),
+          Color(0xFFB08A5E),
+        ]
+      : const [
+          Color(0xFF7A9CC8),
+          Color(0xFFC9A87A),
+          Color(0xFF7FB8A6),
+          Color(0xFF9B8BC8),
+        ];
 
-  Color get micaWashSecondary =>
-      dark ? const Color(0x1AA67CC8) : const Color(0x1FC9A87A);
+  /// How much of [ambientWashes] the tint lets through. A device painting its
+  /// own material can afford more colour than DWM's blend of a wallpaper it has
+  /// never seen; a dark window needs a little less, or it stops reading dark.
+  double get ambientStrength => dark ? 1.25 : 1.6;
 
   Color get micaTint =>
-      dark ? const Color(0xB31E1E22) : const Color(0xCCFAFAFC);
+      dark ? const Color(0x5C1A1A1E) : const Color(0x5CFAFAFC);
 
   /// A last, thin layer over the window's own Mica, keeping a warm or busy
   /// wallpaper from tinting the whole app. DWM already blends the wallpaper

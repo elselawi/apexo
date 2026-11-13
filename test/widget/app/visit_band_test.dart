@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -88,9 +89,13 @@ void main() {
         ],
       );
 
-  FakeSession visit({bool dirty = false, bool done = false}) {
+  FakeSession visit({
+    bool dirty = false,
+    bool done = false,
+    String id = 'visit-1',
+  }) {
     final session = FakeSession(
-      itemId: 'visit-1',
+      itemId: id,
       windows: [
         FakeSession.window('chart', saveLabel: 'saveVisit'),
         FakeSession.window('labwork',
@@ -188,6 +193,102 @@ void main() {
       ),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the band hangs its tail under the card, pointing at the record',
+      (tester) async {
+    final panel = hostPanel();
+    panel.attach(visit());
+    await pumpShell(tester, panel);
+
+    final card = tester.getRect(find.byKey(WK.visitBand));
+    final tail = tester.getRect(find.byKey(WK.visitBandTail));
+    expect(tail.top, greaterThanOrEqualTo(card.bottom - 1),
+        reason: 'the tail hangs below the card; above it the band read as a '
+            'bubble over the header');
+    expect(tail.center.dx, lessThan(card.center.dx),
+        reason: 'the tail sits under the visit\'s name, not in the middle');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'a band unfolds with the record, sliding it down instead of jumping',
+      (tester) async {
+    final panel = hostPanel(
+      footer: const SizedBox(key: ValueKey('underBand'), height: 32),
+    );
+    await pumpShell(tester, panel);
+    final underBand = find.byKey(const ValueKey('underBand'));
+    final before = tester.getTopLeft(underBand).dy;
+    double movedDown() => tester.getTopLeft(underBand).dy - before;
+
+    panel.attach(visit());
+    final unfolding = <double>[];
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      unfolding.add(movedDown());
+    }
+    await tester.pumpAndSettle();
+    final settled = movedDown();
+
+    expect(settled, greaterThan(30),
+        reason: 'the band takes its room from the record, which moves down');
+    expect(unfolding.first, lessThan(settled / 2),
+        reason:
+            'the record slides down while the band unfolds, it does not jump');
+    expect(unfolding.any((down) => down > 0 && down < settled), isTrue,
+        reason: 'the band is caught part-way, taking its room frame by frame');
+    expect(unfolding.last, lessThan(settled),
+        reason: 'the band is not in place within its first frames');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('the form on the band survives the entrance animation',
+      (tester) async {
+    final panel = hostPanel();
+    final session = visit();
+    session.band = const _CountingForm();
+    await pumpShell(tester, panel);
+
+    _CountingForm.created = 0;
+    panel.attach(session);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 16));
+    final created = _CountingForm.created;
+    expect(created, 1, reason: 'the form is on the band while it unfolds');
+
+    await tester.pumpAndSettle();
+    expect(_CountingForm.created, created,
+        reason: 'settling the entrance must not rebuild the form on the band');
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('a switch between visits keeps the band\'s room and arrives fast',
+      (tester) async {
+    final panel = hostPanel(
+      footer: const SizedBox(key: ValueKey('underBand'), height: 32),
+    );
+    panel.attach(visit(id: 'visit-1'));
+    await pumpShell(tester, panel);
+    final underBand = find.byKey(const ValueKey('underBand'));
+    final before = tester.getTopLeft(underBand).dy;
+
+    final next = visit(id: 'visit-2')..bandLabelText = 'Visit · 25/10';
+    panel.attach(next);
+    var top = before;
+    for (var frame = 0; frame < 4; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      top = math.min(top, tester.getTopLeft(underBand).dy);
+    }
+    await tester.pumpAndSettle();
+
+    expect(find.text('Visit · 25/10'), findsWidgets,
+        reason: 'the band names the visit it now carries');
+    expect(top, closeTo(before, 1),
+        reason: 'the new band takes the old one\'s room; it must not drop the '
+            'record out from under it first');
+    expect(tester.getTopLeft(underBand).dy, closeTo(before, 1));
     expect(tester.takeException(), isNull);
   });
 
@@ -699,4 +800,26 @@ void main() {
     expect(panel.anyUnsavedChanges, isTrue);
     expect(panel.hasUnsavedChanges(), isTrue);
   });
+}
+
+/// Counts the times it is built, so a test can tell a rebuild from a form
+/// thrown away and made again.
+class _CountingForm extends StatefulWidget {
+  const _CountingForm();
+
+  static int created = 0;
+
+  @override
+  State<_CountingForm> createState() => _CountingFormState();
+}
+
+class _CountingFormState extends State<_CountingForm> {
+  @override
+  void initState() {
+    super.initState();
+    _CountingForm.created++;
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(height: 30);
 }

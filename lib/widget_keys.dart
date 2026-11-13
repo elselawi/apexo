@@ -212,6 +212,9 @@ class WK {
 
   static const visitBand = Key("visitBand");
 
+  /// The band's tail, drawn under the card it hangs from.
+  static const visitBandTail = Key("visitBandTail");
+
   /// The record's own compact editor, inside the band.
   static const visitContent = Key("visitContent");
   static const visitState = Key("visitState");

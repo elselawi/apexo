@@ -109,4 +109,25 @@ void main() {
         reason: 'the editor must scroll above the keys, not sit under them');
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('a phone sheet spends the room the keyboard leaves',
+      (tester) async {
+    await pumpPhoneSheet(tester);
+
+    // At rest the sheet keeps a peek of the page behind it: the way out of a
+    // sheet is the tap beside it.
+    expect(tester.getRect(find.byType(WindowShell)).bottom, lessThan(844 - 34),
+        reason: 'a resting sheet is not the whole screen');
+
+    tester.view.padding = FakeViewPadding.zero;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.getRect(find.byType(WindowShell)).bottom,
+      844 - 300,
+      reason: 'with the keys up, the sheet fills the room left above them',
+    );
+    expect(tester.takeException(), isNull);
+  });
 }

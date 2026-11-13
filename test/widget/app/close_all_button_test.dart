@@ -409,6 +409,21 @@ void main() {
         reason: 'there is no corner beside a panel that fills the screen');
   });
 
+  testWidgets('stays away on a phone even with a standing window',
+      (tester) async {
+    WindowsManager.showStandalone(
+      windowModel(),
+      onSave: () async {},
+      hasChanges: () => true,
+    );
+    await pumpButton(tester, screenWidth: 600, panelWidth: 0);
+    await tester.pumpAndSettle();
+
+    expect(presence(tester), 0,
+        reason:
+            'a phone shows one window at a time, so there is no set to close');
+  });
+
   Future<void> openConfirmation(WidgetTester tester) async {
     await tester.tap(find.byKey(WK.closeAllWindows));
     await tester.pumpAndSettle();
@@ -1138,7 +1153,7 @@ void main() {
     expect(WindowsManager.open(), [floating]);
   });
 
-  testWidgets('phone sheets with no panel leave space for the command',
+  testWidgets('phone sheets keep the top edge, with no command above them',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -1152,8 +1167,10 @@ void main() {
           CloseAllButton(screenWidth: 390, panelWidth: 0),
         ]));
     await tester.pumpAndSettle();
+    expect(presence(tester), 0);
     expect(tester.getTopLeft(find.text(txt('xRayViewer')).last).dy,
-        greaterThan(tester.getBottomLeft(find.byKey(WK.closeAllWindows)).dy));
+        lessThan(kWindowEdgeInset + kWorkspaceCommandHeight),
+        reason: 'the sheet starts at the top instead of clearing a command');
     expect(tester.takeException(), isNull);
   });
 

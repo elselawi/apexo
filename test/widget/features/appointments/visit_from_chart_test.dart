@@ -53,7 +53,8 @@ class _Shell extends StatelessWidget {
               Align(
                 alignment: AlignmentDirectional.centerEnd,
                 child: SizedBox(
-                  width: 350,
+                  // A panel is its own column, or the whole of a phone.
+                  width: width < 490 ? width : 350,
                   height: double.infinity,
                   child: PanelScreen(panel: panel, layoutWidth: width),
                 ),
@@ -224,6 +225,74 @@ void main() {
       reason: 'at this width the chart and the list do not both fit',
     );
     expect(find.byType(AppointmentCard), findsOneWidget);
+  });
+
+  testWidgets('on a phone opening a visit puts the list away for the band',
+      (tester) async {
+    final patient = testPatient(id: 'phone-list-patient');
+    patients.set(patient);
+    final visit = testAppointment(
+        id: 'phone-list-visit', patientID: patient.id, date: DateTime.now());
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await pumpShell(tester, size: const Size(400, 820));
+
+    unawaited(openPatientPanel(patient));
+    await tester.pumpAndSettle();
+
+    final panel = PanelsManager.active().single;
+    // The patient's visits, as the phone's sheet over the panel.
+    await tester.tap(
+        find.byKey(WK.workspaceWindowToggle(PatientWindow.appointments.id)));
+    await tester.pumpAndSettle();
+    expect(find.byType(AppointmentCard), findsOneWidget);
+
+    // The visit's own open button, inside the list.
+    await tester.tap(find.byIcon(FluentIcons.go).first);
+    await tester.pumpAndSettle();
+
+    expect(panel.attached?.itemId, visit.id,
+        reason: 'the visit is carried beside its patient');
+    expect(find.byKey(WK.visitBand), findsOneWidget);
+    expect(find.byType(AppointmentCard), findsNothing,
+        reason: 'the list the visit was opened from must not stay over it');
+    expect(
+      panel.workspace.isOpen(PatientWindow.appointments.id),
+      isFalse,
+      reason: 'a phone shows one surface, and it is the visit\'s',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('on a phone a panel opened on its visits still lands on the band',
+      (tester) async {
+    final patient = testPatient(id: 'phone-on-list-patient');
+    patients.set(patient);
+    final visit = testAppointment(
+        id: 'phone-on-list-visit', patientID: patient.id, date: DateTime.now());
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    await pumpShell(tester, size: const Size(400, 820));
+
+    // The record opened *on* its visits, as a table cell asks for it: the
+    // opener's window is what the panel would fall back to.
+    unawaited(openPatientPanel(patient, focus: PatientWindow.appointments.id));
+    await tester.pumpAndSettle();
+
+    final panel = PanelsManager.active().single;
+    expect(panel.initialWindow, PatientWindow.appointments.id);
+    expect(find.byType(AppointmentCard), findsOneWidget);
+
+    await tester.tap(find.byIcon(FluentIcons.go).first);
+    await tester.pumpAndSettle();
+
+    expect(panel.attached?.itemId, visit.id);
+    expect(find.byKey(WK.visitBand), findsOneWidget);
+    expect(find.byType(AppointmentCard), findsNothing,
+        reason: 'the opener\'s window must not come back over the band');
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('the list\'s checkbox completes a visit that is open beside it',

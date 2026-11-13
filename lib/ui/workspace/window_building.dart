@@ -267,8 +267,13 @@ extension _WindowsAreaBuilding on _WindowsAreaState {
     // of hiding it behind them.
     final room = math.min(
       _room,
-      math.max(0, media.size.height - media.viewInsets.bottom - top),
+      math.max(0.0, media.size.height - media.viewInsets.bottom - top),
     );
+    // At rest the sheet keeps a peek of the page behind it: tapping beside it
+    // is the way out. With the keys up that peek is dead space over the one
+    // editor the user is working in, so the sheet takes the whole room left
+    // above them — and the window's own height ceiling no longer holds it short.
+    final keyboardUp = media.viewInsets.bottom > 0;
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -285,7 +290,9 @@ extension _WindowsAreaBuilding on _WindowsAreaState {
           top: top,
           child: ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: math.min(room * 0.88, entry.model.maxHeight),
+              maxHeight: keyboardUp
+                  ? room
+                  : math.min(room * 0.88, entry.model.maxHeight),
             ),
             child: _entrance(entry, AlignmentDirectional.topCenter),
           ),

@@ -233,10 +233,10 @@ class _WindowsAreaState extends State<_WindowsArea> {
       ? 0
       : computePanelWidth(screenWidth: widget.screenWidth);
 
+  /// The command floats only beside a wide workspace; a phone shows a single
+  /// window, so nothing sits above it and its sheet keeps the whole screen.
   double get _commandHeight =>
-      widget.panel == null || widget.screenWidth >= kWindowsBreakpoint
-          ? kWorkspaceCommandHeight
-          : 0;
+      widget.screenWidth >= kWindowsBreakpoint ? kWorkspaceCommandHeight : 0;
 
   /// The grid uses the same command and safe-area insets as the drawn windows.
   double get _room {
@@ -249,7 +249,9 @@ class _WindowsAreaState extends State<_WindowsArea> {
   }
 
   /// The row key of the window the opener asked for: an explicit request wins,
-  /// then the attached record's request, then the panel's own initial window.
+  /// then the attached record's request, then the panel's own initial window —
+  /// which a phone drops while a record is attached, because its band is what it
+  /// shows.
   String? get _focus {
     final panel = widget.panel;
     if (panel == null) return null;
@@ -266,6 +268,12 @@ class _WindowsAreaState extends State<_WindowsArea> {
         attachedFocus != null &&
         attached.windows.any((window) => window.id == attachedFocus)) {
       return rowKey(kAttachedSlot, attachedFocus);
+    }
+    // A phone draws one surface, and an attached record asked for none of its
+    // windows: the band is the surface, so the panel's opener request must not
+    // put its own window back over it.
+    if (attached != null && widget.screenWidth < kWindowsBreakpoint) {
+      return null;
     }
     final host = panel.initialWindow;
     if (host != null && offersHost(host) && panel.opensWithWindows) {

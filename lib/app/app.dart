@@ -6,6 +6,7 @@ import 'package:apexo/app/optional_features.dart';
 import 'package:apexo/app/routing/app_route.dart';
 import 'package:apexo/app/navbar_widget.dart';
 import 'package:apexo/app/nav_badges.dart';
+import 'package:apexo/app/title_bar_safe_area.dart';
 import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/ui/workspace/panel_screen.dart';
 import 'package:apexo/ui/workspace/panel_width.dart';
@@ -40,6 +41,7 @@ import 'package:apexo/common_widgets/logo.dart';
 import 'package:apexo/services/patient_side.dart';
 import 'package:apexo/services/version.dart';
 import 'package:apexo/services/changelog.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -288,69 +290,73 @@ class ApexoApp extends StatelessWidget {
       width: (!hideSidePanel) && constraints.maxWidth >= kWindowsBreakpoint
           ? constraints.maxWidth - (panelWidth + 5)
           : constraints.maxWidth,
-      child: NavigationView(
-        titleBar: TitleBar(
-          isBackButtonVisible: routes.canGoBack && launch.open() == Open.staff,
-          backButton: const BackButton(),
-          height: 40,
-          // `TitleBar` keeps a 48 px drag region after `endHeader` for the
-          // window's caption buttons, which the OS draws here, so the actions
-          // go in the caption slot to stay flush with the edge.
-          captionControls: const NetworkActions(key: WK.globalActions),
-          // ignore: prefer_const_constructors
-          title: NavScreenTitle(),
-        ),
-        onDisplayModeChanged: (mode) {
-          if (mode == PaneDisplayMode.minimal &&
-              constraints.maxWidth < kWindowsBreakpoint) {
-            routes.showBottomNav(true);
-          } else {
-            routes.showBottomNav(false);
-          }
-        },
-        content: launch.open() == Open.login
+      child: TitleBarSafeArea(
+        child: NavigationView(
+          titleBar: TitleBar(
+            isBackButtonVisible:
+                routes.canGoBack && launch.open() == Open.staff,
+            backButton: const BackButton(),
+            height: 40,
+            // `TitleBar` keeps a 48 px drag region after `endHeader` for the
+            // window's caption buttons, which the OS draws here, so the actions
+            // go in the caption slot to stay flush with the edge.
+            captionControls: const NetworkActions(key: WK.globalActions),
             // ignore: prefer_const_constructors
-            ? LoginScreen()
-            : launch.open() == Open.patient
-                ? const PatientSideScreen()
-                : null,
-        pane: launch.open() == Open.staff
-            ? NavigationPane(
-                header: const Column(
-                  children: [
-                    AppLogo(compact: true),
-                    CurrentAccount(),
-                  ],
-                ),
-                selected: routes.currentIndex,
-                displayMode: PaneDisplayMode.auto,
-                toggleable: false,
-                // The pane swaps bodies by index, so each is pre-built and
-                // keyed to keep its element and state across the swap.
-                items: List<NavigationPaneItem>.from(routes.visibleRoutes.map(
-                  (route) => PaneItem(
-                    key: Key("${route.id}_screen_button"),
-                    icon: Icon(route.icon),
-                    infoBadge: navBadgeFor(route),
-                    body: KeyedSubtree(
-                      key: _bodyKeyFor(route),
-                      child: _ScreenLayer(
-                        child: Padding(
-                          padding: EdgeInsets.only(
-                              bottom: (routes.showBottomNav() &&
-                                      constraints.maxWidth < kWindowsBreakpoint)
-                                  ? 66
-                                  : 0),
-                          child: route.buildScreen(),
+            title: NavScreenTitle(),
+          ),
+          onDisplayModeChanged: (mode) {
+            if (mode == PaneDisplayMode.minimal &&
+                constraints.maxWidth < kWindowsBreakpoint) {
+              routes.showBottomNav(true);
+            } else {
+              routes.showBottomNav(false);
+            }
+          },
+          content: launch.open() == Open.login
+              // ignore: prefer_const_constructors
+              ? LoginScreen()
+              : launch.open() == Open.patient
+                  ? const PatientSideScreen()
+                  : null,
+          pane: launch.open() == Open.staff
+              ? NavigationPane(
+                  header: const Column(
+                    children: [
+                      AppLogo(compact: true),
+                      CurrentAccount(),
+                    ],
+                  ),
+                  selected: routes.currentIndex,
+                  displayMode: PaneDisplayMode.auto,
+                  toggleable: false,
+                  // The pane swaps bodies by index, so each is pre-built and
+                  // keyed to keep its element and state across the swap.
+                  items: List<NavigationPaneItem>.from(routes.visibleRoutes.map(
+                    (route) => PaneItem(
+                      key: Key("${route.id}_screen_button"),
+                      icon: Icon(route.icon),
+                      infoBadge: navBadgeFor(route),
+                      body: KeyedSubtree(
+                        key: _bodyKeyFor(route),
+                        child: _ScreenLayer(
+                          child: Padding(
+                            padding: EdgeInsets.only(
+                                bottom: (routes.showBottomNav() &&
+                                        constraints.maxWidth <
+                                            kWindowsBreakpoint)
+                                    ? 66
+                                    : 0),
+                            child: route.buildScreen(),
+                          ),
                         ),
                       ),
+                      title: Txt(route.title),
+                      onTap: () => routes.navigate(route),
                     ),
-                    title: Txt(route.title),
-                    onTap: () => routes.navigate(route),
-                  ),
-                )),
-              )
-            : null,
+                  )),
+                )
+              : null,
+        ),
       ),
     );
   }
@@ -436,7 +442,7 @@ class NavScreenTitle extends StatefulWidget {
 }
 
 class _NavScreenTitleState extends State<NavScreenTitle> {
-  final controller = FlyoutController();
+  final controller = AppFlyoutController();
 
   @override
   void dispose() {

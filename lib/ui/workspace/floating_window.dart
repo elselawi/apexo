@@ -16,6 +16,7 @@ final class FloatingWindow {
     this.onClose,
     this.hasChanges,
     this.onOpenRecord,
+    this.openRecordLabelKey,
     this.transfer,
     this.baselines,
     this.recordSession,
@@ -48,6 +49,15 @@ final class FloatingWindow {
   /// Opens the panel holding this window's record and makes way for it; null
   /// when no record is behind the window. The card confirms [hasChanges] first.
   final Future<void> Function()? onOpenRecord;
+
+  /// The label's key when [scope] does not name the record's kind — a visit's
+  /// photo window, whose scope groups photos rather than naming the visit.
+  final String? openRecordLabelKey;
+
+  /// The localization key for the action that opens the record, named after the
+  /// kind the window belongs to.
+  String get openRecordLabel =>
+      openRecordLabelKey ?? openRecordLabelFor(scope.split(':').first);
 
   /// Whether this window brings its own Save and Close.
   bool get standalone => onClose != null;

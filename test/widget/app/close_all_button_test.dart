@@ -195,7 +195,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(ObjectKey(owner)));
     await tester.pumpAndSettle();
-    await tester.tap(find.text(txt('openRecord')).last);
+    await tester.tap(find.text(txt('openAppointment')).last);
     await tester.pumpAndSettle();
 
     expect(WindowsManager.open(), [window]);
@@ -693,7 +693,7 @@ void main() {
     await tester.pumpAndSettle();
     await openConfirmation(tester);
 
-    await itemAction(tester, draft.displayTitle, 'openRecord');
+    await itemAction(tester, draft.displayTitle, 'openPatient');
 
     expect(find.byType(WorkspaceCloseDialog), findsNothing);
     expect(PanelsManager.active(), [foreground, draft]);
@@ -726,7 +726,7 @@ void main() {
     await tester.pumpAndSettle();
     await openConfirmation(tester);
 
-    await itemAction(tester, retained.displayTitle, 'openRecord');
+    await itemAction(tester, retained.displayTitle, 'openAppointment');
 
     expect(PanelsManager.active(), [foreground, draft]);
     expect(draft.attached, same(retained));
@@ -783,7 +783,7 @@ void main() {
     final incoming = panel(id: 'incoming', dirty: true);
     PanelsManager.open(incoming);
 
-    await itemAction(tester, draft.displayTitle, 'openRecord');
+    await itemAction(tester, draft.displayTitle, 'openPatient');
 
     expect(find.text(txt('workspaceChanged')), findsOneWidget);
     expect(PanelsManager.active(), [incoming]);

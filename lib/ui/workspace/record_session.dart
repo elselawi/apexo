@@ -8,6 +8,9 @@ abstract interface class WindowRecordSession {
   /// The id of the record being edited — never null, even while it is unsaved.
   String get itemId;
 
+  /// The record's kind, such as "patient" or "appointment".
+  String get singularName;
+
   /// A plain-text label for the record, for a window's owner line and a band.
   String get displayTitle;
 
@@ -40,6 +43,16 @@ abstract interface class WindowRecordSession {
   Future<void> get result;
 }
 
+/// The localization key for the action that opens [kind]'s record: a patient's
+/// window returns to the patient, a visit's to the visit. A kind with no key of
+/// its own keeps the plain record action.
+String openRecordLabelFor(String kind) => switch (kind) {
+      'patient' => 'openPatient',
+      'appointment' => 'openAppointment',
+      'orders' || 'supplier' => 'openSupplier',
+      _ => 'openRecord',
+    };
+
 /// An owner that writes outside its own Save can acknowledge only the fields it
 /// wrote; clearing the whole draft would discard edits made beside them.
 abstract interface class DraftAcknowledgements {
@@ -63,6 +76,7 @@ abstract interface class HostedRecordSession
 
   /// The record's kind, which is the key layout preferences are remembered by —
   /// never the record's id, or every visit would open differently.
+  @override
   String get singularName;
 
   /// The glyph that marks the kind wherever it is drawn — 📅 for a visit.

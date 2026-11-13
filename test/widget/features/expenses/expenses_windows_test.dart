@@ -372,6 +372,8 @@ void main() {
     expect(WindowsManager.open(), hasLength(1));
 
     await pumpLayer(tester, 1600);
+    expect(find.text(txt('openSupplier')), findsWidgets,
+        reason: 'the action names the record it opens');
     await tester.tap(find.byKey(WK.windowOpenRecord));
     await tester.pumpAndSettle();
 

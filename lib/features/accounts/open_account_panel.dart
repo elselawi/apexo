@@ -12,6 +12,7 @@ import 'package:apexo/core/store.dart';
 import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/services/launch.dart';
@@ -125,30 +126,34 @@ final _accountStore = _AccountStore();
 Future<String?> openAccount([AccountModel? account]) async {
   final editingCopy = AccountModel.fromJson(account?.toJson() ?? {});
   final isNew = accounts.list().every((e) => e.id != editingCopy.id);
+  final singularName = editingCopy.isAdmin ? "admin" : "user";
   final panel = RowPanel<AccountModel>(
     accent: PanelAccents.account,
     archiveButtonReplacement: login.currentAccountID == editingCopy.id
         ? const SizedBox.shrink()
-        : DeleteButton(
-            onConfirm: () {
-              _accountStore.deleteAccount(editingCopy.id);
-              PanelsManager.close(editingCopy.id);
-            },
-            style: filledButtonStyle(Colors.grey),
-            preview: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: 5,
-              children: [
-                const Icon(FluentIcons.people),
-                Txt(editingCopy.title)
-              ],
+        : Builder(
+            builder: (context) => DeleteButton(
+              onConfirm: () {
+                _accountStore.deleteAccount(editingCopy.id);
+                PanelsManager.close(editingCopy.id);
+              },
+              style: panelDeleteButtonStyle(context),
+              preview: Row(
+                mainAxisSize: MainAxisSize.min,
+                spacing: 5,
+                children: [
+                  const Icon(FluentIcons.people),
+                  Txt(editingCopy.title)
+                ],
+              ),
+              actionText: txt("delete"),
+              actionIcon: WindowsIcons.delete,
+              restorable: false,
+              child: ButtonContent(
+                  WindowsIcons.delete, "${txt("delete")} ${txt(singularName)}"),
             ),
-            actionText: txt("delete"),
-            actionIcon: WindowsIcons.delete,
-            restorable: false,
-            child: ButtonContent(WindowsIcons.delete, txt("delete")),
           ),
-    singularName: editingCopy.isAdmin ? "admin" : "user",
+    singularName: singularName,
     unicodeSymbol: "🧑‍💼",
     item: editingCopy,
     store: _accountStore,
@@ -403,7 +408,7 @@ class PermissionSelector extends StatefulWidget {
 
 class _PermissionSelectorState extends State<PermissionSelector> {
   late int selected;
-  final FlyoutController _flyoutCtrl = FlyoutController();
+  final FlyoutController _flyoutCtrl = AppFlyoutController();
 
   @override
   void initState() {

@@ -12,6 +12,7 @@ import 'package:apexo/common_widgets/tag_input.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/ai_services/receipt_scanner.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
@@ -61,9 +62,9 @@ class OrderRowState extends State<OrderRow>
   final MoneyEditingController costCtrl = MoneyEditingController();
   final MoneyEditingController paidCtrl = MoneyEditingController();
   final TextEditingController notesController = TextEditingController();
-  final FlyoutController moreOptionsCtrl = FlyoutController();
-  final FlyoutController photoAddMenu = FlyoutController();
-  final FlyoutController deleteConfirmCtrl = FlyoutController();
+  final FlyoutController moreOptionsCtrl = AppFlyoutController();
+  final FlyoutController photoAddMenu = AppFlyoutController();
+  final FlyoutController deleteConfirmCtrl = AppFlyoutController();
   final bool canEdit = login.perm(Perm.expenses).exact(2);
 
   bool inProgress = false;
@@ -705,7 +706,9 @@ class OrderRowState extends State<OrderRow>
           onPressed: () async {
             if (inProgress) return;
             await flyoutFocusFix(context);
-            unawaited(moreOptionsCtrl.showFlyout<void>(builder: (context) {
+            // Not named `context`: the menu's own context dies with the menu,
+            // and the delete item runs after that.
+            unawaited(moreOptionsCtrl.showFlyout<void>(builder: (_) {
               return AppMenuFlyout(
                 items: [
                   MenuFlyoutItem(

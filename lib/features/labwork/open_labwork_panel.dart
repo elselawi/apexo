@@ -17,6 +17,7 @@ import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide TextBox;
@@ -224,7 +225,7 @@ class _LabeWorkPanelActions extends StatefulWidget {
 }
 
 class _LabeWorkPanelActionsState extends State<_LabeWorkPanelActions> {
-  final FlyoutController confirmDeleteFlyoutController = FlyoutController();
+  final FlyoutController confirmDeleteFlyoutController = AppFlyoutController();
 
   @override
   void dispose() {

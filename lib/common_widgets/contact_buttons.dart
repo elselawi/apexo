@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:country_flags/country_flags.dart';
@@ -134,7 +135,7 @@ class PhoneNumberButton extends StatefulWidget {
 }
 
 class PhoneNumberButtonState extends State<PhoneNumberButton> {
-  final flyoutCtrl = FlyoutController();
+  final flyoutCtrl = AppFlyoutController();
 
   bool get singlePhoneNumber {
     return widget.phoneNumbers.length == 1;

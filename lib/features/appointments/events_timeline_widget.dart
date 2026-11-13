@@ -15,6 +15,7 @@ import 'package:apexo/features/appointments/open_appointment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide Card;
 import 'package:intl/intl.dart' as intl;
 import 'package:table_calendar/table_calendar.dart';
@@ -878,7 +879,7 @@ class TimelineChip extends StatefulWidget {
 }
 
 class _TimelineChipState extends State<TimelineChip> {
-  final _operatorsFlyout = FlyoutController();
+  final _operatorsFlyout = AppFlyoutController();
 
   @override
   void dispose() {

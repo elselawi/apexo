@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 class DurationPill extends StatefulWidget {
@@ -24,7 +25,7 @@ class DurationPill extends StatefulWidget {
 }
 
 class _DurationPillState extends State<DurationPill> {
-  final _durationFlyout = FlyoutController();
+  final _durationFlyout = AppFlyoutController();
   static const _durations = [15, 30, 45, 60, 90, 120];
 
   @override

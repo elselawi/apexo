@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -63,7 +64,7 @@ class WindowCloseButton extends StatefulWidget {
 }
 
 class _WindowCloseButtonState extends State<WindowCloseButton> {
-  final FlyoutController _confirmClose = FlyoutController();
+  final FlyoutController _confirmClose = AppFlyoutController();
 
   @override
   void dispose() {

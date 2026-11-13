@@ -28,6 +28,7 @@ import 'package:apexo/features/dicom/open_dicom_viewer_window.dart';
 import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/logger.dart';

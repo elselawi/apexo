@@ -3,10 +3,11 @@ import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/common_widgets/no_items_found.dart';
 import 'package:apexo/features/network_actions/network_actions_controller.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
-final FlyoutController errorsFlyoutController = FlyoutController();
+final FlyoutController errorsFlyoutController = AppFlyoutController();
 
 Future<void> showErrorsFlyout() async {
   await flyoutFocusFix(null);

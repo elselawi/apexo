@@ -13,6 +13,7 @@ import 'package:apexo/common_widgets/screen_command_bar.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/expenses/expense_model.dart';
 import 'package:apexo/features/expenses/expense_windows.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/features/expenses/expenses_store.dart';
 import 'package:apexo/features/expenses/expense_summary.dart';
@@ -274,7 +275,7 @@ class _SupplierDetails extends StatefulWidget {
 class _SupplierDetailsState extends State<_SupplierDetails> {
   final _searchOrderController = TextEditingController();
   final _scrollController = ScrollController();
-  final pickSupplierForAdditionFlyout = FlyoutController();
+  final pickSupplierForAdditionFlyout = AppFlyoutController();
   final bool canEdit = login.perm(Perm.expenses).exact(2);
   String? justCreatedId;
 

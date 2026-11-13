@@ -68,7 +68,7 @@ class _OpgToothColumn extends StatefulWidget {
 }
 
 class _OpgToothColumnState extends State<_OpgToothColumn> {
-  final FlyoutController _wheelController = FlyoutController();
+  final FlyoutController _wheelController = AppFlyoutController();
 
   @override
   void dispose() {

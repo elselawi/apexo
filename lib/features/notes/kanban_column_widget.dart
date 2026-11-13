@@ -8,6 +8,7 @@ import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/constants.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
@@ -27,8 +28,8 @@ class KanbanColumn extends StatefulWidget {
 }
 
 class _KanbanColumnState extends State<KanbanColumn> {
-  final FlyoutController archiveConfirmation = FlyoutController();
-  final FlyoutController moreMenuFlyout = FlyoutController();
+  final FlyoutController archiveConfirmation = AppFlyoutController();
+  final FlyoutController moreMenuFlyout = AppFlyoutController();
 
   @override
   void dispose() {

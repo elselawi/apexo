@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:apexo/common_widgets/app_menu_flyout.dart';
 import 'package:apexo/common_widgets/button_styles.dart';
 import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/common_widgets/context_menu_region.dart';
 import 'package:apexo/common_widgets/delete_button.dart';
@@ -45,7 +46,7 @@ class SuppliersList extends StatefulWidget {
 
 class _SuppliersListState extends State<SuppliersList> {
   final TextEditingController _searchController = TextEditingController();
-  final FlyoutController _scanFlyout = FlyoutController();
+  final FlyoutController _scanFlyout = AppFlyoutController();
   bool _scanning = false;
 
   @override
@@ -275,7 +276,7 @@ class SupplierListTile extends StatefulWidget {
 }
 
 class _SupplierListTileState extends State<SupplierListTile> {
-  final FlyoutController menuController = FlyoutController();
+  final FlyoutController menuController = AppFlyoutController();
   final bool canEdit = login.perm(Perm.expenses).exact(2);
 
   @override

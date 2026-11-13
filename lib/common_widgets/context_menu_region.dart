@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:apexo/common_widgets/app_menu_flyout.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -33,7 +34,7 @@ class ContextMenuRegion extends StatefulWidget {
 }
 
 class _ContextMenuRegionState extends State<ContextMenuRegion> {
-  final FlyoutController controller = FlyoutController();
+  final FlyoutController controller = AppFlyoutController();
 
   @override
   void dispose() {

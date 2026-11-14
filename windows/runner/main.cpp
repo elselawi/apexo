@@ -16,6 +16,7 @@
 namespace {
 
 constexpr char kDiagnosePushFlag[] = "--diagnose-push";
+constexpr char kRequestChannelFlag[] = "--request-channel";
 
 bool HasArgument(const std::vector<std::string>& arguments, const char* flag) {
   return std::any_of(arguments.begin(), arguments.end(),
@@ -65,9 +66,23 @@ void AttachParentConsoleForDiagnostics() {
   freopen_s(&unused, "CONOUT$", "w", stderr);
 }
 
+// AsyncStatus → name, keeping the WinRT headers out of main.cpp.
+const char* AsyncStatusName(int async_status) {
+  switch (async_status) {
+    case 1:
+      return "completed";
+    case 2:
+      return "canceled";
+    case 3:
+      return "error";
+    default:
+      return "unknown";
+  }
+}
+
 // Reports the push environment without starting Flutter. Never prints a channel
 // URI, token or payload.
-int RunPushDiagnostics(apexo::PushNotifications& push) {
+int RunPushDiagnostics(apexo::PushNotifications& push, bool request_channel) {
   AttachParentConsoleForDiagnostics();
   std::printf("package identity: %s\n",
               push.HasPackageIdentity() ? "yes" : "no");
@@ -75,6 +90,28 @@ int RunPushDiagnostics(apexo::PushNotifications& push) {
   std::printf("channel configured: %s\n",
               push.IsChannelConfigured() ? "yes" : "no");
   std::printf("registered: %s\n", push.IsRegistered() ? "yes" : "no");
+  if (request_channel) {
+    if (!push.IsSupported() || !push.IsChannelConfigured()) {
+      std::printf("channel request: skipped (unsupported or unconfigured)\n");
+    } else {
+      const auto diag = push.DiagnoseChannelAcquisition();
+      std::printf("channel acquired: %s\n", diag.acquired ? "yes" : "no");
+      if (diag.status >= 0) {
+        std::printf("channel status: %d\n", diag.status);
+      }
+      if (diag.async_status >= 0) {
+        std::printf("channel async status: %s\n",
+                    AsyncStatusName(diag.async_status));
+      }
+      if (diag.timed_out) {
+        std::printf("channel timed out: yes\n");
+      }
+      if (diag.extended_error != 0) {
+        std::printf("extended error: 0x%08X\n",
+                    static_cast<unsigned int>(diag.extended_error));
+      }
+    }
+  }
   std::fflush(stdout);
   return EXIT_SUCCESS;
 }
@@ -134,7 +171,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   push.Initialize();
 
   if (diagnose) {
-    const int exit_code = RunPushDiagnostics(push);
+    const bool request_channel =
+        HasArgument(command_line_arguments, kRequestChannelFlag);
+    const int exit_code = RunPushDiagnostics(push, request_channel);
     push.Shutdown();
     ::CoUninitialize();
     return exit_code;

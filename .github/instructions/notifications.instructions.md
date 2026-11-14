@@ -87,7 +87,7 @@ Never invent a platform; a build that cannot identify itself omits the value. Ev
 powershell -ExecutionPolicy Bypass -File tools/patch_msix_manifest.ps1
 ```
 
-It runs `flutter build windows --release` → `dart run msix:build --sign-msix false` → patch → `--verify` → `msix:pack --sign-msix false` → extract and verify again. `-SkipBuild`, `-SkipPack` (read-only verification), `-SkipFlutterBuild` (after `shorebird release windows`) and `-Store` exist. Flutter builds for the host architecture, so the script refuses a configured architecture that differs.
+It runs `flutter build windows --release` → `dart run msix:build --sign-msix false` → patch → `--verify` → `msix:pack --sign-msix false` → extract and verify again. `-SkipBuild`, `-SkipPack` (read-only verification), `-SkipFlutterBuild` (after `shorebird release windows`), `-Store` and `-Register` (Developer Mode registration of the build folder instead of packing) exist. Flutter builds for the host architecture, so the script refuses a configured architecture that differs.
 
 - `--sign-msix false` is required: without a certificate `msix` substitutes its test-certificate subject as `publisher`, changing the package family name and breaking the notification AUMID.
 - Three different identifiers, never interchangeable: Azure **application (client) ID** `8f4d5ac1-5142-44fb-928a-6ce05c641dd0` (`CreateChannelAsync` `remoteId` and the push `com:Class Id`), local-toast **CLSID** `51fc2ec1-f21e-4b3c-9f2b-71c28c7b0f7e` (`WindowsNotificationIdentity.activationGuid`), and the **AUMID** `alisaleem.apexo.app_e460fpmm323ja!apexo`. Passing an object ID to `CreateChannelAsync` still yields a URI, but every WNS send then fails with `403`.

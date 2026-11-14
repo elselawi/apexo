@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <ctime>
 #include <thread>
 #include <utility>
@@ -523,12 +524,25 @@ bool PushNotifications::StartChannelRequest() {
             remote_id);
         const auto deadline =
             std::chrono::steady_clock::now() + kChannelRequestTimeout;
-        auto status = operation.Status();
-        while (status == winrt::Windows::Foundation::AsyncStatus::Started &&
-               !channel_stop_requested_.load() &&
-               std::chrono::steady_clock::now() < deadline) {
-          status = operation.wait_for(std::chrono::milliseconds(100));
+        auto done_event = std::shared_ptr<void>(
+            ::CreateEventW(nullptr, TRUE, FALSE, nullptr),
+            [](HANDLE h) {
+              if (h != nullptr) ::CloseHandle(h);
+            });
+        if (done_event) {
+          operation.Completed([done_event](auto const&, auto const&) {
+            ::SetEvent(done_event.get());
+          });
+          while (operation.Status() ==
+                     winrt::Windows::Foundation::AsyncStatus::Started &&
+                 !channel_stop_requested_.load() &&
+                 std::chrono::steady_clock::now() < deadline) {
+            if (::WaitForSingleObject(done_event.get(), 100) == WAIT_OBJECT_0) {
+              break;
+            }
+          }
         }
+        auto status = operation.Status();
         stopped = channel_stop_requested_.load() || shutdown_.load();
         if (stopped ||
             status == winrt::Windows::Foundation::AsyncStatus::Started) {
@@ -549,12 +563,30 @@ bool PushNotifications::StartChannelRequest() {
             outcome->has_expiry = true;
             outcome->expiry_unix_seconds = static_cast<int64_t>(
                 winrt::clock::to_time_t(channel.ExpirationTime()));
+          } else {
+            char buf[96];
+            std::snprintf(buf, sizeof(buf),
+                          "CreateChannelAsync ended status=%d hr=0x%08X",
+                          static_cast<int>(result.Status()),
+                          static_cast<unsigned int>(result.ExtendedError().value));
+            DebugTrace(buf);
           }
+        } else {
+          char buf[64];
+          std::snprintf(buf, sizeof(buf), "CreateChannelAsync async status=%d",
+                        static_cast<int>(status));
+          DebugTrace(buf);
         }
+      } catch (winrt::hresult_error const& err) {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "CreateChannelAsync threw hr=0x%08X",
+                      static_cast<unsigned int>(err.code().value));
+        DebugTrace(buf);
       } catch (...) {
         // Unsupported, unauthorized (a channel requested with an app
         // registration other than the sender's), network or activation
         // failures all end as "no channel"; the next request retries.
+        DebugTrace("CreateChannelAsync threw an unknown exception");
       }
       if (apartment_initialized) {
         try {
@@ -602,6 +634,90 @@ void PushNotifications::JoinChannelWorker() {
   if (worker.joinable()) {
     worker.join();
   }
+}
+
+ChannelDiagnostic PushNotifications::DiagnoseChannelAcquisition(
+    std::chrono::milliseconds timeout) const {
+  ChannelDiagnostic diag;
+  if (!impl_->supported || !impl_->channel_configured || shutdown_.load()) {
+    return diag;
+  }
+  const winrt::guid remote_id = impl_->remote_id;
+  HANDLE worker_done = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+  std::thread worker([&diag, remote_id, timeout, worker_done] {
+    bool apartment_initialized = false;
+    try {
+      winrt::init_apartment(winrt::apartment_type::multi_threaded);
+      apartment_initialized = true;
+      auto operation =
+          PushNotificationManager::Default().CreateChannelAsync(remote_id);
+      const auto deadline = std::chrono::steady_clock::now() + timeout;
+      auto done_event = std::shared_ptr<void>(
+          ::CreateEventW(nullptr, TRUE, FALSE, nullptr),
+          [](HANDLE h) {
+            if (h != nullptr) ::CloseHandle(h);
+          });
+      if (done_event) {
+        operation.Completed([done_event](auto const&, auto const&) {
+          ::SetEvent(done_event.get());
+        });
+        while (operation.Status() ==
+                   winrt::Windows::Foundation::AsyncStatus::Started &&
+               std::chrono::steady_clock::now() < deadline) {
+          if (::WaitForSingleObject(done_event.get(), 100) == WAIT_OBJECT_0) {
+            break;
+          }
+        }
+      }
+      auto status = operation.Status();
+      if (status == winrt::Windows::Foundation::AsyncStatus::Started) {
+        diag.timed_out = true;
+        try {
+          operation.Cancel();
+        } catch (...) {
+        }
+      } else if (status ==
+                 winrt::Windows::Foundation::AsyncStatus::Completed) {
+        const auto result = operation.GetResults();
+        diag.status = static_cast<int>(result.Status());
+        diag.extended_error = result.ExtendedError().value;
+        if (result.Status() ==
+            PushNotificationChannelStatus::CompletedSuccess) {
+          const auto channel = result.Channel();
+          diag.acquired = !channel.Uri().ToString().empty();
+        }
+      } else {
+        // Canceled or failed: no result, but ErrorCode() still explains it.
+        diag.async_status = static_cast<int>(status);
+        diag.extended_error = operation.ErrorCode().value;
+      }
+    } catch (winrt::hresult_error const& err) {
+      diag.extended_error = err.code().value;
+    } catch (...) {
+    }
+    if (apartment_initialized) {
+      try {
+        winrt::uninit_apartment();
+      } catch (...) {
+      }
+    }
+    if (worker_done != nullptr) {
+      ::SetEvent(worker_done);
+    }
+  });
+  if (worker_done != nullptr) {
+    while (::MsgWaitForMultipleObjects(1, &worker_done, FALSE, INFINITE,
+                                       QS_ALLINPUT) == WAIT_OBJECT_0 + 1) {
+      ::MSG msg;
+      while (::PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+        ::TranslateMessage(&msg);
+        ::DispatchMessage(&msg);
+      }
+    }
+    ::CloseHandle(worker_done);
+  }
+  worker.join();
+  return diag;
 }
 
 void PushNotifications::HandleMethodCall(

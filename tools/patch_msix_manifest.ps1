@@ -43,11 +43,20 @@
 .PARAMETER KeepExtract
     Leave the extracted package under build/ for inspection.
 
+.PARAMETER Register
+    Register the unpacked build folder with Windows Developer Mode
+    (`Add-AppxPackage -Register`) instead of packing an `.msix`: the build gets
+    package identity and both activation contracts without a certificate. Launch
+    it through the package (Start menu, AUMID) — a direct exe launch has none.
+
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools/patch_msix_manifest.ps1
 
 .EXAMPLE
     powershell -ExecutionPolicy Bypass -File tools/patch_msix_manifest.ps1 -SkipPack
+
+.EXAMPLE
+    powershell -ExecutionPolicy Bypass -File tools/patch_msix_manifest.ps1 -Mode Debug -Register
 #>
 [CmdletBinding()]
 param(
@@ -56,6 +65,7 @@ param(
     [switch]$SkipFlutterBuild,
     [switch]$Store,
     [switch]$KeepExtract,
+    [switch]$Register,
     [ValidateSet('Release', 'Debug')]
     [string]$Mode = 'Release'
 )
@@ -206,6 +216,13 @@ try {
         throw "msix_config.architecture is '$architecture' but this host is '$hostArchitecture'. Flutter builds Windows for the host architecture; run this on a $architecture host or set the configuration to '$hostArchitecture'."
     }
 
+    if ($Register -and $Store) {
+        throw '-Register cannot be combined with -Store.'
+    }
+    if ($Register -and $SkipPack) {
+        throw '-Register cannot be combined with -SkipPack.'
+    }
+
     if ($SkipPack) {
         # Read-only reuse: do not build, regenerate, patch, delete or compare
         # against a manifest this branch never creates. When the package lives
@@ -285,55 +302,69 @@ try {
         Invoke-External -Description 'Verifying the patched manifest' `
             -FilePath 'dart' -Arguments @('run', $patchTool, $manifestPath, '--verify')
 
-        $msixPath = Resolve-MsixPath -Root $repoRoot -BuildFolder $buildFolder `
-            -ConfiguredOutputPath $outputPath -OutputName $outputName
-        # msix:pack deletes AppxManifest.xml after packing, so remember its time now.
-        $manifestTime = (Get-Item -LiteralPath $manifestPath).LastWriteTime
-
-        $packArguments = @(
-            'run', 'msix:pack'
-        )
-        if ($Store) {
-            $packArguments += '--store'
+        if ($Register) {
+            Write-Step 'Registering the unpacked package (Developer Mode)'
+            Write-Host "    manifest: $manifestPath" -ForegroundColor DarkGray
+            try {
+                Add-AppxPackage -Register $manifestPath -ForceApplicationShutdown -ForceUpdateFromAnyVersion
+            }
+            catch {
+                throw "Add-AppxPackage -Register failed (ensure Windows Developer Mode is enabled, and if a Microsoft Store build of $identityName is installed, uninstall it first with Get-AppxPackage $identityName | Remove-AppxPackage): $_"
+            }
         }
         else {
-            $packArguments += @('--sign-msix', 'false')
-        }
-        $packArguments += @('--architecture', $architecture)
-        if ($Mode -eq 'Debug') { $packArguments += '--debug' }
-        Invoke-External -Description 'Packing the MSIX' -FilePath 'dart' -Arguments $packArguments
+            $msixPath = Resolve-MsixPath -Root $repoRoot -BuildFolder $buildFolder `
+                -ConfiguredOutputPath $outputPath -OutputName $outputName
+            # msix:pack deletes AppxManifest.xml after packing, so remember its time now.
+            $manifestTime = (Get-Item -LiteralPath $manifestPath).LastWriteTime
 
-        if (-not (Test-Path -LiteralPath $msixPath -PathType Leaf)) {
-            throw "msix:pack reported success but '$msixPath' does not exist."
-        }
-        $msixTime = (Get-Item -LiteralPath $msixPath).LastWriteTime
-        if ($msixTime -lt $runStart) {
-            throw "'$msixPath' was not produced by this run (older than the run start); delete it and try again."
-        }
-        if ($msixTime -lt $manifestTime) {
-            throw "'$msixPath' is older than the patched manifest, so it does not contain this manifest."
-        }
+            $packArguments = @(
+                'run', 'msix:pack'
+            )
+            if ($Store) {
+                $packArguments += '--store'
+            }
+            else {
+                $packArguments += @('--sign-msix', 'false')
+            }
+            $packArguments += @('--architecture', $architecture)
+            if ($Mode -eq 'Debug') { $packArguments += '--debug' }
+            Invoke-External -Description 'Packing the MSIX' -FilePath 'dart' -Arguments $packArguments
 
-        Write-Step 'Package produced by this run'
-        Write-Host "    path   : $msixPath"
+            if (-not (Test-Path -LiteralPath $msixPath -PathType Leaf)) {
+                throw "msix:pack reported success but '$msixPath' does not exist."
+            }
+            $msixTime = (Get-Item -LiteralPath $msixPath).LastWriteTime
+            if ($msixTime -lt $runStart) {
+                throw "'$msixPath' was not produced by this run (older than the run start); delete it and try again."
+            }
+            if ($msixTime -lt $manifestTime) {
+                throw "'$msixPath' is older than the patched manifest, so it does not contain this manifest."
+            }
+
+            Write-Step 'Package produced by this run'
+            Write-Host "    path   : $msixPath"
+        }
     }
 
-    $msix = Get-Item -LiteralPath $msixPath
-    Write-Host "    size   : $($msix.Length) bytes"
-    Write-Host "    sha256 : $((Get-FileHash -LiteralPath $msixPath -Algorithm SHA256).Hash)"
+    if (-not $Register) {
+        $msix = Get-Item -LiteralPath $msixPath
+        Write-Host "    size   : $($msix.Length) bytes"
+        Write-Host "    sha256 : $((Get-FileHash -LiteralPath $msixPath -Algorithm SHA256).Hash)"
 
-    $extractDir = Join-Path $repoRoot ("build/msix-verify-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
-    Write-Step 'Extracting the package'
-    # Expand-Archive only accepts .zip on Windows PowerShell; a .msix is a zip.
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($msixPath, $extractDir)
-    $packagedManifest = Join-Path $extractDir 'AppxManifest.xml'
-    if (-not (Test-Path -LiteralPath $packagedManifest -PathType Leaf)) {
-        throw 'the package contains no AppxManifest.xml.'
+        $extractDir = Join-Path $repoRoot ("build/msix-verify-" + [guid]::NewGuid().ToString('N').Substring(0, 8))
+        Write-Step 'Extracting the package'
+        # Expand-Archive only accepts .zip on Windows PowerShell; a .msix is a zip.
+        Add-Type -AssemblyName System.IO.Compression.FileSystem
+        [System.IO.Compression.ZipFile]::ExtractToDirectory($msixPath, $extractDir)
+        $packagedManifest = Join-Path $extractDir 'AppxManifest.xml'
+        if (-not (Test-Path -LiteralPath $packagedManifest -PathType Leaf)) {
+            throw 'the package contains no AppxManifest.xml.'
+        }
+
+        Invoke-External -Description 'Verifying the packaged manifest' `
+            -FilePath 'dart' -Arguments @('run', $patchTool, $packagedManifest, '--verify')
     }
-
-    Invoke-External -Description 'Verifying the packaged manifest' `
-        -FilePath 'dart' -Arguments @('run', $patchTool, $packagedManifest, '--verify')
 
     Write-Step 'Observed package family name'
     $installed = @()
@@ -372,19 +403,26 @@ try {
     }
 
     Write-Host ''
-    if ($SkipPack) {
+    if ($Register) {
+        Write-Host "Package registered ($Mode): built, patched, verified, and registered in Developer Mode." -ForegroundColor Green
+        Write-Host "Manifest: $manifestPath" -ForegroundColor Green
+    }
+    elseif ($SkipPack) {
         Write-Host 'Verification complete: existing package reused; no build, patch, or pack was performed.' -ForegroundColor Green
+        Write-Host "MSIX: $msixPath" -ForegroundColor Green
     }
     elseif ($SkipBuild) {
         Write-Host 'Package complete: existing build and manifest reused; patched, packed, and verified.' -ForegroundColor Green
+        Write-Host "MSIX: $msixPath" -ForegroundColor Green
     }
     elseif ($SkipFlutterBuild) {
         Write-Host 'Package complete: existing Flutter build reused (-SkipFlutterBuild); patched, packed, and verified.' -ForegroundColor Green
+        Write-Host "MSIX: $msixPath" -ForegroundColor Green
     }
     else {
         Write-Host 'Package complete: built, patched, packed, and verified.' -ForegroundColor Green
+        Write-Host "MSIX: $msixPath" -ForegroundColor Green
     }
-    Write-Host "MSIX: $msixPath" -ForegroundColor Green
     Write-Verbose 'Manifest consistency and packaging integrity only; installed-app WNS delivery is a separate acceptance step.'
 }
 finally {

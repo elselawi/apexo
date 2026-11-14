@@ -31,6 +31,14 @@ struct ChannelOutcome {
   int64_t expiry_unix_seconds = 0;
 };
 
+struct ChannelDiagnostic {
+  bool acquired = false;
+  int status = -1;        // PushNotificationChannelStatus, -1 when unknown
+  int32_t extended_error = 0;
+  bool timed_out = false;
+  int async_status = -1;  // AsyncStatus, -1 when the request completed
+};
+
 // Windows push notifications (WNS) through the Windows App SDK.
 //
 // The Dart side owns everything the user sees; this service owns the native
@@ -100,6 +108,11 @@ class PushNotifications {
   // Starts (or joins) a channel request. Returns false when no asynchronous
   // completion can arrive, so every caller's pending result is completed now.
   bool StartChannelRequest();
+
+  // Synchronously tests CreateChannelAsync on a worker thread for CLI
+  // diagnostics; never returns or logs the channel URI.
+  ChannelDiagnostic DiagnoseChannelAcquisition(
+      std::chrono::milliseconds timeout = std::chrono::seconds(15)) const;
 
   // Releases channel handlers, joins the owned worker and revokes the WNS event
   // token. Deliberately does not unregister the push manager: 1.7 documents

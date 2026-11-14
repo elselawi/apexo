@@ -12,7 +12,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 /// A visit section and its icon; the icons match the appointment card's sections.
 enum AppointmentIndicator {
-  dentalNotes(FluentIcons.teeth, "dentalNotes", Color(0xFF0D9488)),
+  dentalNotes(FluentIcons.teeth, "dentalNotes", Color(0xFFE11D48)),
   prescriptions(FluentIcons.pill, "prescription", Color(0xFF2563EB)),
   labwork(FluentIcons.manufacturing, "labworks", Color(0xFFD97706)),
   gallery(WindowsIcons.camera, "gallery", Color(0xFF7C3AED)),

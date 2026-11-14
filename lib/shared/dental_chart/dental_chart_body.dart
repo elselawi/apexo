@@ -1,5 +1,6 @@
 import 'package:apexo/common_widgets/teeth_selector/opg_dental_chart.dart';
 import 'package:apexo/common_widgets/teeth_selector/teeth_selector.dart';
+import 'package:apexo/shared/dental_chart/dental_chart_overlay.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/ui/workspace/panel_accent.dart';
@@ -101,25 +102,9 @@ class DentalChartBody extends StatelessWidget {
                       ],
                     );
                   }
-                  final cardHeight =
-                      (constraints.maxHeight * 0.6).clamp(0.0, 300.0);
-                  return Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      SingleChildScrollView(
-                        padding: EdgeInsets.only(bottom: cardHeight),
-                        child: animatedChart,
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        child: ConstrainedBox(
-                          constraints: BoxConstraints(maxHeight: cardHeight),
-                          child: floatingCard,
-                        ),
-                      ),
-                    ],
+                  return DentalChartOverlay(
+                    chart: animatedChart,
+                    card: floatingCard,
                   );
                 },
               );

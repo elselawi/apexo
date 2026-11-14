@@ -6,6 +6,7 @@ import 'package:apexo/common_widgets/teeth_selector/tooth_history.dart';
 import 'package:apexo/common_widgets/teeth_selector/tooth_state_wheel.dart';
 import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';

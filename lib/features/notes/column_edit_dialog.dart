@@ -6,6 +6,7 @@ import 'package:apexo/common_widgets/keyboard_aware.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -145,7 +146,7 @@ class _ArchiveColumnButton extends StatefulWidget {
 }
 
 class _ArchiveColumnButtonState extends State<_ArchiveColumnButton> {
-  final _deleteFlyoutCtrl = FlyoutController();
+  final _deleteFlyoutCtrl = AppFlyoutController();
 
   @override
   void dispose() {

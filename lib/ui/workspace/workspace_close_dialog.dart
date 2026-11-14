@@ -321,6 +321,7 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
   Widget _itemMenu({
     required Object owner,
     required String title,
+    required String openRecordLabel,
     required VoidCallback onReview,
     required VoidCallback onSave,
     required VoidCallback onDiscard,
@@ -350,7 +351,7 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
             items: [
               MenuFlyoutItem(
                 leading: const Icon(FluentIcons.view, size: 14),
-                text: Txt(txt('openRecord')),
+                text: Txt(txt(openRecordLabel)),
                 onPressed: _busy ? null : () => _queueItemAction(onReview),
               ),
               const MenuFlyoutSeparator(),
@@ -388,6 +389,7 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
           _itemMenu(
             owner: record,
             title: txt(record.displayTitle),
+            openRecordLabel: openRecordLabelFor(record.singularName),
             onReview: () => _reviewRecord(record),
             onSave: () => unawaited(_closeRecord(record, save: true)),
             onDiscard: () => unawaited(_closeRecord(record, save: false)),
@@ -399,6 +401,7 @@ class _WorkspaceCloseDialogState extends State<WorkspaceCloseDialog> {
           _itemMenu(
             owner: window,
             title: WorkspaceCloseRequest.windowTitle(window),
+            openRecordLabel: window.openRecordLabel,
             onReview: () => _reviewWindow(window),
             onSave: () => unawaited(_closeWindow(window, save: true)),
             onDiscard: () => unawaited(_closeWindow(window, save: false)),

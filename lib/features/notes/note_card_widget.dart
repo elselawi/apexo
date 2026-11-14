@@ -12,6 +12,7 @@ import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/constants.dart';
@@ -32,8 +33,8 @@ class NoteCard extends StatefulWidget {
 }
 
 class _NoteCardState extends State<NoteCard> with TickerProviderStateMixin {
-  final FlyoutController _assigningFlyoutCtrl = FlyoutController();
-  final FlyoutController _confirmDeleteFlyoutCtrl = FlyoutController();
+  final FlyoutController _assigningFlyoutCtrl = AppFlyoutController();
+  final FlyoutController _confirmDeleteFlyoutCtrl = AppFlyoutController();
   final TextEditingController _commentController = TextEditingController();
   final TextEditingController _recurringIntervalController =
       TextEditingController();

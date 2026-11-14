@@ -91,7 +91,8 @@ Future<void> openPatientDentalChart(
   session.navigationDirection = direction;
   showDentalChartWindow(
     session,
-    onOpenRecord: onOpenRecord ??
-        () => openPatientPanel(draft, focus: kDentalChartWindowId),
+    // The record, not the chart: opening the same chart in the panel would leave
+    // the window the user came from in front, as if nothing had opened.
+    onOpenRecord: onOpenRecord ?? () => openPatientPanel(draft),
   );
 }

@@ -153,11 +153,19 @@ class FirebaseMessagingService {
   }
 
   Future<void> _requestPermission() async {
-    authStatus = (await FirebaseMessaging.instance.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    ))
-        .authorizationStatus;
+    try {
+      authStatus = (await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      ))
+          .authorizationStatus;
+    } catch (error, stack) {
+      // macOS answers `UNErrorCodeNotificationsNotAllowed` (reported by the
+      // plugin as `unknown`) instead of prompting when it will not ask again,
+      // e.g. after the prompt was shown once and the app quit unanswered.
+      // Staying `denied` keeps startup alive; init() then skips the token.
+      logger('Could not request notification permission: $error', stack, 2);
+    }
   }
 }

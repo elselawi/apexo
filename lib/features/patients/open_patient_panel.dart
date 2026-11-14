@@ -28,6 +28,7 @@ import 'package:apexo/features/dicom/open_dicom_viewer_window.dart';
 import 'package:apexo/features/patients/patient_windows.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/color_based_on_payment.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/utils/logger.dart';
@@ -273,7 +274,8 @@ Future<Panel> _ensurePatientPanel(
 
 /// A patient's window shown on its own — only ever with no panel on screen, so
 /// nothing behind it competes for the record — with the Save/Close a panel would
-/// have provided.
+/// have provided. Its Open record asks for the record itself, never the window
+/// the user came from, which would leave the same list in front.
 Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
   final scope = 'patient:${patient.id}';
   switch (window) {
@@ -284,8 +286,6 @@ Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
       await openPatientDentalChart(
         patient,
         onOpenAppointment: _openAppointmentFromChart,
-        onOpenRecord: () =>
-            _openPatientPanel(patient, focus: PatientWindow.dentalChart.id),
       );
     case PatientWindow.appointments:
       late final FloatingWindow floating;
@@ -315,7 +315,7 @@ Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
           ),
         ),
         scope: scope,
-        onOpenRecord: () => _openPatientPanel(patient, focus: window.id),
+        onOpenRecord: () => _openPatientPanel(patient),
       );
     case PatientWindow.gallery:
       late final FloatingWindow floating;
@@ -342,7 +342,7 @@ Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
           ),
         ),
         scope: scope,
-        onOpenRecord: () => _openPatientPanel(patient, focus: window.id),
+        onOpenRecord: () => _openPatientPanel(patient),
       );
     case PatientWindow.page:
       WindowsManager.showStandalone(
@@ -357,7 +357,7 @@ Future<void> _openPatientWindow(Patient patient, PatientWindow window) async {
           ),
         ),
         scope: scope,
-        onOpenRecord: () => _openPatientPanel(patient, focus: window.id),
+        onOpenRecord: () => _openPatientPanel(patient),
       );
   }
 }

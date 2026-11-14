@@ -71,6 +71,7 @@ abstract base class Panel implements WindowRecordSession {
   late final PanelWorkspace workspace = PanelWorkspace();
 
   final IconData icon;
+  @override
   final String singularName;
   final String unicodeSymbol;
 

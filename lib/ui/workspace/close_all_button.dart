@@ -96,10 +96,10 @@ class _CloseAllButtonState extends State<CloseAllButton>
     super.dispose();
   }
 
-  /// A phone panel fills the screen behind a barrier, so there is no corner
-  /// beside it until the screen is wide enough to show both.
-  bool get _hasRoom =>
-      widget.panelWidth == 0 || widget.screenWidth >= kWindowsBreakpoint;
+  /// A phone shows one window at a time, so there is never a set to close at
+  /// once — and a panel fills the screen behind a barrier, leaving no corner
+  /// beside it.
+  bool get _hasRoom => widget.screenWidth >= kWindowsBreakpoint;
 
   void _sample() {
     final request = WorkspaceCloseRequest();

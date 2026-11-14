@@ -18,6 +18,7 @@ import 'package:apexo/common_widgets/dialogs/close_dialog_button.dart';
 import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:apexo/widget_keys.dart';
@@ -44,11 +45,15 @@ final class PanelScreen extends StatefulWidget {
 class _PanelScreenState extends State<PanelScreen> {
   late bool isNew;
   final FocusNode focusNode = FocusNode();
-  final panelSwitchController = FlyoutController();
-  final confirmCancelController = FlyoutController();
+  final panelSwitchController = AppFlyoutController();
+  final confirmCancelController = AppFlyoutController();
   Timer? saveButtonCheckTimer;
   StreamSubscription<int>? pendingEditsSub;
   StreamSubscription<bool>? savingSub;
+
+  /// The visit the band last drew: a band replacing another visit's replays its
+  /// arrival faster than the panel's first band.
+  String? _bandSessionId;
 
   @override
   void dispose() {
@@ -138,6 +143,14 @@ class _PanelScreenState extends State<PanelScreen> {
                   widget.layoutWidth < kWindowsBreakpoint;
               final statusBar =
                   collapsed ? 0.0 : MediaQuery.paddingOf(context).top;
+              final attached = widget.panel.attached;
+              // Only the panel's first band unfolds with the record; a band
+              // that takes another visit's place arrives quicker and keeps its
+              // height, so switching visits does not shove the record about.
+              final replacing = attached != null &&
+                  _bandSessionId != null &&
+                  _bandSessionId != attached.itemId;
+              _bandSessionId = attached?.itemId;
               return Column(
                 key: Key(locale.selected().toString()),
                 mainAxisSize: MainAxisSize.min,
@@ -149,7 +162,7 @@ class _PanelScreenState extends State<PanelScreen> {
                     if (widget.panel.workspaceWindows.isNotEmpty)
                       _buildWorkspaceBar(),
                     if (widget.panel.attached case final session?)
-                      _buildVisitBand(session),
+                      _buildVisitBand(session, replacing: replacing),
                     if (widget.panel.carriedBandFooter case final footer?)
                       Padding(
                         padding:
@@ -236,27 +249,31 @@ class _PanelScreenState extends State<PanelScreen> {
 
   Widget _buildReadOnlyNotice() {
     final theme = FluentTheme.of(context);
-    return Container(
-      key: WK.patientReadOnly,
-      width: double.infinity,
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 14, 8, 4),
-      decoration: topBarDecoration(context),
-      child: Row(
-        children: [
-          Icon(WindowsIcons.lock, size: 16, color: theme.inactiveColor),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Txt(
-              txt('patientReadOnlyWhileVisit'),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.typography.body?.copyWith(
-                fontSize: 12,
-                color: theme.inactiveColor,
+    // Revealed rather than inserted, so the record under it slides down with
+    // the band that takes the edits away.
+    return _Reveal(
+      child: Container(
+        key: WK.patientReadOnly,
+        width: double.infinity,
+        padding: const EdgeInsetsDirectional.fromSTEB(8, 14, 8, 4),
+        decoration: topBarDecoration(context),
+        child: Row(
+          children: [
+            Icon(WindowsIcons.lock, size: 16, color: theme.inactiveColor),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Txt(
+                txt('patientReadOnlyWhileVisit'),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.typography.body?.copyWith(
+                  fontSize: 12,
+                  color: theme.inactiveColor,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -332,7 +349,10 @@ class _PanelScreenState extends State<PanelScreen> {
 
   /// The band a carried record draws for itself. It counts dirty carried records
   /// live, so a draft hidden behind another visit is still named on close.
-  Widget _buildVisitBand(HostedRecordSession session) {
+  Widget _buildVisitBand(
+    HostedRecordSession session, {
+    required bool replacing,
+  }) {
     return StreamBuilder<bool>(
       stream: widget.panel.hasUnsavedChanges.stream,
       key: ValueKey('visit-band-${session.itemId}'),
@@ -341,6 +361,7 @@ class _PanelScreenState extends State<PanelScreen> {
         session: session,
         dirtyVisits:
             widget.panel.owned.where((owned) => owned.hasPendingEdits).length,
+        replacing: replacing,
       ),
     );
   }
@@ -673,12 +694,7 @@ class _PanelScreenState extends State<PanelScreen> {
             _syncPendingEdits();
             setState(() {});
           },
-          style: ButtonStyle(
-            foregroundColor: WidgetStatePropertyAll(isArchived
-                ? FluentTheme.of(context).accentColor.normal
-                : FluentTheme.of(context).resources.systemFillColorCritical),
-            textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
-          ),
+          style: panelDeleteButtonStyle(context, restoring: isArchived),
           child:
               ButtonContent(icon, "$action ${txt(widget.panel.singularName)}"),
         );

@@ -1,6 +1,7 @@
 import 'dart:ui' as ui;
 
 import 'package:apexo/services/backdrop.dart';
+import 'package:apexo/ui/design/ambient_backdrop.dart';
 import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
@@ -8,8 +9,9 @@ import 'package:fluent_ui/fluent_ui.dart';
 ///
 /// On Windows the window itself is translucent, so there is nothing to paint:
 /// DWM composes Mica and the layers above it carry the tint. Everywhere else
-/// this stands in for it with two very soft washes under the Mica tint, which
-/// is what gives a Fluent app its sense of depth instead of a flat grey page.
+/// [AmbientBackdrop] paints the stand-in — the same base and tint over a few
+/// slowly drifting colour clouds — which is what gives a Fluent app its sense
+/// of depth instead of a flat grey page.
 class MicaBackdrop extends StatelessWidget {
   const MicaBackdrop({super.key, required this.child});
 
@@ -17,69 +19,16 @@ class MicaBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final materials = FluentMaterials.of(context);
-    if (Backdrop.native) {
-      return Stack(
-        fit: StackFit.expand,
-        children: [
-          IgnorePointer(child: ColoredBox(color: materials.micaVeil)),
-          child,
-        ],
-      );
+    if (!Backdrop.native) {
+      return AmbientBackdrop(child: child);
     }
+    final materials = FluentMaterials.of(context);
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColoredBox(color: materials.micaBase),
-        _MicaWash(
-          color: materials.micaWashPrimary,
-          center: const Alignment(-0.85, -0.95),
-          radius: 1.35,
-        ),
-        _MicaWash(
-          color: materials.micaWashSecondary,
-          center: const Alignment(0.95, 1.05),
-          radius: 1.2,
-        ),
-        DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                materials.micaTint,
-                Color.lerp(materials.micaTint, materials.micaBase, 0.45)!,
-              ],
-            ),
-          ),
-        ),
+        IgnorePointer(child: ColoredBox(color: materials.micaVeil)),
         child,
       ],
-    );
-  }
-}
-
-class _MicaWash extends StatelessWidget {
-  const _MicaWash({
-    required this.color,
-    required this.center,
-    required this.radius,
-  });
-
-  final Color color;
-  final Alignment center;
-  final double radius;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: center,
-          radius: radius,
-          colors: [color, color.withValues(alpha: 0)],
-        ),
-      ),
     );
   }
 }

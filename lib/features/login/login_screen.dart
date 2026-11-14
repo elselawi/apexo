@@ -8,6 +8,7 @@ import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/patient_side.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -24,11 +25,87 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final FlyoutController _qrFlyoutController = FlyoutController();
-  final FlyoutController _serverHelpFlyoutController = FlyoutController();
+  final FlyoutController _qrFlyoutController = AppFlyoutController();
+  final FlyoutController _serverHelpFlyoutController = AppFlyoutController();
   final serverURLCtrl = TextEditingController(text: login.url);
   final emailCtrl = TextEditingController(text: login.email);
   final passwordCtrl = TextEditingController();
+
+  /// `fluent_ui` keys every tab page by the identity of its [Tab], so a tab
+  /// built afresh in `build` hands the page a new key on each rebuild and the
+  /// fields in it are rebuilt from scratch. A rebuild happens as soon as the
+  /// software keyboard reports its inset, which is why the keyboard closed the
+  /// moment it opened. The tabs are therefore built once per locale and their
+  /// bodies subscribe to the state they show.
+  List<Tab>? _tabs;
+  String _tabsLocale = "";
+
+  List<Tab> _tabsForLocale() {
+    final code = locale.s.$code;
+    if (_tabs != null && _tabsLocale == code) return _tabs!;
+    _tabsLocale = code;
+    return _tabs = [
+      Tab(
+        key: WK.loginTab,
+        text: Txt(txt("login")),
+        icon: const Icon(FluentIcons.authenticator_app),
+        body: _loginTabBody(),
+      ),
+      Tab(
+        key: WK.forgotPasswordTab,
+        text: Txt(txt("resetPassword")),
+        icon: const Icon(FluentIcons.password_field),
+        body: _resetTabBody(),
+      ),
+    ];
+  }
+
+  Widget _loginTabBody() {
+    return MStreamBuilder(
+      streams: [
+        loginCtrl.loadingIndicator.stream,
+        loginCtrl.loginError.stream,
+        loginCtrl.obscureText.stream,
+        login.stream,
+      ],
+      builder: (context, _) => _buildLoginTab(context, [
+        serverField(),
+        emailField(),
+        passwordField(),
+      ], [
+        _buildLoginBtn(),
+        if (loginCtrl.loginError().isNotEmpty)
+          _buildOfflineBtn()
+        else if (login.url.isNotEmpty || login.email.isNotEmpty)
+          _buildClearButton(),
+      ]),
+    );
+  }
+
+  Widget _resetTabBody() {
+    return MStreamBuilder(
+      streams: [
+        loginCtrl.loadingIndicator.stream,
+        loginCtrl.resetInstructionsSent.stream,
+      ],
+      builder: (context, _) => _buildLoginTab(context, [
+        const SizedBox(height: 1),
+        InfoBar(
+          title: loginCtrl.resetInstructionsSent()
+              ? Txt(key: WK.msgSentReset, txt("beenSent"))
+              : Txt(key: WK.msgWillSendReset, txt("youLLGet")),
+          severity: loginCtrl.resetInstructionsSent()
+              ? InfoBarSeverity.success
+              : InfoBarSeverity.info,
+        ),
+        const SizedBox(height: 1),
+        serverField(),
+        emailField(),
+      ], [
+        if (loginCtrl.resetInstructionsSent() == false) _buildResetBtn(),
+      ]),
+    );
+  }
 
   void fillFromPersistence(Object any) {
     if (login.url.isNotEmpty) serverURLCtrl.text = login.url;
@@ -70,16 +147,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       streams: [
                         loginCtrl.selectedTab.stream,
                         loginCtrl.loginError.stream,
-                        loginCtrl.resetInstructionsSent.stream,
                         localSettings.stream,
-                        loginCtrl.obscureText.stream,
+                        locale.selected.stream,
                         loginCtrl.loadingPatientSide.stream,
                       ],
                       builder: (context, _) {
                         if (loginCtrl.loadingPatientSide()) {
                           return const Center(child: ProgressRing());
                         }
-                        return _buildLoginTabs(context);
+                        return _buildLoginTabs();
                       }),
                 )),
               ),
@@ -119,7 +195,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  TabView _buildLoginTabs(BuildContext context) {
+  TabView _buildLoginTabs() {
     return TabView(
         currentIndex: loginCtrl.selectedTab(),
         onChanged: (input) {
@@ -128,45 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
           }
         },
         closeButtonVisibility: CloseButtonVisibilityMode.never,
-        tabs: [
-          Tab(
-            key: WK.loginTab,
-            text: Txt(txt("login")),
-            icon: const Icon(FluentIcons.authenticator_app),
-            body: _buildLoginTab(context, [
-              serverField(),
-              emailField(),
-              passwordField(),
-            ], [
-              _buildLoginBtn(),
-              if (loginCtrl.loginError().isNotEmpty)
-                _buildOfflineBtn()
-              else if (login.url.isNotEmpty || login.email.isNotEmpty)
-                _buildClearButton(),
-            ]),
-          ),
-          Tab(
-            key: WK.forgotPasswordTab,
-            text: Txt(txt("resetPassword")),
-            icon: const Icon(FluentIcons.password_field),
-            body: _buildLoginTab(context, [
-              const SizedBox(height: 1),
-              InfoBar(
-                title: loginCtrl.resetInstructionsSent()
-                    ? Txt(key: WK.msgSentReset, txt("beenSent"))
-                    : Txt(key: WK.msgWillSendReset, txt("youLLGet")),
-                severity: loginCtrl.resetInstructionsSent()
-                    ? InfoBarSeverity.success
-                    : InfoBarSeverity.info,
-              ),
-              const SizedBox(height: 1),
-              serverField(),
-              emailField(),
-            ], [
-              if (loginCtrl.resetInstructionsSent() == false) _buildResetBtn(),
-            ]),
-          ),
-        ]);
+        tabs: _tabsForLocale());
   }
 
   FilledButton _buildResetBtn() {

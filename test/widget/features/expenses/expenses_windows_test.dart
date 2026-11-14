@@ -372,6 +372,8 @@ void main() {
     expect(WindowsManager.open(), hasLength(1));
 
     await pumpLayer(tester, 1600);
+    expect(find.text(txt('openSupplier')), findsWidgets,
+        reason: 'the action names the record it opens');
     await tester.tap(find.byKey(WK.windowOpenRecord));
     await tester.pumpAndSettle();
 
@@ -484,6 +486,43 @@ void main() {
       isTrue,
       reason: 'the panel carries the edit, so its Save is the one write',
     );
+  });
+
+  testWidgets('an order row deletes from its menu', (tester) async {
+    setViewport(tester, const Size(1600, 1000));
+    final orders = supplierOrders('supplier-order-delete');
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openExpenses(orders, 'Acme Supplies', 'supplier-order-delete',
+        null, ExpenseWindow.due));
+    await tester.pumpAndSettle();
+
+    await pumpLayer(tester, 1600);
+    expect(find.byType(OrderRow), findsOneWidget);
+
+    await tester.tap(find.byKey(WK.orderMenu));
+    await tester.pumpAndSettle();
+    await tester.tap(find
+        .descendant(
+          of: find.byType(MenuFlyout),
+          matching: find.text(txt("delete")),
+        )
+        .first);
+    await tester.pumpAndSettle();
+
+    // The confirmation outlives the menu it was asked from: the row's context
+    // must be the one the item keeps, not the closing flyout's.
+    expect(tester.takeException(), isNull);
+    expect(find.byType(ConfirmDeleteFlyout), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, txt("delete")).first);
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(expenses.get('supplier-order-delete-due')?.archived, isTrue,
+        reason: 'the order was not archived');
+    expect(find.byType(OrderRow), findsNothing,
+        reason: 'an archived order is still listed as due');
   });
 
   testWidgets('a supplier row deletes from its context menu', (tester) async {

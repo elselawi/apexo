@@ -4,6 +4,7 @@ import 'package:apexo/common_widgets/teeth_selector/tx_options.dart';
 import 'package:apexo/services/launch.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/iso_to_textual.dart';
 import 'package:apexo/utils/que.dart';
@@ -262,7 +263,7 @@ class SingleTreatmentLabel extends StatefulWidget {
 }
 
 class _SingleTreatmentLabelState extends State<SingleTreatmentLabel> {
-  final ctrl = FlyoutController();
+  final ctrl = AppFlyoutController();
 
   @override
   void dispose() {

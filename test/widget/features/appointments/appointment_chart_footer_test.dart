@@ -1,6 +1,8 @@
 @Tags(['serial'])
 library;
 
+import 'dart:async';
+
 import 'package:apexo/common_widgets/audio_recorder.dart';
 import 'package:apexo/common_widgets/dental_chart_voice_action.dart';
 import 'package:apexo/features/appointments/appointment_chart_footer.dart';
@@ -21,6 +23,7 @@ import 'package:apexo/ui/workspace/panels_manager.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:apexo/ui/workspace/standalone_window_card.dart';
 import 'package:apexo/widget_keys.dart';
+import 'package:apexo/ui/workspace/windows_layer.dart';
 import 'package:apexo/ui/workspace/windows_manager.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -362,4 +365,122 @@ void main() {
     expect(appointments.get(stored.id)!.teeth['26'], 'crown');
     expect(session.hasChanges, isFalse);
   });
+
+  /// The post-op card a phone draws over a visit's chart.
+  Future<void> pumpChartCard(WidgetTester tester, String id) async {
+    tester.view.physicalSize = const Size(350, 675);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    globalSettings
+        .set(Setting.fromJson({'id': 'ai_services_ena', 'value': '1'}));
+    network.isOnline(true);
+    final patient = testPatient(id: '$id-patient');
+    patients.set(patient);
+    addTearDown(() => patients.observableMap.remove(patient.id));
+    final visit = testAppointment(id: '$id-visit', patientID: patient.id);
+    appointments.set(visit);
+
+    await pumpApexoApp(tester, const SizedBox.shrink());
+    unawaited(openAppointment(visit));
+    await tester.pumpAndSettle();
+    await pumpApexoApp(tester,
+        const Stack(children: [WindowsLayer(visible: true, screenWidth: 350)]));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('dictation sits at the card\'s foot, beside the visit tools',
+      (tester) async {
+    await pumpChartCard(tester, 'voice-foot');
+
+    final foot = find.byKey(WK.visitChartAttachments);
+    expect(foot, findsOneWidget);
+    expect(
+      find.descendant(of: foot, matching: find.byType(AudioRecorderButton)),
+      findsOneWidget,
+      reason: 'the card\'s foot carries the dictation beside the tools',
+    );
+    expect(
+      find.descendant(
+        of: find.byType(AppointmentOperativeForm),
+        matching: find.byType(AudioRecorderButton),
+      ),
+      findsNothing,
+      reason: 'the fields no longer repeat it',
+    );
+    for (final id in ['labwork', 'gallery']) {
+      expect(
+        find.descendant(
+          of: foot,
+          matching:
+              find.byKey(WK.attachmentToggle(id, owner: kDentalChartWindowId)),
+        ),
+        findsOneWidget,
+      );
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('dictation keeps the post-op permission its fields have',
+      (tester) async {
+    login.savedPermissions = List.of(Perm.full)..[Perm.postOp] = 0;
+    await pumpChartCard(tester, 'no-post-op');
+
+    expect(find.byKey(WK.visitChartAttachments), findsOneWidget,
+        reason: 'the visit keeps its tools');
+    expect(find.byType(AudioRecorderButton), findsNothing,
+        reason: 'the dictation writes fields this account may not see');
+    expect(tester.takeException(), isNull);
+  });
+
+  for (final (width, small) in [(390.0, true), (900.0, false)]) {
+    testWidgets('the post-op fields step down a size at $width wide',
+        (tester) async {
+      tester.view.physicalSize = Size(width, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final visit = testAppointment(
+        id: 'type-$width',
+        prescriptions: ['Amoxicillin'],
+      );
+      appointments.set(visit);
+
+      await pumpApexoApp(
+        tester,
+        Align(
+          alignment: Alignment.topCenter,
+          child: SizedBox(
+            width: width,
+            height: 844,
+            child: AppointmentOperativeForm(visit),
+          ),
+        ),
+      );
+
+      EditableText field(Key key) => tester.widget<EditableText>(
+            find.descendant(
+                of: find.byKey(key), matching: find.byType(EditableText)),
+          );
+
+      final notes = field(WK.fieldAppointmentPostOpNotes);
+      final price = field(WK.fieldAppointmentPrice);
+      final prescriptions = field(WK.fieldAppointmentPrescriptions);
+
+      if (small) {
+        expect(notes.style.fontSize, 12,
+            reason: 'a phone screen resolves small notes type');
+        expect(notes.maxLines, 2, reason: 'one line less on the smallest card');
+        expect(price.style.fontSize, 12);
+        expect(prescriptions.style.fontSize, 11.5);
+      } else {
+        expect(notes.style.fontSize, greaterThan(12),
+            reason: 'a wide screen keeps the fields at the theme\'s size');
+        expect(notes.maxLines, 3);
+        expect(price.style.fontSize, greaterThan(12));
+        expect(prescriptions.style.fontSize, greaterThan(11.5));
+      }
+      expect(tester.takeException(), isNull);
+    });
+  }
 }

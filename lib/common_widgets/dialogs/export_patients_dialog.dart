@@ -10,6 +10,7 @@ import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/patients/patient_model.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/json_to_csv.dart';
 import 'package:apexo/utils/csv_to_json.dart';
 import 'package:apexo/utils/save_file_multiplatform.dart';
@@ -25,7 +26,7 @@ class ImportPatientsDialog extends StatefulWidget {
 }
 
 class _ImportPatientsDialogState extends State<ImportPatientsDialog> {
-  final controller = FlyoutController();
+  final controller = AppFlyoutController();
   final patientsController = TextEditingController();
   final aptsController = TextEditingController();
 
@@ -149,7 +150,7 @@ class _ExportPatientsDialogState extends State<ExportPatientsDialog> {
   late List<Map<String, dynamic>> sPatientsD;
   late List<Map<String, dynamic>> sAptsD;
 
-  final controller = FlyoutController();
+  final controller = AppFlyoutController();
   @override
   void dispose() {
     controller.dispose();

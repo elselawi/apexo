@@ -13,6 +13,7 @@ class AudioRecorderButton extends StatelessWidget {
     required this.onRecordingComplete,
     this.processingMessage,
     required this.hint,
+    this.compact = false,
   });
 
   /// text shown on top of the hint bubble.
@@ -34,8 +35,13 @@ class AudioRecorderButton extends StatelessWidget {
 
   final String? processingMessage;
 
+  /// Draws it as one of a row of tool chips: a smaller puck and label, and no
+  /// rule above it — for a foot that draws its own.
+  final bool compact;
+
   @override
   Widget build(BuildContext context) {
+    if (compact) return _compactButton(context);
     return Container(
       decoration: BoxDecoration(
         border: Border(
@@ -61,6 +67,63 @@ class AudioRecorderButton extends StatelessWidget {
             Txt(label),
           ],
         ),
+      ),
+    );
+  }
+
+  /// A chip shaped like the record's attachments, so the foot reads as one row.
+  Widget _compactButton(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final idle = theme.resources.solidBackgroundFillColorBase;
+    return Tooltip(
+      message: hint,
+      child: HoverButton(
+        onPressed: () => _openRecorder(context),
+        builder: (context, states) {
+          final hovered = states.contains(WidgetState.hovered);
+          return AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            padding: const EdgeInsetsDirectional.fromSTEB(6, 3, 8, 3),
+            decoration: BoxDecoration(
+              color: hovered
+                  ? Color.alphaBlend(Colors.grey.withValues(alpha: 0.10), idle)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.30)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 20,
+                  height: 20,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: buttonColor ?? Colors.red,
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 12),
+                ),
+                const SizedBox(width: 5),
+                ConstrainedBox(
+                  // Some languages name it in far more letters than a chip row
+                  // can spare.
+                  constraints: const BoxConstraints(maxWidth: 200),
+                  child: Txt(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.typography.caption?.copyWith(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }

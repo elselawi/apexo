@@ -12,6 +12,7 @@ import 'package:apexo/services/dicom/dicom_byte_fetcher.dart';
 import 'package:apexo/services/dicom/dicom_viewer_prefs.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart' show login;
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/logger.dart';
 import 'package:dicom_toolkit/dicom_toolkit.dart';
 import 'package:file_picker/file_picker.dart';
@@ -136,8 +137,8 @@ class _DicomViewerState extends State<DicomScanViewer> {
   _MeasureState _measure = const _MeasureState();
   final _viewerKey = GlobalKey();
   static const _ruler = DicomRuler();
-  final _windowFlyoutCtrl = FlyoutController();
-  final _colorFlyoutCtrl = FlyoutController();
+  final _windowFlyoutCtrl = AppFlyoutController();
+  final _colorFlyoutCtrl = AppFlyoutController();
   bool _isDeleting = false;
 
   @override

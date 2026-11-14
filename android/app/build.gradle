@@ -34,7 +34,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.example.apexo"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned above flutter.compileSdkVersion (36 in Flutter 3.47) because
+    // flutter_local_notifications 23 and androidx.core 1.19 require API 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -48,7 +50,9 @@ android {
         applicationId = "app.apexo.mobile"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdk = flutter.minSdkVersion
+        // Above flutter.minSdkVersion (24 in Flutter 3.47): sentry_flutter 10.x
+        // and its sentry-android 8.x native SDK require API 26.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode.toInteger()
         versionName = flutterVersionName

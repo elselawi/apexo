@@ -1,12 +1,20 @@
 part of 'panel_screen.dart';
 
-// The bubble for the visit a panel carries. A visit is not a panel and cannot
+/// How long the band takes to unfold over the panel when a visit opens.
+const _bandEntranceDuration = Duration(milliseconds: 260);
+
+/// A switch between visits replays that unfold, quicker than the first visit's
+/// so moving between visits does not hold up the work.
+const _bandSwitchDuration = Duration(milliseconds: 150);
+
+// The band for the visit a panel carries. A visit is not a panel and cannot
 // draw a header, so this stands in for its name, state and actions.
 class _VisitBand extends StatefulWidget {
   const _VisitBand({
     required this.panel,
     required this.session,
     required this.dirtyVisits,
+    required this.replacing,
   });
 
   final Panel panel;
@@ -14,6 +22,10 @@ class _VisitBand extends StatefulWidget {
 
   /// How many records this panel carries whose draft differs from the store.
   final int dirtyVisits;
+
+  /// True when this band takes another visit's place: it arrives quickly and
+  /// keeps its height, so the record under it is not shoved about.
+  final bool replacing;
 
   @override
   State<_VisitBand> createState() => _VisitBandState();
@@ -72,6 +84,12 @@ class _VisitBandState extends State<_VisitBand> {
   Widget build(BuildContext context) {
     final session = widget.session;
     final accent = session.accent ?? _accent;
+    final theme = FluentTheme.of(context);
+    // The tail grows out of the footer, so it must be the footer's colour.
+    final footerBackground = Color.alphaBlend(
+      accent.withValues(alpha: 0.08),
+      theme.menuColor,
+    );
     return StreamBuilder<int>(
       stream: widget.panel.workspace.revision.stream,
       builder: (context, _) => StreamBuilder<bool>(
@@ -82,64 +100,72 @@ class _VisitBandState extends State<_VisitBand> {
             accent.withValues(alpha: 0.06),
             materials.card,
           );
-          return Padding(
-            padding: const EdgeInsetsDirectional.fromSTEB(8, 10, 8, 4),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  key: WK.visitBand,
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: background,
-                    borderRadius: FluentMaterials.surfaceRadius,
-                    border: Border.all(
-                      color: accent.withValues(alpha: 0.34),
-                      width: FluentMaterials.hairlineWidth,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.06),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+          return _Reveal(
+            duration:
+                widget.replacing ? _bandSwitchDuration : _bandEntranceDuration,
+            grow: !widget.replacing,
+            child: Padding(
+              // The tail hangs into this bottom padding, below the card.
+              padding: const EdgeInsetsDirectional.fromSTEB(8, 10, 8, 9),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    key: WK.visitBand,
+                    clipBehavior: Clip.antiAlias,
+                    decoration: BoxDecoration(
+                      color: background,
+                      borderRadius: FluentMaterials.surfaceRadius,
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.34),
+                        width: FluentMaterials.hairlineWidth,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildIdentity(context),
-                      if (session.bandContent case final content?)
-                        Padding(
-                          key: WK.visitContent,
-                          padding:
-                              const EdgeInsetsDirectional.fromSTEB(8, 2, 8, 2),
-                          // Keyed by visit id: switching visits rebuilds the
-                          // form instead of keeping the old one's state.
-                          child: KeyedSubtree(
-                            key: ValueKey('visit-content-${session.itemId}'),
-                            child: content,
-                          ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.06),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
-                      _buildTransient(context),
-                      _buildAttachments(accent),
-                      _buildFooter(context, accent),
-                    ],
-                  ),
-                ),
-                PositionedDirectional(
-                  top: -5,
-                  start: 102,
-                  child: CustomPaint(
-                    size: const Size(14, 6),
-                    painter: _VisitBandArrow(
-                      background: background,
-                      border: accent.withValues(alpha: 0.34),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildIdentity(context),
+                        if (session.bandContent case final content?)
+                          Padding(
+                            key: WK.visitContent,
+                            padding: const EdgeInsetsDirectional.fromSTEB(
+                                8, 2, 8, 2),
+                            // Keyed by visit id: switching visits rebuilds the
+                            // form instead of keeping the old one's state.
+                            child: KeyedSubtree(
+                              key: ValueKey('visit-content-${session.itemId}'),
+                              child: content,
+                            ),
+                          ),
+                        _buildTransient(context),
+                        _buildAttachments(accent),
+                        _buildFooter(context, accent, footerBackground),
+                      ],
                     ),
                   ),
-                ),
-              ],
+                  // Points down at the record the visit was opened from.
+                  PositionedDirectional(
+                    bottom: -5,
+                    start: 16,
+                    child: CustomPaint(
+                      key: WK.visitBandTail,
+                      size: const Size(14, 6),
+                      painter: _VisitBandArrow(
+                        background: footerBackground,
+                        border: accent.withValues(alpha: 0.34),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -147,7 +173,7 @@ class _VisitBandState extends State<_VisitBand> {
     );
   }
 
-  /// The colour the visit's kind is known by, for the bubble and its footer.
+  /// The colour the visit's kind is known by, for the band and its footer.
   Color get _accent =>
       widget.panel.accent ?? FluentTheme.of(context).accentColor;
 
@@ -271,7 +297,7 @@ class _VisitBandState extends State<_VisitBand> {
   }
 
   // Close keeps the draft; its tooltip says so.
-  Widget _buildFooter(BuildContext context, Color accent) {
+  Widget _buildFooter(BuildContext context, Color accent, Color background) {
     final session = widget.session;
     final theme = FluentTheme.of(context);
     final dirty = session.hasPendingEdits;
@@ -284,8 +310,7 @@ class _VisitBandState extends State<_VisitBand> {
     return Container(
       padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 7),
       decoration: BoxDecoration(
-        color:
-            Color.alphaBlend(accent.withValues(alpha: 0.08), theme.menuColor),
+        color: background,
         border: Border(
           top: BorderSide(color: accent.withValues(alpha: 0.22)),
         ),
@@ -407,8 +432,8 @@ class _VisitBandState extends State<_VisitBand> {
   }
 }
 
-// Same 14x6 tail as the post-op card's, so the two bubbles cannot grow
-// different arrows.
+// The same 14x6 tail as the post-op card's, flipped: this one hangs under the
+// band and points down at the record the visit was opened from.
 class _VisitBandArrow extends CustomPainter {
   const _VisitBandArrow({required this.background, required this.border});
 
@@ -418,16 +443,16 @@ class _VisitBandArrow extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final tail = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height)
+      ..moveTo(0, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(size.width, 0)
       ..close();
     canvas.drawPath(tail, Paint()..color = background);
-    // Only the two upper edges are stroked; the bubble's border draws the base.
+    // Only the two lower edges are stroked; the band's border draws the base.
     final edge = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width / 2, 0)
-      ..lineTo(size.width, size.height);
+      ..moveTo(0, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..lineTo(size.width, 0);
     canvas.drawPath(
       edge,
       Paint()
@@ -440,4 +465,83 @@ class _VisitBandArrow extends CustomPainter {
   @override
   bool shouldRepaint(_VisitBandArrow oldDelegate) =>
       oldDelegate.background != background || oldDelegate.border != border;
+}
+
+/// Unfolds [child] into place: its height grows from the top while it fades and
+/// drops the last few pixels, so whatever sits under it slides instead of
+/// jumping. The band and the record's read-only notice share it.
+class _Reveal extends StatefulWidget {
+  const _Reveal({
+    required this.child,
+    this.duration = _bandEntranceDuration,
+    this.grow = true,
+  });
+
+  final Widget child;
+  final Duration duration;
+
+  /// Whether the child gains its height as it arrives. A band that takes
+  /// another visit's place does not: growing would drop the record out from
+  /// under it first, so that band only fades and drops into place.
+  final bool grow;
+
+  @override
+  State<_Reveal> createState() => _RevealState();
+}
+
+class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: widget.duration,
+  );
+  late final Animation<double> _value = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.forward(from: 0);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return AnimatedBuilder(
+      animation: _value,
+      // One shape for every value: swapping the wrappers out at rest would
+      // rebuild the band's whole subtree — and the form on it — on the frame
+      // the animation ends.
+      builder: (context, child) {
+        final value = reduceMotion ? 1.0 : _value.value;
+        return ClipRect(
+          // Settled: no clip, no layers between the panel and its band.
+          clipBehavior: value >= 1 ? Clip.none : Clip.hardEdge,
+          child: Align(
+            alignment: AlignmentDirectional.topCenter,
+            // A replacing band keeps its height; it only fades into place.
+            heightFactor: widget.grow ? value : 1,
+            child: Opacity(
+              // A replacing band starts half visible so the change reads as one
+              // band replacing another, not as a blink.
+              opacity: widget.grow ? value : 0.4 + 0.6 * value,
+              child: FractionalTranslation(
+                translation:
+                    Offset(0, (widget.grow ? -0.03 : -0.015) * (1 - value)),
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
 }

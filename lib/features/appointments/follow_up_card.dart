@@ -13,6 +13,7 @@ import 'package:apexo/features/settings/settings_stores.dart'
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -277,7 +278,7 @@ class FollowUpCardTarget extends StatefulWidget {
 }
 
 class _FollowUpCardTargetState extends State<FollowUpCardTarget> {
-  final FlyoutController _flyout = FlyoutController();
+  final FlyoutController _flyout = AppFlyoutController();
 
   @override
   void dispose() {

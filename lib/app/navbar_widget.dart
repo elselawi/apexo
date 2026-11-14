@@ -8,6 +8,7 @@ import 'package:apexo/core/multi_stream_builder.dart';
 import 'package:apexo/features/booking/booking_session.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -199,7 +200,7 @@ class BottomNavBarMoreButton extends StatefulWidget {
 }
 
 class _BottomNavBarMoreButtonState extends State<BottomNavBarMoreButton> {
-  final bottomNavFlyoutController = FlyoutController();
+  final bottomNavFlyoutController = AppFlyoutController();
 
   @override
   void dispose() {

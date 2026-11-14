@@ -18,7 +18,9 @@ pluginManagement {
 
 plugins {
     id "dev.flutter.flutter-plugin-loader" version "1.0.0"
-    id "com.android.application" version "9.1.0" apply false
+    // AGP 9.1.1 is the first release that supports API level 37.0, which
+    // flutter_local_notifications 23 and androidx.core 1.19 require.
+    id "com.android.application" version "9.1.1" apply false
     // START: FlutterFire Configuration
     id "com.google.gms.google-services" version "4.5.0" apply false
     // END: FlutterFire Configuration

@@ -433,6 +433,11 @@ void main() {
     );
     final panel = PanelsManager.active().single;
     expect(
+      panel.initialWindow,
+      isNull,
+      reason: 'the record opens, not the chart the work came from',
+    );
+    expect(
       panel.hasPendingEdits,
       isTrue,
       reason: 'the panel opens dirty on the work the window was holding',
@@ -502,6 +507,8 @@ void main() {
       const Stack(children: [WindowsLayer(visible: true, screenWidth: 1600)]),
     );
     await tester.pumpAndSettle();
+    expect(find.text(txt('openPatient')), findsWidgets,
+        reason: 'the action names the record it opens');
     await tester.tap(find.byKey(WK.windowOpenRecord));
     await tester.pumpAndSettle();
 
@@ -513,9 +520,19 @@ void main() {
     final panel = PanelsManager.active().single;
     expect(panel.itemId, patient.id);
     expect(
+      panel.initialWindow,
+      isNull,
+      reason: 'Open record asks for the record, not the window it came from',
+    );
+    expect(
+      panel.primaryWindow?.id,
+      PatientWindow.details.id,
+      reason: 'the record itself is what Open record opens',
+    );
+    expect(
       panel.workspace.isOpen(PatientWindow.appointments.id),
-      isTrue,
-      reason: 'the panel opens on the window the user was looking at',
+      isFalse,
+      reason: 'the list that led here must not stay in front of the record',
     );
     expect(tester.takeException(), isNull);
   });
@@ -743,6 +760,14 @@ void main() {
     final floating = WindowsManager.open().single;
     expect(floating.window.id, AppointmentWindow.labwork.id);
     expect(floating.window.id, isNot(AppointmentWindow.dentalChart.id));
+
+    await pumpApexoApp(
+      tester,
+      const Stack(children: [WindowsLayer(visible: true, screenWidth: 1600)]),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text(txt('openAppointment')), findsWidgets,
+        reason: 'the action names the record it opens');
     expect(tester.takeException(), isNull);
   });
 

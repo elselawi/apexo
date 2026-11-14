@@ -6,7 +6,11 @@ import 'package:apexo/features/appointments/appointment_sessions.dart';
 import 'package:apexo/features/appointments/appointment_windows.dart';
 import 'package:apexo/features/appointments/appointments_store.dart';
 import 'package:apexo/features/appointments/open_appointment.dart';
+import 'package:apexo/features/settings/settings_stores.dart'
+    show globalSettings;
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/services/network.dart';
+import 'package:apexo/shared/dental_chart/dental_chart_overlay.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_session.dart';
 import 'package:apexo/shared/dental_chart/dental_chart_window_spec.dart';
 import 'package:apexo/ui/workspace/floating_window.dart';
@@ -63,87 +67,99 @@ class AppointmentChartFooter extends StatelessWidget {
             ),
           ).withValues(alpha: 0.96);
           final border = accent.withValues(alpha: 0.30);
+          // Floating on the chart, that surface owns how tall the card may
+          // grow; anywhere else the card keeps its resting ceiling.
+          final floating = DentalChartCardScope.maybeOf(context);
           // The visit's attachments, the same ones the visit band's tray lists.
           final attachments = <PanelWindow>[
             for (final window in visitSession?.windows ?? const <PanelWindow>[])
               if (window.attachedTo == PanelWindow.bandAttachment) window,
           ];
-          return ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 300),
+          final card = Padding(
             // The tail sits in this padding's top gap, above the card.
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 8),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      color: background,
-                      borderRadius: BorderRadius.circular(9),
-                      border: Border.all(color: border),
-                      boxShadow: [
-                        BoxShadow(
-                          color: accent.withValues(alpha: 0.10),
-                          blurRadius: 12,
-                          offset: const Offset(0, 3),
-                        ),
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                    // Padding lives on the two parts so the tray's divider spans the card.
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Only the fields scroll; the attachments stay visible at the card's foot.
-                        if (canViewPostOp(appointment))
-                          Flexible(
-                            child: SingleChildScrollView(
-                              child: Padding(
-                                padding: const EdgeInsetsDirectional.fromSTEB(
-                                    8, 6, 8, 8),
-                                child: AppointmentOperativeForm(
-                                  // Keyed by visit so the fields never keep the previous visit's values.
-                                  key: ValueKey(
-                                      'visit-operative-${appointment.id}'),
-                                  appointment,
-                                  followUpDraft: visitSession?.followUpDraft,
-                                  onEdited: visitSession?.refreshDirty,
-                                ),
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 12, 8, 8),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(color: border),
+                    boxShadow: [
+                      BoxShadow(
+                        color: accent.withValues(alpha: 0.10),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 2,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  // Padding lives on the two parts so the tray's divider spans the card.
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Only the fields scroll; the attachments stay visible at the card's foot.
+                      if (canViewPostOp(appointment))
+                        Flexible(
+                          child: SingleChildScrollView(
+                            child: Padding(
+                              padding: const EdgeInsetsDirectional.fromSTEB(
+                                  8, 6, 8, 8),
+                              child: AppointmentOperativeForm(
+                                // Keyed by visit so the fields never keep the previous visit's values.
+                                key: ValueKey(
+                                    'visit-operative-${appointment.id}'),
+                                appointment,
+                                followUpDraft: visitSession?.followUpDraft,
+                                onEdited: visitSession?.refreshDirty,
+                                // The card's foot hosts it, beside the tools.
+                                dictation: false,
                               ),
                             ),
                           ),
-                        StreamBuilder<int>(
-                          stream: panel.workspace.revision.stream,
-                          builder: (context, _) =>
-                              _attachmentsOf(panel, attachments) ??
-                              const SizedBox.shrink(),
                         ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    top: -5,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: CustomPaint(
-                        size: const Size(14, 6),
-                        painter: _ChartCardTail(
-                          background: background,
-                          border: border,
+                      StreamBuilder<int>(
+                        stream: panel.workspace.revision.stream,
+                        builder: (context, _) => _visitTools(
+                          panel,
+                          attachments,
+                          onEdited: visitSession?.refreshDirty,
                         ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                // The tail points at the teeth while the card is a bubble; a
+                // card that has taken the surface is a sheet and loses it.
+                Positioned(
+                  top: -5,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: floating == null
+                        ? _tail(background, border)
+                        : FadeTransition(
+                            opacity: ReverseAnimation(floating.expansion),
+                            child: _tail(background, border),
+                          ),
+                  ),
+                ),
+              ],
             ),
           );
+          return floating == null
+              ? ConstrainedBox(
+                  constraints: const BoxConstraints(
+                      maxHeight: kDentalChartCardMaxHeight),
+                  child: card,
+                )
+              : card;
         }
         final windows = <PanelWindow>[
           for (final entry in appointmentWindows(appointment))
@@ -181,24 +197,54 @@ class AppointmentChartFooter extends StatelessWidget {
           floating.scope == 'appointment:${appointment.id}')
       .firstOrNull;
 
-  // The band's tray again: same windows, same attached slot, so each editor
-  // opens in one place.
-  Widget? _attachmentsOf(Panel panel, List<PanelWindow> windows) {
-    if (windows.isEmpty) return null;
-    return WindowAttachments(
-      key: WK.visitChartAttachments,
-      windows: windows,
-      accent: PanelAccents.appointment,
-      // The card pads its fields; the tray adds only the divider above it.
-      padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 7),
-      keyForWindow: (window) =>
-          WK.attachmentToggle(window.id, owner: kDentalChartWindowId),
-      isOpen: (window) =>
-          panel.workspace.isOpen(window.id, slot: kAttachedSlot),
-      enabled: (window) =>
-          !window.onlyIfSaved || appointments.get(appointment.id) != null,
-      onToggle: (window) =>
-          panel.workspace.toggle(window.id, slot: kAttachedSlot),
+  /// The little pointer from the card up to the teeth.
+  Widget _tail(Color background, Color border) => CustomPaint(
+        size: const Size(14, 6),
+        painter: _ChartCardTail(background: background, border: border),
+      );
+
+  // The band's tray again, plus the dictation that fills the record: same
+  // windows, same attached slot, so each editor opens in one place.
+  Widget _visitTools(
+    Panel panel,
+    List<PanelWindow> windows, {
+    VoidCallback? onEdited,
+  }) {
+    return MStreamBuilder<Object?>(
+      // Dictation needs both the AI setting and a network, and both are live.
+      streams: [
+        network.isOnline.stream,
+        globalSettings.observableMap.stream,
+      ],
+      builder: (context, _) {
+        // The dictation writes the same fields the form does, so it takes the
+        // same permission.
+        final voice = canViewPostOp(appointment)
+            ? operativeVoiceAction(
+                appointment,
+                onEdited: onEdited,
+                compact: true,
+              )
+            : null;
+        if (windows.isEmpty && voice == null) return const SizedBox.shrink();
+        return WindowAttachments(
+          key: WK.visitChartAttachments,
+          windows: windows,
+          accent: PanelAccents.appointment,
+          marker: windows.isNotEmpty,
+          trailing: voice,
+          // The card pads its fields; the tray adds only the divider above it.
+          padding: const EdgeInsetsDirectional.fromSTEB(8, 6, 8, 7),
+          keyForWindow: (window) =>
+              WK.attachmentToggle(window.id, owner: kDentalChartWindowId),
+          isOpen: (window) =>
+              panel.workspace.isOpen(window.id, slot: kAttachedSlot),
+          enabled: (window) =>
+              !window.onlyIfSaved || appointments.get(appointment.id) != null,
+          onToggle: (window) =>
+              panel.workspace.toggle(window.id, slot: kAttachedSlot),
+        );
+      },
     );
   }
 

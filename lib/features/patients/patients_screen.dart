@@ -23,6 +23,7 @@ import 'package:apexo/services/login.dart';
 import 'package:apexo/services/perm.dart';
 import 'package:apexo/features/patients/patients_store.dart';
 import 'package:apexo/ui/design/fluent_materials.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/clip.dart';
 import 'package:apexo/utils/parsed_phone_number.dart';
 import 'package:fluent_ui/fluent_ui.dart';
@@ -69,7 +70,7 @@ class _PatientsPageState extends State<_PatientsPage> {
 
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final archiveSelectedFlyout = FlyoutController();
+  final archiveSelectedFlyout = AppFlyoutController();
 
   double calSpacing(double x) => (((3 / 205) * x) - (87 / 41)).clamp(5.0, 15.0);
   double calWidth(double x) => ((2 / 41) * x + (2580 / 41)).clamp(125, 145.0);

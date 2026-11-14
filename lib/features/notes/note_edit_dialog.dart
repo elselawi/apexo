@@ -13,6 +13,7 @@ import 'package:apexo/features/accounts/accounts_controller.dart';
 import 'package:apexo/features/notes/notes_model.dart';
 import 'package:apexo/features/notes/notes_store.dart';
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:apexo/services/login.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
@@ -43,7 +44,7 @@ class _NoteEditDialogState extends State<NoteEditDialog> {
   late final TextEditingController titleController;
   late final TextEditingController noteController;
   late final TextEditingController recurrenceIntervalController;
-  final _deleteFlyoutCtrl = FlyoutController();
+  final _deleteFlyoutCtrl = AppFlyoutController();
 
   late bool isDone;
   late DateTime dueDate;

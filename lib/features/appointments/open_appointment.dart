@@ -162,6 +162,10 @@ Future<void> _openVisit(
     PanelsManager.minimize(false);
     panel.workspace.hide(kDentalChartWindowId);
     panel.workspace.clearSlot(kAttachedSlot);
+    // A phone draws one surface, so the panel's own window the visit was opened
+    // from (the appointments list) gives way to the band instead of staying over
+    // it, as if nothing had opened.
+    panel.workspace.clearSlot(kHostSlot);
   }
   panel.attach(session, focus: wanted);
 }

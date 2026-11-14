@@ -12,6 +12,21 @@ ButtonStyle filledButtonStyle(Color color) => ButtonStyle(
       ),
     );
 
+/// The panel header's delete action: flat, with a critical-red label, and the
+/// accent colour when the same button restores instead of deleting.
+ButtonStyle panelDeleteButtonStyle(BuildContext context,
+    {bool restoring = false}) {
+  final theme = FluentTheme.of(context);
+  return ButtonStyle(
+    foregroundColor: WidgetStatePropertyAll(
+      restoring
+          ? theme.accentColor.normal
+          : theme.resources.systemFillColorCritical,
+    ),
+    textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 13)),
+  );
+}
+
 class ButtonContent extends StatelessWidget {
   // ignore: use_key_in_widget_constructors
   const ButtonContent(

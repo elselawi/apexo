@@ -166,6 +166,8 @@ class _VisitGalleryState extends State<VisitGallery> {
       canDelete: canEdit,
       owner: widget.owner,
       onOpenRecord: widget.onOpenRecord,
+      // A photo's scope groups photos, not the record they belong to.
+      openRecordLabelKey: 'openAppointment',
       slideshowEnabled: true,
       drawings: visit.drawings,
       onSaveDrawing: canEdit ? _saveDrawing : null,

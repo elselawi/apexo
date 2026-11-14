@@ -305,7 +305,7 @@ class _PatientDetails extends StatefulWidget {
 class _PatientDetailsState extends State<_PatientDetails> {
   final phoneTextController = PhoneTextEditingController();
   final emailTextController = TextEditingController();
-  final phoneFlyoutController = FlyoutController();
+  final phoneFlyoutController = AppFlyoutController();
   final nameController = TextEditingController();
   final yobController = TextEditingController();
   final addressController = TextEditingController();

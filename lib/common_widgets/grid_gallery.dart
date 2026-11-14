@@ -11,6 +11,7 @@ import 'package:apexo/common_widgets/error_dialog.dart';
 import 'package:apexo/core/store.dart';
 import 'package:apexo/services/localization/locale.dart';
 import 'package:apexo/services/login.dart';
+import 'package:apexo/utils/app_flyout_controller.dart';
 import 'package:apexo/utils/flyout_focus_fix.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/utils/logger.dart';
@@ -86,6 +87,7 @@ class GridGallery extends StatefulWidget {
     this.uploadConfig,
     this.owner,
     this.onOpenRecord,
+    this.openRecordLabelKey,
   });
   final String rowId;
   final List<String> imgs;
@@ -118,6 +120,9 @@ class GridGallery extends StatefulWidget {
   final String Function()? owner;
   final Future<void> Function()? onOpenRecord;
 
+  /// The record action's label when the photo's scope names no kind.
+  final String? openRecordLabelKey;
+
   @override
   State<GridGallery> createState() => _GridGalleryState();
 }
@@ -126,7 +131,7 @@ class _GridGalleryState extends State<GridGallery>
     with TickerProviderStateMixin {
   late AnimationController _entranceController;
   late List<Animation<double>> _entranceAnimations;
-  final FlyoutController _uploadFlyoutCtrl = FlyoutController();
+  final FlyoutController _uploadFlyoutCtrl = AppFlyoutController();
   bool _isUploading = false;
   bool _isDeleting = false;
   final Set<String> _downloadingFiles = {};
@@ -460,6 +465,7 @@ class _GridGalleryState extends State<GridGallery>
       ),
       scope: 'row:${widget.rowId}',
       onOpenRecord: widget.onOpenRecord,
+      openRecordLabelKey: widget.openRecordLabelKey,
     );
   }
 

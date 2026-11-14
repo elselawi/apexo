@@ -23,8 +23,8 @@ class ScreenCommandBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       decoration: BoxDecoration(
         color: materials.glassTint,
-        border: Border(
-          bottom: BorderSide(
+        border: Border.symmetric(
+          horizontal: BorderSide(
             color: materials.divider,
             width: FluentMaterials.hairlineWidth,
           ),

@@ -136,7 +136,7 @@ class _StandaloneWindowCardState extends State<StandaloneWindowCard> {
             onPressed: () => unawaited(_openRecord()),
             child: ButtonContent(
               FluentIcons.open_in_new_tab,
-              txt('openRecord'),
+              txt(widget.floating.openRecordLabel),
               // "Open in" points sideways, so mirror it in right-to-left.
               flipInRtl: true,
             ),

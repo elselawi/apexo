@@ -9,7 +9,8 @@ Future<void> flyoutFocusFix(BuildContext? context) async {
       primaryFocus?.context?.widget.toString().contains("EditableText") ??
           false;
 
-  final view = context != null
+  // The caller's context can be gone by the time a scheduled handler runs.
+  final view = context != null && context.mounted
       ? View.maybeOf(context)
       : WidgetsBinding.instance.platformDispatcher.implicitView;
 

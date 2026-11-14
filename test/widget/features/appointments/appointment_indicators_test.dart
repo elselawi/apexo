@@ -4,6 +4,7 @@ library;
 import 'dart:convert';
 
 import 'package:apexo/common_widgets/money_display.dart';
+import 'package:apexo/features/settings/settings_stores.dart';
 import 'package:apexo/utils/imgs.dart' show imgMemoryCache;
 import 'package:apexo/features/appointments/appointment_indicators.dart';
 import 'package:apexo/features/appointments/appointment_model.dart';
@@ -37,6 +38,13 @@ void main() {
         dcmImgs: const ['xray.dcm'],
       );
 
+  const visitIndicators = [
+    AppointmentIndicator.dentalNotes,
+    AppointmentIndicator.prescriptions,
+    AppointmentIndicator.labwork,
+    AppointmentIndicator.gallery,
+  ];
+
   Finder slot(AppointmentIndicator kind) =>
       find.byKey(WK.appointmentIndicator(kind.name));
 
@@ -58,7 +66,7 @@ void main() {
   }
 
   testWidgets(
-      'timeline indicators use a deeper chip fill and open only their window',
+      'timeline indicators use tinted pills and open only their window',
       (tester) async {
     allowWindows();
     final selected = <AppointmentWindow>[];
@@ -82,13 +90,15 @@ void main() {
           ),
         )));
 
-    final rail =
-        tester.widget<AnimatedContainer>(find.byKey(WK.appointmentInfoBadges));
-    final fill = rail.decoration! as BoxDecoration;
-    expect(fill.color, color.withValues(alpha: 0.18));
-    expect(rail.foregroundDecoration, isNull);
-    final ink = Color.lerp(color, Colors.black, 0.28);
-    for (final kind in AppointmentIndicator.values) {
+    for (final kind in visitIndicators) {
+      final token = tester.widget<AnimatedContainer>(slot(kind));
+      final fill = token.decoration! as BoxDecoration;
+      expect(fill.shape, BoxShape.circle);
+      expect(
+        (fill.gradient! as LinearGradient).colors,
+        [kind.tint.withValues(alpha: 0.18), kind.tint.withValues(alpha: 0.09)],
+      );
+      final ink = Color.lerp(kind.tint, Colors.black, 0.22);
       final icon =
           find.descendant(of: slot(kind), matching: find.byIcon(kind.icon));
       expect(tester.widget<Icon>(icon).color, ink);
@@ -108,15 +118,17 @@ void main() {
     addTearDown(mouse.removePointer);
     await mouse.moveTo(tester.getCenter(slot(AppointmentIndicator.labwork)));
     await tester.pumpAndSettle();
-    final icon = find.descendant(
-      of: slot(AppointmentIndicator.labwork),
-      matching: find.byIcon(AppointmentIndicator.labwork.icon),
+    final hoveredToken =
+        tester.widget<AnimatedContainer>(slot(AppointmentIndicator.labwork));
+    final hoveredFill = hoveredToken.decoration! as BoxDecoration;
+    expect(
+      (hoveredFill.gradient! as LinearGradient).colors,
+      [
+        AppointmentIndicator.labwork.tint.withValues(alpha: 0.28),
+        AppointmentIndicator.labwork.tint.withValues(alpha: 0.16),
+      ],
     );
-    expect(tester.widget<Icon>(icon).color, ink);
-    final hoveredRail =
-        tester.widget<AnimatedContainer>(find.byKey(WK.appointmentInfoBadges));
-    expect((hoveredRail.decoration! as BoxDecoration).color,
-        color.withValues(alpha: 0.25));
+    expect(hoveredFill.boxShadow, isNotEmpty);
     expect(tester.takeException(), isNull);
   });
 
@@ -169,7 +181,7 @@ void main() {
       )),
     );
     final bounds = tester.getRect(find.byKey(WK.appointmentInfoBadges));
-    for (final kind in AppointmentIndicator.values) {
+    for (final kind in visitIndicators) {
       expect(slot(kind), findsOneWidget);
       final rect = tester.getRect(slot(kind));
       expect(rect.width, greaterThan(0));
@@ -216,7 +228,7 @@ void main() {
     );
 
     expect(find.byKey(WK.appointmentInfoBadges), findsOneWidget);
-    for (final kind in AppointmentIndicator.values) {
+    for (final kind in visitIndicators) {
       expect(slot(kind), findsOneWidget, reason: 'missing $kind');
     }
     expect(tester.takeException(), isNull);
@@ -230,7 +242,7 @@ void main() {
     );
 
     final text = card(tester);
-    for (final kind in AppointmentIndicator.values) {
+    for (final kind in visitIndicators) {
       expect(text, contains(txt(kind.labelKey)), reason: 'card: $kind');
     }
     expect(text, contains('Watches sweets'));
@@ -257,7 +269,7 @@ void main() {
       ),
     );
 
-    for (final kind in AppointmentIndicator.values) {
+    for (final kind in visitIndicators) {
       expect(slot(kind), findsOneWidget);
     }
     expect(find.text('+3'), findsNothing);
@@ -384,11 +396,16 @@ void main() {
           theme: ThemeMode.dark,
         );
 
-        final rail = tester
-            .widget<AnimatedContainer>(find.byKey(WK.appointmentInfoBadges));
-        expect((rail.decoration! as BoxDecoration).color,
-            Colors.blue.withValues(alpha: 0.24));
-        expect(rail.foregroundDecoration, isNull);
+        final token = tester
+            .widget<AnimatedContainer>(slot(AppointmentIndicator.labwork));
+        final tokenFill = token.decoration! as BoxDecoration;
+        expect(
+          (tokenFill.gradient! as LinearGradient).colors,
+          [
+            AppointmentIndicator.labwork.tint.withValues(alpha: 0.34),
+            AppointmentIndicator.labwork.tint.withValues(alpha: 0.18),
+          ],
+        );
         final chip = tester.getRect(find.byType(TimelineChip));
         final strip = tester.getRect(find.byKey(WK.appointmentInfoBadges));
         final money = tester.getRect(find.byType(MoneyDisplay));
@@ -397,7 +414,7 @@ void main() {
           expect(chip.contains(accessory.bottomRight), isTrue);
         }
         expect(strip.overlaps(money), isFalse);
-        for (final kind in AppointmentIndicator.values) {
+        for (final kind in visitIndicators) {
           expect(slot(kind), findsOneWidget);
           expect(strip.contains(tester.getCenter(slot(kind))), isTrue);
         }
@@ -719,6 +736,115 @@ void main() {
     expect(find.byType(TimelineChip), findsNWidgets(2));
     // One chip's worth, not two: the empty visit draws none.
     expect(find.byKey(WK.appointmentInfoBadges), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+      'follow-up indicator shows only when patient has followUpDate after the appointment',
+      (tester) async {
+    allowWindows();
+    final previousFollowUps = globalSettings.followUpsEnabled;
+    globalSettings.followUpsEnabled = true;
+    addTearDown(() => globalSettings.followUpsEnabled = previousFollowUps);
+
+    final visitDate = DateTime(2026, 1, 15, 10);
+    final patient = testPatient(id: 'followup-patient')
+      ..followUpDate = DateTime(2026, 1, 25)
+      ..followUpNote = 'Check suture healing';
+    patients.set(patient);
+    addTearDown(() => patients.observableMap.remove(patient.id));
+
+    final appointment = testAppointment(
+      id: 'followup-visit',
+      date: visitDate,
+      patientID: patient.id,
+    );
+
+    final selected = <AppointmentWindow?>[];
+    await pumpApexoApp(
+      tester,
+      SizedBox(
+        width: 900,
+        height: 300,
+        child: AgendaListView<Appointment>(
+          items: [appointment],
+          showPayments: false,
+          onSelect: (_, window) => selected.add(window),
+          onSetTime: (_) {},
+        ),
+      ),
+    );
+
+    expect(slot(AppointmentIndicator.followUp), findsOneWidget);
+    // Even without pre-op/post-op notes, indicators stay compact icon tokens (no inline text).
+    expect(
+      find.descendant(
+        of: find.byKey(WK.appointmentInfoBadges),
+        matching: find.byType(Text),
+      ),
+      findsNothing,
+    );
+    expect(card(tester), contains(txt('followUp')));
+    expect(card(tester), contains('Check suture healing'));
+    await tester.tap(slot(AppointmentIndicator.followUp));
+    await tester.pump();
+    expect(selected, [AppointmentWindow.operative]);
+
+    // Timeline also renders it and opens the operative window.
+    selected.clear();
+    await pumpApexoApp(
+      tester,
+      SizedBox(
+        width: 1200,
+        height: 400,
+        child: CalendarTimelineView(
+          items: [appointment],
+          showPayments: false,
+          selectedDate: visitDate,
+          onSelect: (_, window) => selected.add(window),
+          onSetTime: (_) {},
+          onAddNew: (_) {},
+        ),
+      ),
+    );
+    expect(slot(AppointmentIndicator.followUp), findsOneWidget);
+    await tester.tap(slot(AppointmentIndicator.followUp));
+    await tester.pump();
+    expect(selected, [AppointmentWindow.operative]);
+
+    // Same day or earlier follow-up is not after this appointment.
+    patients.set(patient..followUpDate = DateTime(2026, 1, 15));
+    await tester.pumpAndSettle();
+    await pumpApexoApp(
+      tester,
+      SizedBox(
+        width: 300,
+        child: AppointmentIndicators(item: appointment),
+      ),
+    );
+    expect(slot(AppointmentIndicator.followUp), findsNothing);
+
+    patients.set(patient..followUpDate = DateTime(2026, 1, 10));
+    await pumpApexoApp(
+      tester,
+      SizedBox(
+        width: 300,
+        child: AppointmentIndicators(item: appointment),
+      ),
+    );
+    expect(slot(AppointmentIndicator.followUp), findsNothing);
+
+    // Feature off hides the follow-up indicator even when a future date exists.
+    patients.set(patient..followUpDate = DateTime(2026, 1, 25));
+    globalSettings.followUpsEnabled = false;
+    await pumpApexoApp(
+      tester,
+      SizedBox(
+        width: 300,
+        child: AppointmentIndicators(item: appointment),
+      ),
+    );
+    expect(slot(AppointmentIndicator.followUp), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

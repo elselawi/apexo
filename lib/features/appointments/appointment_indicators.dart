@@ -1,31 +1,39 @@
 import 'dart:math' as math;
 
 import 'package:apexo/features/appointments/appointment_model.dart';
+import 'package:apexo/features/appointments/follow_up_scheduling.dart';
 import 'package:apexo/features/appointments/open_appointment.dart';
+import 'package:apexo/features/settings/settings_stores.dart' show DF;
 import 'package:apexo/services/localization/locale.dart';
+import 'package:apexo/ui/design/fluent_materials.dart';
 import 'package:apexo/utils/imgs.dart';
 import 'package:apexo/widget_keys.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 
 /// A visit section and its icon; the icons match the appointment card's sections.
 enum AppointmentIndicator {
-  dentalNotes(FluentIcons.teeth, "dentalNotes"),
-  prescriptions(FluentIcons.pill, "prescription"),
-  labwork(FluentIcons.manufacturing, "labworks"),
-  gallery(WindowsIcons.camera, "gallery");
+  dentalNotes(FluentIcons.teeth, "dentalNotes", Color(0xFF0D9488)),
+  prescriptions(FluentIcons.pill, "prescription", Color(0xFF2563EB)),
+  labwork(FluentIcons.manufacturing, "labworks", Color(0xFFD97706)),
+  gallery(WindowsIcons.camera, "gallery", Color(0xFF7C3AED)),
+  followUp(WindowsIcons.walk_solid, "followUp", kFollowUpAccent);
 
-  const AppointmentIndicator(this.icon, this.labelKey);
+  const AppointmentIndicator(this.icon, this.labelKey, this.tint);
 
   final IconData icon;
 
   /// The tooltip's heading — the same key the card's section is titled with.
   final String labelKey;
 
+  /// Category accent used by the indicator pill.
+  final Color tint;
+
   AppointmentWindow get window => switch (this) {
         dentalNotes => AppointmentWindow.dentalChart,
         prescriptions => AppointmentWindow.operative,
         labwork => AppointmentWindow.labwork,
         gallery => AppointmentWindow.gallery,
+        followUp => AppointmentWindow.operative,
       };
 }
 
@@ -69,7 +77,8 @@ class AppointmentIndicators extends StatefulWidget {
       (showDentalNotes && _hasDentalNotes(item)) ||
       _prescriptions(item).isNotEmpty ||
       item.hasLabwork ||
-      _hasGallery(item);
+      _hasGallery(item) ||
+      _hasFollowUpAfter(item);
 
   @override
   State<AppointmentIndicators> createState() => _AppointmentIndicatorsState();
@@ -89,33 +98,31 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
     }
   }
 
-  Color get _baseColor => widget.color ?? FluentTheme.of(context).accentColor;
-
-  Color get _inkColor {
+  Color _inkColorFor(Color tint) {
     final isDark = FluentTheme.of(context).brightness == Brightness.dark;
     return Color.lerp(
-      _baseColor,
+      tint,
       isDark ? Colors.white : Colors.black,
-      isDark ? 0.55 : 0.28,
+      isDark ? 0.45 : 0.22,
     )!;
   }
 
-  ButtonStyle get _buttonStyle => ButtonStyle(
+  ButtonStyle _buttonStyleFor(Color tint) => ButtonStyle(
         padding: const WidgetStatePropertyAll(EdgeInsets.zero),
         backgroundColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.hovered) ||
-                    states.contains(WidgetState.pressed)
-                ? (widget.color ?? FluentTheme.of(context).accentColor)
-                    .withValues(alpha: 0.12)
+            states.contains(WidgetState.pressed)
+                ? tint.withValues(alpha: 0.16)
                 : Colors.transparent),
-        shape: const WidgetStatePropertyAll(RoundedRectangleBorder()),
+        shape: const WidgetStatePropertyAll(CircleBorder()),
       );
 
-  Widget _indicatorButton(_Badge badge, Widget child) => Semantics(
+  Widget _indicatorButton(_Badge badge, Widget child, {Color? tint}) =>
+      Semantics(
         label: txt(badge.kind.labelKey),
         child: Button(
           onPressed: _canOpen(badge.kind) ? () => _open(badge.kind) : null,
-          style: _buttonStyle,
+          style: _buttonStyleFor(
+              tint ?? widget.color ?? FluentTheme.of(context).accentColor),
           child: SizedBox.expand(child: child),
         ),
       );
@@ -176,95 +183,121 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
 
   Widget _embeddedStrip(BuildContext context, List<_Badge> badges) {
     final theme = FluentTheme.of(context);
-    final color = _baseColor;
     final dark = theme.brightness == Brightness.dark;
+    const dockHeight = 24.0;
+    const tokenSize = 20.0;
+    const tokenGap = 3.0;
+    const dockPad = 2.0;
+
     return Tooltip(
       triggerMode: TooltipTriggerMode.manual,
       style: _tooltipStyle,
       richMessage: _card(context, badges),
-      child: LayoutBuilder(builder: (context, room) {
-        final showLabels =
-            room.maxWidth.isFinite && room.maxWidth >= badges.length * 88;
-        final cellWidth = showLabels ? 88.0 : 28.0;
-        final displayed = badges;
-        return Semantics(
-          label: badges.map((badge) => txt(badge.kind.labelKey)).join(', '),
-          child: MouseRegion(
-            onEnter: (_) => _setHovered(0),
-            onExit: (_) => _setHovered(null),
-            child: AnimatedContainer(
-              key: WK.appointmentInfoBadges,
-              duration: const Duration(milliseconds: 120),
-              constraints: BoxConstraints(maxWidth: badges.length * cellWidth),
-              height: 24,
-              clipBehavior: Clip.antiAlias,
+      child: Semantics(
+        label: badges.map((badge) => txt(badge.kind.labelKey)).join(', '),
+        child: SizedBox(
+          key: WK.appointmentInfoBadges,
+          height: dockHeight,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerEnd,
+            child: Container(
+              height: dockHeight,
+              padding: const EdgeInsets.all(dockPad),
               decoration: BoxDecoration(
-                color: color.withValues(
-                    alpha: _hovered != null
-                        ? (dark ? 0.32 : 0.25)
-                        : (dark ? 0.24 : 0.18)),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: color.withValues(alpha: 0.35)),
+                color: FluentMaterials.of(context).acrylic,
+                borderRadius: BorderRadius.circular(999),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: dark ? 0.24 : 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  for (var i = 0; i < badges.length; i++)
-                    Expanded(
-                      child: Container(
-                        key: WK.appointmentIndicator(displayed[i].kind.name),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          border: i == 0
-                              ? null
-                              : BorderDirectional(
-                                  start: BorderSide(
-                                    color: color.withValues(alpha: 0.22),
-                                  ),
-                                ),
-                        ),
-                        child: _indicatorButton(
-                            displayed[i],
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: showLabels ? 6 : 0),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: FittedBox(
-                                      fit: BoxFit.scaleDown,
-                                      child: displayed[i].media ??
-                                          Icon(
-                                            displayed[i].kind.icon,
-                                            size: 14,
-                                            color: _inkColor,
-                                          ),
-                                    ),
-                                  ),
-                                  if (showLabels) ...[
-                                    const SizedBox(width: 5),
-                                    Expanded(
-                                      child: Txt(
-                                        txt(displayed[i].kind.labelKey),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: theme.typography.caption
-                                            ?.copyWith(color: _inkColor),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            )),
-                      ),
+                  for (var i = 0; i < badges.length; i++) ...[
+                    if (i > 0) const SizedBox(width: tokenGap),
+                    _embeddedToken(
+                      badges[i],
+                      index: i,
+                      size: tokenSize,
+                      dark: dark,
                     ),
+                  ],
                 ],
               ),
             ),
           ),
-        );
-      }),
+        ),
+      ),
+    );
+  }
+
+  Widget _embeddedToken(
+    _Badge badge, {
+    required int index,
+    required double size,
+    required bool dark,
+  }) {
+    final tint = badge.kind.tint;
+    final ink = _inkColorFor(tint);
+    final hovered = _hovered == index;
+
+    return MouseRegion(
+      onEnter: (_) => _setHovered(index),
+      onExit: (_) => _clearHovered(index),
+      child: AnimatedContainer(
+        key: WK.appointmentIndicator(badge.kind.name),
+        duration: const Duration(milliseconds: 120),
+        width: size,
+        height: size,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              tint.withValues(
+                alpha: hovered ? (dark ? 0.48 : 0.28) : (dark ? 0.34 : 0.18),
+              ),
+              tint.withValues(
+                alpha: hovered ? (dark ? 0.28 : 0.16) : (dark ? 0.18 : 0.09),
+              ),
+            ],
+          ),
+          border: Border.all(
+            color: tint.withValues(
+              alpha: hovered ? (dark ? 0.88 : 0.80) : (dark ? 0.55 : 0.36),
+            ),
+            width: hovered ? 1.2 : 0.9,
+          ),
+          boxShadow: hovered
+              ? [
+                  BoxShadow(
+                    color: tint.withValues(alpha: dark ? 0.38 : 0.26),
+                    blurRadius: 5,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
+        ),
+        child: _indicatorButton(
+          badge,
+          tint: tint,
+          badge.media ??
+              Center(
+                child: Icon(
+                  badge.kind.icon,
+                  size: 11.5,
+                  color: ink,
+                ),
+              ),
+        ),
+      ),
     );
   }
 
@@ -352,12 +385,15 @@ class _AppointmentIndicatorsState extends State<AppointmentIndicators> {
             ? _GalleryThumb(
                 item: widget.item,
                 circleSize: size,
-                iconSize: widget.iconSize,
+                iconSize: widget.embedded ? 11.5 : widget.iconSize,
                 fallbackIcon: AppointmentIndicator.gallery.icon,
-                color: _inkColor,
+                color: _inkColorFor(AppointmentIndicator.gallery.tint),
               )
             : null,
       );
+    }
+    if (_hasFollowUpAfter(widget.item)) {
+      add(AppointmentIndicator.followUp, _followUpLines(widget.item));
     }
     return badges;
   }
@@ -405,7 +441,7 @@ class AppointmentInfoLine extends StatelessWidget {
         final stripWidth = note.isEmpty
             ? constraints.maxWidth
             : math.min(
-                112.0,
+                124.0,
                 math.max(
                     0.0,
                     constraints.maxWidth -
@@ -423,7 +459,14 @@ class AppointmentInfoLine extends StatelessWidget {
           height: 24,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
+            spacing: 5,
             children: [
+              if (badges) ...[
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: stripWidth),
+                  child: strip,
+                ),
+              ],
               Expanded(
                 child: Tooltip(
                   message: note,
@@ -445,13 +488,6 @@ class AppointmentInfoLine extends StatelessWidget {
                           )),
                 ),
               ),
-              if (badges) ...[
-                const SizedBox(width: 6),
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxWidth: stripWidth),
-                  child: strip,
-                ),
-              ],
             ],
           ),
         );
@@ -503,6 +539,23 @@ bool _hasDentalNotes(Appointment item) =>
 
 bool _hasGallery(Appointment item) =>
     item.viewableImgs.isNotEmpty || item.viewableDcmImgs.isNotEmpty;
+
+bool _hasFollowUpAfter(Appointment item) {
+  if (!followUpsEnabled) return false;
+  final followUpDay = item.patient?.followUpDay;
+  if (followUpDay == null) return false;
+  return followUpDay.isAfter(dayOnly(item.date));
+}
+
+List<String> _followUpLines(Appointment item) {
+  final patient = item.patient;
+  final followUpDay = patient?.followUpDay;
+  if (patient == null || followUpDay == null) return const [];
+  return [
+    '${DF.commonDate(followUpDay).replaceAll('📅 ', '')} · ${followUpRelativeLabel(followUpDay)}',
+    if (patient.followUpNote.isNotEmpty) patient.followUpNote,
+  ];
+}
 
 List<String> _prescriptions(Appointment item) =>
     item.prescriptions.where((p) => p.trim().isNotEmpty).toList();
@@ -603,7 +656,7 @@ class _GalleryThumbState extends State<_GalleryThumb> {
         final image = snapshot.data;
         if (image == null) return fallback;
         return ClipRRect(
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(999),
           child: SizedBox(
             width: widget.circleSize,
             height: widget.circleSize,
